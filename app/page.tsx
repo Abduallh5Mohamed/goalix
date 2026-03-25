@@ -1,28 +1,19 @@
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <div className="text-center space-y-8 px-4">
-        <div className="space-y-4">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            Goalix
-          </h1>
-          <p className="text-xl text-slate-300 max-w-md mx-auto">
-            Track your fitness goals, monitor your health metrics, and achieve more every day.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link
-            href="/dashboard"
-            className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30"
-          >
-            Go to Dashboard
-          </Link>
-          <button className="px-8 py-4 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/10 font-semibold rounded-xl transition-all">
-            Learn More
-          </button>
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+      <div 
+        className="w-full max-w-4xl h-96 rounded-3xl border-8 border-slate-200 shadow-2xl flex items-center justify-center relative overflow-hidden"
+        style={{
+          backgroundImage: "url('/hero-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center"
+        }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center">
+          <CheckCircle2 className="w-40 h-40 text-emerald-400 opacity-80" strokeWidth={1.5} />
         </div>
       </div>
     </div>
