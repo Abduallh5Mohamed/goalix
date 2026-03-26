@@ -64,18 +64,6 @@ export default function Home() {
           zIndex: 0,
         }}
       />
-      {/* White border frame around card */}
-      <div
-        className="absolute"
-        style={{
-          inset: "28px",
-          borderRadius: "24px",
-          background: "transparent",
-          border: "2px solid rgba(255,255,255,0.25)",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
       {/*   CARD CONTAINER   */}
       <div
         className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
@@ -175,117 +163,6 @@ export default function Home() {
             background: "rgba(255, 255, 255, 0.28)",
           }}
         >
-          <Image
-            src="/logo.png"
-            alt="Goalix"
-            width={480}
-            height={144}
-            className="h-48 w-auto object-contain shrink-0 -mt-2 -ml-8"
-            priority
-          />
-          <nav
-            className="hidden lg:flex items-center ml-12"
-            style={{ gap: "70px", marginTop: "-10px" }}
-          >
-            <a
-              href="#"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(57, 217, 138, 0.85)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >
-              Home
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-2 hover:text-white transition-colors"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(255, 255, 255, 0.75)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >
-              Platform
-              <svg width="11" height="8" viewBox="0 0 8 5" fill="none">
-                <path d="M1 1l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
-            <a href="#" 
-              className="hover:text-white transition-colors"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(255, 255, 255, 0.75)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >Features</a>
-            <a href="#" 
-              className="hover:text-white transition-colors"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(255, 255, 255, 0.75)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >AI Engine</a>
-            <a href="#" 
-              className="hover:text-white transition-colors"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(255, 255, 255, 0.75)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >Pricing</a>
-            <a href="#" 
-              className="hover:text-white transition-colors"
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "20px",
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                lineHeight: "3.2",
-                color: "rgba(255, 255, 255, 0.75)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-                padding: "20px 0"
-              }}
-            >Contact</a>
-          </nav>
         </div>
 
         {/*  LOGIN  (inside the protruding tab)  */}
