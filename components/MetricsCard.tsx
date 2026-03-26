@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useRef } from 'react';
 
 interface MetricsCardProps {
@@ -90,7 +91,19 @@ export default function MetricsCard({ title, type }: MetricsCardProps) {
 
   return (
     <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-cyan-400/20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5"></div>
+      {/* Background image at bottom, fading upward */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/Background.jpg"
+          alt=""
+          fill
+          className="object-cover object-bottom opacity-20"
+          style={{ objectPosition: "bottom" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-slate-800/60 to-slate-800/90" />
+      </div>
+
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 z-[1]"></div>
 
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-6">
