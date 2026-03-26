@@ -64,7 +64,8 @@ export default function Home() {
           zIndex: 0,
         }}
       />
-      {/*   CARD CONTAINER   */}
+
+      {/*   CARD CONTAINER (overflow visible so border SVG is not clipped)   */}
       <div
         className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
         style={{
@@ -74,159 +75,160 @@ export default function Home() {
           bottom: "28px",
           filter:
             "drop-shadow(0 18px 56px rgba(0,0,0,0.08)) drop-shadow(0 3px 10px rgba(0,0,0,0.05))",
-          background: "#ffffff",
-          overflow: "hidden",
-          borderRadius: "24px",
+          background: "transparent",
+          overflow: "visible",
         }}
       >
-        {/* Background image layer */}
-        <div className="absolute" style={{ top: 0, left: 0, right: 0, bottom: '-80px', zIndex: 0 }}>
-          <Image
-            src="/Background.jpg"
-            alt=""
-            fill
-            className="object-cover object-bottom"
-            style={{ opacity: 1 }}
-            priority
-          />
-        </div>
-
-        {/*  SVG Card Shape  */}
+        {/* White border outline SVG - overlays on top, not clipped */}
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
+          className="absolute pointer-events-none"
+          style={{
+            top: "-3px",
+            left: "-3px",
+            width: "calc(100% + 6px)",
+            height: "calc(100% + 6px)",
+            zIndex: 30,
+          }}
           viewBox="0 0 1000 700"
           preserveAspectRatio="none"
-          style={{ zIndex: 10 }}
         >
-          <defs>
-            {/* card fill gradient */}
-            <linearGradient id="cf" x1="0%" y1="0%" x2="85%" y2="100%">
-              <stop offset="0%" stopColor="#0d2036" />
-              <stop offset="100%" stopColor="#060e1a" />
-            </linearGradient>
-            {/* page curl fill */}
-            <linearGradient id="cuG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#1a3250" />
-              <stop offset="100%" stopColor="#091420" />
-            </linearGradient>
-            {/* border gradient */}
-            <linearGradient id="brd" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.13)" />
-              <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0.015)" />
-            </linearGradient>
-            <clipPath id="cc">
-              <path d={CARD} />
-            </clipPath>
-            {/* centre-left radial glow */}
-            <radialGradient id="gl" cx="36%" cy="55%" r="40%">
-              <stop offset="0%" stopColor="#0e2844" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="transparent" />
-            </radialGradient>
-          </defs>
-
-          {/* Card fill - REMOVED for transparency */}
-
-          {/* Clipped background treatments - REMOVED */}
-
-          {/* White outer rim - REMOVED */}
-          {/* Card border - REMOVED */}
-
-          {/* Tab top highlight */}
           <path
-            d="M 820 0 L 980 0 Q 1000 0 1000 20"
-            fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"
+            d={CARD}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="4"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
           />
-          {/* Scoop highlight */}
-          <path
-            d="M 798 56 C 812 56 806 0 820 0"
-            fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"
-          />
-          {/* Body top-left highlight */}
-          <path
-            d="M 798 56 L 36 56 Q 0 56 0 92"
-            fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"
-          />
-
-
         </svg>
 
-        {/*  LOGO + NAV  frosted glass tab  */}
+        {/* Inner clipped container for all card content */}
         <div
-          className="absolute top-0 left-0 z-20 flex items-center"
+          className="absolute inset-0"
           style={{
-            width: "62%",
-            height: tabH,
-            paddingLeft: "clamp(40px,3.8vw,62px)",
-            backdropFilter: "blur(15px)",
-            WebkitBackdropFilter: "blur(15px)",
-            background: "rgba(255, 255, 255, 0.28)",
+            overflow: "hidden",
+            borderRadius: "24px",
           }}
         >
-        </div>
+          {/* Background image layer */}
+          <div className="absolute" style={{ top: 0, left: 0, right: 0, bottom: '-80px', zIndex: 0 }}>
+            <Image
+              src="/Background.jpg"
+              alt=""
+              fill
+              className="object-cover object-bottom"
+              style={{ opacity: 1 }}
+              priority
+            />
+          </div>
 
-        {/*  LOGIN  (inside the protruding tab)  */}
-        <div
-          className="absolute top-0 right-0 z-20 flex items-center justify-center"
-          style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)" }}
-        >
-          <button 
+          {/*  SVG Card Shape (internal decorations)  */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox="0 0 1000 700"
+            preserveAspectRatio="none"
+            style={{ zIndex: 10 }}
+          >
+            <defs>
+              {/* card fill gradient */}
+              <linearGradient id="cf" x1="0%" y1="0%" x2="85%" y2="100%">
+                <stop offset="0%" stopColor="#0d2036" />
+                <stop offset="100%" stopColor="#060e1a" />
+              </linearGradient>
+              {/* page curl fill */}
+              <linearGradient id="cuG" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#1a3250" />
+                <stop offset="100%" stopColor="#091420" />
+              </linearGradient>
+              {/* border gradient */}
+              <linearGradient id="brd" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.13)" />
+                <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.015)" />
+              </linearGradient>
+              <clipPath id="cc">
+                <path d={CARD} />
+              </clipPath>
+              {/* centre-left radial glow */}
+              <radialGradient id="gl" cx="36%" cy="55%" r="40%">
+                <stop offset="0%" stopColor="#0e2844" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="transparent" />
+              </radialGradient>
+            </defs>
+          </svg>
+
+          {/*  LOGO + NAV  frosted glass tab  */}
+          <div
+            className="absolute top-0 left-0 z-20 flex items-center"
             style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "18px",
-              fontWeight: 300,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              color: "rgba(255, 255, 255, 0.7)",
-              border: "1.2px solid rgba(255, 255, 255, 0.22)",
-              borderRadius: "32px",
-              padding: "8px 34px",
-              transition: "all 0.3s ease",
-              backgroundColor: "transparent"
-            }}
-            className="flex items-center justify-center gap-2 bg-transparent transition-all hover:border-white hover:bg-white/10 hover:text-white"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#ffffff";
-              e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
-              e.currentTarget.style.background = "transparent";
+              width: "62%",
+              height: tabH,
+              paddingLeft: "clamp(40px,3.8vw,62px)",
+              backdropFilter: "blur(15px)",
+              WebkitBackdropFilter: "blur(15px)",
+              background: "rgba(255, 255, 255, 0.28)",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M5.5 2H3.5A1.5 1.5 0 0 0 2 3.5v7A1.5 1.5 0 0 0 3.5 12h2M9.5 10l3-3-3-3M12.5 7h-7"
-                stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-              />
-            </svg>
-            Login
-          </button>
-        </div>
+          </div>
 
-        {/*   CARD BODY CONTENT   */}
-        <div className="absolute z-10 flex" style={{ top: tabH, left: 0, right: 0, bottom: 0 }}>
-
-          {/*  LEFT FEATURE RAIL  */}
-          <aside
-            className="hidden"
-            style={{
-              display: "none",
-              width: "clamp(152px,14.5%,182px)"
-            }}
+          {/*  LOGIN  (inside the protruding tab)  */}
+          <div
+            className="absolute top-0 right-0 z-20 flex items-center justify-center"
+            style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)" }}
           >
-          </aside>
+            <button
+              style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "18px",
+                fontWeight: 300,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                color: "rgba(255, 255, 255, 0.7)",
+                border: "1.2px solid rgba(255, 255, 255, 0.22)",
+                borderRadius: "32px",
+                padding: "8px 34px",
+                transition: "all 0.3s ease",
+                backgroundColor: "transparent",
+              }}
+              className="flex items-center justify-center gap-2 bg-transparent transition-all hover:border-white hover:bg-white/10 hover:text-white"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#ffffff";
+                e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M5.5 2H3.5A1.5 1.5 0 0 0 2 3.5v7A1.5 1.5 0 0 0 3.5 12h2M9.5 10l3-3-3-3M12.5 7h-7"
+                  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
+              Login
+            </button>
+          </div>
 
-          {/*  MAIN CONTENT  */}
-          <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
+          {/*   CARD BODY CONTENT   */}
+          <div className="absolute z-10 flex" style={{ top: tabH, left: 0, right: 0, bottom: 0 }}>
 
+            {/*  LEFT FEATURE RAIL  */}
+            <aside
+              className="hidden"
+              style={{
+                display: "none",
+                width: "clamp(152px,14.5%,182px)",
+              }}
+            >
+            </aside>
 
-
-            {/*  Main content area  */}
-            <div className="flex-1 relative min-h-0">
+            {/*  MAIN CONTENT  */}
+            <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
+              {/*  Main content area  */}
+              <div className="flex-1 relative min-h-0">
+              </div>
             </div>
-
-
           </div>
         </div>
       </div>
