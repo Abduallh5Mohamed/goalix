@@ -1,10 +1,24 @@
+import Image from "next/image";
+
 export default function ActivityCard() {
   return (
     <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-cyan-400/20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5"></div>
+      {/* Background image at bottom, fading upward */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/Background.jpg"
+          alt=""
+          fill
+          className="object-cover object-bottom opacity-20"
+          style={{ objectPosition: "bottom" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-slate-800/60 to-slate-800/90" />
+      </div>
+
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 z-[1]"></div>
 
       <div className="relative z-10">
-        <h3 className="text-lg font-medium text-slate-300 mb-6">Today's Activity</h3>
+        <h3 className="text-lg font-medium text-slate-300 mb-6">Today&apos;s Activity</h3>
 
         <div className="bg-slate-900/60 rounded-xl p-6 border border-slate-700/30 relative">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent rounded-xl"></div>

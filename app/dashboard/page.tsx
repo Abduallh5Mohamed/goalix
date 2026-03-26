@@ -1,3 +1,4 @@
+import Image from "next/image";
 import MetricsCard from '@/components/MetricsCard';
 import ActivityCard from '@/components/ActivityCard';
 import Sidebar from '@/components/Sidebar';
@@ -31,18 +32,31 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <ActivityCard />
 
-            <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-cyan-400/20">
-              <h3 className="text-xl font-semibold text-white mb-4">Recent Goals</h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-white font-medium">Run 5K</h4>
-                    <span className="text-xs text-cyan-400">Active</span>
+            <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-cyan-400/20 relative overflow-hidden">
+              {/* Background image at bottom, fading upward */}
+              <div className="absolute inset-0 z-0">
+                <Image
+                  src="/Background.jpg"
+                  alt=""
+                  fill
+                  className="object-cover object-bottom opacity-20"
+                  style={{ objectPosition: "bottom" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-slate-800/60 to-slate-800/90" />
+              </div>
+              <div className="relative z-10">
+                <h3 className="text-xl font-semibold text-white mb-4">Recent Goals</h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/30">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="text-white font-medium">Run 5K</h4>
+                      <span className="text-xs text-cyan-400">Active</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-2 mb-2">
+                      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                    </div>
+                    <p className="text-sm text-slate-400">3.0 / 5.0 km</p>
                   </div>
-                  <div className="w-full bg-slate-700/50 rounded-full h-2 mb-2">
-                    <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full" style={{width: '60%'}}></div>
-                  </div>
-                  <p className="text-sm text-slate-400">3.0 / 5.0 km</p>
                 </div>
               </div>
             </div>
