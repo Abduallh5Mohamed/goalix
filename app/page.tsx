@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
@@ -64,16 +64,16 @@ export default function Home() {
           zIndex: 0,
         }}
       />
-      {/* Layer 2: subtle white transparent frame */}
+      {/* White border frame around card */}
       <div
         className="absolute"
         style={{
           inset: "28px",
-          borderRadius: "16px",
+          borderRadius: "24px",
           background: "transparent",
-          border: "1px solid rgba(255,255,255,0.06)",
+          border: "2px solid rgba(255,255,255,0.25)",
           pointerEvents: "none",
-          zIndex: 0,
+          zIndex: 1,
         }}
       />
       {/*   CARD CONTAINER   */}
