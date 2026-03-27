@@ -1,36 +1,219 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GOALIX - Web-Based Sports Academy Platform
 
-## Getting Started
+> A scalable, AI-powered web platform for managing sports academies, tracking performance, and enabling data-driven decisions.
 
-First, run the development server:
+## System Philosophy
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+Data -> Processing -> Intelligence -> Decision
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Every interaction (attendance / evaluation / payments) is transformed into data.
+- Data is processed into insights.
+- Insights drive decisions (ranking / alerts / recommendations).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## High-Level Architecture (Web Only)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```mermaid
+graph TD
+A[Browser Client (Next.js)] --> B[API Gateway]
 
-## Learn More
+B --> C[Auth Service]
+B --> D[User Service]
+B --> E[Attendance Service]
+B --> F[Ranking Engine]
+B --> G[Payment Service]
+B --> H[Notification Service]
+B --> I[AI Services]
 
-To learn more about Next.js, take a look at the following resources:
+C --> DB[(PostgreSQL)]
+D --> DB
+E --> DB
+F --> DB
+G --> DB
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+DB --> R[(Redis Cache)]
+DB --> S[(Cloud Storage)]
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+I --> ML[ML Models]
+H --> EXT[SMS / WhatsApp APIs]
+```
 
-## Deploy on Vercel
+## Frontend Architecture (Important Update)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```mermaid
+graph TD
+A[Next.js App] --> B[Pages / Routes]
+A --> C[Components]
+A --> D[State Management]
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+B --> E[Admin]
+B --> F[Coach]
+B --> G[Player]
+B --> H[Parent]
+
+C --> I[Shared Components]
+
+D --> J[React Query / Zustand]
+```
+
+### Tech Decisions
+
+- Next.js (App Router)
+- Server Components + Client Components
+- React Query (data fetching)
+- Zustand (state)
+- Tailwind CSS
+
+## Role-Based Routing Structure
+
+```bash
+/app
+	/auth
+	/admin
+	/coach
+	/player
+	/parent
+```
+
+Each role has isolated UI + permissions.
+
+## Core System Flows
+
+### Attendance Flow
+
+```mermaid
+sequenceDiagram
+Coach->>Web App: Mark Attendance
+Web App->>API: POST /attendance
+API->>DB: Save Record
+API->>Ranking Engine: Update Score
+API->>Notification Service: Trigger Alert
+Notification->>Parent: Absence Notification
+```
+
+### Ranking Engine
+
+```text
+Score =
+35% Evaluation +
+20% Attendance +
+15% Discipline +
+20% Match +
+10% AI
+```
+
+### Payment Flow
+
+```mermaid
+sequenceDiagram
+Parent->>Web App: Pay Subscription
+Web App->>API: POST /payments
+API->>Gateway: Process Payment
+Gateway-->>API: Result
+API->>DB: Update Status
+API->>Notification: Confirmation
+```
+
+### AI Layer
+
+```mermaid
+graph TD
+A[Attendance] --> F[AI Engine]
+B[Evaluations] --> F
+C[Measurements] --> F
+
+F --> G[Performance Score]
+F --> H[Injury Risk]
+F --> I[Nutrition Plan]
+```
+
+## Database Design
+
+```mermaid
+erDiagram
+ACADEMIES ||--o{ BRANCHES
+BRANCHES ||--o{ GROUPS
+GROUPS ||--o{ PLAYERS
+GROUPS ||--o{ COACHES
+
+PLAYERS ||--o{ ATTENDANCE
+PLAYERS ||--o{ EVALUATIONS
+PLAYERS ||--o{ MEASUREMENTS
+PLAYERS ||--o{ PAYMENTS
+PLAYERS ||--o{ RANKINGS
+```
+
+## Deployment Architecture (Web Focus)
+
+```mermaid
+graph TD
+A[User Browser] --> B[CDN (Vercel / Cloudflare)]
+B --> C[Next.js App]
+
+C --> D[API Server]
+
+D --> E[PostgreSQL]
+D --> F[Redis]
+D --> G[Storage]
+
+D --> H[AI Services]
+
+I[Monitoring] --> D
+J[Logging] --> D
+```
+
+## Scalability Strategy
+
+- SSR + ISR for performance
+- API caching using Redis
+- Lazy loading for dashboards
+- Microservices-ready architecture (future scaling)
+- CDN for static assets
+
+## Security
+
+- JWT authentication
+- Role-based access control
+- Secure cookies (httpOnly)
+- Rate limiting
+- Payment gateway protection
+
+## Testing
+
+- Unit testing (services)
+- Integration testing (API)
+- Role-based testing
+- Load testing
+
+## Roadmap
+
+### Phase 1
+
+- Core system (Web)
+- Attendance + ranking
+- Payments + notifications
+
+### Phase 2
+
+- AI systems
+- Nutrition + media
+- Coach analytics
+
+### Phase 3
+
+- Advanced analytics
+- Multi-academy scaling
+
+## Developer Notes
+
+- Keep components reusable
+- Separate business logic from UI
+- Use API contracts strictly
+- Optimize for dashboard performance
+
+## Summary
+
+GOALIX is:
+
+> A fully web-based intelligent operating system for sports academies
