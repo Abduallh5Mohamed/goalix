@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 /*  SVG Card Path  viewBox 0 0 1000 700
  *  Clockwise from body top-left.
@@ -24,6 +25,7 @@ const CARD = [
 
 export default function Home() {
   const [m, setM] = useState(false);
+  const router = useRouter();
   useEffect(() => setM(true), []);
 
   /* tab zone height as % of card (56 / 700) */
@@ -177,6 +179,7 @@ export default function Home() {
             style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)" }}
           >
             <button
+              onClick={() => router.push("/login")}
               style={{
                 fontFamily: "'Rajdhani', sans-serif",
                 fontSize: "18px",
@@ -227,6 +230,57 @@ export default function Home() {
             <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
               {/*  Main content area  */}
               <div className="flex-1 relative min-h-0">
+                {/* Portal Access Buttons */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 flex flex-wrap items-end justify-center gap-3 p-6"
+                  style={{ zIndex: 20 }}
+                >
+                  {[
+                    { label: "Admin Portal", href: "/admin/dashboard", color: "#22d3ee", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+                    { label: "Coach Portal", href: "/coach/home", color: "#3ddc84", icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+                    { label: "Player Portal", href: "/player/home", color: "#f59e0b", icon: "M6 2v6m0 0 4 4m-4-4-4 4m10-8v6m0 0 4 4m-4-4-4 4M12 22V12" },
+                    { label: "Parent Portal", href: "/parent/home", color: "#a855f7", icon: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" },
+                  ].map((portal) => (
+                    <button
+                      key={portal.label}
+                      onClick={() => router.push(portal.href)}
+                      style={{
+                        fontFamily: "'Rajdhani', sans-serif",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        color: portal.color,
+                        border: `1.5px solid ${portal.color}44`,
+                        borderRadius: "28px",
+                        padding: "10px 22px",
+                        backgroundColor: `${portal.color}10`,
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        cursor: "pointer",
+                        transition: "all 0.25s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = `${portal.color}22`;
+                        e.currentTarget.style.borderColor = portal.color;
+                        e.currentTarget.style.boxShadow = `0 0 20px ${portal.color}33`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = `${portal.color}10`;
+                        e.currentTarget.style.borderColor = `${portal.color}44`;
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={portal.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d={portal.icon} />
+                      </svg>
+                      {portal.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
