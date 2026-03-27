@@ -4,14 +4,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 /*  SVG Card Path  viewBox 0 0 1000 700
- *  Clockwise from body top-left.
- *  Single cubic scoop (horizontal tangents both ends  ultra-smooth).
- *  Single cubic page curl (smooth arc, no hard angle).
- *  All corners Q-rounded.
+ *  Starts on left edge just below the rounded tab corner.
+ *  Goes down → bottom → right → top → page-curl → tab floor → rounded corner back.
+ *  Explicit close (no Z) so the full horizontal stroke is always rendered.
  */
 const CARD = [
-  "M 36 56",
-  "Q 0 56 0 92",
+  "M 0 80",
   "L 0 664",
   "Q 0 700 36 700",
   "L 964 700",
@@ -20,7 +18,8 @@ const CARD = [
   "Q 1000 0 980 0",
   "L 820 0",
   "C 806 0 812 56 798 56",
-  "Z",
+  "L 24 56",
+  "Q 0 56 0 80",
 ].join(" ");
 
 export default function Home() {
@@ -67,42 +66,38 @@ export default function Home() {
         }}
       />
 
+      {/* White backdrop layer — larger than the card, sits behind it */}
+      <div
+        className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
+        style={{
+          top: "20px",
+          left: "20px",
+          right: "20px",
+          bottom: "20px",
+          borderRadius: "32px",
+          background: "rgba(255, 255, 255, 0.1)",
+          backdropFilter: "blur(15px)",
+          WebkitBackdropFilter: "blur(15px)",
+          zIndex: 1,
+          pointerEvents: "none",
+        }}
+      />
+
       {/*   CARD CONTAINER (overflow visible so border SVG is not clipped)   */}
       <div
         className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
         style={{
-          top: "28px",
-          left: "28px",
-          right: "28px",
-          bottom: "28px",
+          top: "50px",
+          left: "50px",
+          right: "50px",
+          bottom: "50px",
+          zIndex: 2,
           filter:
             "drop-shadow(0 18px 56px rgba(0,0,0,0.08)) drop-shadow(0 3px 10px rgba(0,0,0,0.05))",
           background: "transparent",
           overflow: "visible",
         }}
       >
-        {/* White border outline SVG - overlays on top, not clipped */}
-        <svg
-          className="absolute pointer-events-none"
-          style={{
-            top: "-3px",
-            left: "-3px",
-            width: "calc(100% + 6px)",
-            height: "calc(100% + 6px)",
-            zIndex: 30,
-          }}
-          viewBox="0 0 1000 700"
-          preserveAspectRatio="none"
-        >
-          <path
-            d={CARD}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="4"
-            vectorEffect="non-scaling-stroke"
-            strokeLinejoin="round"
-          />
-        </svg>
 
         {/* Inner clipped container for all card content */}
         <div
@@ -132,6 +127,10 @@ export default function Home() {
             style={{ zIndex: 10 }}
           >
             <defs>
+              {/* exact clip for frosted tab — mirrors the page-curl bezier */}
+              <clipPath id="tabClip" clipPathUnits="objectBoundingBox">
+                <path d="M 0 0 L 1 0 C 0.9829 0 0.9902 1 0.9732 1 L 0 1 Z" />
+              </clipPath>
               {/* card fill gradient */}
               <linearGradient id="cf" x1="0%" y1="0%" x2="85%" y2="100%">
                 <stop offset="0%" stopColor="#0d2036" />
@@ -163,26 +162,68 @@ export default function Home() {
           <div
             className="absolute top-0 left-0 z-20 flex items-center"
             style={{
-              width: "62%",
+              width: "82%",
               height: tabH,
               paddingLeft: "clamp(40px,3.8vw,62px)",
               backdropFilter: "blur(15px)",
               WebkitBackdropFilter: "blur(15px)",
-              background: "rgba(255, 255, 255, 0.28)",
+              background: "rgba(255, 255, 255, 0.10)",
+              clipPath: "url(#tabClip)",
+              gap: "clamp(28px,3.5vw,56px)",
             }}
           >
+            <Image
+              src="/Logo.png"
+              alt="Goalix Logo"
+              width={260}
+              height={260}
+              priority
+              style={{ objectFit: "contain", flexShrink: 0, marginLeft: "-16px" }}
+            />
+
+            {/* NAV LINKS */}
+            <nav className="flex items-center" style={{ gap: "clamp(32px,4vw,64px)", marginTop: "-8px" }}>
+              {[
+                { label: "HOME", active: true },
+                { label: "PLATFORM", dropdown: true },
+                { label: "FEATURES" },
+                { label: "AI ENGINE" },
+                { label: "PRICING" },
+                { label: "CONTACT" },
+              ].map(({ label, active, dropdown }) => (
+                <a
+                  key={label}
+                  href="#"
+                  className="flex items-center gap-1 whitespace-nowrap transition-colors duration-200 hover:text-[#68bd68]"
+                  style={{
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: "clamp(15px,1.2vw,19px)",
+                    fontWeight: 300,
+                    letterSpacing: "0.18em",
+                    textDecoration: "none",
+                    color: active ? "#68bd68" : "rgba(200,215,230,0.88)",
+                    transition: "color 0.3s ease",
+                  }}
+                >
+                  {label}
+                  {dropdown && (
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.7 }}>
+                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </a>
+              ))}
+            </nav>
           </div>
 
           {/*  LOGIN  (inside the protruding tab)  */}
           <div
             className="absolute top-0 right-0 z-20 flex items-center justify-center"
-            style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)" }}
+            style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)", marginTop: "8px", marginRight: "-12px" }}
           >
             <button
               onClick={() => router.push("/login")}
               style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "18px",
                 fontWeight: 300,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
@@ -230,61 +271,54 @@ export default function Home() {
             <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
               {/*  Main content area  */}
               <div className="flex-1 relative min-h-0">
-                {/* Portal Access Buttons */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 flex flex-wrap items-end justify-center gap-3 p-6"
-                  style={{ zIndex: 20 }}
-                >
-                  {[
-                    { label: "Admin Portal", href: "/admin/dashboard", color: "#22d3ee", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
-                    { label: "Coach Portal", href: "/coach/home", color: "#3ddc84", icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
-                    { label: "Player Portal", href: "/player/home", color: "#f59e0b", icon: "M6 2v6m0 0 4 4m-4-4-4 4m10-8v6m0 0 4 4m-4-4-4 4M12 22V12" },
-                    { label: "Parent Portal", href: "/parent/home", color: "#a855f7", icon: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" },
-                  ].map((portal) => (
-                    <button
-                      key={portal.label}
-                      onClick={() => router.push(portal.href)}
-                      style={{
-                        fontFamily: "'Rajdhani', sans-serif",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        color: portal.color,
-                        border: `1.5px solid ${portal.color}44`,
-                        borderRadius: "28px",
-                        padding: "10px 22px",
-                        backgroundColor: `${portal.color}10`,
-                        backdropFilter: "blur(12px)",
-                        WebkitBackdropFilter: "blur(12px)",
-                        cursor: "pointer",
-                        transition: "all 0.25s ease",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = `${portal.color}22`;
-                        e.currentTarget.style.borderColor = portal.color;
-                        e.currentTarget.style.boxShadow = `0 0 20px ${portal.color}33`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = `${portal.color}10`;
-                        e.currentTarget.style.borderColor = `${portal.color}44`;
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={portal.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d={portal.icon} />
-                      </svg>
-                      {portal.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Portal Access Buttons — below the card */}
+      <div
+        className="absolute left-0 right-0 flex flex-wrap items-center justify-center gap-3"
+        style={{ bottom: "0px", height: "60px", zIndex: 10 }}
+      >
+        {[
+          { label: "Admin", href: "/admin/dashboard", color: "#22d3ee" },
+          { label: "Coach", href: "/coach/home", color: "#3ddc84" },
+          { label: "Player", href: "/player/home", color: "#f59e0b" },
+          { label: "Parent", href: "/parent/home", color: "#a855f7" },
+        ].map((p) => (
+          <button
+            key={p.label}
+            onClick={() => router.push(p.href)}
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "13px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "1.2px",
+              color: p.color,
+              border: `1.5px solid ${p.color}55`,
+              borderRadius: "24px",
+              padding: "7px 22px",
+              backgroundColor: `${p.color}12`,
+              cursor: "pointer",
+              transition: "all 0.22s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `${p.color}28`;
+              e.currentTarget.style.borderColor = p.color;
+              e.currentTarget.style.boxShadow = `0 0 14px ${p.color}44`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = `${p.color}12`;
+              e.currentTarget.style.borderColor = `${p.color}55`;
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
     </main>
   );
