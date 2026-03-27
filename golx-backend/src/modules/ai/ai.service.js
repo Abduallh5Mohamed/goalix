@@ -1,0 +1,136 @@
+const eventBus = require('../../events/eventBus');
+const AI_EVENTS = require('./ai.events');
+const { NotFoundError } = require('../../shared/errors');
+
+class AiService {
+    constructor(aiRepository, aiQueue) {
+        this.repo = aiRepository;
+        this.queue = aiQueue;
+    }
+
+    // ─── Performance Score ──────────────────────────────────────────────
+    async getPerformanceScore(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        const score = await this.repo.getAiScore(playerId);
+        if (!score) throw new NotFoundError('AI Score', playerId);
+        return score;
+    }
+
+    async calculatePerformanceScore(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        await this.queue.add('calculate-performance', { playerId });
+        return { message: 'Performance score calculation queued', playerId };
+    }
+
+    async getAllScores(academyId, pagination) {
+        return this.repo.getAiScores(academyId, pagination);
+    }
+
+    // Called by worker after AI processing
+    async savePerformanceScore(playerId, score, breakdown) {
+        const result = await this.repo.upsertAiScore(playerId, score, breakdown);
+
+        eventBus.publish(AI_EVENTS.PERFORMANCE_SCORE_CALCULATED, {
+            playerId,
+            score,
+        });
+
+        return result;
+    }
+
+    // ─── Injury Risk Assessment ─────────────────────────────────────────
+    async assessInjuryRisk(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        await this.queue.add('assess-injury-risk', { playerId });
+        return { message: 'Injury risk assessment queued', playerId };
+    }
+
+    async getInjuryRisk(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        const risk = await this.repo.getLatestInjuryRisk(playerId);
+        if (!risk) throw new NotFoundError('Injury Risk Assessment', playerId);
+        return risk;
+    }
+
+    async getInjuryRiskHistory(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        return this.repo.getInjuryRisks(playerId);
+    }
+
+    // Called by worker
+    async saveInjuryRisk(playerId, data) {
+        const assessment = await this.repo.createInjuryRisk({
+            player_id: playerId,
+            risk_level: data.riskLevel,
+            factors: JSON.stringify(data.factors || []),
+            recommendations: JSON.stringify(data.recommendations || []),
+            assessed_at: new Date(),
+        });
+
+        eventBus.publish(AI_EVENTS.INJURY_RISK_ASSESSED, {
+            playerId,
+            riskLevel: data.riskLevel,
+        });
+
+        return assessment;
+    }
+
+    // ─── Nutrition Plan ─────────────────────────────────────────────────
+    async generateNutritionPlan(playerId, academyId, options) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        await this.queue.add('generate-nutrition-plan', { playerId, ...options });
+        return { message: 'Nutrition plan generation queued', playerId };
+    }
+
+    async getNutritionPlan(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        const plan = await this.repo.getLatestNutritionPlan(playerId);
+        if (!plan) throw new NotFoundError('Nutrition Plan', playerId);
+        return plan;
+    }
+
+    async getNutritionPlanHistory(playerId, academyId) {
+        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!owned) throw new NotFoundError('Player', playerId);
+        return this.repo.getNutritionPlans(playerId);
+    }
+
+    // Called by worker
+    async saveNutritionPlan(playerId, data) {
+        const plan = await this.repo.createNutritionPlan({
+            player_id: playerId,
+            plan_data: JSON.stringify(data.planData),
+            goals: JSON.stringify(data.goals || []),
+            restrictions: JSON.stringify(data.restrictions || []),
+        });
+
+        eventBus.publish(AI_EVENTS.NUTRITION_PLAN_GENERATED, {
+            playerId,
+            planId: plan.id,
+        });
+
+        return plan;
+    }
+
+    // ─── Chat ───────────────────────────────────────────────────────────
+    async chat(userId, prompt, context) {
+        // Queue the AI chat job; for now return placeholder
+        await this.queue.add('ai-chat', { userId, prompt, context });
+
+        eventBus.publish(AI_EVENTS.CHAT_RESPONSE_GENERATED, {
+            userId,
+            prompt: prompt.slice(0, 100),
+        });
+
+        return { message: 'AI chat response is being generated', queued: true };
+    }
+}
+
+module.exports = AiService;
