@@ -1,290 +1,385 @@
 "use client";
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-/*  SVG Card Path  viewBox 0 0 1000 700
- *  Starts on left edge just below the rounded tab corner.
- *  Goes down → bottom → right → top → page-curl → tab floor → rounded corner back.
- *  Explicit close (no Z) so the full horizontal stroke is always rendered.
- */
-const CARD = [
-  "M 0 80",
-  "L 0 664",
-  "Q 0 700 36 700",
-  "L 964 700",
-  "Q 1000 700 1000 664",
-  "L 1000 20",
-  "Q 1000 0 980 0",
-  "L 820 0",
-  "C 806 0 812 56 798 56",
-  "L 24 56",
-  "Q 0 56 0 80",
-].join(" ");
+/* ─── Bar Chart Data ─── */
+const bars = [
+  { label: "Jan", value: 500 },
+  { label: "Feb", value: 453 },
+  { label: "Mar", value: 950 },
+  { label: "Apr", value: 620 },
+  { label: "May", value: 700 },
+  { label: "Jun", value: 510 },
+  { label: "Jul", value: 820 },
+];
+const maxVal = 1000;
 
-export default function Home() {
-  const [m, setM] = useState(false);
-  const router = useRouter();
-  useEffect(() => setM(true), []);
+/* ─── Features ─── */
+const features = [
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="2" /><circle cx="15" cy="9" r="2" /><circle cx="9" cy="15" r="2" /><circle cx="15" cy="15" r="2" />
+      </svg>
+    ),
+    label: "Building lasting",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+      </svg>
+    ),
+    label: "Backing athletes",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      </svg>
+    ),
+    label: "Leading-edge technology",
+  },
+];
 
-  /* tab zone height as % of card (56 / 700) */
-  const tabH = "8%";
+/* ─── Stats ─── */
+const stats = [
+  { value: "$50M", sub: "Invested in Sports Venture" },
+  { value: "90%", sub: "Average ROI for Kickvest Investors" },
+  { value: "500+", sub: "Athletes and Teams Supported" },
+];
+
+/* ─── SVG Bar Chart Component ─── */
+function BarChart() {
+  const chartW = 280;
+  const chartH = 240;
+  const padL = 40;
+  const padB = 28;
+  const padT = 10;
+  const barW = 24;
+  const gap = (chartW - padL - bars.length * barW) / (bars.length + 1);
+  const drawH = chartH - padB - padT;
+
+  const yTicks = [0, 250, 500, 750, 1000];
 
   return (
-    <main
-      className="h-screen w-full relative"
+    <svg width="100%" height="100%" viewBox={`0 0 ${chartW} ${chartH}`} style={{ overflow: "visible" }}>
+      {/* Y-axis grid + labels */}
+      {yTicks.map((t) => {
+        const y = padT + drawH - (t / maxVal) * drawH;
+        return (
+          <g key={t}>
+            <line x1={padL} y1={y} x2={chartW} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+            <text x={padL - 6} y={y + 3} textAnchor="end" fill="#64748b" fontSize="9" fontFamily="Inter, sans-serif">
+              {t}
+            </text>
+          </g>
+        );
+      })}
+      {/* Bars + labels */}
+      {bars.map((b, i) => {
+        const x = padL + gap + i * (barW + gap);
+        const barH = (b.value / maxVal) * drawH;
+        const y = padT + drawH - barH;
+        const isHighlight = i === 2;
+        return (
+          <g key={b.label}>
+            <rect x={x} y={y} width={barW} height={barH} rx={4} fill={isHighlight ? "#1a56db" : "#c8d1dc"} />
+            {/* Value on top */}
+            <text x={x + barW / 2} y={y - 5} textAnchor="middle" fill={isHighlight ? "#fff" : "#94a3b8"} fontSize="9" fontFamily="Inter, sans-serif" fontWeight={isHighlight ? 600 : 400}>
+              {b.value}
+            </text>
+            {/* X label */}
+            <text x={x + barW / 2} y={chartH - 6} textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="Inter, sans-serif">
+              {b.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+export default function Home() {
+  const router = useRouter();
+
+  return (
+    <div
       style={{
-        background: "#f5f7fa",
-        padding: "0",
-        overflow: "visible",
-        paddingBottom: "60px",
+        minHeight: "100vh",
+        width: "100%",
+        background: "#ffffff",
+        color: "#0f172a",
+        fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
-      {/* Background image behind the card */}
-      <div className="absolute inset-0" style={{ zIndex: 0 }}>
-        <Image
-          src="/Background.jpg"
-          alt=""
-          fill
-          className="object-cover object-center"
-          style={{ opacity: 1 }}
-          priority
-        />
-      </div>
-
-      {/* Fade-to-white gradient overlay at bottom */}
-      <div
+      {/* ═══ Navbar ═══ */}
+      <nav
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "220px",
-          background: "linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.85) 40%, transparent 100%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      {/* White backdrop layer — larger than the card, sits behind it */}
-      <div
-        className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
-        style={{
-          top: "20px",
-          left: "20px",
-          right: "20px",
-          bottom: "20px",
-          borderRadius: "32px",
-          background: "rgba(255, 255, 255, 0.1)",
-          backdropFilter: "blur(15px)",
-          WebkitBackdropFilter: "blur(15px)",
-          zIndex: 1,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/*   CARD CONTAINER (overflow visible so border SVG is not clipped)   */}
-      <div
-        className={`absolute transition-opacity duration-700 ${m ? "opacity-100" : "opacity-0"}`}
-        style={{
-          top: "50px",
-          left: "50px",
-          right: "50px",
-          bottom: "50px",
-          zIndex: 2,
-          filter:
-            "drop-shadow(0 18px 56px rgba(0,0,0,0.08)) drop-shadow(0 3px 10px rgba(0,0,0,0.05))",
-          background: "transparent",
-          overflow: "visible",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "18px 56px",
         }}
       >
-
-        {/* Inner clipped container for all card content */}
-        <div
-          className="absolute inset-0"
+        <div style={{ flexShrink: 0 }}>
+          <Image src="/Logo.png" alt="Goalix" width={130} height={38} priority style={{ objectFit: "contain" }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
+          {["Home", "Service", "About", "Team", "Contact"].map((l, i) => (
+            <a
+              key={l}
+              href="#"
+              style={{
+                fontSize: "14px",
+                color: i === 0 ? "#0f172a" : "#6b7280",
+                fontWeight: i === 0 ? 600 : 400,
+                textDecoration: "none",
+              }}
+            >
+              {l}
+            </a>
+          ))}
+        </div>
+        <button
+          onClick={() => router.push("/login")}
           style={{
-            overflow: "hidden",
-            borderRadius: "24px",
+            border: "2px solid #0f172a",
+            borderRadius: "999px",
+            padding: "10px 30px",
+            background: "transparent",
+            color: "#0f172a",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: "pointer",
           }}
         >
-          {/* Background image layer */}
-          <div className="absolute" style={{ top: 0, left: 0, right: 0, bottom: '-80px', zIndex: 0 }}>
-            <Image
-              src="/Background.jpg"
-              alt=""
-              fill
-              className="object-cover object-bottom"
-              style={{ opacity: 1 }}
-              priority
-            />
-          </div>
+          Sign Up
+        </button>
+      </nav>
 
-          {/*  SVG Card Shape (internal decorations)  */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox="0 0 1000 700"
-            preserveAspectRatio="none"
-            style={{ zIndex: 10 }}
-          >
-            <defs>
-              {/* exact clip for frosted tab — mirrors the page-curl bezier */}
-              <clipPath id="tabClip" clipPathUnits="objectBoundingBox">
-                <path d="M 0 0 L 1 0 C 0.9829 0 0.9902 1 0.9732 1 L 0 1 Z" />
-              </clipPath>
-              {/* card fill gradient */}
-              <linearGradient id="cf" x1="0%" y1="0%" x2="85%" y2="100%">
-                <stop offset="0%" stopColor="#0d2036" />
-                <stop offset="100%" stopColor="#060e1a" />
-              </linearGradient>
-              {/* page curl fill */}
-              <linearGradient id="cuG" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#1a3250" />
-                <stop offset="100%" stopColor="#091420" />
-              </linearGradient>
-              {/* border gradient */}
-              <linearGradient id="brd" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.13)" />
-                <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0.015)" />
-              </linearGradient>
-              <clipPath id="cc">
-                <path d={CARD} />
-              </clipPath>
-              {/* centre-left radial glow */}
-              <radialGradient id="gl" cx="36%" cy="55%" r="40%">
-                <stop offset="0%" stopColor="#0e2844" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="transparent" />
-              </radialGradient>
-            </defs>
-          </svg>
-
-          {/*  LOGO + NAV  frosted glass tab  */}
+      {/* ═══ Hero Section ═══ */}
+      <div style={{ padding: "8px 56px 48px" }}>
+        {/* — Row 1: Athlete Image + Heading — */}
+        <div style={{ display: "flex", gap: "36px", alignItems: "flex-start" }}>
+          {/* Athlete Image */}
           <div
-            className="absolute top-0 left-0 z-20 flex items-center"
             style={{
-              width: "82%",
-              height: tabH,
-              paddingLeft: "clamp(40px,3.8vw,62px)",
-              backdropFilter: "blur(15px)",
-              WebkitBackdropFilter: "blur(15px)",
-              background: "rgba(255, 255, 255, 0.10)",
-              clipPath: "url(#tabClip)",
-              gap: "clamp(28px,3.5vw,56px)",
+              position: "relative",
+              width: "260px",
+              minWidth: "260px",
+              height: "310px",
+              borderRadius: "20px",
+              overflow: "hidden",
+              background: "linear-gradient(135deg, #1a56db 0%, #4b83f0 50%, #7db2fa 100%)",
+              flexShrink: 0,
             }}
           >
-            <Image
-              src="/Logo.png"
-              alt="Goalix Logo"
-              width={260}
-              height={260}
-              priority
-              style={{ objectFit: "contain", flexShrink: 0, marginLeft: "-16px" }}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `repeating-linear-gradient(-45deg,transparent,transparent 14px,rgba(255,255,255,0.08) 14px,rgba(255,255,255,0.08) 28px)`,
+              }}
             />
+            <Image
+              src="/athlete.png"
+              alt="Athlete"
+              fill
+              style={{ objectFit: "cover", objectPosition: "top", zIndex: 1 }}
+              priority
+            />
+          </div>
 
-            {/* NAV LINKS */}
-            <nav className="flex items-center" style={{ gap: "clamp(32px,4vw,64px)", marginTop: "-8px" }}>
-              {[
-                { label: "HOME", active: true },
-                { label: "PLATFORM", dropdown: true },
-                { label: "FEATURES" },
-                { label: "AI ENGINE" },
-                { label: "PRICING" },
-                { label: "CONTACT" },
-              ].map(({ label, active, dropdown }) => (
-                <a
-                  key={label}
-                  href="#"
-                  className="flex items-center gap-1 whitespace-nowrap transition-colors duration-200 hover:text-[#68bd68]"
+          {/* Heading */}
+          <div style={{ paddingTop: "32px" }}>
+            <h1
+              style={{
+                fontSize: "clamp(36px, 4.5vw, 64px)",
+                fontWeight: 400,
+                lineHeight: 1.06,
+                color: "#0f172a",
+                letterSpacing: "-0.02em",
+                margin: 0,
+              }}
+            >
+              Pioneering{" "}
+              <span style={{ fontWeight: 700 }}>Sports Investment</span>
+              <br />
+              for <span style={{ fontWeight: 700 }}>Tomorrow&apos;s Champions</span>
+            </h1>
+          </div>
+        </div>
+
+        {/* — Row 2: Features | Chart | Content — */}
+        <div
+          style={{
+            display: "flex",
+            gap: "28px",
+            marginTop: "24px",
+            alignItems: "flex-start",
+          }}
+        >
+          {/* ▸ LEFT: Feature cards */}
+          <div style={{ width: "260px", minWidth: "260px", display: "flex", flexDirection: "column", gap: "12px", flexShrink: 0 }}>
+            {features.map((f) => (
+              <div
+                key={f.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "#f3f5f8",
+                  borderRadius: "16px",
+                  padding: "16px 20px",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div
+                    style={{
+                      width: "42px",
+                      height: "42px",
+                      borderRadius: "50%",
+                      background: "#1a2332",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {f.icon}
+                  </div>
+                  <span style={{ fontSize: "14px", fontWeight: 500, color: "#0f172a" }}>
+                    {f.label}
+                  </span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 12l4-4-4-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            ))}
+          </div>
+
+          {/* ▸ CENTER: Chart card */}
+          <div
+            style={{
+              width: "320px",
+              minWidth: "320px",
+              background: "#0c1829",
+              borderRadius: "18px",
+              padding: "20px 20px 12px",
+              flexShrink: 0,
+            }}
+          >
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", fontWeight: 500, margin: "0 0 12px 0" }}>
+              Total Earning
+            </p>
+            <div style={{ height: "270px" }}>
+              <BarChart />
+            </div>
+          </div>
+
+          {/* ▸ RIGHT: Description + CTA + Stats */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "20px", paddingTop: "4px" }}>
+            {/* Description */}
+            <p style={{ color: "#6b7280", fontSize: "14px", lineHeight: 1.7, margin: 0, maxWidth: "440px" }}>
+              Dive into the dynamic world of sports investment with Kickvest, where passion
+              meets profit. Discover unparalleled opportunities to support athletes, teams,
+              and leagues while maximizing your financial portfolio.
+            </p>
+
+            {/* CTA + Satisfaction */}
+            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+              <button
+                onClick={() => router.push("/login")}
+                style={{
+                  background: "#1a56db",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "14px 36px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Start Now
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {/* Avatar stack */}
+                <div style={{ display: "flex" }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        border: "2px solid #fff",
+                        background: ["#3b82f6", "#1e293b", "#475569"][i],
+                        marginLeft: i > 0 ? "-8px" : 0,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div>
+                  <p style={{ fontSize: "12px", fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                    98% Customer Satisfaction
+                  </p>
+                  <div style={{ display: "flex", gap: "2px", marginTop: "3px" }}>
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#1a56db">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px", marginTop: "4px" }}>
+              {stats.map((s) => (
+                <div
+                  key={s.value}
                   style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontSize: "clamp(15px,1.2vw,19px)",
-                    fontWeight: 300,
-                    letterSpacing: "0.18em",
-                    textDecoration: "none",
-                    color: active ? "#68bd68" : "rgba(200,215,230,0.88)",
-                    transition: "color 0.3s ease",
+                    background: "#f3f5f8",
+                    borderRadius: "18px",
+                    padding: "22px 20px",
+                    minHeight: "110px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
                   }}
                 >
-                  {label}
-                  {dropdown && (
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.7 }}>
-                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </a>
+                  <p style={{ fontSize: "28px", fontWeight: 700, color: "#1a3a5c", margin: 0 }}>
+                    {s.value}
+                  </p>
+                  <p style={{ fontSize: "12px", color: "#6b7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+                    {s.sub}
+                  </p>
+                </div>
               ))}
-            </nav>
-          </div>
-
-          {/*  LOGIN  (inside the protruding tab)  */}
-          <div
-            className="absolute top-0 right-0 z-20 flex items-center justify-center"
-            style={{ width: "18%", height: tabH, paddingRight: "clamp(14px,1.6vw,28px)", marginTop: "8px", marginRight: "-12px" }}
-          >
-            <button
-              onClick={() => router.push("/login")}
-              style={{
-                fontWeight: 300,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                color: "rgba(255, 255, 255, 0.7)",
-                border: "1.2px solid rgba(255, 255, 255, 0.22)",
-                borderRadius: "32px",
-                padding: "8px 34px",
-                transition: "all 0.3s ease",
-                backgroundColor: "transparent",
-              }}
-              className="flex items-center justify-center gap-2 bg-transparent transition-all hover:border-white hover:bg-white/10 hover:text-white"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#ffffff";
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M5.5 2H3.5A1.5 1.5 0 0 0 2 3.5v7A1.5 1.5 0 0 0 3.5 12h2M9.5 10l3-3-3-3M12.5 7h-7"
-                  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-                />
-              </svg>
-              Login
-            </button>
-          </div>
-
-          {/*   CARD BODY CONTENT   */}
-          <div className="absolute z-10 flex" style={{ top: tabH, left: 0, right: 0, bottom: 0 }}>
-
-            {/*  LEFT FEATURE RAIL  */}
-            <aside
-              className="hidden"
-              style={{
-                display: "none",
-                width: "clamp(152px,14.5%,182px)",
-              }}
-            >
-            </aside>
-
-            {/*  MAIN CONTENT  */}
-            <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
-              {/*  Main content area  */}
-              <div className="flex-1 relative min-h-0">
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Portal Access Buttons — below the card */}
+      {/* ═══ Portal Access ═══ */}
       <div
-        className="absolute left-0 right-0 flex flex-wrap items-center justify-center gap-3"
-        style={{ bottom: "0px", height: "60px", zIndex: 10 }}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "12px",
+          padding: "12px 0 32px",
+          flexWrap: "wrap",
+        }}
       >
         {[
-          { label: "Admin", href: "/admin/dashboard", color: "#22d3ee" },
-          { label: "Coach", href: "/coach/home", color: "#3ddc84" },
+          { label: "Admin", href: "/admin/dashboard", color: "#1a56db" },
+          { label: "Coach", href: "/coach/home", color: "#10b981" },
           { label: "Player", href: "/player/home", color: "#f59e0b" },
           { label: "Parent", href: "/parent/home", color: "#a855f7" },
         ].map((p) => (
@@ -292,34 +387,22 @@ export default function Home() {
             key={p.label}
             onClick={() => router.push(p.href)}
             style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "13px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "1.2px",
               color: p.color,
               border: `1.5px solid ${p.color}55`,
-              borderRadius: "24px",
-              padding: "7px 22px",
-              backgroundColor: `${p.color}12`,
+              borderRadius: "999px",
+              padding: "8px 24px",
+              background: `${p.color}12`,
+              fontSize: "12px",
+              fontWeight: 700,
+              textTransform: "uppercase" as const,
+              letterSpacing: "1px",
               cursor: "pointer",
-              transition: "all 0.22s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = `${p.color}28`;
-              e.currentTarget.style.borderColor = p.color;
-              e.currentTarget.style.boxShadow = `0 0 14px ${p.color}44`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = `${p.color}12`;
-              e.currentTarget.style.borderColor = `${p.color}55`;
-              e.currentTarget.style.boxShadow = "none";
             }}
           >
             {p.label}
           </button>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
