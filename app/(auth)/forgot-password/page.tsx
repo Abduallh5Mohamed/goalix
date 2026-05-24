@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import { GoalixLogo } from "@/components/shared/GoalixLogo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -24,15 +24,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center gap-3">
-        <Image
-          src="/Logo.png"
-          alt="GOLX"
-          width={64}
-          height={64}
-          className="rounded-xl"
-          style={{ width: "auto", height: "auto" }}
-        />
+      <div className="flex justify-center">
+        <GoalixLogo size="md" />
       </div>
 
       <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
