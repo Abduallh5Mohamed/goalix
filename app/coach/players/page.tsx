@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ChevronRight,
@@ -96,7 +96,23 @@ function calculateAge(birthDate: string) {
   return age >= 0 ? String(age) : "";
 }
 
+function CoachPlayersFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
+}
+
 export default function CoachPlayersPage() {
+  return (
+    <Suspense fallback={<CoachPlayersFallback />}>
+      <CoachPlayersContent />
+    </Suspense>
+  );
+}
+
+function CoachPlayersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filter, setFilter] = useState({

@@ -1,22 +1,6 @@
-"use client";
+﻿"use client";
 
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatsCard } from "@/components/shared/StatsCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { LineChart } from "@/components/charts/LineChart";
-import {
-  mockPlayers,
-  mockEvaluations,
-  mockRankings,
-  mockSessions,
-  mockMeasurements,
-  mockNotifications,
-} from "@/lib/mock-data";
-import { TREND_CONFIG, PLAYER_LEVELS } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import Image from "next/image";
 import {
   Activity,
   Bed,
@@ -33,149 +17,90 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
+
+const metrics = [
+  { label: "Match Rating", value: "7.6", sub: "Last Match", trend: "+ 0.8" },
+  { label: "Training Readiness", value: "82%", sub: "Optimal", ring: true, color: "lime" },
+  { label: "Sprint Speed", value: "33.6", sub: "km/h", trend: "+ 1.2" },
+  { label: "Distance Covered", value: "10.8", sub: "km", trend: "+ 1.5" },
+  { label: "Recovery Score", value: "85%", sub: "Good", ring: true, color: "teal" },
+  { label: "Stamina", value: "91%", sub: "High", ring: true, color: "cyan" },
+];
+
+const keyStats = [
+  ["Goals", "9"], ["Assists", "6"], ["Minutes Played", "1,173"], ["Shots on Target", "24"], ["Pass Completion", "82%"], ["Key Passes", "23"],
+];
+
+const wellness = [
+  { icon: Moon, label: "Sleep", value: "7.1 h", sub: "Good" },
+  { icon: HeartPulse, label: "HRV", value: "62 ms", sub: "Good" },
+  { icon: User, label: "Fatigue", value: "Low", sub: "Optimal" },
+];
+
+const schedule = [
+  { day: "Mon", date: "19 May", icon: Zap, title: "Recovery Session", done: true },
+  { day: "Tue", date: "20 May", icon: Target, title: "Speed Training", done: true },
+  { day: "Wed", date: "21 May", icon: Goal, title: "Technical Drills", done: true },
+  { day: "Thu", date: "22 May", icon: Dumbbell, title: "Strength Training", done: true },
+  { day: "Fri", date: "23 May", icon: Activity, title: "Tactical Session", done: true },
+  { day: "Sat", date: "24 May", icon: Trophy, title: "Match Preparation", done: false },
+  { day: "Sun", date: "25 May", icon: Bed, title: "Rest Day", done: false },
+];
+
+function Ring({ value, color = "lime" }: { value: number; color?: string }) {
+  const stroke = color === "cyan" ? "#00d8ff" : color === "teal" ? "#2ee8c9" : "#b6ff00";
+  return (
+    <div className="relative mx-auto grid h-24 w-24 place-items-center">
+      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+        <circle cx="50" cy="50" r="39" fill="none" stroke={stroke} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${value * 2.45} 245`} />
+      </svg>
+      <span className="font-display text-2xl font-bold text-white">{value}%</span>
+    </div>
+  );
+}
+
+function Trend() {
+  return (
+    <svg viewBox="0 0 520 230" className="h-full w-full">
+      {[0, 1, 2, 3, 4].map((i) => <line key={i} x1="34" x2="500" y1={34 + i * 39} y2={34 + i * 39} stroke="rgba(255,255,255,0.08)" />)}
+      {["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"].map((m, i) => <text key={m} x={45 + i * 61} y="215" fill="#91a0b5" fontSize="13">{m}</text>)}
+      <polyline points="45,148 110,126 175,138 240,103 305,142 370,110 435,132 485,119" fill="none" stroke="#b6ff00" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="45,190 110,166 175,178 240,154 305,174 370,158 435,177 485,166" fill="none" stroke="#00d8ff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="458" y="100" width="39" height="26" rx="7" fill="#b6ff00" /><text x="468" y="118" fill="#06111f" fontSize="14" fontWeight="800">7.6</text>
+      <rect x="458" y="153" width="39" height="26" rx="7" fill="#00d8ff" /><text x="468" y="171" fill="#06111f" fontSize="14" fontWeight="800">1.8</text>
+    </svg>
+  );
+}
+
+function Heatmap() {
+  return (
+    <svg viewBox="0 0 360 230" className="h-full w-full rounded-xl">
+      <rect width="360" height="230" fill="#071524" />
+      <rect x="12" y="12" width="336" height="206" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
+      <line x1="180" y1="12" x2="180" y2="218" stroke="rgba(255,255,255,0.55)" />
+      <circle cx="180" cy="115" r="36" fill="none" stroke="rgba(255,255,255,0.55)" />
+      <filter id="playerHeatBlur"><feGaussianBlur stdDeviation="13" /></filter>
+      <g filter="url(#playerHeatBlur)" opacity="0.92">
+        {[[155, 85, "#b6ff00"], [180, 108, "#ffef37"], [198, 130, "#ff2d2d"], [140, 140, "#00d8ff"], [235, 105, "#7bea28"], [120, 70, "#00d8ff"], [188, 170, "#b6ff00"]].map(([x, y, c], i) => (
+          <circle key={i} cx={Number(x)} cy={Number(y)} r="30" fill={String(c)} />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <section className={`rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+}
 
 export default function PlayerHomePage() {
-  // Current player: Youssef Ali (p1)
-  const player = mockPlayers.find((p) => p.id === "p1")!;
-  const evaluations = mockEvaluations.filter((e) => e.playerId === "p1");
-  const rankings = mockRankings.filter((r) => r.playerId === "p1");
-  const measurements = mockMeasurements.filter((m) => m.playerId === "p1");
-  const nextSession = mockSessions.find((s) => s.groupId === player.groupId);
-  const playerNotifs = mockNotifications.filter(
-    (n) => n.targetRole === "player"
-  );
-
-  const latestEval = evaluations[evaluations.length - 1];
-  const latestRanking = rankings[0];
-
-  const stats = [
-    {
-      label: "Rank in Group",
-      value: `#${player.rankInGroup}`,
-      icon: "Trophy" as const,
-      change: latestRanking ? latestRanking.previousRank - latestRanking.rank : 0,
-      changeLabel: "vs last week",
-    },
-    {
-      label: "Performance",
-      value: player.performanceScore,
-      icon: "Star" as const,
-      change: 3,
-      changeLabel: "vs last month",
-    },
-    {
-      label: "Attendance",
-      value: `${player.attendanceRate}%`,
-      icon: "ClipboardCheck" as const,
-      change: 2,
-      changeLabel: "vs last month",
-    },
-    {
-      label: "Level",
-      value: `Level ${player.level}`,
-      icon: "TrendingUp" as const,
-      change: 0,
-      changeLabel: "current",
-    },
-  ];
-
-  // Performance trend data
-  const perfData = measurements.map((m) => ({
-    label: formatDate(m.date).split(",")[0],
-    value: (((m.sprintSpeed ?? 0) + (m.endurance ?? 0) + (m.flexibility ?? 0)) / 3) * 10,
-  }));
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Welcome, ${player.fullName}!`}
-        description={`${player.groupName} · ${player.position}`}
-        breadcrumbs={[{ label: "Home" }]}
-      />
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <StatsCard key={s.label} {...s} />
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Performance Overview */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Latest Evaluation */}
-          {latestEval && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Latest Evaluation
-                </CardTitle>
-                <Link href="/player/performance/progress">
-                  <Button variant="ghost" size="sm">
-                    View All <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    By {latestEval.coachName} · {formatDate(latestEval.date)}
-                  </p>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-primary">
-                      {latestEval.overallScore}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Overall</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {[
-                    { label: "Technical", value: latestEval.technicalScore, emoji: "⚽" },
-                    { label: "Tactical", value: latestEval.tacticalScore, emoji: "🧠" },
-                    { label: "Physical", value: latestEval.physicalScore, emoji: "💪" },
-                    { label: "Mental", value: latestEval.mentalScore, emoji: "🎯" },
-                  ].map((cat) => (
-                    <div
-                      key={cat.label}
-                      className="rounded-lg bg-muted/20 p-3 text-center"
-                    >
-                      <p className="mb-1 text-lg">{cat.emoji}</p>
-                      <p className="text-lg font-bold">{cat.value}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {cat.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                {latestEval.notes && (
-                  <div className="mt-4 rounded-lg bg-muted/20 p-3">
-                    <p className="text-sm text-muted-foreground italic">
-                      &quot;{latestEval.notes}&quot;
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Performance Trend */}
-          {perfData.length > 0 && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Performance Trend
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <LineChart
-                  labels={perfData.map((d) => d.label)}
-                  datasets={[{ label: "Score", data: perfData.map((d) => d.value), color: "#22d3ee" }]}
-                  height={250}
-                />
-              </CardContent>
-            </Card>
-          )}
+    <div className="rounded-[34px] border border-[#2b4661] bg-[#05101f]/95 p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.42)] md:p-7">
+      <div className="mb-5 grid gap-5 xl:grid-cols-[1fr_0.82fr_160px]">
+        <div>
+          <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Player</h1>
+          <p className="mt-2 text-lg text-slate-300">Here&apos;s your personal performance overview</p>
         </div>
         <blockquote className="border-l border-[#263f59] pl-7 text-slate-200">
           <span className="text-4xl font-black text-lime-300">“</span> Focus on the process, the results will follow.
@@ -200,87 +125,29 @@ export default function PlayerHomePage() {
                   return <div key={label}><div className="text-slate-400">{label}</div><div className="font-semibold">{value}</div></div>;
                 })}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-card/50 p-2">
-                  <p className="text-lg font-bold">{player.height}cm</p>
-                  <p className="text-[10px] text-muted-foreground">Height</p>
-                </div>
-                <div className="rounded-lg bg-card/50 p-2">
-                  <p className="text-lg font-bold">{player.weight}kg</p>
-                  <p className="text-[10px] text-muted-foreground">Weight</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="absolute bottom-32 right-5 rounded-2xl border border-lime-300/35 bg-[#07111f]/85 px-4 py-3 text-center">
+              <div className="text-xs text-slate-300">OVR</div><div className="font-display text-4xl font-bold text-lime-300">87</div>
+            </div>
+          </div>
+        </Panel>
 
-          {/* Next Session */}
-          {nextSession && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  Next Session
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium">{nextSession.groupName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(nextSession.date)} · {nextSession.startTime} -{" "}
-                  {nextSession.endTime}
-                </p>
-                <Badge className="mt-2" variant="secondary">
-                  {nextSession.type}
-                </Badge>
-              </CardContent>
-            </Card>
-          )}
+        <Panel className="grid gap-0 overflow-hidden md:grid-cols-6">
+          {metrics.map((metric) => (
+            <div key={metric.label} className="border-b border-[#2a4460] p-5 text-center md:border-b-0 md:border-r last:md:border-r-0">
+              <p className="font-semibold">{metric.label}</p>
+              {metric.ring ? <Ring value={Number(metric.value.replace("%", ""))} color={metric.color} /> : <div className="mt-5 font-display text-4xl font-bold">{metric.value}</div>}
+              <p className="text-sm text-slate-300">{metric.sub}</p>
+              {metric.trend && <p className="mt-2 text-sm text-lime-300">↑ {metric.trend}</p>}
+            </div>
+          ))}
+        </Panel>
 
-          {/* Quick Links */}
-          <Card className="border-border/50 bg-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">
-                Quick Links
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              <Link href="/player/performance/ranking">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Trophy className="h-4 w-4 text-yellow-400" />
-                  <span className="text-[10px]">Rankings</span>
-                </Button>
-              </Link>
-              <Link href="/player/profile/measurements">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Activity className="h-4 w-4 text-primary" />
-                  <span className="text-[10px]">Measurements</span>
-                </Button>
-              </Link>
-              <Link href="/player/training">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Zap className="h-4 w-4 text-accent" />
-                  <span className="text-[10px]">Training</span>
-                </Button>
-              </Link>
-              <Link href="/player/attendance">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Target className="h-4 w-4 text-emerald-400" />
-                  <span className="text-[10px]">Attendance</span>
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 xl:grid-cols-[1.05fr_0.75fr_0.55fr_0.65fr]">
+          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">Performance Trend</h2><button className="inline-flex items-center gap-2 rounded-xl border border-[#2a4460] px-3 py-1 text-sm text-slate-300">Last 8 Matches <ChevronDown size={14} /></button></div><div className="h-[245px]"><Trend /></div></Panel>
+          <Panel className="p-5"><h2 className="mb-4 text-xl font-semibold">Heatmap <span className="text-sm text-slate-400">(Last Match)</span></h2><div className="h-[245px]"><Heatmap /></div></Panel>
+          <Panel className="p-5"><h2 className="mb-4 text-xl font-semibold">Key Stats</h2><div className="space-y-4">{keyStats.map(([l, v]) => <div key={l} className="flex justify-between text-sm"><span className="text-slate-300">{l}</span><strong>{v}</strong></div>)}</div></Panel>
+          <Panel className="p-5"><h2 className="text-xl font-semibold">Coach Feedback</h2><p className="mt-5 rounded-xl bg-white/[0.03] p-4 text-sm leading-6 text-slate-300"><span className="text-2xl text-lime-300">“</span> Great intensity and movement. Your decision making in the final third is improving.</p><div className="mt-5 flex items-center gap-1 text-yellow-400">★★★★★ <span className="ml-auto text-lime-300">4.5</span></div></Panel>
         </div>
       </div>
 
