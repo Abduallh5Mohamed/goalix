@@ -18,7 +18,7 @@ class PaymentsRepository extends BaseRepository {
             })
             .select('*');
 
-        const [{ count }] = await query.clone().count('id as count');
+        const [{ count }] = await query.clone().clearSelect().count('id as count');
         const data = await query
             .orderBy('created_at', 'desc')
             .limit(limit)
@@ -58,8 +58,8 @@ class PaymentsRepository extends BaseRepository {
         const query = this.db('payment_invoices as pi')
             .join('payment_subscriptions as ps', 'pi.subscription_id', 'ps.id')
             .join('player_profiles as pp', 'ps.player_id', 'pp.id')
-            .where('pp.academy_id', academyId)
             .modify((q) => {
+                if (academyId) q.where('pp.academy_id', academyId);
                 if (subscriptionId) q.where('pi.subscription_id', subscriptionId);
                 if (status) q.where('pi.status', status);
                 if (dateFrom) q.where('pi.due_at', '>=', dateFrom);
@@ -67,7 +67,7 @@ class PaymentsRepository extends BaseRepository {
             })
             .select('pi.*');
 
-        const [{ count }] = await query.clone().count('id as count');
+        const [{ count }] = await query.clone().clearSelect().count('pi.id as count');
         const data = await query
             .orderBy('due_date', 'desc')
             .limit(limit)

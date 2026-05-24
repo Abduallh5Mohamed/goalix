@@ -9,26 +9,40 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
-  mockSessions,
-  mockAttendanceRecords,
-  mockPlayers,
-} from "@/lib/mock-data";
-import { getInitials, formatDate } from "@/lib/utils";
+  useGetCoachSessionQuery,
+  useGetCoachSessionsQuery,
+} from "@/lib/store/api/coachApi";
+import { getInitials, formatDate, formatTime12 } from "@/lib/utils";
 import {
   Calendar,
   Clock,
   Users,
   ClipboardCheck,
   FileText,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
 function SessionContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("id") || mockSessions[0]?.id;
-  const session = mockSessions.find((s) => s.id === sessionId);
+  const requestedSessionId = searchParams.get("id");
+  const { data: sessionsData } = useGetCoachSessionsQuery({ limit: 1 });
+  const sessionId = requestedSessionId || sessionsData?.data[0]?.id || "";
+  const { data, isLoading, isError } = useGetCoachSessionQuery(sessionId, {
+    skip: !sessionId,
+  });
+  const session = data?.session;
 
-  if (!session) {
+  if (isLoading || (!sessionId && !sessionsData)) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading session...
+      </div>
+    );
+  }
+
+  if (!session || isError) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <p className="text-muted-foreground">Session not found</p>
@@ -36,9 +50,7 @@ function SessionContent() {
     );
   }
 
-  const attendanceRecords = mockAttendanceRecords.filter(
-    (r) => r.sessionId === session.id
-  );
+  const attendanceRecords = data?.records ?? [];
 
   const typeColors: Record<string, string> = {
     training: "bg-primary/20 text-primary",
@@ -86,7 +98,8 @@ function SessionContent() {
               <div>
                 <p className="text-xs text-muted-foreground">Time</p>
                 <p className="font-medium">
-                  {session.startTime} - {session.endTime}
+                  {formatTime12(session.startTime)} -{" "}
+                  {formatTime12(session.endTime)}
                 </p>
               </div>
             </div>
@@ -102,7 +115,10 @@ function SessionContent() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge className={typeColors[session.type] || ""} variant="secondary">
+              <Badge
+                className={typeColors[session.type] || ""}
+                variant="secondary"
+              >
                 {session.type}
               </Badge>
             </div>
@@ -144,10 +160,7 @@ function SessionContent() {
                   )}
                 </div>
               </div>
-              <StatusBadge
-                status={record.status}
-                type="attendance"
-              />
+              <StatusBadge status={record.status} type="attendance" />
             </div>
           ))}
           {attendanceRecords.length === 0 && (

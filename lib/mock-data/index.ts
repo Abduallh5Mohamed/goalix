@@ -125,18 +125,18 @@ export const mockBranches: Branch[] = [
 // ─── Birth Years ─────────────────────────────────────────────────
 
 export const mockBirthYears: BirthYear[] = [
-  { id: "by1", branchId: "b1", year: 2012, groupCount: 3, playerCount: 42 },
-  { id: "by2", branchId: "b1", year: 2013, groupCount: 3, playerCount: 38 },
-  { id: "by3", branchId: "b1", year: 2014, groupCount: 3, playerCount: 40 },
-  { id: "by4", branchId: "b1", year: 2015, groupCount: 3, playerCount: 36 },
-  { id: "by5", branchId: "b2", year: 2012, groupCount: 2, playerCount: 28 },
-  { id: "by6", branchId: "b2", year: 2013, groupCount: 2, playerCount: 25 },
-  { id: "by7", branchId: "b2", year: 2014, groupCount: 2, playerCount: 22 },
-  { id: "by8", branchId: "b2", year: 2015, groupCount: 2, playerCount: 23 },
-  { id: "by9", branchId: "b3", year: 2012, groupCount: 3, playerCount: 35 },
-  { id: "by10", branchId: "b3", year: 2013, groupCount: 2, playerCount: 33 },
-  { id: "by11", branchId: "b3", year: 2014, groupCount: 3, playerCount: 34 },
-  { id: "by12", branchId: "b3", year: 2015, groupCount: 2, playerCount: 32 },
+  { id: "by1", branchId: "b1", label: "U12", fromYear: 2012, toYear: 2012, groupCount: 3, playerCount: 42 },
+  { id: "by2", branchId: "b1", label: "U11", fromYear: 2013, toYear: 2013, groupCount: 3, playerCount: 38 },
+  { id: "by3", branchId: "b1", label: "U10", fromYear: 2014, toYear: 2014, groupCount: 3, playerCount: 40 },
+  { id: "by4", branchId: "b1", label: "U9", fromYear: 2015, toYear: 2015, groupCount: 3, playerCount: 36 },
+  { id: "by5", branchId: "b2", label: "U12", fromYear: 2012, toYear: 2012, groupCount: 2, playerCount: 28 },
+  { id: "by6", branchId: "b2", label: "U11", fromYear: 2013, toYear: 2013, groupCount: 2, playerCount: 25 },
+  { id: "by7", branchId: "b2", label: "U10", fromYear: 2014, toYear: 2014, groupCount: 2, playerCount: 22 },
+  { id: "by8", branchId: "b2", label: "U9", fromYear: 2015, toYear: 2015, groupCount: 2, playerCount: 23 },
+  { id: "by9", branchId: "b3", label: "U12", fromYear: 2012, toYear: 2012, groupCount: 3, playerCount: 35 },
+  { id: "by10", branchId: "b3", label: "U11", fromYear: 2013, toYear: 2013, groupCount: 2, playerCount: 33 },
+  { id: "by11", branchId: "b3", label: "U10", fromYear: 2014, toYear: 2014, groupCount: 3, playerCount: 34 },
+  { id: "by12", branchId: "b3", label: "U9", fromYear: 2015, toYear: 2015, groupCount: 2, playerCount: 32 },
 ];
 
 // ─── Groups ──────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ export const mockGroups: Group[] = [
   {
     id: "g1",
     branchId: "b1",
-    birthYearId: "by1",
+    birthYearIds: ["by1"],
     name: "Heliopolis 2012 - A",
     coachId: "c1",
     coachName: "Omar Mostafa",
@@ -157,7 +157,7 @@ export const mockGroups: Group[] = [
   {
     id: "g2",
     branchId: "b1",
-    birthYearId: "by1",
+    birthYearIds: ["by1"],
     name: "Heliopolis 2012 - B",
     coachId: "c2",
     coachName: "Kareem El-Sayed",
@@ -169,7 +169,7 @@ export const mockGroups: Group[] = [
   {
     id: "g3",
     branchId: "b1",
-    birthYearId: "by2",
+    birthYearIds: ["by2"],
     name: "Heliopolis 2013 - A",
     coachId: "c1",
     coachName: "Omar Mostafa",
@@ -181,7 +181,7 @@ export const mockGroups: Group[] = [
   {
     id: "g4",
     branchId: "b2",
-    birthYearId: "by5",
+    birthYearIds: ["by5"],
     name: "Maadi 2012 - A",
     coachId: "c3",
     coachName: "Tamer Adel",
@@ -193,7 +193,7 @@ export const mockGroups: Group[] = [
   {
     id: "g5",
     branchId: "b2",
-    birthYearId: "by6",
+    birthYearIds: ["by6"],
     name: "Maadi 2013 - A",
     coachId: "c3",
     coachName: "Tamer Adel",
@@ -205,7 +205,7 @@ export const mockGroups: Group[] = [
   {
     id: "g6",
     branchId: "b3",
-    birthYearId: "by9",
+    birthYearIds: ["by9"],
     name: "October 2012 - A",
     coachId: "c4",
     coachName: "Mohamed Nabil",

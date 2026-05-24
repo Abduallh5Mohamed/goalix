@@ -1,5 +1,5 @@
-const ApiResponse = require('../../shared/api-response');
-const { parsePagination, buildPaginationMeta } = require('../../shared/pagination');
+const ApiResponse = require('../../shared/api-response.js');
+const { parsePagination, buildPaginationMeta } = require('../../shared/pagination.js');
 
 class CoachesController {
     constructor(coachesService) {
@@ -19,6 +19,183 @@ class CoachesController {
             const coach = await this.service.getCoach(req.params.id, req.user.academyId);
             res.json(ApiResponse.success(coach));
         } catch (err) { next(err); }
+    };
+
+    getMeDashboard = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyDashboard(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeGroups = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyGroups(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeAccessStatus = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyAccessStatus(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeBirthdays = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyBirthdays(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    createMeGroup = async (req, res, next) => {
+        try {
+            const data = await this.service.createMyGroup(req.user.userId, req.user.academyId, req.body);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    createMeBirthYear = async (req, res, next) => {
+        try {
+            const data = await this.service.createMyBirthYear(req.user.userId, req.user.academyId, req.body);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeGroup = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyGroupDetail(req.user.userId, req.user.academyId, req.params.groupId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    updateMeGroup = async (req, res, next) => {
+        try {
+            const data = await this.service.updateMyGroup(req.user.userId, req.user.academyId, req.params.groupId, req.body);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    deleteMeGroup = async (req, res, next) => {
+        try {
+            const data = await this.service.deleteMyGroup(req.user.userId, req.user.academyId, req.params.groupId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeSessions = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getMySessions(req.user.userId, req.user.academyId, { ...req.query, page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    getMeSession = async (req, res, next) => {
+        try {
+            const data = await this.service.getMySession(req.user.userId, req.user.academyId, req.params.sessionId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    markMeAttendance = async (req, res, next) => {
+        try {
+            const data = await this.service.markMyAttendance(req.user.userId, req.user.academyId, req.params.sessionId, req.body.records);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeAttendanceHistory = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getMyAttendanceHistory(req.user.userId, req.user.academyId, { page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    saveMeMeasurements = async (req, res, next) => {
+        try {
+            const data = await this.service.saveMyMeasurements(req.user.userId, req.user.academyId, req.body.records);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeEvaluations = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getMyEvaluations(req.user.userId, req.user.academyId, { page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    createMeEvaluation = async (req, res, next) => {
+        try {
+            const data = await this.service.createMyEvaluation(req.user.userId, req.user.academyId, req.body);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeAssignments = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getMyAssignments(req.user.userId, req.user.academyId, { ...req.query, page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    submitMeAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.submitMyAssignment(req.user.userId, req.user.academyId, req.params.assignmentId, req.body);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    listAssignments = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getAssignments(req.user.academyId, { ...req.query, page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    getAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.getAssignment(req.user.academyId, req.params.assignmentId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    createAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.createAssignment(req.user.academyId, req.user.userId, req.body);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    uploadAssignmentFile = async (req, res, next) => {
+        try {
+            const data = await this.service.storeAssignmentUpload(req.user, {
+                originalName: req.get('x-file-name') || 'assignment-file',
+                mimeType: req.get('content-type'),
+                buffer: req.body,
+            });
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    uploadCoachImage = async (req, res, next) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Image file is required'));
+            }
+            const data = await this.service.storeCoachImageUpload(req.user, {
+                originalName: req.file.originalname,
+                mimeType: req.file.mimetype,
+                buffer: req.file.buffer,
+            });
+            return res.status(201).json(ApiResponse.success(data));
+        } catch (err) { return next(err); }
     };
 
     create = async (req, res, next) => {
@@ -42,6 +219,13 @@ class CoachesController {
         } catch (err) { next(err); }
     };
 
+    hardRemove = async (req, res, next) => {
+        try {
+            await this.service.hardDeleteCoach(req.params.id, req.user.academyId);
+            res.json(ApiResponse.success({ message: 'Coach permanently deleted' }));
+        } catch (err) { next(err); }
+    };
+
     getGroups = async (req, res, next) => {
         try {
             await this.service.getCoach(req.params.id, req.user.academyId);
@@ -54,6 +238,27 @@ class CoachesController {
         try {
             const result = await this.service.assignGroup(req.params.id, req.user.academyId, req.body.groupId, req.body.role);
             res.status(201).json(ApiResponse.success(result));
+        } catch (err) { next(err); }
+    };
+
+    getAccess = async (req, res, next) => {
+        try {
+            const data = await this.service.getCoachAccess(req.params.id, req.user.academyId, req.query.branchId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    upsertAccess = async (req, res, next) => {
+        try {
+            const data = await this.service.upsertCoachAccess(req.params.id, req.user.academyId, req.user.userId, req.body);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    removeAccess = async (req, res, next) => {
+        try {
+            const data = await this.service.removeCoachAccess(req.params.id, req.user.academyId, req.params.branchId);
+            res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
     };
 

@@ -1,21 +1,25 @@
 const app = require('./app');
 const env = require('./config/env');
 const logger = require('./shared/logger');
-const { connectRedis } = require('./infrastructure/redis');
+const { connectRedis, isRedisAvailable } = require('./infrastructure/redis');
 const { startWorkers, stopWorkers } = require('./workers');
 
 let workers = null;
 
 async function main() {
-    // Connect Redis
+    // Connect Redis (optional — server starts even if Redis is unavailable)
     await connectRedis();
 
-    // Start BullMQ workers
-    const redisConnection = {
-        host: new URL(env.REDIS_URL).hostname,
-        port: parseInt(new URL(env.REDIS_URL).port || '6379', 10),
-    };
-    workers = startWorkers(redisConnection);
+    // Start BullMQ workers only if Redis is available
+    if (isRedisAvailable()) {
+        const redisConnection = {
+            host: new URL(env.REDIS_URL).hostname,
+            port: parseInt(new URL(env.REDIS_URL).port || '6379', 10),
+        };
+        workers = startWorkers(redisConnection);
+    } else {
+        logger.warn('⚠️  BullMQ workers not started — Redis unavailable');
+    }
 
     // Start HTTP server
     const server = app.listen(env.PORT, () => {

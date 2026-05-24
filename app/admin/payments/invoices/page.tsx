@@ -4,81 +4,95 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { mockInvoices } from "@/lib/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Invoice } from "@/lib/types";
-import { PAYMENT_STATUS_CONFIG } from "@/lib/constants";
-import { FileDown } from "lucide-react";
+import { FileDown, RefreshCw } from "lucide-react";
+import { useGetInvoicesQuery, type Invoice } from "@/lib/store/api/adminApi";
+
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
+  paid: "success",
+  pending: "warning",
+  overdue: "destructive",
+  cancelled: "secondary",
+};
 
 const columns: Column<Invoice>[] = [
   {
     key: "id",
     header: "Invoice #",
     accessor: (row) => (
-      <span className="font-mono text-xs text-primary">{row.id.toUpperCase()}</span>
+      <span className="font-mono text-xs text-primary">{row.id.slice(0, 8).toUpperCase()}</span>
     ),
-  },
-  {
-    key: "player",
-    header: "Player / Parent",
-    accessor: (row) => (
-      <div>
-        <p className="font-medium">{row.playerName}</p>
-        <p className="text-xs text-muted-foreground">{row.parentName}</p>
-      </div>
-    ),
-    sortable: true,
-    sortValue: (row) => row.playerName,
   },
   {
     key: "amount",
     header: "Amount",
     accessor: (row) => (
-      <span className="font-semibold">{formatCurrency(row.amount)}</span>
+      <span className="font-semibold">{formatCurrency(parseFloat(row.amount))}</span>
     ),
     sortable: true,
-    sortValue: (row) => row.amount,
-  },
-  {
-    key: "issueDate",
-    header: "Issued",
-    accessor: (row) => formatDate(row.issueDate),
-    sortable: true,
-    sortValue: (row) => row.issueDate,
+    sortValue: (row) => parseFloat(row.amount),
   },
   {
     key: "dueDate",
     header: "Due Date",
-    accessor: (row) => formatDate(row.dueDate),
+    accessor: (row) => formatDate(row.due_date),
     sortable: true,
-    sortValue: (row) => row.dueDate,
+    sortValue: (row) => row.due_date,
   },
   {
-    key: "paidDate",
-    header: "Paid Date",
+    key: "paidAt",
+    header: "Paid At",
     accessor: (row) => (
-      <span className={row.paidDate ? "" : "text-muted-foreground"}>
-        {row.paidDate ? formatDate(row.paidDate) : "—"}
+      <span className={row.paid_at ? "" : "text-muted-foreground"}>
+        {row.paid_at ? formatDate(row.paid_at) : "Not paid"}
       </span>
     ),
   },
   {
     key: "status",
     header: "Status",
-    accessor: (row) => {
-      const cfg = PAYMENT_STATUS_CONFIG[row.status];
-      return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
-    },
+    accessor: (row) => (
+      <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"} className="capitalize">
+        {row.status}
+      </Badge>
+    ),
     sortable: true,
     sortValue: (row) => row.status,
   },
 ];
 
 export default function InvoicesPage() {
+  const { data, isLoading, isError, refetch } = useGetInvoicesQuery({ limit: 50 });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-6">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <p className="text-muted-foreground">Failed to load invoices.</p>
+        <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const invoices = data?.data ?? [];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Invoices"
+        title={`Invoices (${data?.pagination?.total ?? invoices.length})`}
         description="All invoices with payment status and history."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
@@ -94,11 +108,11 @@ export default function InvoicesPage() {
       />
 
       <DataTable
-        data={mockInvoices}
+        data={invoices}
         columns={columns}
         searchable
         searchPlaceholder="Search invoices..."
-        searchKey={(row) => `${row.id} ${row.playerName} ${row.parentName}`}
+        searchKey={(row) => `${row.id} ${row.status}`}
       />
     </div>
   );

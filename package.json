@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n \"backend,frontend\" -c \"bgBlue,bgGreen\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "next dev -p 3001",
+    "dev:frontend": "next dev --webpack -p 3001",
     "dev:backend": "cd golx-backend && npm run dev",
     "build": "next build",
     "start": "next start",
@@ -34,18 +34,20 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",
-    "next": "16.2.1",
+    "next": "^16.2.6",
     "react": "19.2.4",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4",
     "react-redux": "^9.2.0",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.184.1",
     "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",

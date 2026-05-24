@@ -5,7 +5,6 @@ const { AppError } = require('../shared/errors');
 /**
  * Global error handler middleware — must be registered last in Express.
  */
-// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, _next) => {
     // Log error
     if (err.isOperational) {

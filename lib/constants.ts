@@ -71,9 +71,20 @@ export const NAV_ITEMS = {
       children: [
         { label: "All Coaches", href: "/admin/coaches" },
         { label: "Assign Coach", href: "/admin/coaches/assign" },
+        { label: "Assignments", href: "/admin/coaches/assignments" },
       ],
     },
     { label: "Players", href: "/admin/players", icon: "UserCheck" },
+    { label: "Calendar", href: "/admin/calendar", icon: "Calendar" },
+    {
+      label: "Matches",
+      icon: "Trophy",
+      children: [
+        { label: "All Matches", href: "/admin/matches" },
+        { label: "Archive", href: "/admin/matches/archive" },
+      ],
+    },
+    { label: "Registrations", href: "/admin/registrations", icon: "UserPlus" },
     {
       label: "Attendance",
       icon: "ClipboardCheck",
@@ -122,6 +133,7 @@ export const NAV_ITEMS = {
       icon: "Settings",
       children: [
         { label: "Academy Profile", href: "/admin/settings" },
+        { label: "Player Options", href: "/admin/settings/player-options" },
         { label: "Roles & Permissions", href: "/admin/settings/roles" },
         { label: "Integrations", href: "/admin/settings/integrations" },
       ],
@@ -129,6 +141,8 @@ export const NAV_ITEMS = {
   ],
   coach: [
     { label: "Home", href: "/coach/home", icon: "Home" },
+    { label: "Players", href: "/coach/players", icon: "Users" },
+    { label: "Birthdays", href: "/coach/birthdays", icon: "Cake" },
     { label: "My Groups", href: "/coach/my-groups", icon: "Users" },
     {
       label: "Attendance",
@@ -147,18 +161,41 @@ export const NAV_ITEMS = {
       ],
     },
     { label: "Measurements", href: "/coach/measurements", icon: "Ruler" },
+    { label: "Assignments", href: "/coach/assignments", icon: "ClipboardCheck" },
+    {
+      label: "Training",
+      icon: "Dumbbell",
+      children: [
+        { label: "All Training", href: "/coach/training" },
+        { label: "Create Training", href: "/coach/training/create" },
+      ],
+    },
     {
       label: "Schedule",
       icon: "Calendar",
       children: [
+        { label: "My Calendar", href: "/coach/calendar" },
         { label: "Calendar", href: "/coach/schedule" },
         { label: "Session Detail", href: "/coach/schedule/session" },
       ],
     },
+    {
+      label: "Matches",
+      icon: "Trophy",
+      children: [
+        { label: "All Matches", href: "/coach/matches" },
+        { label: "Match Evaluations", href: "/coach/matches/evaluation" },
+        { label: "Archive", href: "/coach/matches/archive" },
+        { label: "Configuration", href: "/coach/matches/configuration" },
+      ],
+    },
+    { label: "Player Options", href: "/coach/player-options", icon: "Star" },
     { label: "Rankings", href: "/coach/rankings", icon: "Trophy" },
   ],
   player: [
     { label: "Home", href: "/player/home", icon: "Home" },
+    { label: "Calendar", href: "/player/calendar", icon: "Calendar" },
+    { label: "Matches", href: "/player/matches", icon: "Trophy" },
     {
       label: "Profile",
       icon: "User",
@@ -187,6 +224,8 @@ export const NAV_ITEMS = {
   ],
   parent: [
     { label: "Home", href: "/parent/home", icon: "Home" },
+    { label: "Calendar", href: "/parent/calendar", icon: "Calendar" },
+    { label: "Matches", href: "/parent/matches", icon: "Trophy" },
     {
       label: "Child",
       icon: "Baby",

@@ -19,7 +19,7 @@ function rankingsRoutes(controller) {
     router.get('/weekly', rbac('rankings:read'), validate({ query: rankingsQuery }), controller.getWeekly);
     router.get('/monthly', rbac('rankings:read'), validate({ query: rankingsQuery }), controller.getMonthly);
     router.get('/player/:id', rbac('rankings:read'), validate({ params: uuidParam }), controller.getPlayerRankings);
-    router.post('/recalculate', rbac('*'), validate({ body: recalculateSchema }), controller.recalculate);
+    router.post('/recalculate', rbac('manage_players'), validate({ body: recalculateSchema }), controller.recalculate);
 
     // Evaluations
     router.post('/evaluations', rbac('evaluations:write'), validate({ body: createEvaluationSchema }), controller.createEvaluation);

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { ElementType } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -14,9 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockGroups, mockPlayers } from "@/lib/mock-data";
+import {
+  useCreateCoachEvaluationMutation,
+  useGetCoachGroupQuery,
+  useGetCoachGroupsQuery,
+} from "@/lib/store/api/coachApi";
 import { getInitials } from "@/lib/utils";
-import { Save, CheckCircle2, Star } from "lucide-react";
+import {
+  Activity,
+  Brain,
+  CheckCircle2,
+  Loader2,
+  Route,
+  Save,
+  Star,
+  Target,
+} from "lucide-react";
 
 interface EvalScores {
   technical: string;
@@ -26,53 +41,83 @@ interface EvalScores {
   notes: string;
 }
 
+type ScoreKey = Exclude<keyof EvalScores, "notes">;
+
+const categories: {
+  key: ScoreKey;
+  label: string;
+  icon: ElementType;
+}[] = [
+  { key: "technical", label: "Technical", icon: Target },
+  { key: "tactical", label: "Tactical", icon: Route },
+  { key: "physical", label: "Physical", icon: Activity },
+  { key: "mental", label: "Mental", icon: Brain },
+];
+
+const emptyScores: EvalScores = {
+  technical: "",
+  tactical: "",
+  physical: "",
+  mental: "",
+  notes: "",
+};
+
 export default function CoachNewEvaluationPage() {
-  const myGroups = mockGroups.filter((g) => ["g1", "g3"].includes(g.id));
-  const [selectedGroup, setSelectedGroup] = useState(myGroups[0]?.id || "");
+  const { data: groups = [], isLoading: loadingGroups, isError: groupsError } =
+    useGetCoachGroupsQuery();
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const selectedGroup = selectedGroupId || groups[0]?.id || "";
   const [selectedPlayer, setSelectedPlayer] = useState("");
+  const { data: groupDetail, isFetching: loadingPlayers } = useGetCoachGroupQuery(
+    selectedGroup,
+    { skip: !selectedGroup }
+  );
+  const players = groupDetail?.players ?? [];
+  const [scores, setScores] = useState<EvalScores>(emptyScores);
   const [saved, setSaved] = useState(false);
-  const [scores, setScores] = useState<EvalScores>({
-    technical: "",
-    tactical: "",
-    physical: "",
-    mental: "",
-    notes: "",
-  });
+  const [createEvaluation, { isLoading: isSaving, error: saveError }] =
+    useCreateCoachEvaluationMutation();
 
-  const players = mockPlayers.filter((p) => p.groupId === selectedGroup);
+  const activePlayerId = players.some((player) => player.id === selectedPlayer)
+    ? selectedPlayer
+    : "";
+  const selectedPlayerRecord = players.find((player) => player.id === activePlayerId);
+  const overall = useMemo(() => {
+    const values = categories.map((category) => Number(scores[category.key]));
+    if (values.some((value) => !Number.isFinite(value))) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }, [scores]);
 
-  const overall =
-    scores.technical && scores.tactical && scores.physical && scores.mental
-      ? (
-          (parseFloat(scores.technical) +
-            parseFloat(scores.tactical) +
-            parseFloat(scores.physical) +
-            parseFloat(scores.mental)) /
-          4
-        ).toFixed(1)
-      : "—";
+  const canSubmit =
+    activePlayerId &&
+    categories.every((category) => {
+      const value = Number(scores[category.key]);
+      return Number.isFinite(value) && value >= 0 && value <= 10;
+    }) &&
+    !isSaving;
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      setScores({
-        technical: "",
-        tactical: "",
-        physical: "",
-        mental: "",
-        notes: "",
-      });
+  const handleSave = async () => {
+    if (!canSubmit) return;
+
+    try {
+      await createEvaluation({
+        playerId: activePlayerId,
+        groupId: selectedGroup,
+        technicalScore: Number(scores.technical),
+        tacticalScore: Number(scores.tactical),
+        physicalScore: Number(scores.physical),
+        mentalScore: Number(scores.mental),
+        notes: scores.notes.trim() || undefined,
+      }).unwrap();
+
+      setSaved(true);
+      setScores(emptyScores);
       setSelectedPlayer("");
-    }, 2000);
+      window.setTimeout(() => setSaved(false), 2500);
+    } catch {
+      // Mutation error is shown below.
+    }
   };
-
-  const categories = [
-    { key: "technical", label: "Technical", emoji: "⚽" },
-    { key: "tactical", label: "Tactical", emoji: "🧠" },
-    { key: "physical", label: "Physical", emoji: "💪" },
-    { key: "mental", label: "Mental", emoji: "🎯" },
-  ] as const;
 
   return (
     <div className="space-y-6">
@@ -86,39 +131,55 @@ export default function CoachNewEvaluationPage() {
         ]}
       />
 
-      {/* Selectors */}
+      {groupsError && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="p-4 text-sm text-red-300">
+            Could not load your assigned groups.
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-4">
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <Label className="mb-2 block text-sm">Group</Label>
           <Select
             value={selectedGroup}
-            onValueChange={(v) => {
-              setSelectedGroup(v);
+            onValueChange={(value) => {
+              setSelectedGroupId(value);
               setSelectedPlayer("");
             }}
+            disabled={loadingGroups || groups.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select group" />
+              <SelectValue
+                placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+              />
             </SelectTrigger>
             <SelectContent>
-              {myGroups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  {g.name}
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  {group.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <Label className="mb-2 block text-sm">Player</Label>
-          <Select value={selectedPlayer} onValueChange={setSelectedPlayer}>
+          <Select
+            value={activePlayerId}
+            onValueChange={setSelectedPlayer}
+            disabled={!selectedGroup || loadingPlayers || players.length === 0}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Select player" />
+              <SelectValue
+                placeholder={loadingPlayers ? "Loading players..." : "Select player"}
+              />
             </SelectTrigger>
             <SelectContent>
-              {players.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.fullName}
+              {players.map((player) => (
+                <SelectItem key={player.id} value={player.id}>
+                  {player.fullName}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -126,50 +187,48 @@ export default function CoachNewEvaluationPage() {
         </div>
       </div>
 
-      {selectedPlayer && (
-        <>
-          {/* Player Info */}
-          {(() => {
-            const player = players.find((p) => p.id === selectedPlayer);
-            if (!player) return null;
-            return (
-              <Card className="border-border/50 bg-card">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <Avatar className="h-14 w-14">
-                    <AvatarFallback className="bg-primary/20 text-primary">
-                      {getInitials(player.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      {player.fullName}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {player.position} · Age {player.age} · Level{" "}
-                      {player.level}
-                    </p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <p className="text-sm text-muted-foreground">
-                      Current Score
-                    </p>
-                    <p className="text-2xl font-bold text-primary">
-                      {player.performanceScore}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
+      {!loadingGroups && groups.length === 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No groups assigned yet.
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Score Inputs */}
+      {selectedPlayerRecord && (
+        <>
+          <Card className="border-border/50 bg-card">
+            <CardContent className="flex items-center gap-4 p-4">
+              <Avatar className="h-14 w-14">
+                <AvatarFallback className="bg-primary/20 text-primary">
+                  {getInitials(selectedPlayerRecord.fullName)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {selectedPlayerRecord.fullName}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPlayerRecord.position} - Age {selectedPlayerRecord.age} - Level{" "}
+                  {selectedPlayerRecord.level}
+                </p>
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-sm text-muted-foreground">Current Score</p>
+                <p className="text-2xl font-bold text-primary">
+                  {selectedPlayerRecord.performanceScore}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((cat) => (
-              <Card key={cat.key} className="border-border/50 bg-card">
+            {categories.map((category) => (
+              <Card key={category.key} className="border-border/50 bg-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
-                    <span>{cat.emoji}</span>
-                    {cat.label}
+                    <category.icon className="h-4 w-4 text-primary" />
+                    {category.label}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -179,11 +238,11 @@ export default function CoachNewEvaluationPage() {
                     max="10"
                     step="0.1"
                     placeholder="0.0 - 10.0"
-                    value={scores[cat.key]}
-                    onChange={(e) =>
+                    value={scores[category.key]}
+                    onChange={(event) =>
                       setScores((prev) => ({
                         ...prev,
-                        [cat.key]: e.target.value,
+                        [category.key]: event.target.value,
                       }))
                     }
                     className="text-center text-2xl font-bold"
@@ -193,16 +252,15 @@ export default function CoachNewEvaluationPage() {
             ))}
           </div>
 
-          {/* Overall Score */}
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="flex items-center justify-between p-6">
               <div className="flex items-center gap-3">
                 <Star className="h-8 w-8 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Overall Score
+                  <p className="text-sm text-muted-foreground">Overall Score</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {overall === null ? "--" : overall.toFixed(1)}
                   </p>
-                  <p className="text-3xl font-bold text-primary">{overall}</p>
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
@@ -211,40 +269,44 @@ export default function CoachNewEvaluationPage() {
             </CardContent>
           </Card>
 
-          {/* Notes */}
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Coach Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <textarea
-                className="min-h-[120px] w-full rounded-lg border border-border/30 bg-muted/20 p-3 text-sm focus:border-primary/50 focus:outline-none"
+              <Textarea
+                className="min-h-[120px]"
                 placeholder="Write detailed observations about the player's performance..."
                 value={scores.notes}
-                onChange={(e) =>
-                  setScores((prev) => ({ ...prev, notes: e.target.value }))
+                onChange={(event) =>
+                  setScores((prev) => ({ ...prev, notes: event.target.value }))
                 }
               />
             </CardContent>
           </Card>
 
-          {/* Save */}
+          {saveError && (
+            <p className="text-sm text-red-400">
+              Could not submit evaluation. Scores must be between 0 and 10.
+            </p>
+          )}
+
           <div className="flex justify-end">
             <Button
               size="lg"
               onClick={handleSave}
-              disabled={
-                !scores.technical ||
-                !scores.tactical ||
-                !scores.physical ||
-                !scores.mental
-              }
+              disabled={!canSubmit}
               className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
             >
-              {saved ? (
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : saved ? (
                 <>
                   <CheckCircle2 className="mr-2 h-5 w-5" />
-                  Saved!
+                  Saved
                 </>
               ) : (
                 <>

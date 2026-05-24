@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -20,8 +20,8 @@ import {
   Baby,
   CreditCard,
   Bell,
+  Cake,
   ChevronDown,
-  ChevronLeft,
   Menu,
   X,
   LogOut,
@@ -46,6 +46,7 @@ const iconMap: Record<string, React.ElementType> = {
   Baby,
   CreditCard,
   Bell,
+  Cake,
 };
 
 interface PortalSidebarProps {
@@ -73,6 +74,9 @@ function NavItem({
 
   if (children) {
     const hasActiveChild = children.some((c) => pathname.startsWith(c.href));
+    const activeChildHref = [...children]
+      .filter((child) => pathname === child.href || pathname.startsWith(`${child.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href;
     return (
       <div>
         <button
@@ -96,7 +100,7 @@ function NavItem({
         {open && (
           <div className="ml-7 mt-1 space-y-0.5 border-l border-border/50 pl-3">
             {children.map((child) => {
-              const childActive = pathname.startsWith(child.href);
+              const childActive = child.href === activeChildHref;
               return (
                 <Link
                   key={child.href}

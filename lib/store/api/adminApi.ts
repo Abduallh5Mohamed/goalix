@@ -1,0 +1,1259 @@
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "./baseQuery";
+
+// ─── Shared ──────────────────────────────────────────────────────────────────
+export interface Pagination {
+  total: number;
+  page: number;
+  totalPages: number;
+}
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: Pagination;
+}
+
+type ApiListResponse<T> = {
+  data: T[];
+  meta?: { pagination?: Pagination };
+  pagination?: Pagination;
+};
+
+const toPaginated = <T>(res: ApiListResponse<T>): PaginatedResponse<T> => ({
+  data: res.data,
+  pagination: res.pagination ??
+    res.meta?.pagination ?? {
+      total: res.data.length,
+      page: 1,
+      totalPages: 1,
+    },
+});
+
+// ─── Players ─────────────────────────────────────────────────────────────────
+export interface PlayerRow {
+  id: string;
+  player_code?: string | null;
+  full_name: string;
+  date_of_birth: string | null;
+  level: "A" | "B" | "C" | null;
+  position: string | null;
+  photo_url: string | null;
+  is_active?: boolean | null;
+  profile_status?: "incomplete" | "complete";
+  profile_completed_at?: string | null;
+  date_joined?: string | null;
+  created_at: string;
+}
+
+export interface PlayerDetail {
+  id: string;
+  user_id: string | null;
+  academy_id: string;
+  branch_id: string | null;
+  full_name: string;
+  date_of_birth: string | null;
+  level: string | null;
+  position: string | null;
+  preferred_foot: string | null;
+  photo_url: string | null;
+  date_joined?: string | null;
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  profile_status?: "incomplete" | "complete";
+  profile_completed_at?: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface PlayerMeasurement {
+  id: string;
+  player_id: string;
+  height_cm: string | null;
+  weight_kg: string | null;
+  measured_at: string;
+  measured_by: string | null;
+  notes: string | null;
+}
+
+export interface CreatePlayerInput {
+  username?: string;
+  password?: string;
+  phone?: string;
+  fullName: string;
+  birthDate: string;
+  dateJoined?: string;
+  gender?: "male" | "female" | "other";
+  address?: string;
+  nationality?: string;
+  photoUrl?: string;
+  isActive?: boolean;
+  branchId: string;
+  groupId?: string;
+  level?: "beginner" | "intermediate" | "advanced" | "elite";
+  position?: string;
+  secondaryPositions?: string[];
+  preferredFoot?: "left" | "right" | "both";
+  currentTeam?: string;
+  shirtNumber?: number;
+  playingStyle?: string;
+  yearsExperience?: number;
+  previousClubAcademy?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianRelation?: string;
+  heightCm?: number;
+  weightKg?: number;
+  bmi?: number;
+  sprintSpeed?: number;
+  acceleration?: number;
+  stamina?: number;
+  strength?: number;
+  agility?: number;
+  balance?: number;
+  jumpHeightCm?: number;
+  flexibility?: number;
+  ballControl?: number;
+  firstTouch?: number;
+  passing?: number;
+  shooting?: number;
+  dribbling?: number;
+  crossing?: number;
+  heading?: number;
+  tackling?: number;
+  weakFoot?: number;
+  finishing?: number;
+  longPassing?: number;
+  shortPassing?: number;
+  positioning?: number;
+  decisionMaking?: number;
+  offBallMovement?: number;
+  pressing?: number;
+  defensiveAwareness?: number;
+  teamwork?: number;
+  gameReading?: number;
+  trackingBack?: number;
+  creatingSpace?: number;
+  tacticalDiscipline?: number;
+  trainingSessionsCount?: number;
+  attendanceCount?: number;
+  absenceCount?: number;
+  lateArrivals?: number;
+  attendanceRate?: number;
+  trainingPerformanceRating?: number;
+  coachNotes?: string;
+  improvementNotes?: string;
+  matchesPlayed?: number;
+  minutesPlayed?: number;
+  goals?: number;
+  assists?: number;
+  shots?: number;
+  shotsOnTarget?: number;
+  passAccuracy?: number;
+  keyPasses?: number;
+  successfulDribbles?: number;
+  tackles?: number;
+  interceptions?: number;
+  fouls?: number;
+  yellowCards?: number;
+  redCards?: number;
+  manOfTheMatchCount?: number;
+  matchRating?: number;
+  medicalNotes?: string;
+  injuryHistory?: string;
+  currentInjuryStatus?: "none" | "injured" | "rehab" | "recovered";
+  injuryType?: string;
+  injuryDate?: string;
+  recoveryDate?: string;
+  fitnessStatus?: "fit" | "limited" | "unfit" | "medical_hold";
+  allergies?: string;
+  chronicProblems?: string;
+  overallRating?: number;
+  potentialRating?: number;
+  strengths?: string;
+  weaknesses?: string;
+  recommendedPosition?: string;
+  developmentPlan?: string;
+  coachFinalNotes?: string;
+  subscriptionType?: "monthly" | "quarterly" | "yearly";
+  monthlyFees?: number;
+  paymentStatus?: "pending" | "paid" | "overdue" | "cancelled";
+  lastPaymentDate?: string;
+  nextPaymentDue?: string;
+  discount?: number;
+  penalty?: number;
+  notes?: string;
+  markProfileComplete?: boolean;
+}
+
+// ─── Coaches ─────────────────────────────────────────────────────────────────
+export interface CoachRow {
+  id: string;
+  username: string | null;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  email: string;
+  phone: string;
+  role?: CoachRole;
+  is_active: boolean | null;
+  branch_id?: string | null;
+  branch_name?: string | null;
+  branches?: Array<{ id: string; name: string }>;
+  specialization: string | null;
+  bio?: string | null;
+  experience_years: number | null;
+  rating: number | null;
+  image?: string | null;
+  photo_url: string | null;
+  created_at: string;
+}
+
+export interface CoachDetail {
+  id: string;
+  user_id: string | null;
+  academy_id: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  role?: CoachRole;
+  specialization: string | null;
+  bio: string | null;
+  photo_url: string | null;
+  created_at: string;
+}
+
+export interface CoachGroupAssignment {
+  id: string;
+  coach_id: string;
+  group_id: string;
+  role: string;
+  assigned_at: string;
+}
+
+export type CoachAccessType = "groups" | "birth_years" | "both";
+export type CoachAssignmentRole =
+  | "head_coach"
+  | "assistant_coach"
+  | "goalkeeping_coach"
+  | "fitness_coach"
+  | "technical_coach"
+  | "tactical_coach"
+  | "goalkeeping_assistant"
+  | "performance_analyst"
+  | "team_manager"
+  | "physiotherapist"
+  | "rehabilitation_coach"
+  | "scout"
+  | "academy_director"
+  | "youth_coach"
+  | "conditioning_coach";
+
+export interface CoachAccessRule {
+  id: string | null;
+  coachId: string;
+  branchId: string;
+  branchName: string | null;
+  accessType: CoachAccessType;
+  role: CoachAssignmentRole;
+  allGroups: boolean;
+  allBirthYears: boolean;
+  groupIds: string[];
+  birthYearIds: string[];
+  groups: Array<{ id: string; name: string; branchId: string }>;
+  birthYears: Array<{
+    id: string;
+    label: string;
+    normalizedLabel: string;
+    fromYear: number;
+    toYear: number;
+    branchId: string;
+  }>;
+  assignedGroups: Array<{
+    id: string;
+    name: string;
+    role: string;
+    assignedAt: string;
+  }>;
+  isInferred: boolean;
+}
+
+export interface UpsertCoachAccessInput {
+  coachId: string;
+  branchId: string;
+  accessType: CoachAccessType;
+  role: CoachAssignmentRole;
+  allGroups?: boolean;
+  allBirthYears?: boolean;
+  groupIds?: string[];
+  birthYearIds?: string[];
+}
+
+export interface AuthUser {
+  id: string;
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  role: "admin" | "coach" | "player" | "parent";
+  isActive?: boolean;
+  isVerified?: boolean;
+  totpEnabled?: boolean;
+  totpVerifiedAt?: string | null;
+}
+
+export interface Setup2FAResponse {
+  secret: string;
+  qrCode: string;
+}
+
+export interface Verify2FASetupResponse {
+  backupCodes: string[];
+}
+
+export interface RegisterUserInput {
+  username: string;
+  email?: string;
+  password: string;
+  role: "coach" | "player" | "parent";
+  phone?: string;
+  fullName?: string;
+}
+
+export type CoachRole =
+  | "head_coach"
+  | "assistant_coach"
+  | "goalkeeping_coach"
+  | "fitness_coach"
+  | "technical_coach"
+  | "tactical_coach"
+  | "goalkeeping_assistant"
+  | "performance_analyst"
+  | "team_manager"
+  | "physiotherapist"
+  | "rehabilitation_coach"
+  | "scout"
+  | "academy_director"
+  | "youth_coach"
+  | "conditioning_coach";
+
+export interface CreateCoachInput {
+  userId: string;
+  branchId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: CoachRole;
+  image?: string | null;
+  fullName?: string;
+  specialization?: string;
+  bio?: string | null;
+}
+
+export interface UpdateCoachInput {
+  branchId?: string | null;
+  email?: string;
+  phone?: string;
+  role?: CoachRole;
+  image?: string | null;
+  photoUrl?: string | null;
+  specialization?: string | null;
+  bio?: string | null;
+  isActive?: boolean;
+}
+
+export interface CoachImageUploadResponse {
+  fileName: string;
+  image: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export type PlayerImageUploadResponse = CoachImageUploadResponse;
+
+// ─── Payments ────────────────────────────────────────────────────────────────
+export interface PaymentOverviewItem {
+  status: string;
+  total_amount: string;
+  count: string;
+}
+
+export interface Subscription {
+  id: string;
+  player_id: string;
+  plan_id: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  amount: string;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  subscription_id: string;
+  amount: string;
+  status: string;
+  due_date: string;
+  paid_at: string | null;
+  created_at: string;
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+export interface AttendanceOverview {
+  totalSessions: number;
+  avgRate: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  excusedCount: number;
+  byGroup: { groupName: string; rate: number }[];
+}
+
+export interface AttendanceSession {
+  id: string;
+  group_id: string;
+  group_name?: string | null;
+  coach_id: string | null;
+  coach_name?: string | null;
+  session_date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  location?: string | null;
+  session_type?: string | null;
+  status: string;
+  notes: string | null;
+}
+
+// ─── Rankings ────────────────────────────────────────────────────────────────
+export interface RankingRow {
+  id: string;
+  player_id: string;
+  player_name: string;
+  group_id: string;
+  group_name: string;
+  total_score: string;
+  rank: number;
+  period: string;
+  calculated_at: string;
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export interface NotificationRow {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ─── Academy ─────────────────────────────────────────────────────────────────
+export interface Branch {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  capacity: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CreateBranchInput {
+  name: string;
+  address?: string;
+  city?: string;
+  capacity?: number;
+}
+
+export interface UpdateBranchInput extends Partial<CreateBranchInput> {
+  isActive?: boolean;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description?: string | null;
+  branch_id: string;
+  branch_name?: string | null;
+  birth_year_id?: string;
+  birth_year?: number;
+  birth_year_label?: string | null;
+  birth_years?: Array<
+    BirthYearRange & { label: string; normalizedLabel?: string }
+  >;
+  players?: Array<{
+    id: string;
+    fullName: string;
+    playerCode?: string | null;
+    birthDate?: string | null;
+  }>;
+  assignment_mode?: GroupAssignmentMode;
+  max_players: number | null;
+  is_active: boolean;
+  player_count?: number;
+  coach_count?: number;
+  created_at: string;
+}
+
+export type GroupAssignmentMode = "birth_year" | "players";
+
+export interface CreateGroupInput {
+  branchId: string;
+  assignmentMode?: GroupAssignmentMode;
+  birthYearIds?: string[];
+  birthYearId?: string;
+  playerIds?: string[];
+  playerCodeFrom?: string;
+  playerCodeTo?: string;
+  name: string;
+  description?: string;
+  maxPlayers?: number;
+}
+
+export interface UpdateGroupInput extends Partial<
+  Omit<CreateGroupInput, "branchId">
+> {
+  isActive?: boolean;
+}
+
+export interface BirthYearRange {
+  id: string;
+  fromYear: number;
+  toYear: number;
+  label?: string;
+}
+
+export interface BirthYearGroup {
+  label: string;
+  normalizedLabel: string;
+  birthYears: BirthYearRange[];
+}
+
+export interface BirthYearDetail extends BirthYearRange {
+  branchId: string;
+  branchName: string;
+  label: string;
+  normalizedLabel: string;
+  groups: Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    max_players?: number | null;
+    assignment_mode?: string;
+  }>;
+  players: Array<{
+    id: string;
+    full_name: string;
+    player_code?: string | null;
+    date_of_birth: string | null;
+    phone?: string | null;
+    level?: string | null;
+    position?: string | null;
+  }>;
+  coaches: Array<{
+    id: string;
+    full_name: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+    image?: string | null;
+    photo_url?: string | null;
+  }>;
+}
+
+export interface CreateBirthYearInput {
+  branchId: string;
+  label?: string;
+  fromYear: number;
+  toYear: number;
+}
+
+export interface CoachAssignmentFile {
+  id: string;
+  assignmentId: string;
+  fileRole: "brief" | "submission";
+  fileType: "pdf" | "image";
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface CoachAssignment {
+  id: string;
+  academyId: string;
+  coachId: string;
+  coachName: string | null;
+  branchId: string | null;
+  branchName: string | null;
+  groupId: string | null;
+  groupName: string | null;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  status: "assigned" | "in_progress" | "submitted" | "reviewed" | "cancelled";
+  assignedAt: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  adminNotes: string;
+  coachNotes: string;
+  attachments: CoachAssignmentFile[];
+  submissions: CoachAssignmentFile[];
+  files: CoachAssignmentFile[];
+}
+
+export interface AssignmentFileInput {
+  fileType: "pdf" | "image";
+  fileName: string;
+  fileUrl: string;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+
+export interface CreateCoachAssignmentInput {
+  coachId: string;
+  branchId?: string;
+  groupId?: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  adminNotes?: string;
+  attachments?: AssignmentFileInput[];
+}
+
+export interface AcademyInfo {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  settings: Record<string, unknown> | null;
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+export const adminApi = createApi({
+  reducerPath: "adminApi",
+  baseQuery: baseQueryWithReauth,
+  tagTypes: [
+    "Players",
+    "Coaches",
+    "CoachAssignments",
+    "Payments",
+    "Subscriptions",
+    "Invoices",
+    "Attendance",
+    "Sessions",
+    "Rankings",
+    "Notifications",
+    "Branches",
+    "BirthYears",
+    "Groups",
+    "CurrentUser",
+  ],
+  endpoints: (builder) => ({
+    // ── Players ──────────────────────────────────────────────────────────
+    getPlayers: builder.query<
+      PaginatedResponse<PlayerRow>,
+      {
+        page?: number;
+        limit?: number;
+        search?: string;
+        level?: string;
+        branchId?: string;
+      }
+    >({
+      query: ({ page = 1, limit = 20, search, level, branchId } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (search) params.set("search", search);
+        if (level) params.set("level", level);
+        if (branchId) params.set("branchId", branchId);
+        return `/players?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<PlayerRow>) => toPaginated(res),
+      providesTags: ["Players"],
+    }),
+
+    createPlayer: builder.mutation<PlayerDetail, CreatePlayerInput>({
+      query: (body) => ({ url: "/players", method: "POST", body }),
+      transformResponse: (res: { data: PlayerDetail }) => res.data,
+      invalidatesTags: ["Players"],
+    }),
+
+    updatePlayer: builder.mutation<
+      PlayerDetail,
+      { id: string; body: Partial<CreatePlayerInput> }
+    >({
+      query: ({ id, body }) => ({ url: `/players/${id}`, method: "PUT", body }),
+      transformResponse: (res: { data: PlayerDetail }) => res.data,
+      invalidatesTags: ["Players"],
+    }),
+
+    deletePlayer: builder.mutation<void, string>({
+      query: (id) => ({ url: `/players/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Players"],
+    }),
+
+    hardDeletePlayer: builder.mutation<void, string>({
+      query: (id) => ({ url: `/players/${id}/hard-delete`, method: "DELETE" }),
+      invalidatesTags: ["Players"],
+    }),
+
+    // ── Coaches ──────────────────────────────────────────────────────────
+    getCoaches: builder.query<
+      PaginatedResponse<CoachRow>,
+      { page?: number; limit?: number }
+    >({
+      query: ({ page = 1, limit = 20 } = {}) =>
+        `/coaches?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<CoachRow>) => toPaginated(res),
+      providesTags: ["Coaches"],
+    }),
+
+    registerUser: builder.mutation<AuthUser, RegisterUserInput>({
+      query: (body) => ({ url: "/auth/register", method: "POST", body }),
+      transformResponse: (res: { data: { user: AuthUser } }) => res.data.user,
+    }),
+
+    createCoach: builder.mutation<CoachDetail, CreateCoachInput>({
+      query: (body) => ({ url: "/coaches", method: "POST", body }),
+      transformResponse: (res: { data: CoachDetail }) => res.data,
+      invalidatesTags: ["Coaches"],
+    }),
+
+    updateCoach: builder.mutation<
+      CoachDetail,
+      { id: string; body: UpdateCoachInput }
+    >({
+      query: ({ id, body }) => ({ url: `/coaches/${id}`, method: "PUT", body }),
+      transformResponse: (res: { data: CoachDetail }) => res.data,
+      invalidatesTags: ["Coaches"],
+    }),
+
+    deleteCoach: builder.mutation<void, string>({
+      query: (id) => ({ url: `/coaches/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Coaches"],
+    }),
+
+    hardDeleteCoach: builder.mutation<void, string>({
+      query: (id) => ({ url: `/coaches/${id}/hard-delete`, method: "DELETE" }),
+      invalidatesTags: ["Coaches"],
+    }),
+
+    uploadCoachImage: builder.mutation<CoachImageUploadResponse, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append("image", file);
+        return { url: "/coaches/images", method: "POST", body };
+      },
+      transformResponse: (res: { data: CoachImageUploadResponse }) => res.data,
+    }),
+
+    uploadPlayerImage: builder.mutation<PlayerImageUploadResponse, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append("image", file);
+        return { url: "/players/images", method: "POST", body };
+      },
+      transformResponse: (res: { data: PlayerImageUploadResponse }) => res.data,
+    }),
+
+    // ── Payments overview ────────────────────────────────────────────────
+    getPaymentOverview: builder.query<PaymentOverviewItem[], void>({
+      query: () => "/payments/overview",
+      transformResponse: (res: { data: PaymentOverviewItem[] }) => res.data,
+      providesTags: ["Payments"],
+    }),
+
+    // ── Subscriptions ────────────────────────────────────────────────────
+    getSubscriptions: builder.query<
+      PaginatedResponse<Subscription>,
+      { page?: number; limit?: number; status?: string }
+    >({
+      query: ({ page = 1, limit = 20, status } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (status) params.set("status", status);
+        return `/payments/subscriptions?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<Subscription>) =>
+        toPaginated(res),
+      providesTags: ["Subscriptions"],
+    }),
+
+    // ── Invoices ─────────────────────────────────────────────────────────
+    getInvoices: builder.query<
+      PaginatedResponse<Invoice>,
+      { page?: number; limit?: number; status?: string }
+    >({
+      query: ({ page = 1, limit = 20, status } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (status) params.set("status", status);
+        return `/payments/invoices?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<Invoice>) => toPaginated(res),
+      providesTags: ["Invoices"],
+    }),
+
+    // ── Attendance overview ──────────────────────────────────────────────
+    getAttendanceOverview: builder.query<AttendanceOverview, void>({
+      query: () => "/attendance/overview",
+      transformResponse: (res: { data: AttendanceOverview }) => res.data,
+      providesTags: ["Attendance"],
+    }),
+
+    // ── Sessions ──────────────────────────────────────────────────────────
+    getSessions: builder.query<
+      PaginatedResponse<AttendanceSession>,
+      { page?: number; limit?: number; groupId?: string }
+    >({
+      query: ({ page = 1, limit = 20, groupId } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (groupId) params.set("groupId", groupId);
+        return `/attendance/sessions?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<AttendanceSession>) =>
+        toPaginated(res),
+      providesTags: ["Sessions"],
+    }),
+
+    // ── Rankings ─────────────────────────────────────────────────────────
+    getWeeklyRankings: builder.query<
+      PaginatedResponse<RankingRow>,
+      { groupId?: string; page?: number; limit?: number }
+    >({
+      query: ({ groupId, page = 1, limit = 50 } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (groupId) params.set("groupId", groupId);
+        return `/rankings/weekly?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<RankingRow>) => toPaginated(res),
+      providesTags: ["Rankings"],
+    }),
+
+    getMonthlyRankings: builder.query<
+      PaginatedResponse<RankingRow>,
+      { groupId?: string; page?: number; limit?: number }
+    >({
+      query: ({ groupId, page = 1, limit = 50 } = {}) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (groupId) params.set("groupId", groupId);
+        return `/rankings/monthly?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<RankingRow>) => toPaginated(res),
+      providesTags: ["Rankings"],
+    }),
+
+    // ── Notifications ────────────────────────────────────────────────────
+    getNotifications: builder.query<
+      PaginatedResponse<NotificationRow>,
+      { page?: number; limit?: number }
+    >({
+      query: ({ page = 1, limit = 30 } = {}) =>
+        `/notifications?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<NotificationRow>) =>
+        toPaginated(res),
+      providesTags: ["Notifications"],
+    }),
+
+    markNotificationRead: builder.mutation<void, string>({
+      query: (id) => ({ url: `/notifications/${id}/read`, method: "PATCH" }),
+      invalidatesTags: ["Notifications"],
+    }),
+
+    markAllNotificationsRead: builder.mutation<void, void>({
+      query: () => ({ url: "/notifications/read-all", method: "PATCH" }),
+      invalidatesTags: ["Notifications"],
+    }),
+
+    sendNotification: builder.mutation<
+      void,
+      {
+        title: string;
+        body: string;
+        type: string;
+        targetRole?: string;
+        targetUserId?: string;
+      }
+    >({
+      query: (body) => ({ url: "/notifications/send", method: "POST", body }),
+      invalidatesTags: ["Notifications"],
+    }),
+
+    // ── Branches ─────────────────────────────────────────────────────────
+    getBranches: builder.query<Branch[], void>({
+      query: () => "/academy/branches?limit=100",
+      transformResponse: (res: { data: Branch[] }) => res.data,
+      providesTags: ["Branches"],
+    }),
+
+    createBranch: builder.mutation<Branch, CreateBranchInput>({
+      query: (body) => ({ url: "/academy/branches", method: "POST", body }),
+      transformResponse: (res: { data: Branch }) => res.data,
+      invalidatesTags: ["Branches"],
+    }),
+
+    updateBranch: builder.mutation<
+      Branch,
+      { id: string; body: UpdateBranchInput }
+    >({
+      query: ({ id, body }) => ({
+        url: `/academy/branches/${id}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: { data: Branch }) => res.data,
+      invalidatesTags: ["Branches", "Groups", "BirthYears"],
+    }),
+
+    deleteBranch: builder.mutation<void, string>({
+      query: (id) => ({ url: `/academy/branches/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Branches", "Groups", "BirthYears"],
+    }),
+
+    // ── Groups ────────────────────────────────────────────────────────────
+    getGroups: builder.query<Group[], { branchId?: string }>({
+      query: ({ branchId } = {}) => {
+        const params = new URLSearchParams({ limit: "100" });
+        if (branchId) params.set("branchId", branchId);
+        return `/academy/groups?${params}`;
+      },
+      transformResponse: (res: { data: Group[] }) => res.data,
+      providesTags: ["Groups"],
+    }),
+
+    createGroup: builder.mutation<Group, CreateGroupInput>({
+      query: (body) => ({ url: "/academy/groups", method: "POST", body }),
+      transformResponse: (res: { data: Group }) => res.data,
+      invalidatesTags: ["Groups", "Branches"],
+    }),
+
+    updateGroup: builder.mutation<
+      Group,
+      { id: string; body: UpdateGroupInput }
+    >({
+      query: ({ id, body }) => ({
+        url: `/academy/groups/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: { data: Group }) => res.data,
+      invalidatesTags: ["Groups", "Branches"],
+    }),
+
+    deleteGroup: builder.mutation<void, string>({
+      query: (id) => ({ url: `/academy/groups/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Groups", "Branches"],
+    }),
+
+    // ── Player detail ────────────────────────────────────────────────────
+    getPlayerById: builder.query<PlayerDetail, string>({
+      query: (id) => `/players/${id}`,
+      transformResponse: (res: { data: PlayerDetail }) => res.data,
+      providesTags: ["Players"],
+    }),
+
+    // ── Player measurements ──────────────────────────────────────────────
+    getPlayerMeasurements: builder.query<
+      PaginatedResponse<PlayerMeasurement>,
+      { playerId: string; page?: number; limit?: number }
+    >({
+      query: ({ playerId, page = 1, limit = 50 }) =>
+        `/players/${playerId}/measurements?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<PlayerMeasurement>) =>
+        toPaginated(res),
+      providesTags: ["Players"],
+    }),
+
+    // ── Coach detail ─────────────────────────────────────────────────────
+    getCoachById: builder.query<CoachDetail, string>({
+      query: (id) => `/coaches/${id}`,
+      transformResponse: (res: { data: CoachDetail }) => res.data,
+      providesTags: ["Coaches"],
+    }),
+
+    // ── Coach groups ─────────────────────────────────────────────────────
+    getCoachGroups: builder.query<CoachGroupAssignment[], string>({
+      query: (coachId) => `/coaches/${coachId}/groups`,
+      transformResponse: (res: { data: CoachGroupAssignment[] }) => res.data,
+      providesTags: ["Groups"],
+    }),
+
+    // ── Assign coach to group ────────────────────────────────────────────
+    assignCoachToGroup: builder.mutation<
+      void,
+      { coachId: string; groupId: string; role?: string }
+    >({
+      query: ({ coachId, ...body }) => ({
+        url: `/coaches/${coachId}/assign-group`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Groups", "Coaches"],
+    }),
+
+    // ── Branch detail ────────────────────────────────────────────────────
+    getCoachAccess: builder.query<
+      CoachAccessRule[],
+      { coachId: string; branchId?: string }
+    >({
+      query: ({ coachId, branchId }) => {
+        const params = new URLSearchParams();
+        if (branchId) params.set("branchId", branchId);
+        return `/coaches/${coachId}/access${params.toString() ? `?${params}` : ""}`;
+      },
+      transformResponse: (res: { data: CoachAccessRule[] }) => res.data,
+      providesTags: ["Coaches", "Groups"],
+    }),
+
+    upsertCoachAccess: builder.mutation<
+      CoachAccessRule,
+      UpsertCoachAccessInput
+    >({
+      query: ({ coachId, ...body }) => ({
+        url: `/coaches/${coachId}/access`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: { data: CoachAccessRule }) => res.data,
+      invalidatesTags: ["Groups", "Coaches"],
+    }),
+
+    removeCoachAccess: builder.mutation<
+      { message: string },
+      { coachId: string; branchId: string }
+    >({
+      query: ({ coachId, branchId }) => ({
+        url: `/coaches/${coachId}/access/branches/${branchId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["Groups", "Coaches"],
+    }),
+
+    getBranchById: builder.query<Branch, string>({
+      query: (id) => `/academy/branches/${id}`,
+      transformResponse: (res: { data: Branch }) => res.data,
+      providesTags: ["Branches"],
+    }),
+
+    // ── Birth years ──────────────────────────────────────────────────────
+    getBirthYears: builder.query<BirthYearGroup[], string>({
+      query: (branchId) => `/academy/birth-years?branchId=${branchId}`,
+      transformResponse: (res: { data: BirthYearGroup[] }) => res.data,
+      providesTags: ["BirthYears"],
+    }),
+
+    getBirthYearById: builder.query<BirthYearDetail, string>({
+      query: (id) => `/academy/birth-years/${id}`,
+      transformResponse: (res: { data: BirthYearDetail }) => res.data,
+      providesTags: ["BirthYears", "Groups", "Players", "Coaches"],
+    }),
+
+    createBirthYear: builder.mutation<void, CreateBirthYearInput>({
+      query: (body) => ({ url: "/academy/birth-years", method: "POST", body }),
+      invalidatesTags: ["BirthYears", "Branches"],
+    }),
+
+    updateBirthYear: builder.mutation<
+      void,
+      { id: string; body: Partial<Omit<CreateBirthYearInput, "branchId">> }
+    >({
+      query: ({ id, body }) => ({
+        url: `/academy/birth-years/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["BirthYears", "Groups"],
+    }),
+
+    deleteBirthYear: builder.mutation<
+      void,
+      string | { id: string; transferBirthYearId?: string }
+    >({
+      query: (arg) => {
+        const id = typeof arg === "string" ? arg : arg.id;
+        const transferBirthYearId =
+          typeof arg === "string" ? undefined : arg.transferBirthYearId;
+        return {
+          url: `/academy/birth-years/${id}`,
+          method: "DELETE",
+          body: transferBirthYearId ? { transferBirthYearId } : {},
+        };
+      },
+      invalidatesTags: ["BirthYears", "Groups"],
+    }),
+
+    getCoachAssignments: builder.query<
+      PaginatedResponse<CoachAssignment>,
+      {
+        coachId?: string;
+        branchId?: string;
+        groupId?: string;
+        status?: string;
+        page?: number;
+        limit?: number;
+      } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 50),
+        });
+        if (args?.coachId) params.set("coachId", args.coachId);
+        if (args?.branchId) params.set("branchId", args.branchId);
+        if (args?.groupId) params.set("groupId", args.groupId);
+        if (args?.status) params.set("status", args.status);
+        return `/coaches/assignments?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<CoachAssignment>) =>
+        toPaginated(res),
+      providesTags: ["CoachAssignments"],
+    }),
+
+    createCoachAssignment: builder.mutation<
+      CoachAssignment,
+      CreateCoachAssignmentInput
+    >({
+      query: (body) => ({ url: "/coaches/assignments", method: "POST", body }),
+      transformResponse: (res: { data: CoachAssignment }) => res.data,
+      invalidatesTags: ["CoachAssignments"],
+    }),
+
+    uploadCoachAssignmentFile: builder.mutation<AssignmentFileInput, File>({
+      query: (file) => ({
+        url: "/coaches/assignments/upload",
+        method: "POST",
+        body: file,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-File-Name": encodeURIComponent(file.name || "assignment-file"),
+        },
+      }),
+      transformResponse: (res: { data: AssignmentFileInput }) => res.data,
+    }),
+
+    // ── Academy info ─────────────────────────────────────────────────────
+    getAcademy: builder.query<AcademyInfo, void>({
+      query: () => "/academy",
+      transformResponse: (res: { data: AcademyInfo }) => res.data,
+    }),
+
+    updateAcademy: builder.mutation<AcademyInfo, Partial<AcademyInfo>>({
+      query: (body) => ({ url: "/academy", method: "PUT", body }),
+      transformResponse: (res: { data: AcademyInfo }) => res.data,
+    }),
+
+    getCurrentUser: builder.query<AuthUser, void>({
+      query: () => "/auth/me",
+      transformResponse: (res: { data: AuthUser }) => res.data,
+      providesTags: ["CurrentUser"],
+    }),
+
+    setup2FA: builder.mutation<Setup2FAResponse, void>({
+      query: () => ({ url: "/auth/2fa/setup", method: "POST" }),
+      transformResponse: (res: { data: Setup2FAResponse }) => res.data,
+    }),
+
+    verifySetup2FA: builder.mutation<Verify2FASetupResponse, string>({
+      query: (token) => ({
+        url: "/auth/2fa/verify-setup",
+        method: "POST",
+        body: { token },
+      }),
+      transformResponse: (res: { data: Verify2FASetupResponse }) => res.data,
+      invalidatesTags: ["CurrentUser"],
+    }),
+
+    disable2FA: builder.mutation<{ message: string }, string>({
+      query: (password) => ({
+        url: "/auth/2fa/disable",
+        method: "POST",
+        body: { password },
+      }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["CurrentUser"],
+    }),
+  }),
+});
+
+export const {
+  useGetPlayersQuery,
+  useCreatePlayerMutation,
+  useUpdatePlayerMutation,
+  useDeletePlayerMutation,
+  useHardDeletePlayerMutation,
+  useGetCoachesQuery,
+  useRegisterUserMutation,
+  useCreateCoachMutation,
+  useUpdateCoachMutation,
+  useDeleteCoachMutation,
+  useHardDeleteCoachMutation,
+  useUploadCoachImageMutation,
+  useUploadPlayerImageMutation,
+  useGetPaymentOverviewQuery,
+  useGetSubscriptionsQuery,
+  useGetInvoicesQuery,
+  useGetAttendanceOverviewQuery,
+  useGetSessionsQuery,
+  useGetWeeklyRankingsQuery,
+  useGetMonthlyRankingsQuery,
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
+  useSendNotificationMutation,
+  useGetBranchesQuery,
+  useCreateBranchMutation,
+  useUpdateBranchMutation,
+  useDeleteBranchMutation,
+  useGetGroupsQuery,
+  useCreateGroupMutation,
+  useUpdateGroupMutation,
+  useDeleteGroupMutation,
+  useGetPlayerByIdQuery,
+  useGetPlayerMeasurementsQuery,
+  useGetCoachByIdQuery,
+  useGetCoachGroupsQuery,
+  useAssignCoachToGroupMutation,
+  useGetCoachAccessQuery,
+  useUpsertCoachAccessMutation,
+  useRemoveCoachAccessMutation,
+  useGetBranchByIdQuery,
+  useGetBirthYearsQuery,
+  useGetBirthYearByIdQuery,
+  useLazyGetBirthYearByIdQuery,
+  useCreateBirthYearMutation,
+  useUpdateBirthYearMutation,
+  useDeleteBirthYearMutation,
+  useGetCoachAssignmentsQuery,
+  useCreateCoachAssignmentMutation,
+  useUploadCoachAssignmentFileMutation,
+  useGetAcademyQuery,
+  useUpdateAcademyMutation,
+  useGetCurrentUserQuery,
+  useSetup2FAMutation,
+  useVerifySetup2FAMutation,
+  useDisable2FAMutation,
+} = adminApi;

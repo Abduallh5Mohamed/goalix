@@ -2,21 +2,35 @@ const crypto = require('node:crypto');
 const ApiResponse = require('../../shared/api-response');
 
 class AuthController {
-    constructor(authService) {
+    constructor(authService, totpService) {
         this.authService = authService;
+        this.totpService = totpService;
     }
 
     register = async (req, res, next) => {
         try {
-            const result = await this.authService.register(req.body);
-
-            // Set refresh token in httpOnly cookie
-            this._setRefreshCookie(res, result.refreshToken);
-
+            const result = await this.authService.register(req.body, req.user);
             res.status(201).json(ApiResponse.success({
                 user: result.user,
-                accessToken: result.accessToken,
             }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    signup = async (req, res, next) => {
+        try {
+            const result = await this.authService.signup(req.body);
+            res.status(201).json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    registrationStatus = async (req, res, next) => {
+        try {
+            const result = await this.authService.getRegistrationStatus(req.query.email);
+            res.json(ApiResponse.success(result));
         } catch (err) {
             next(err);
         }
@@ -26,14 +40,117 @@ class AuthController {
         try {
             const ip = req.ip;
             const userAgent = req.get('user-agent');
-            const result = await this.authService.login(req.body, ip, userAgent);
+            const result = await this.authService.login({
+                ...req.body,
+                allowedRoles: req.allowedLoginRoles,
+            }, ip, userAgent);
 
-            this._setRefreshCookie(res, result.refreshToken);
+            if (result.requires2FA) {
+                return res.json(ApiResponse.success({
+                    requires2FA: true,
+                    tempToken: result.tempToken,
+                }));
+            }
+
+            this._setAuthCookies(res, result.accessToken, result.refreshToken);
 
             res.json(ApiResponse.success({
                 user: result.user,
-                accessToken: result.accessToken,
             }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    // ─── 2FA Endpoints ──────────────────────────────────────────────────
+
+    setup2FA = async (req, res, next) => {
+        try {
+            const result = await this.totpService.setup(req.user.userId);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    verifySetup2FA = async (req, res, next) => {
+        try {
+            const result = await this.totpService.verifyAndEnable(req.user.userId, req.body.token);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    verify2FA = async (req, res, next) => {
+        try {
+            const { tempToken, token } = req.body;
+            // Verify TOTP first
+            const jwt = require('jsonwebtoken');
+            const env = require('../../config/env');
+            let decoded;
+            try {
+                decoded = jwt.verify(tempToken, env.JWT_SECRET);
+            } catch {
+                return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid or expired 2FA token'));
+            }
+
+            if (decoded.purpose !== '2fa') {
+                return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid token purpose'));
+            }
+
+            await this.totpService.verify(decoded.userId, token);
+
+            const ip = req.ip;
+            const userAgent = req.get('user-agent');
+            const result = await this.authService.completeLoginAfter2FA(tempToken, ip, userAgent);
+
+            this._setAuthCookies(res, result.accessToken, result.refreshToken);
+
+            res.json(ApiResponse.success({
+                user: result.user,
+            }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    verifyBackupCode = async (req, res, next) => {
+        try {
+            const { tempToken, code } = req.body;
+            const jwt = require('jsonwebtoken');
+            const env = require('../../config/env');
+            let decoded;
+            try {
+                decoded = jwt.verify(tempToken, env.JWT_SECRET);
+            } catch {
+                return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid or expired 2FA token'));
+            }
+
+            if (decoded.purpose !== '2fa') {
+                return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid token purpose'));
+            }
+
+            await this.totpService.verifyBackupCode(decoded.userId, code);
+
+            const ip = req.ip;
+            const userAgent = req.get('user-agent');
+            const result = await this.authService.completeLoginAfter2FA(tempToken, ip, userAgent);
+
+            this._setAuthCookies(res, result.accessToken, result.refreshToken);
+
+            res.json(ApiResponse.success({
+                user: result.user,
+            }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    disable2FA = async (req, res, next) => {
+        try {
+            const result = await this.totpService.disable(req.user.userId, req.body.password);
+            res.json(ApiResponse.success(result));
         } catch (err) {
             next(err);
         }
@@ -47,10 +164,30 @@ class AuthController {
                 tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
             }
 
-            await this.authService.logout(req.user.userId, tokenHash);
+            if (req.user?.userId) {
+                await this.authService.logout(
+                    req.user.userId,
+                    tokenHash,
+                    req.ip,
+                    req.get('user-agent'),
+                    req.user.sessionId,
+                );
+            }
 
-            res.clearCookie('refreshToken');
+            this._clearAuthCookies(res);
             res.json(ApiResponse.success({ message: 'Logged out successfully' }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    logoutAll = async (req, res, next) => {
+        try {
+            const result = await this.authService.logoutAllDevices(
+                req.user.userId, req.ip, req.get('user-agent'),
+            );
+            this._clearAuthCookies(res);
+            res.json(ApiResponse.success(result));
         } catch (err) {
             next(err);
         }
@@ -67,11 +204,10 @@ class AuthController {
 
             const result = await this.authService.refreshToken(refreshToken);
 
-            this._setRefreshCookie(res, result.refreshToken);
+            this._setAuthCookies(res, result.accessToken, result.refreshToken);
 
             res.json(ApiResponse.success({
                 user: result.user,
-                accessToken: result.accessToken,
             }));
         } catch (err) {
             next(err);
@@ -108,14 +244,30 @@ class AuthController {
         }
     };
 
-    _setRefreshCookie(res, token) {
-        res.cookie('refreshToken', token, {
+    _cookieOptions(maxAge, path = '/') {
+        const options = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            path: '/api/v1/auth',
-        });
+            maxAge,
+            path,
+        };
+
+        if (process.env.NODE_ENV === 'development') {
+            options.domain = 'localhost';
+        }
+
+        return options;
+    }
+
+    _setAuthCookies(res, accessToken, refreshToken) {
+        res.cookie('accessToken', accessToken, this._cookieOptions(15 * 60 * 1000));
+        res.cookie('refreshToken', refreshToken, this._cookieOptions(7 * 24 * 60 * 60 * 1000, '/api/v1/auth'));
+    }
+
+    _clearAuthCookies(res) {
+        res.clearCookie('accessToken', this._cookieOptions(0));
+        res.clearCookie('refreshToken', this._cookieOptions(0, '/api/v1/auth'));
     }
 }
 

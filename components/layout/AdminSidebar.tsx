@@ -11,19 +11,20 @@ import {
   GraduationCap,
   Users,
   UserCheck,
+  UserPlus,
   ClipboardCheck,
   Trophy,
   CreditCard,
   Bell,
   BarChart3,
   Settings,
+  Calendar,
   ChevronDown,
   ChevronLeft,
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { toggleSidebarCollapse, setMobileSidebarOpen } from "@/lib/store/slices/uiSlice";
 
@@ -32,12 +33,14 @@ const iconMap: Record<string, React.ElementType> = {
   GraduationCap,
   Users,
   UserCheck,
+  UserPlus,
   ClipboardCheck,
   Trophy,
   CreditCard,
   Bell,
   BarChart3,
   Settings,
+  Calendar,
 };
 
 interface NavItemProps {
@@ -159,6 +162,7 @@ export function AdminSidebar() {
               width={32}
               height={32}
               className="rounded-lg"
+              style={{ width: 32, height: 32 }}
             />
             {!sidebarCollapsed && (
               <span className="text-lg font-bold text-foreground">GOLX</span>

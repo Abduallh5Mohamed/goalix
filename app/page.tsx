@@ -123,7 +123,14 @@ export default function Home() {
         }}
       >
         <div style={{ flexShrink: 0 }}>
-          <Image src="/Logo.png" alt="Goalix" width={130} height={38} priority style={{ objectFit: "contain" }} />
+          <Image
+            src="/Logo.png"
+            alt="Goalix"
+            width={130}
+            height={38}
+            priority
+            style={{ width: "auto", height: "auto", objectFit: "contain" }}
+          />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
           {["Home", "Service", "About", "Team", "Contact"].map((l, i) => (
@@ -154,7 +161,7 @@ export default function Home() {
             cursor: "pointer",
           }}
         >
-          Sign Up
+          Sign In
         </button>
       </nav>
 
@@ -183,10 +190,11 @@ export default function Home() {
               }}
             />
             <Image
-              src="/athlete.png"
-              alt="Athlete"
+              src="/Background.jpg"
+              alt="GOLX Sports Academy"
               fill
               style={{ objectFit: "cover", objectPosition: "top", zIndex: 1 }}
+              sizes="260px"
               priority
             />
           </div>

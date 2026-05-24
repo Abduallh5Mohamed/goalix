@@ -7,42 +7,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { UserRole } from "@/lib/types";
-import { ROLE_LABELS } from "@/lib/constants";
-import { Shield, Dumbbell, UserCheck, Baby, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Baby, Loader2, UserCheck } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
-const roleIcons: Record<UserRole, React.ReactNode> = {
-  admin: <Shield className="h-5 w-5" />,
-  coach: <Dumbbell className="h-5 w-5" />,
-  player: <UserCheck className="h-5 w-5" />,
-  parent: <Baby className="h-5 w-5" />,
-};
-
-const roleDescriptions: Record<UserRole, string> = {
-  admin: "Full academy management",
-  coach: "Groups, attendance & evaluations",
-  player: "My performance & training",
-  parent: "Child progress & payments",
-};
+type LoginRole = "player" | "parent";
+type LoginStep = "role" | "credentials";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>("admin");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<LoginStep>("role");
+  const [role, setRole] = useState<LoginRole>("player");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const selectRole = (nextRole: LoginRole) => {
+    setRole(nextRole);
+    setError("");
+    setStep("credentials");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!username.trim() || !password) {
+      setError("Please enter your username and password.");
+      return;
+    }
     setError("");
     setIsLoading(true);
     try {
-      await login(email || "demo@golx.com", password || "demo", selectedRole);
+      await login(username.trim(), password, role);
     } catch {
-      setError("Invalid credentials. Please try again.");
+      setError("Invalid username, password, or role. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +48,6 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6">
-      {/* Logo */}
       <div className="flex flex-col items-center gap-3">
         <Image
           src="/Logo.png"
@@ -58,102 +55,117 @@ export default function LoginPage() {
           width={64}
           height={64}
           className="rounded-xl"
+          style={{ width: "auto", height: "auto" }}
         />
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">GOLX Sports Academy</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your account</p>
+          <p className="text-sm text-muted-foreground">Sign in with your coach-provided player or parent account</p>
         </div>
       </div>
 
       <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Select Your Role</CardTitle>
-          <CardDescription>Choose how you want to sign in</CardDescription>
+          <CardTitle className="text-lg">
+            {step === "role" ? "Choose your role" : role === "player" ? "Player login" : "Parent login"}
+          </CardTitle>
+          <CardDescription>
+            {step === "role"
+              ? "Select whether this account is for a player or a parent"
+              : "Enter the username and password created by your coach"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Role Selector */}
-          <div className="mb-6 grid grid-cols-2 gap-2">
-            {(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => (
+          {step === "role" ? (
+            <div className="grid grid-cols-2 gap-4">
               <button
-                key={role}
                 type="button"
-                onClick={() => setSelectedRole(role)}
+                onClick={() => selectRole("player")}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-all",
-                  selectedRole === role
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/50 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/30"
+                  "flex flex-col items-center gap-3 rounded-xl border-2 p-6 text-center transition-all hover:border-primary/50 hover:bg-primary/5",
+                  "border-border/50"
                 )}
               >
-                {roleIcons[role]}
-                <span className="text-sm font-medium">{ROLE_LABELS[role]}</span>
-                <span className="text-[10px] leading-tight opacity-70">
-                  {roleDescriptions[role]}
-                </span>
+                <UserCheck className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-semibold">Player</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Athlete account</p>
+                </div>
               </button>
-            ))}
-          </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="demo@golx.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
+              <button
+                type="button"
+                onClick={() => selectRole("parent")}
+                className={cn(
+                  "flex flex-col items-center gap-3 rounded-xl border-2 p-6 text-center transition-all hover:border-primary/50 hover:bg-primary/5",
+                  "border-border/50"
+                )}
+              >
+                <Baby className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-semibold">Parent</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Guardian account</p>
+                </div>
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter any password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Signing in as <span className="font-medium text-foreground">{role}</span>
+                <button
+                  type="button"
+                  onClick={() => setStep("role")}
+                  className="ml-2 text-primary hover:underline"
+                >
+                  Change
+                </button>
+              </div>
 
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder={role === "player" ? "player.username" : "parent.username"}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                `Sign in as ${ROLE_LABELS[selectedRole]}`
-              )}
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
 
-          <div className="mt-4 text-center">
-            <Link
-              href="/forgot-password"
-              className="text-sm text-muted-foreground transition-colors hover:text-primary"
-            >
-              Forgot your password?
-            </Link>
-          </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
 
-          <div className="mt-4 rounded-lg border border-dashed border-border/50 bg-muted/20 p-3 text-center">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-primary">Demo Mode:</span>{" "}
-              Select any role and click sign in. No credentials required.
-            </p>
-          </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Coaches and admins use{" "}
+                <Link href="/admin-login" className="text-primary hover:underline">
+                  admin login
+                </Link>
+              </p>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

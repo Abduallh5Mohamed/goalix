@@ -17,7 +17,12 @@ import {
   mockRankings,
 } from "@/lib/mock-data";
 import { TREND_CONFIG, PAYMENT_STATUS_CONFIG } from "@/lib/constants";
-import { getInitials, formatDate, formatCurrency } from "@/lib/utils";
+import {
+  getInitials,
+  formatDate,
+  formatCurrency,
+  formatTime12,
+} from "@/lib/utils";
 import {
   Trophy,
   CreditCard,
@@ -40,9 +45,9 @@ export default function ParentHomePage() {
     .filter((e) => e.playerId === "p1")
     .sort((a, b) => b.date.localeCompare(a.date))[0];
   const nextSession = mockSessions.find((s) => s.groupId === child.groupId);
-  const parentNotifs = mockNotifications.filter(
-    (n) => n.targetRole === "parent" || n.targetRole === "admin"
-  ).slice(0, 3);
+  const parentNotifs = mockNotifications
+    .filter((n) => n.targetRole === "parent" || n.targetRole === "admin")
+    .slice(0, 3);
 
   const stats = [
     {
@@ -68,7 +73,10 @@ export default function ParentHomePage() {
     },
     {
       label: "Payment Status",
-      value: subscription?.status === "paid" ? "Paid" : subscription?.status || "N/A",
+      value:
+        subscription?.status === "paid"
+          ? "Paid"
+          : subscription?.status || "N/A",
       icon: "CreditCard" as const,
       change: 0,
       changeLabel: subscription ? formatCurrency(subscription.amount) : "",
@@ -166,15 +174,36 @@ export default function ParentHomePage() {
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {[
-                    { label: "Technical", value: latestEval.technicalScore, emoji: "⚽" },
-                    { label: "Tactical", value: latestEval.tacticalScore, emoji: "🧠" },
-                    { label: "Physical", value: latestEval.physicalScore, emoji: "💪" },
-                    { label: "Mental", value: latestEval.mentalScore, emoji: "🎯" },
+                    {
+                      label: "Technical",
+                      value: latestEval.technicalScore,
+                      emoji: "⚽",
+                    },
+                    {
+                      label: "Tactical",
+                      value: latestEval.tacticalScore,
+                      emoji: "🧠",
+                    },
+                    {
+                      label: "Physical",
+                      value: latestEval.physicalScore,
+                      emoji: "💪",
+                    },
+                    {
+                      label: "Mental",
+                      value: latestEval.mentalScore,
+                      emoji: "🎯",
+                    },
                   ].map((c) => (
-                    <div key={c.label} className="rounded-lg bg-muted/20 p-3 text-center">
+                    <div
+                      key={c.label}
+                      className="rounded-lg bg-muted/20 p-3 text-center"
+                    >
                       <p className="text-lg">{c.emoji}</p>
                       <p className="text-lg font-bold">{c.value}</p>
-                      <p className="text-[10px] text-muted-foreground">{c.label}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {c.label}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -216,11 +245,15 @@ export default function ParentHomePage() {
                   </div>
                   <Badge
                     variant={
-                      PAYMENT_STATUS_CONFIG[subscription.status as keyof typeof PAYMENT_STATUS_CONFIG]?.variant || "secondary"
+                      PAYMENT_STATUS_CONFIG[
+                        subscription.status as keyof typeof PAYMENT_STATUS_CONFIG
+                      ]?.variant || "secondary"
                     }
                     className="text-sm"
                   >
-                    {PAYMENT_STATUS_CONFIG[subscription.status as keyof typeof PAYMENT_STATUS_CONFIG]?.label || subscription.status}
+                    {PAYMENT_STATUS_CONFIG[
+                      subscription.status as keyof typeof PAYMENT_STATUS_CONFIG
+                    ]?.label || subscription.status}
                   </Badge>
                 </div>
               </CardContent>
@@ -245,7 +278,8 @@ export default function ParentHomePage() {
                   {formatDate(nextSession.date)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {nextSession.startTime} - {nextSession.endTime}
+                  {formatTime12(nextSession.startTime)} -{" "}
+                  {formatTime12(nextSession.endTime)}
                 </p>
                 <Badge className="mt-2" variant="secondary">
                   {nextSession.type}
@@ -318,7 +352,9 @@ export default function ParentHomePage() {
                 <div
                   key={n.id}
                   className={`rounded-lg p-3 text-sm ${
-                    n.read ? "bg-muted/10" : "bg-muted/30 border-l-2 border-primary"
+                    n.read
+                      ? "bg-muted/10"
+                      : "bg-muted/30 border-l-2 border-primary"
                   }`}
                 >
                   <p className="font-medium">{n.title}</p>

@@ -10,7 +10,7 @@ import {
   mockPlayers,
 } from "@/lib/mock-data";
 import { ATTENDANCE_STATUS_CONFIG } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime12 } from "@/lib/utils";
 import { CalendarCheck, Calendar, Clock } from "lucide-react";
 
 export default function ParentChildAttendancePage() {
@@ -28,7 +28,7 @@ export default function ParentChildAttendancePage() {
     ([key, config]) => ({
       label: config.label,
       value: statusCounts[key as keyof typeof statusCounts] || 0,
-    })
+    }),
   );
 
   return (
@@ -83,9 +83,7 @@ export default function ParentChildAttendancePage() {
         {/* Chart */}
         <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Breakdown
-            </CardTitle>
+            <CardTitle className="text-base font-semibold">Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             <DoughnutChart
@@ -100,14 +98,12 @@ export default function ParentChildAttendancePage() {
         <div className="lg:col-span-2">
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">
-                Records
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Records</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {records.map((record) => {
                 const session = mockSessions.find(
-                  (s) => s.id === record.sessionId
+                  (s) => s.id === record.sessionId,
                 );
                 return (
                   <div
@@ -124,7 +120,7 @@ export default function ParentChildAttendancePage() {
                           <Calendar className="h-3 w-3" />
                           {session ? formatDate(session.date) : "—"}
                           <Clock className="h-3 w-3" />
-                          {session?.startTime}
+                          {formatTime12(session?.startTime)}
                         </div>
                         {record.notes && (
                           <p className="text-xs text-muted-foreground">
@@ -133,10 +129,7 @@ export default function ParentChildAttendancePage() {
                         )}
                       </div>
                     </div>
-                    <StatusBadge
-                      status={record.status}
-                      type="attendance"
-                    />
+                    <StatusBadge status={record.status} type="attendance" />
                   </div>
                 );
               })}

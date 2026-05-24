@@ -14,93 +14,186 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockGroups, mockPlayers, mockMeasurements } from "@/lib/mock-data";
-import { getInitials, formatDate } from "@/lib/utils";
-import { Save, CheckCircle2, Ruler, TrendingUp } from "lucide-react";
+import {
+  useGetCoachGroupQuery,
+  useGetCoachGroupsQuery,
+  useSaveCoachMeasurementsMutation,
+} from "@/lib/store/api/coachApi";
+import { getInitials } from "@/lib/utils";
+import { CheckCircle2, Loader2, RefreshCw, Ruler, Save } from "lucide-react";
+
+type MeasurementDraft = {
+  heightCm: string;
+  weightKg: string;
+  sprintSpeed: string;
+  stamina: string;
+  flexibility: string;
+  notes: string;
+};
+
+type MeasurementKey = keyof MeasurementDraft;
+
+const emptyDraft: MeasurementDraft = {
+  heightCm: "",
+  weightKg: "",
+  sprintSpeed: "",
+  stamina: "",
+  flexibility: "",
+  notes: "",
+};
+
+const fields: {
+  key: Exclude<MeasurementKey, "notes">;
+  label: string;
+  placeholder: string;
+}[] = [
+  { key: "heightCm", label: "Height (cm)", placeholder: "152" },
+  { key: "weightKg", label: "Weight (kg)", placeholder: "42" },
+  { key: "sprintSpeed", label: "Sprint (s)", placeholder: "7.0" },
+  { key: "stamina", label: "Stamina", placeholder: "85" },
+  { key: "flexibility", label: "Flexibility", placeholder: "75" },
+];
+
+const toNumber = (value: string) => {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
 
 export default function CoachMeasurementsPage() {
-  const myGroups = mockGroups.filter((g) => ["g1", "g3"].includes(g.id));
-  const [selectedGroup, setSelectedGroup] = useState(myGroups[0]?.id || "");
+  const { data: groups = [], isLoading: loadingGroups, isError: groupsError, refetch } =
+    useGetCoachGroupsQuery();
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const selectedGroup = selectedGroupId || groups[0]?.id || "";
+  const { data: groupDetail, isFetching: loadingPlayers } = useGetCoachGroupQuery(
+    selectedGroup,
+    { skip: !selectedGroup }
+  );
+  const players = groupDetail?.players ?? [];
+  const [measurements, setMeasurements] = useState<Record<string, MeasurementDraft>>({});
   const [saved, setSaved] = useState(false);
-  const players = mockPlayers.filter((p) => p.groupId === selectedGroup);
+  const [saveMeasurements, { isLoading: isSaving, error: saveError }] =
+    useSaveCoachMeasurementsMutation();
 
-  const [measurements, setMeasurements] = useState<
-    Record<
-      string,
-      {
-        height: string;
-        weight: string;
-        sprintSpeed: string;
-        endurance: string;
-        flexibility: string;
-      }
-    >
-  >({});
-
-  const handleChange = (
-    playerId: string,
-    field: string,
-    value: string
-  ) => {
+  const handleChange = (playerId: string, field: MeasurementKey, value: string) => {
     setMeasurements((prev) => ({
       ...prev,
-      [playerId]: { ...prev[playerId], [field]: value },
+      [playerId]: { ...(prev[playerId] ?? emptyDraft), [field]: value },
     }));
     setSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const records = players
+      .map((player) => {
+        const draft = measurements[player.id] ?? emptyDraft;
+        return {
+          playerId: player.id,
+          heightCm: toNumber(draft.heightCm),
+          weightKg: toNumber(draft.weightKg),
+          sprintSpeed: toNumber(draft.sprintSpeed),
+          stamina: toNumber(draft.stamina),
+          flexibility: toNumber(draft.flexibility),
+          notes: draft.notes.trim() || undefined,
+        };
+      })
+      .filter((record) =>
+        [
+          record.heightCm,
+          record.weightKg,
+          record.sprintSpeed,
+          record.stamina,
+          record.flexibility,
+          record.notes,
+        ].some((value) => value !== undefined)
+      );
+
+    if (!records.length) return;
+
+    await saveMeasurements({ records }).unwrap();
     setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setMeasurements({});
+    window.setTimeout(() => setSaved(false), 3000);
   };
 
-  const fields = [
-    { key: "height", label: "Height (cm)", placeholder: "152" },
-    { key: "weight", label: "Weight (kg)", placeholder: "42" },
-    { key: "sprintSpeed", label: "Sprint (s)", placeholder: "7.0" },
-    { key: "endurance", label: "Endurance", placeholder: "8.5" },
-    { key: "flexibility", label: "Flexibility", placeholder: "7.5" },
-  ];
+  const hasDrafts = Object.values(measurements).some((draft) =>
+    Object.values(draft).some((value) => value.trim().length > 0)
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Player Measurements"
-        description="Record monthly physical measurements"
+        description="Record physical measurements for your players"
         breadcrumbs={[
           { label: "Home", href: "/coach/home" },
           { label: "Measurements" },
         ]}
       />
 
-      {/* Group Selector */}
-      <div className="w-64">
+      {groupsError && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-red-300">
+            <span>Could not load your groups.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="mr-1 h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="w-full sm:w-64">
         <Label className="mb-2 block text-sm">Group</Label>
-        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+        <Select
+          value={selectedGroup}
+          onValueChange={(value) => {
+            setSelectedGroupId(value);
+            setMeasurements({});
+            setSaved(false);
+          }}
+          disabled={loadingGroups || groups.length === 0}
+        >
           <SelectTrigger>
-            <SelectValue placeholder="Select group" />
+            <SelectValue
+              placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+            />
           </SelectTrigger>
           <SelectContent>
-            {myGroups.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {g.name}
+            {groups.map((group) => (
+              <SelectItem key={group.id} value={group.id}>
+                {group.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Player Measurement Cards */}
+      {loadingGroups || loadingPlayers ? (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading players...
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!loadingGroups && groups.length === 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No groups assigned yet.
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-4">
         {players.map((player) => {
-          const lastMeasurement = mockMeasurements
-            .filter((m) => m.playerId === player.id)
-            .sort((a, b) => b.date.localeCompare(a.date))[0];
+          const draft = measurements[player.id] ?? emptyDraft;
 
           return (
             <Card key={player.id} className="border-border/50 bg-card">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary/20 text-sm text-primary">
@@ -112,23 +205,20 @@ export default function CoachMeasurementsPage() {
                         {player.fullName}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {player.position} · Age {player.age}
+                        {player.position} - Age {player.age}
                       </p>
                     </div>
                   </div>
-                  {lastMeasurement && (
-                    <div className="text-right text-xs text-muted-foreground">
-                      <p>Last: {formatDate(lastMeasurement.date)}</p>
-                      <p>
-                        {lastMeasurement.height}cm /{" "}
-                        {lastMeasurement.weight}kg
-                      </p>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Ruler className="h-3.5 w-3.5" />
+                    <span>
+                      Latest: {player.height || "--"}cm / {player.weight || "--"}kg
+                    </span>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {fields.map((field) => (
                     <div key={field.key}>
                       <Label className="mb-1 block text-[10px] text-muted-foreground">
@@ -138,18 +228,26 @@ export default function CoachMeasurementsPage() {
                         type="number"
                         step="0.1"
                         placeholder={field.placeholder}
-                        value={
-                          measurements[player.id]?.[
-                            field.key as keyof (typeof measurements)[string]
-                          ] || ""
-                        }
-                        onChange={(e) =>
-                          handleChange(player.id, field.key, e.target.value)
+                        value={draft[field.key]}
+                        onChange={(event) =>
+                          handleChange(player.id, field.key, event.target.value)
                         }
                         className="text-center"
                       />
                     </div>
                   ))}
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label className="mb-1 block text-[10px] text-muted-foreground">
+                      Notes
+                    </Label>
+                    <Input
+                      placeholder="Optional"
+                      value={draft.notes}
+                      onChange={(event) =>
+                        handleChange(player.id, "notes", event.target.value)
+                      }
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -157,26 +255,39 @@ export default function CoachMeasurementsPage() {
         })}
       </div>
 
-      {/* Save */}
-      <div className="sticky bottom-4 flex justify-end">
-        <Button
-          size="lg"
-          onClick={handleSave}
-          className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-        >
-          {saved ? (
-            <>
-              <CheckCircle2 className="mr-2 h-5 w-5" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-5 w-5" />
-              Save Measurements
-            </>
-          )}
-        </Button>
-      </div>
+      {saveError && (
+        <p className="text-sm text-red-400">
+          Could not save measurements. Please check the values.
+        </p>
+      )}
+
+      {players.length > 0 && (
+        <div className="sticky bottom-4 flex justify-end">
+          <Button
+            size="lg"
+            onClick={handleSave}
+            disabled={isSaving || !hasDrafts}
+            className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Saving...
+              </>
+            ) : saved ? (
+              <>
+                <CheckCircle2 className="mr-2 h-5 w-5" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-5 w-5" />
+                Save Measurements
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

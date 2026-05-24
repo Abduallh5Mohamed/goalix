@@ -28,6 +28,22 @@ const envSchema = z.object({
     // Pagination
     DEFAULT_PAGE_LIMIT: z.coerce.number().default(20),
     MAX_PAGE_LIMIT: z.coerce.number().default(100),
+
+    // Account Lockout
+    MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(5),
+    LOCKOUT_DURATION_MINUTES: z.coerce.number().default(15),
+    ADMIN_MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(3),
+    ADMIN_LOCKOUT_DURATION_MINUTES: z.coerce.number().default(30),
+
+    // TOTP 2FA
+    TOTP_ISSUER: z.string().default('GOLX Academy'),
+
+    // Admin Login Rate Limit
+    ADMIN_AUTH_RATE_LIMIT_MAX: z.coerce.number().default(5),
+    ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+
+    // Cookie signing secret
+    COOKIE_SECRET: z.string().min(32).default('change-this-to-a-random-32-char-secret-in-production'),
 });
 
 let env;

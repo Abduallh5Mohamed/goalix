@@ -8,13 +8,30 @@ class RankingsService {
         this.queue = rankingsQueue;
     }
 
+    // ─── Period helpers ─────────────────────────────────────────────────
+    _currentWeekPeriod() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+        const week1 = new Date(d.getFullYear(), 0, 4);
+        const weekNum = 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+    }
+
+    _currentMonthPeriod() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
     // ─── Rankings ───────────────────────────────────────────────────────
     async getWeeklyRankings(academyId, filters) {
-        return this.repo.findRankings('weekly', { ...filters, academyId });
+        const period = filters.period || this._currentWeekPeriod();
+        return this.repo.findRankings(period, { ...filters, academyId });
     }
 
     async getMonthlyRankings(academyId, filters) {
-        return this.repo.findRankings('monthly', { ...filters, academyId });
+        const period = filters.period || this._currentMonthPeriod();
+        return this.repo.findRankingsByMonthPrefix(period, { ...filters, academyId });
     }
 
     async getPlayerRankings(playerId, academyId, pagination) {

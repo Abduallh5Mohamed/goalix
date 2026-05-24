@@ -1,24 +1,59 @@
 "use client";
 
+import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { BarChart } from "@/components/charts/BarChart";
 import { DoughnutChart } from "@/components/charts/DoughnutChart";
-import { mockSubscriptions, mockInvoices, mockRevenueChartData } from "@/lib/mock-data";
-import { formatCurrency } from "@/lib/utils";
-import { FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/utils";
+import { FileDown, RefreshCw } from "lucide-react";
+import { useGetPaymentOverviewQuery } from "@/lib/store/api/adminApi";
 
 export default function PaymentsOverviewPage() {
-  const totalRevenue = mockSubscriptions.filter((s) => s.status === "paid").reduce((sum, s) => sum + s.amount, 0);
-  const pending = mockSubscriptions.filter((s) => s.status === "pending").reduce((sum, s) => sum + s.amount, 0);
-  const overdue = mockSubscriptions.filter((s) => s.status === "overdue").reduce((sum, s) => sum + s.amount, 0);
-  const paidCount = mockSubscriptions.filter((s) => s.status === "paid").length;
-  const pendingCount = mockSubscriptions.filter((s) => s.status === "pending").length;
-  const overdueCount = mockSubscriptions.filter((s) => s.status === "overdue").length;
+  const { data: overview, isLoading, isError, refetch } = useGetPaymentOverviewQuery();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <p className="text-muted-foreground">Failed to load payment overview.</p>
+        <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const items = overview ?? [];
+  const getAmount = (status: string) => {
+    const found = items.find((item) => item.status === status);
+    return found ? parseFloat(found.total_amount) : 0;
+  };
+  const getCount = (status: string) => {
+    const found = items.find((item) => item.status === status);
+    return found ? parseInt(found.count, 10) : 0;
+  };
+
+  const paid = getAmount("paid");
+  const pending = getAmount("pending");
+  const overdue = getAmount("overdue");
+  const paidCount = getCount("paid");
+  const pendingCount = getCount("pending");
+  const overdueCount = getCount("overdue");
+  const totalSubscriptions = items.reduce((sum, item) => sum + parseInt(item.count, 10), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -39,29 +74,39 @@ export default function PaymentsOverviewPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard label="Total Revenue" value={formatCurrency(totalRevenue)} icon="CreditCard" change={8.5} changeLabel="vs last month" />
+        <StatsCard label="Total Paid" value={formatCurrency(paid)} icon="CreditCard" />
         <StatsCard label="Pending" value={formatCurrency(pending)} icon="AlertTriangle" />
-        <StatsCard label="Overdue" value={formatCurrency(overdue)} icon="AlertTriangle" change={-5} changeLabel="vs last month" />
-        <StatsCard label="Active Subscriptions" value={mockSubscriptions.length} icon="Users" />
+        <StatsCard label="Overdue" value={formatCurrency(overdue)} icon="AlertTriangle" />
+        <StatsCard label="Total Subscriptions" value={totalSubscriptions} icon="Users" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="border-border/50 bg-card lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Revenue Trend</CardTitle>
+            <CardTitle className="text-base">Payment Breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
-            <BarChart
-              labels={mockRevenueChartData.map((d) => d.label)}
-              datasets={[
-                {
-                  label: "Revenue (EGP)",
-                  data: mockRevenueChartData.map((d) => d.value),
-                  backgroundColor: "#3ddc84",
-                },
-              ]}
-              height={280}
-            />
+          <CardContent className="space-y-3">
+            {items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No payment data available.</p>
+            ) : (
+              items.map((item) => (
+                <div key={item.status} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div>
+                    <p className="font-medium capitalize">{item.status}</p>
+                    <p className="text-xs text-muted-foreground">{item.count} subscriptions</p>
+                  </div>
+                  <p className="font-bold">{formatCurrency(parseFloat(item.total_amount))}</p>
+                </div>
+              ))
+            )}
+            <div className="flex gap-2 pt-2">
+              <Link href="/admin/payments/subscriptions">
+                <Button variant="outline" size="sm">View Subscriptions</Button>
+              </Link>
+              <Link href="/admin/payments/invoices">
+                <Button variant="outline" size="sm">View Invoices</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
 
@@ -82,27 +127,18 @@ export default function PaymentsOverviewPage() {
         </Card>
       </div>
 
-      {/* Overdue Alerts */}
       {overdueCount > 0 && (
         <Card className="border-red-500/30 bg-red-500/5">
           <CardHeader>
             <CardTitle className="text-base text-red-400">Overdue Payments</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {mockSubscriptions
-              .filter((s) => s.status === "overdue")
-              .map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between rounded-lg border border-red-500/20 bg-card p-3">
-                  <div>
-                    <p className="font-medium">{sub.playerName}</p>
-                    <p className="text-xs text-muted-foreground">Parent: {sub.parentName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-red-400">{formatCurrency(sub.amount)}</p>
-                    <p className="text-xs text-muted-foreground">Due: {sub.endDate}</p>
-                  </div>
-                </div>
-              ))}
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {overdueCount} overdue subscription{overdueCount > 1 ? "s" : ""} totalling {formatCurrency(overdue)}.
+            </p>
+            <Link href="/admin/payments/invoices?status=overdue">
+              <Button variant="destructive" size="sm" className="mt-3">View Overdue Invoices</Button>
+            </Link>
           </CardContent>
         </Card>
       )}

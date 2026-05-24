@@ -20,7 +20,12 @@ class EventBus extends EventEmitter {
      * @param {Object} payload - event data
      */
     publish(event, payload) {
-        logger.debug({ event, payload }, `Event published: ${event}`);
+        // Strip sensitive fields from debug log to prevent secret leakage
+        const safePayload = { ...payload };
+        delete safePayload.resetToken;
+        delete safePayload.password;
+        delete safePayload.token;
+        logger.debug({ event, payload: safePayload }, `Event published: ${event}`);
         this.emit(event, payload);
     }
 

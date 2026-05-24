@@ -25,7 +25,7 @@ class AcademyController {
     getBranches = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
-            const result = await this.service.getBranches(req.user.academyId, { page, limit });
+            const result = await this.service.getBranches(req.user.academyId, { page, limit }, req.user);
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };
@@ -62,7 +62,19 @@ class AcademyController {
     getGroupsByBranch = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
-            const result = await this.service.getGroups(req.params.id, req.user.academyId, { page, limit });
+            const result = await this.service.getGroups(req.params.id, req.user.academyId, { page, limit }, req.user);
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    getGroups = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getAllGroups(req.user.academyId, {
+                branchId: req.query.branchId,
+                page,
+                limit,
+            }, req.user);
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };
@@ -92,7 +104,14 @@ class AcademyController {
     getBirthYears = async (req, res, next) => {
         try {
             const branchId = req.query.branchId || req.params.branchId;
-            const data = await this.service.getBirthYears(branchId, req.user.academyId);
+            const data = await this.service.getBirthYears(branchId, req.user.academyId, req.user);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getBirthYear = async (req, res, next) => {
+        try {
+            const data = await this.service.getBirthYearDetail(req.params.id, req.user.academyId, req.user);
             res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
     };
@@ -101,6 +120,20 @@ class AcademyController {
         try {
             const birthYear = await this.service.createBirthYear(req.body, req.user.academyId);
             res.status(201).json(ApiResponse.success(birthYear));
+        } catch (err) { next(err); }
+    };
+
+    updateBirthYear = async (req, res, next) => {
+        try {
+            const birthYear = await this.service.updateBirthYear(req.params.id, req.body, req.user.academyId);
+            res.json(ApiResponse.success(birthYear));
+        } catch (err) { next(err); }
+    };
+
+    deleteBirthYear = async (req, res, next) => {
+        try {
+            await this.service.deleteBirthYear(req.params.id, req.user.academyId, req.body || {});
+            res.json(ApiResponse.success({ message: 'Birth year deleted' }));
         } catch (err) { next(err); }
     };
 }
