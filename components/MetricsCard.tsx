@@ -8,6 +8,63 @@ interface MetricsCardProps {
   type: 'heartbeat' | 'steps';
 }
 
+function drawHeartbeat(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.strokeStyle = '#22d3ee';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const centerY = height / 2;
+  const amplitude = height * 0.3;
+
+  ctx.beginPath();
+
+  const points = [
+    { x: 0, y: centerY },
+    { x: width * 0.15, y: centerY },
+    { x: width * 0.2, y: centerY - amplitude },
+    { x: width * 0.25, y: centerY + amplitude * 0.5 },
+    { x: width * 0.3, y: centerY - amplitude * 0.3 },
+    { x: width * 0.35, y: centerY },
+    { x: width * 0.55, y: centerY },
+    { x: width * 0.6, y: centerY - amplitude },
+    { x: width * 0.65, y: centerY + amplitude * 0.5 },
+    { x: width * 0.7, y: centerY - amplitude * 0.3 },
+    { x: width * 0.75, y: centerY },
+    { x: width, y: centerY }
+  ];
+
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+
+  ctx.stroke();
+
+  ctx.shadowColor = '#22d3ee';
+  ctx.shadowBlur = 15;
+  ctx.stroke();
+}
+
+function drawStepsGraph(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const bars = 24;
+  const barWidth = width / bars;
+  const data = Array.from({ length: bars }, () => Math.random() * 0.7 + 0.3);
+
+  for (let i = 0; i < bars; i++) {
+    const barHeight = height * data[i];
+    const x = i * barWidth;
+    const y = height - barHeight;
+
+    const gradient = ctx.createLinearGradient(x, y, x, height);
+    gradient.addColorStop(0, '#22d3ee');
+    gradient.addColorStop(1, '#3b82f6');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
+  }
+}
+
 export default function MetricsCard({ title, type }: MetricsCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -31,63 +88,6 @@ export default function MetricsCard({ title, type }: MetricsCardProps) {
       drawStepsGraph(ctx, width, height);
     }
   }, [type]);
-
-  const drawHeartbeat = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const centerY = height / 2;
-    const amplitude = height * 0.3;
-
-    ctx.beginPath();
-
-    const points = [
-      { x: 0, y: centerY },
-      { x: width * 0.15, y: centerY },
-      { x: width * 0.2, y: centerY - amplitude },
-      { x: width * 0.25, y: centerY + amplitude * 0.5 },
-      { x: width * 0.3, y: centerY - amplitude * 0.3 },
-      { x: width * 0.35, y: centerY },
-      { x: width * 0.55, y: centerY },
-      { x: width * 0.6, y: centerY - amplitude },
-      { x: width * 0.65, y: centerY + amplitude * 0.5 },
-      { x: width * 0.7, y: centerY - amplitude * 0.3 },
-      { x: width * 0.75, y: centerY },
-      { x: width, y: centerY }
-    ];
-
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-
-    ctx.stroke();
-
-    ctx.shadowColor = '#22d3ee';
-    ctx.shadowBlur = 15;
-    ctx.stroke();
-  };
-
-  const drawStepsGraph = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    const bars = 24;
-    const barWidth = width / bars;
-    const data = Array.from({ length: bars }, () => Math.random() * 0.7 + 0.3);
-
-    for (let i = 0; i < bars; i++) {
-      const barHeight = height * data[i];
-      const x = i * barWidth;
-      const y = height - barHeight;
-
-      const gradient = ctx.createLinearGradient(x, y, x, height);
-      gradient.addColorStop(0, '#22d3ee');
-      gradient.addColorStop(1, '#3b82f6');
-
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
-    }
-  };
 
   return (
     <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-cyan-400/20 relative overflow-hidden">

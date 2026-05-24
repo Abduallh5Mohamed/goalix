@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -10,15 +10,12 @@ import {
   GraduationCap,
   Users,
   UserCheck,
-  UserPlus,
   ClipboardCheck,
   Trophy,
   CreditCard,
   Bell,
   BarChart3,
   Settings,
-  Calendar,
-  ChevronDown,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -35,14 +32,12 @@ const iconMap: Record<string, React.ElementType> = {
   GraduationCap,
   Users,
   UserCheck,
-  UserPlus,
   ClipboardCheck,
   Trophy,
   CreditCard,
   Bell,
   BarChart3,
   Settings,
-  Calendar,
 };
 
 interface NavItemProps {
@@ -132,20 +127,6 @@ export function AdminSidebar() {
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
-          <Link href="/admin/dashboard" className="flex items-center gap-2.5">
-            <Image
-              src="/Logo.png"
-              alt="GOLX"
-              width={32}
-              height={32}
-              className="rounded-lg"
-              style={{ width: 32, height: 32 }}
-            />
-            {!sidebarCollapsed && (
-              <span className="text-lg font-bold text-foreground">GOLX</span>
-            )}
-          </Link>
         <div
           className={cn(
             "border-b border-white/10",

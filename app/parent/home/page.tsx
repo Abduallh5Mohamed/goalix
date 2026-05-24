@@ -1,30 +1,7 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import {
-  mockPlayers,
-  mockParents,
-  mockSubscriptions,
-  mockNotifications,
-  mockEvaluations,
-  mockSessions,
-  mockRankings,
-} from "@/lib/mock-data";
-import { TREND_CONFIG, PAYMENT_STATUS_CONFIG } from "@/lib/constants";
-import {
-  getInitials,
-  formatDate,
-  formatCurrency,
-  formatTime12,
-} from "@/lib/utils";
-import {
-  Trophy,
-  CreditCard,
-  Calendar,
-  Bell,
-  ChevronRight,
-  TrendingUp,
-  Activity,
   CalendarDays,
   FileText,
   Goal,
@@ -41,55 +18,6 @@ import {
   Zap,
 } from "lucide-react";
 
-<<<<<<< HEAD
-export default function ParentHomePage() {
-  // Parent: Hassan Ibrahim (pa1) -> Child: Youssef Ali (p1)
-  const parent = mockParents.find((p) => p.id === "pa1")!;
-  const child = mockPlayers.find((p) => p.id === "p1")!;
-  const subscription = mockSubscriptions.find((s) => s.playerId === "p1");
-  const ranking = mockRankings.find((r) => r.playerId === "p1");
-  const latestEval = mockEvaluations
-    .filter((e) => e.playerId === "p1")
-    .sort((a, b) => b.date.localeCompare(a.date))[0];
-  const nextSession = mockSessions.find((s) => s.groupId === child.groupId);
-  const parentNotifs = mockNotifications
-    .filter((n) => n.targetRole === "parent" || n.targetRole === "admin")
-    .slice(0, 3);
-
-  const stats = [
-    {
-      label: "Performance",
-      value: child.performanceScore,
-      icon: "Star" as const,
-      change: 3,
-      changeLabel: "vs last month",
-    },
-    {
-      label: "Attendance",
-      value: `${child.attendanceRate}%`,
-      icon: "ClipboardCheck" as const,
-      change: 2,
-      changeLabel: "vs last month",
-    },
-    {
-      label: "Rank",
-      value: `#${child.rankInGroup}`,
-      icon: "Trophy" as const,
-      change: ranking ? ranking.previousRank - ranking.rank : 0,
-      changeLabel: "vs last week",
-    },
-    {
-      label: "Payment Status",
-      value:
-        subscription?.status === "paid"
-          ? "Paid"
-          : subscription?.status || "N/A",
-      icon: "CreditCard" as const,
-      change: 0,
-      changeLabel: subscription ? formatCurrency(subscription.amount) : "",
-    },
-  ];
-=======
 const topStats = [
   { icon: CalendarDays, value: "85%", label: "Attendance" },
   { icon: Users, value: "92%", label: "Participation" },
@@ -100,7 +28,6 @@ const topStats = [
 const skillRows = [
   ["Finishing", "78%"], ["Passing", "72%"], ["Dribbling", "81%"], ["Defending", "65%"], ["Game IQ", "75%"],
 ];
->>>>>>> 47f65c84cb5fd72dbbaba51e952dd8eea274df6b
 
 const alerts = [
   ["Training time change", "Tomorrow, 20 May", "16:00 → 17:30"],
@@ -115,10 +42,10 @@ const sessions = [
 ];
 
 const wellness = [
-  ["Energy", "Good", "82", Zap],
-  ["Sleep", "7.8 h", "68", Moon],
-  ["Mood", "Positive", "92", Smile],
-  ["Soreness", "Low", "45", HeartPulse],
+  { label: "Energy", value: "Good", progress: "82", Icon: Zap },
+  { label: "Sleep", value: "7.8 h", progress: "68", Icon: Moon },
+  { label: "Mood", value: "Positive", progress: "92", Icon: Smile },
+  { label: "Soreness", value: "Low", progress: "45", Icon: HeartPulse },
 ];
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -128,288 +55,6 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 function Ring({ value, label, color = "lime" }: { value: number; label?: string; color?: string }) {
   const stroke = color === "cyan" ? "#00d8ff" : color === "teal" ? "#2ee8c9" : "#b6ff00";
   return (
-<<<<<<< HEAD
-    <div className="space-y-6">
-      <PageHeader
-        title={`Welcome, ${parent.fullName}`}
-        description="Monitor your child's progress"
-        breadcrumbs={[{ label: "Home" }]}
-      />
-
-      {/* Child Card */}
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5">
-        <CardContent className="flex flex-col items-center gap-6 p-6 sm:flex-row">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/20 ring-4 ring-primary/30">
-            <span className="text-3xl font-bold text-primary">
-              {child.fullName.charAt(0)}
-            </span>
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-xl font-bold">{child.fullName}</h2>
-            <p className="text-muted-foreground">
-              {child.groupName} · {child.position} · Age {child.age}
-            </p>
-            <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <Badge className="bg-primary/20 text-primary">
-                Level {child.level}
-              </Badge>
-              <Badge
-                variant="outline"
-                style={{ color: TREND_CONFIG[child.trend]?.color }}
-              >
-                {TREND_CONFIG[child.trend]?.icon}{" "}
-                {TREND_CONFIG[child.trend]?.label}
-              </Badge>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-primary">
-                #{child.rankInGroup}
-              </p>
-              <p className="text-[10px] text-muted-foreground">Rank</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-accent">
-                {child.performanceScore}
-              </p>
-              <p className="text-[10px] text-muted-foreground">Score</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-emerald-400">
-                {child.attendanceRate}%
-              </p>
-              <p className="text-[10px] text-muted-foreground">Attendance</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <StatsCard key={s.label} {...s} />
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Latest Evaluation */}
-          {latestEval && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Latest Evaluation
-                </CardTitle>
-                <Link href="/parent/child/performance">
-                  <Button variant="ghost" size="sm">
-                    Details <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Coach {latestEval.coachName} · {formatDate(latestEval.date)}
-                  </p>
-                  <p className="text-3xl font-bold text-primary">
-                    {latestEval.overallScore}
-                  </p>
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    {
-                      label: "Technical",
-                      value: latestEval.technicalScore,
-                      emoji: "⚽",
-                    },
-                    {
-                      label: "Tactical",
-                      value: latestEval.tacticalScore,
-                      emoji: "🧠",
-                    },
-                    {
-                      label: "Physical",
-                      value: latestEval.physicalScore,
-                      emoji: "💪",
-                    },
-                    {
-                      label: "Mental",
-                      value: latestEval.mentalScore,
-                      emoji: "🎯",
-                    },
-                  ].map((c) => (
-                    <div
-                      key={c.label}
-                      className="rounded-lg bg-muted/20 p-3 text-center"
-                    >
-                      <p className="text-lg">{c.emoji}</p>
-                      <p className="text-lg font-bold">{c.value}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {c.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                {latestEval.notes && (
-                  <p className="mt-3 rounded-lg bg-muted/20 p-3 text-sm text-muted-foreground italic">
-                    &quot;{latestEval.notes}&quot;
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Payment Info */}
-          {subscription && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Payment Status
-                </CardTitle>
-                <Link href="/parent/payments">
-                  <Button variant="ghost" size="sm">
-                    View All <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between rounded-lg bg-muted/20 p-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {subscription.plan} subscription
-                    </p>
-                    <p className="text-xl font-bold">
-                      {formatCurrency(subscription.amount)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(subscription.startDate)} –{" "}
-                      {formatDate(subscription.endDate)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      PAYMENT_STATUS_CONFIG[
-                        subscription.status as keyof typeof PAYMENT_STATUS_CONFIG
-                      ]?.variant || "secondary"
-                    }
-                    className="text-sm"
-                  >
-                    {PAYMENT_STATUS_CONFIG[
-                      subscription.status as keyof typeof PAYMENT_STATUS_CONFIG
-                    ]?.label || subscription.status}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-6">
-          {/* Next Session */}
-          {nextSession && (
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  Next Session
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium">{nextSession.groupName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(nextSession.date)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatTime12(nextSession.startTime)} -{" "}
-                  {formatTime12(nextSession.endTime)}
-                </p>
-                <Badge className="mt-2" variant="secondary">
-                  {nextSession.type}
-                </Badge>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick Links */}
-          <Card className="border-border/50 bg-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              <Link href="/parent/child/performance">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-[10px]">Performance</span>
-                </Button>
-              </Link>
-              <Link href="/parent/child/attendance">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Activity className="h-4 w-4 text-emerald-400" />
-                  <span className="text-[10px]">Attendance</span>
-                </Button>
-              </Link>
-              <Link href="/parent/payments/pay">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <CreditCard className="h-4 w-4 text-amber-400" />
-                  <span className="text-[10px]">Pay Now</span>
-                </Button>
-              </Link>
-              <Link href="/parent/notifications">
-                <Button
-                  variant="outline"
-                  className="h-16 w-full flex-col gap-1"
-                >
-                  <Bell className="h-4 w-4 text-purple-400" />
-                  <span className="text-[10px]">Notifications</span>
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Notifications Preview */}
-          <Card className="border-border/50 bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-base font-semibold">
-                Notifications
-              </CardTitle>
-              <Link href="/parent/notifications">
-                <Button variant="ghost" size="sm">
-                  All <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {parentNotifs.map((n) => (
-                <div
-                  key={n.id}
-                  className={`rounded-lg p-3 text-sm ${
-                    n.read
-                      ? "bg-muted/10"
-                      : "bg-muted/30 border-l-2 border-primary"
-                  }`}
-                >
-                  <p className="font-medium">{n.title}</p>
-                  <p className="text-xs text-muted-foreground">{n.message}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-=======
     <div className="relative mx-auto grid h-28 w-28 place-items-center">
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
@@ -474,7 +119,7 @@ export default function ParentHomePage() {
           <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="font-semibold">Skill Development</h2><button className="rounded-xl border border-[#2a4460] px-3 py-1 text-xs">This Season</button></div>{skillRows.map(([l,v])=><div key={l} className="mb-4 grid grid-cols-[90px_1fr_45px] items-center gap-3 text-sm"><span>{l}</span><div className="h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-lime-300" style={{width:v}} /></div><span className="text-lime-300">{v}</span></div>)}<div className="rounded-xl border border-[#2a4460] p-3"><div className="flex justify-between"><span>Overall Progress</span><strong>76%</strong></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full w-[76%] rounded-full bg-lime-300" /></div></div></Panel>
           <Panel className="p-5"><h2 className="mb-4 font-semibold">Performance Heatmap</h2><div className="h-[210px]"><Heatmap /></div><p className="mt-3 text-sm text-slate-400">Attacking Direction →</p></Panel>
           <Panel className="p-5"><h2 className="font-semibold">Coach Notes</h2><div className="mt-5 flex gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-orange-300/20">CA</div><div><p className="font-semibold">Coach Alex</p><p className="text-xs text-slate-400">19 May 2025</p></div></div><p className="mt-4 text-sm leading-6 text-slate-300">Noah has shown great improvement in movement off the ball and finishing in training.</p><div className="mt-4 flex gap-2"><span className="rounded-full bg-lime-300/15 px-3 py-1 text-xs text-lime-300">Hard Worker</span><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs text-cyan-300">Team Player</span></div></Panel>
-          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="font-semibold">Wellness Summary</h2><button className="text-xs text-slate-400">This Week</button></div>{wellness.map(([l,v,p,Icon])=><div key={String(l)} className="mb-4 grid grid-cols-[24px_1fr_50px] items-center gap-3 text-sm"><Icon className="text-cyan-300" size={20}/><div><div className="flex justify-between"><span>{l}</span></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-lime-300" style={{width:`${p}%`}} /></div></div><span className="text-right text-lime-300">{v}</span></div>)}</Panel>
+          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="font-semibold">Wellness Summary</h2><button className="text-xs text-slate-400">This Week</button></div>{wellness.map(({ label, value, progress, Icon })=><div key={label} className="mb-4 grid grid-cols-[24px_1fr_50px] items-center gap-3 text-sm"><Icon className="text-cyan-300" size={20}/><div><div className="flex justify-between"><span>{label}</span></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-lime-300" style={{width:`${progress}%`}} /></div></div><span className="text-right text-lime-300">{value}</span></div>)}</Panel>
         </div>
       </div>
 
@@ -490,7 +135,6 @@ export default function ParentHomePage() {
         <Panel className="p-5"><h2 className="font-semibold">Documents & Forms</h2>{["Medical Consent Form|Valid","Code of Conduct|Accepted","Photo & Video Consent|Valid"].map((d)=><div key={d} className="mt-4 flex justify-between border-b border-[#2a4460] pb-3"><span><FileText className="mr-2 inline text-cyan-300" size={18}/>{d.split("|")[0]}</span><span className="text-lime-300">{d.split("|")[1]} ✓</span></div>)}</Panel>
         <Panel className="p-5"><h2 className="font-semibold">Payments & Subscription</h2><p className="mt-5 text-slate-400">Current Plan</p><p className="text-lg font-semibold">GOALIX Elite Annual <span className="float-right rounded-lg bg-lime-300/15 px-3 py-1 text-sm text-lime-300">Active</span></p><div className="mt-5 rounded-xl border border-[#2a4460] p-4"><p className="text-slate-400">Next Payment</p><strong>30 Nov 2025</strong><p>£299.00 <span className="float-right">Auto-pay ON ✓</span></p></div></Panel>
         <Panel className="p-5"><h2 className="font-semibold">Family Access</h2>{["Sarah Williams|Mother • Primary Contact|Full Access","Mark Williams|Father|View Access"].map((f)=><div key={f} className="mt-4 flex items-center gap-3"><User className="text-slate-300"/><span className="flex-1">{f.split("|")[0]}<br/><small className="text-slate-400">{f.split("|")[1]}</small></span><span className="rounded-lg border border-lime-300/35 px-3 py-1 text-xs text-lime-300">{f.split("|")[2]}</span></div>)}<button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#2a4460] py-3"><Users size={18}/> Invite Family Member</button></Panel>
->>>>>>> 47f65c84cb5fd72dbbaba51e952dd8eea274df6b
       </div>
     </div>
   );

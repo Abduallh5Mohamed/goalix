@@ -10,11 +10,6 @@ import { cn } from "@/lib/utils";
 import { Baby, Loader2, UserCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { UserRole } from "@/lib/types";
-import { ROLE_LABELS } from "@/lib/constants";
-import { Shield, Dumbbell, UserCheck, Baby, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { GoalixLogo } from "@/components/shared/GoalixLogo";
 
 type LoginRole = "player" | "parent";
 type LoginStep = "role" | "credentials";

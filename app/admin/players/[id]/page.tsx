@@ -16,6 +16,8 @@ import {
 import { getInitials, formatDate } from "@/lib/utils";
 import { Edit, MapPin, Calendar, Activity, Shield } from "lucide-react";
 
+const CURRENT_TIME = Date.now();
+
 export default function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: player, isLoading, error } = useGetPlayerByIdQuery(id);
@@ -32,7 +34,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
   }
 
   const age = player.date_of_birth
-    ? Math.floor((Date.now() - new Date(player.date_of_birth).getTime()) / 31557600000)
+    ? Math.floor((CURRENT_TIME - new Date(player.date_of_birth).getTime()) / 31557600000)
     : null;
 
   return (
