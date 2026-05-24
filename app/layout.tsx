@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GOLX Sports Academy",
+  title: "Goalix Sports Academy",
   description: "Elite sports academy management platform — manage players, coaches, attendance, rankings, and payments.",
 };
 
