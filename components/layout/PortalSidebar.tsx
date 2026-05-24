@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DashboardBrand } from "@/components/layout/DashboardBrand";
 import { getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -153,13 +154,12 @@ export function PortalSidebar({ role }: PortalSidebarProps) {
   const sidebar = (
     <div className="flex h-full flex-col bg-card border-r border-border/50">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4">
-        <Link href={`/${role}/home`} className="flex items-center gap-2">
-          <span className="text-xl font-bold font-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            GOLX
-          </span>
-          <span className="text-xs text-muted-foreground">{roleTitles[role]}</span>
-        </Link>
+      <div className="flex items-start justify-between gap-3 px-4 py-4">
+        <DashboardBrand
+          href={`/${role}/home`}
+          subtitle={roleTitles[role]}
+          className="flex-1"
+        />
         <Button
           variant="ghost"
           size="icon-sm"
