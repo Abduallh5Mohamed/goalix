@@ -202,7 +202,7 @@ export default function ParentPayNowPage() {
                 </div>
                 <div className="rounded-lg bg-muted/20 p-4">
                   <p className="text-xs text-muted-foreground">Account Name</p>
-                  <p className="font-medium">GOLX Sports Academy</p>
+                  <p className="font-medium">Goalix Sports Academy</p>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   After transferring, please upload the receipt or contact us for

@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Save, Building } from "lucide-react";
 
 export default function AcademyProfilePage() {
-  const [name, setName] = useState("GOLX Sports Academy");
-  const [email, setEmail] = useState("info@golxacademy.com");
+  const [name, setName] = useState("Goalix Sports Academy");
+  const [email, setEmail] = useState("info@goalixacademy.com");
   const [phone, setPhone] = useState("+20 100 123 4567");
   const [address, setAddress] = useState("Cairo, Egypt");
 

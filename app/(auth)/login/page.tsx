@@ -11,7 +11,7 @@ import type { UserRole } from "@/lib/types";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Shield, Dumbbell, UserCheck, Baby, Loader2 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import { GoalixLogo } from "@/components/shared/GoalixLogo";
 
 const roleIcons: Record<UserRole, React.ReactNode> = {
   admin: <Shield className="h-5 w-5" />,
@@ -40,7 +40,7 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
-      await login(email || "demo@golx.com", password || "demo", selectedRole);
+      await login(email || "demo@goalix.com", password || "demo", selectedRole);
     } catch {
       setError("Invalid credentials. Please try again.");
     } finally {
@@ -51,18 +51,9 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       {/* Logo */}
-      <div className="flex flex-col items-center gap-3">
-        <Image
-          src="/Logo.png"
-          alt="GOLX Sports Academy"
-          width={64}
-          height={64}
-          className="rounded-xl"
-        />
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">GOLX Sports Academy</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your account</p>
-        </div>
+      <div className="flex flex-col items-center gap-3.5">
+        <GoalixLogo size="lg" />
+        <p className="text-sm text-muted-foreground">Sign in to your account</p>
       </div>
 
       <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
@@ -101,7 +92,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="demo@golx.com"
+                placeholder="demo@goalix.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
