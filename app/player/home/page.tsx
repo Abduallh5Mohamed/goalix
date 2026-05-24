@@ -16,7 +16,7 @@ import {
   mockNotifications,
 } from "@/lib/mock-data";
 import { TREND_CONFIG, PLAYER_LEVELS } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime12 } from "@/lib/utils";
 import {
   Trophy,
   TrendingUp,
@@ -37,7 +37,7 @@ export default function PlayerHomePage() {
   const measurements = mockMeasurements.filter((m) => m.playerId === "p1");
   const nextSession = mockSessions.find((s) => s.groupId === player.groupId);
   const playerNotifs = mockNotifications.filter(
-    (n) => n.targetRole === "player"
+    (n) => n.targetRole === "player",
   );
 
   const latestEval = evaluations[evaluations.length - 1];
@@ -48,7 +48,9 @@ export default function PlayerHomePage() {
       label: "Rank in Group",
       value: `#${player.rankInGroup}`,
       icon: "Trophy" as const,
-      change: latestRanking ? latestRanking.previousRank - latestRanking.rank : 0,
+      change: latestRanking
+        ? latestRanking.previousRank - latestRanking.rank
+        : 0,
       changeLabel: "vs last week",
     },
     {
@@ -77,7 +79,9 @@ export default function PlayerHomePage() {
   // Performance trend data
   const perfData = measurements.map((m) => ({
     label: formatDate(m.date).split(",")[0],
-    value: (((m.sprintSpeed ?? 0) + (m.endurance ?? 0) + (m.flexibility ?? 0)) / 3) * 10,
+    value:
+      (((m.sprintSpeed ?? 0) + (m.endurance ?? 0) + (m.flexibility ?? 0)) / 3) *
+      10,
   }));
 
   return (
@@ -125,10 +129,26 @@ export default function PlayerHomePage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   {[
-                    { label: "Technical", value: latestEval.technicalScore, emoji: "⚽" },
-                    { label: "Tactical", value: latestEval.tacticalScore, emoji: "🧠" },
-                    { label: "Physical", value: latestEval.physicalScore, emoji: "💪" },
-                    { label: "Mental", value: latestEval.mentalScore, emoji: "🎯" },
+                    {
+                      label: "Technical",
+                      value: latestEval.technicalScore,
+                      emoji: "⚽",
+                    },
+                    {
+                      label: "Tactical",
+                      value: latestEval.tacticalScore,
+                      emoji: "🧠",
+                    },
+                    {
+                      label: "Physical",
+                      value: latestEval.physicalScore,
+                      emoji: "💪",
+                    },
+                    {
+                      label: "Mental",
+                      value: latestEval.mentalScore,
+                      emoji: "🎯",
+                    },
                   ].map((cat) => (
                     <div
                       key={cat.label}
@@ -164,7 +184,13 @@ export default function PlayerHomePage() {
               <CardContent>
                 <LineChart
                   labels={perfData.map((d) => d.label)}
-                  datasets={[{ label: "Score", data: perfData.map((d) => d.value), color: "#22d3ee" }]}
+                  datasets={[
+                    {
+                      label: "Score",
+                      data: perfData.map((d) => d.value),
+                      color: "#22d3ee",
+                    },
+                  ]}
                   height={250}
                 />
               </CardContent>
@@ -223,8 +249,9 @@ export default function PlayerHomePage() {
               <CardContent>
                 <p className="font-medium">{nextSession.groupName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(nextSession.date)} · {nextSession.startTime} -{" "}
-                  {nextSession.endTime}
+                  {formatDate(nextSession.date)} ·{" "}
+                  {formatTime12(nextSession.startTime)} -{" "}
+                  {formatTime12(nextSession.endTime)}
                 </p>
                 <Badge className="mt-2" variant="secondary">
                   {nextSession.type}

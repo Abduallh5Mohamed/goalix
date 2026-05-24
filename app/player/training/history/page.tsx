@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { mockSessions, mockPlayers } from "@/lib/mock-data";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime12 } from "@/lib/utils";
 import { Calendar, Clock, Dumbbell } from "lucide-react";
 
 export default function PlayerTrainingHistoryPage() {
@@ -56,7 +56,8 @@ export default function PlayerTrainingHistoryPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      {session.startTime} - {session.endTime}
+                      {formatTime12(session.startTime)} -{" "}
+                      {formatTime12(session.endTime)}
                     </span>
                   </div>
                   {session.notes && (

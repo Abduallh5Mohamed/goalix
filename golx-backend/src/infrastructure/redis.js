@@ -3,24 +3,30 @@ const env = require('../config/env');
 const logger = require('../shared/logger');
 
 const redis = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: 1,
     retryStrategy(times) {
-        if (times > 10) return null;
-        return Math.min(times * 200, 2000);
+        if (times > 3) return null; // stop retrying after 3 attempts
+        return Math.min(times * 200, 1000);
     },
     lazyConnect: true,
+    enableOfflineQueue: false,
 });
 
 redis.on('connect', () => logger.info('✅ Redis connected'));
-redis.on('error', (err) => logger.error({ err }, '❌ Redis error'));
+redis.on('error', (err) => logger.warn({ err }, '⚠️  Redis unavailable — caching/locking disabled'));
+
+let redisAvailable = false;
 
 const connectRedis = async () => {
     try {
         await redis.connect();
+        redisAvailable = true;
     } catch (err) {
-        logger.fatal({ err }, '❌ Redis connection failed');
-        process.exit(1);
+        logger.warn({ err }, '⚠️  Redis connection failed — running without Redis');
+        redisAvailable = false;
     }
 };
 
-module.exports = { redis, connectRedis };
+const isRedisAvailable = () => redisAvailable;
+
+module.exports = { redis, connectRedis, isRedisAvailable };

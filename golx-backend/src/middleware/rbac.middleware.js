@@ -1,67 +1,38 @@
+const db = require('../infrastructure/database');
 const { ForbiddenError } = require('../shared/errors');
+const {
+    hasPermission,
+    legacyPermissions,
+} = require('../shared/authorization');
 
-/**
- * Role-based permissions map (RBAC).
- */
-const permissions = {
-    admin: ['*'],
-    coach: [
-        'players:read',
-        'attendance:read', 'attendance:write',
-        'evaluations:read', 'evaluations:write',
-        'measurements:read', 'measurements:write',
-        'schedule:read', 'schedule:write',
-        'sessions:read', 'sessions:write',
-        'rankings:read',
-        'groups:read',
-        'coaches:read',
-        'nutrition:read', 'nutrition:write',
-        'matches:read', 'matches:write',
-    ],
-    player: [
-        'profile:read',
-        'progress:read',
-        'training:read',
-        'attendance:read',
-        'rankings:read',
-        'measurements:read',
-        'nutrition:read',
-        'evaluations:read',
-    ],
-    parent: [
-        'child:read',
-        'payments:read',
-        'notifications:read',
-        'attendance:read',
-        'measurements:read',
-        'nutrition:read',
-        'schedule:read',
-    ],
-};
-
-/**
- * RBAC middleware — checks if user has the required permission.
- * @param {string} required - permission string e.g. 'players:read'
- */
-const rbac = (required) => (req, _res, next) => {
+const rbac = (required) => async (req, _res, next) => {
     if (!req.user) {
         return next(new ForbiddenError('Authentication required'));
     }
 
-    const userPerms = permissions[req.user.role] || [];
-
-    // '*' as required means "any authenticated user" (gateway is authMiddleware)
-    if (required === '*' || userPerms.includes('*') || userPerms.includes(required)) {
-        return next();
+    try {
+        if (await hasPermission(req.user, required, db)) return next();
+        return next(new ForbiddenError('Insufficient permissions'));
+    } catch (err) {
+        return next(err);
     }
-
-    return next(new ForbiddenError('Insufficient permissions'));
 };
 
-/**
- * Restrict to specific roles only.
- * @param  {...string} roles - allowed roles
- */
+const rbacAny = (...requiredPermissions) => async (req, _res, next) => {
+    if (!req.user) {
+        return next(new ForbiddenError('Authentication required'));
+    }
+
+    try {
+        for (const permission of requiredPermissions) {
+            if (await hasPermission(req.user, permission, db)) return next();
+        }
+        return next(new ForbiddenError('Insufficient permissions'));
+    } catch (err) {
+        return next(err);
+    }
+};
+
 const restrictTo = (...roles) => (req, _res, next) => {
     if (!req.user) {
         return next(new ForbiddenError('Authentication required'));
@@ -69,7 +40,7 @@ const restrictTo = (...roles) => (req, _res, next) => {
     if (!roles.includes(req.user.role)) {
         return next(new ForbiddenError('Insufficient permissions'));
     }
-    next();
+    return next();
 };
 
-module.exports = { rbac, restrictTo, permissions };
+module.exports = { rbac, rbacAny, restrictTo, permissions: legacyPermissions };

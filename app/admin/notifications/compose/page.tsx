@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -15,13 +17,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Send, Users } from "lucide-react";
+import { useSendNotificationMutation } from "@/lib/store/api/adminApi";
 
 export default function ComposeNotificationPage() {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [targetRole, setTargetRole] = useState("");
-  const [channel, setChannel] = useState("");
+  const [targetRole, setTargetRole] = useState("all");
   const [type, setType] = useState("info");
+  const [sendNotification, { isLoading, isError }] = useSendNotificationMutation();
+
+  const handleSend = async () => {
+    if (!title.trim() || !message.trim()) return;
+    await sendNotification({
+      title: title.trim(),
+      body: message.trim(),
+      type,
+      ...(targetRole !== "all" ? { targetRole } : {}),
+    }).unwrap();
+    router.push("/admin/notifications");
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -43,23 +58,24 @@ export default function ComposeNotificationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label htmlFor="notification-title">Title</Label>
                 <Input
+                  id="notification-title"
                   placeholder="Notification title..."
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Message</Label>
-                <textarea
-                  className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <Label htmlFor="notification-message">Message</Label>
+                <Textarea
+                  id="notification-message"
                   placeholder="Write your message..."
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(event) => setMessage(event.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Target Audience</Label>
                   <Select value={targetRole} onValueChange={setTargetRole}>
@@ -71,19 +87,6 @@ export default function ComposeNotificationPage() {
                       <SelectItem value="coach">Coaches</SelectItem>
                       <SelectItem value="player">Players</SelectItem>
                       <SelectItem value="parent">Parents</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Channel</Label>
-                  <Select value={channel} onValueChange={setChannel}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="in_app">In-App</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -102,46 +105,41 @@ export default function ComposeNotificationPage() {
                   </Select>
                 </div>
               </div>
-              <Button className="w-full gap-1.5" disabled={!title || !message}>
+              {isError && <p className="text-sm text-red-400">Failed to send notification. Please try again.</p>}
+              <Button
+                className="w-full gap-1.5"
+                disabled={!title.trim() || !message.trim() || isLoading}
+                onClick={handleSend}
+              >
                 <Send className="h-4 w-4" />
-                Send Notification
+                {isLoading ? "Sending..." : "Send Notification"}
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-border/50 bg-card h-fit">
+        <Card className="h-fit border-border/50 bg-card">
           <CardHeader>
             <CardTitle className="text-base">Preview</CardTitle>
           </CardHeader>
           <CardContent>
             {title || message ? (
-              <div className="rounded-lg border border-border/50 p-4 space-y-2">
-                <h4 className="font-semibold text-sm">{title || "Untitled"}</h4>
+              <div className="space-y-2 rounded-lg border border-border/50 p-4">
+                <h4 className="text-sm font-semibold">{title || "Untitled"}</h4>
                 <p className="text-xs text-muted-foreground">{message || "No message"}</p>
-                <div className="flex gap-2 pt-2">
-                  {targetRole && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {targetRole !== "all" && (
                     <Badge variant="secondary" className="text-[10px] capitalize">
                       <Users className="mr-1 h-3 w-3" />
                       {targetRole}
                     </Badge>
                   )}
-                  {channel && (
-                    <Badge variant="outline" className="text-[10px]">{channel}</Badge>
-                  )}
-                  <Badge
-                    variant={
-                      type === "warning" ? "warning" : type === "alert" ? "destructive" : type === "success" ? "success" : "info"
-                    }
-                    className="text-[10px]"
-                  >
-                    {type}
-                  </Badge>
+                  <Badge variant="outline" className="text-[10px] capitalize">{type}</Badge>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Start composing to see preview
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Start composing to see preview.
               </p>
             )}
           </CardContent>

@@ -4,6 +4,7 @@ const uuidParam = z.object({ id: z.string().uuid() });
 
 const createSessionSchema = z.object({
     groupId: z.string().uuid(),
+    coachId: z.string().uuid().optional(),
     sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
     endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),

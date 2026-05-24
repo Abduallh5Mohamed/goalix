@@ -25,7 +25,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-center gap-3">
-        <Image src="/Logo.png" alt="GOLX" width={64} height={64} className="rounded-xl" />
+        <Image
+          src="/Logo.png"
+          alt="GOLX"
+          width={64}
+          height={64}
+          className="rounded-xl"
+          style={{ width: "auto", height: "auto" }}
+        />
       </div>
 
       <Card className="border-border/50 bg-card/80 backdrop-blur-sm">

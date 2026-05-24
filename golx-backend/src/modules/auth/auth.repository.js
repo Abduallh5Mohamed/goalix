@@ -19,14 +19,59 @@ class AuthRepository extends BaseRepository {
             .first();
     }
 
+    async findByUsername(username) {
+        return this.db('auth_users')
+            .where({ username })
+            .whereNull('deleted_at')
+            .first();
+    }
+
     async findByEmailOrPhone(email, phone) {
+        return this.findByEmailPhoneOrUsername(email, phone);
+    }
+
+    async findByEmailPhoneOrUsername(email, phone, username) {
         return this.db('auth_users')
             .whereNull('deleted_at')
             .where(function () {
-                if (email) this.where('email', email);
-                if (phone) this.orWhere('phone', phone);
+                let hasCondition = false;
+                const addCondition = (column, value) => {
+                    if (!value) return;
+                    if (hasCondition) this.orWhere(column, value);
+                    else this.where(column, value);
+                    hasCondition = true;
+                };
+                addCondition('email', email);
+                addCondition('phone', phone);
+                addCondition('username', username);
             })
             .first();
+    }
+
+    async findPlayerById(playerId) {
+        return this.db('player_profiles')
+            .where({ id: playerId })
+            .whereNull('deleted_at')
+            .first();
+    }
+
+    async findCoachProfileByUserId(userId) {
+        return this.db('coach_profiles')
+            .where({ user_id: userId })
+            .whereNull('deleted_at')
+            .first();
+    }
+
+    async findActiveAdminAccount(userId) {
+        try {
+            return await this.db('admin_accounts')
+                .where({ user_id: userId, is_active: true })
+                .whereNull('deleted_at')
+                .first();
+        } catch (err) {
+            if (err.code === '42P01') return null;
+            throw err;
+        }
     }
 
     async updateLastLogin(userId) {
@@ -42,6 +87,23 @@ class AuthRepository extends BaseRepository {
         return row;
     }
 
+    async findActiveAccessSession(userId, accessJti) {
+        return this.db('auth_refresh_tokens')
+            .where({
+                user_id: userId,
+                access_jti: accessJti,
+                is_revoked: false,
+            })
+            .where('expires_at', '>', new Date())
+            .first();
+    }
+
+    async touchAccessSession(id) {
+        return this.db('auth_refresh_tokens')
+            .where({ id, is_revoked: false })
+            .update({ last_seen_at: new Date() });
+    }
+
     async findRefreshTokenByHash(tokenHash) {
         return this.db('auth_refresh_tokens')
             .where({ token_hash: tokenHash, is_revoked: false })
@@ -52,13 +114,20 @@ class AuthRepository extends BaseRepository {
     async revokeRefreshToken(id) {
         return this.db('auth_refresh_tokens')
             .where({ id })
-            .update({ is_revoked: true });
+            .update({ is_revoked: true, revoke_reason: 'rotation' });
+    }
+
+    async revokeAccessSessionByJti(userId, accessJti, reason = 'logout') {
+        if (!accessJti) return 0;
+        return this.db('auth_refresh_tokens')
+            .where({ user_id: userId, access_jti: accessJti, is_revoked: false })
+            .update({ is_revoked: true, revoke_reason: reason });
     }
 
     async revokeAllUserTokens(userId) {
         return this.db('auth_refresh_tokens')
             .where({ user_id: userId, is_revoked: false })
-            .update({ is_revoked: true });
+            .update({ is_revoked: true, revoke_reason: 'logout_all' });
     }
 
     // --- Password reset tokens (owned by auth module) ---
@@ -86,6 +155,105 @@ class AuthRepository extends BaseRepository {
     async createAuditLog(data) {
         const [row] = await this.db('audit_logs').insert(data).returning('*');
         return row;
+    }
+
+    // --- Account Lockout ---
+
+    async incrementFailedAttempts(userId) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({
+                failed_login_attempts: this.db.raw('COALESCE(failed_login_attempts, 0) + 1'),
+                last_failed_login_at: new Date(),
+            });
+    }
+
+    async lockAccount(userId, lockedUntil) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({ locked_until: lockedUntil });
+    }
+
+    async resetFailedAttempts(userId) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({
+                failed_login_attempts: 0,
+                locked_until: null,
+                last_failed_login_at: null,
+            });
+    }
+
+    // --- TOTP 2FA ---
+
+    async setTotpSecret(userId, secret) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({ totp_secret: secret });
+    }
+
+    async enableTotp(userId) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({
+                totp_enabled: true,
+                totp_verified_at: new Date(),
+            });
+    }
+
+    async disableTotp(userId) {
+        return this.db('auth_users')
+            .where({ id: userId })
+            .update({
+                totp_enabled: false,
+                totp_secret: null,
+                totp_verified_at: null,
+            });
+    }
+
+    async createBackupCodes(userId, codeHashes) {
+        const rows = codeHashes.map((hash) => ({
+            user_id: userId,
+            code_hash: hash,
+            is_used: false,
+        }));
+        return this.db('auth_totp_backup_codes').insert(rows).returning('*');
+    }
+
+    async findUnusedBackupCode(userId, codeHash) {
+        return this.db('auth_totp_backup_codes')
+            .where({ user_id: userId, code_hash: codeHash, is_used: false })
+            .first();
+    }
+
+    async markBackupCodeUsed(id) {
+        return this.db('auth_totp_backup_codes')
+            .where({ id })
+            .update({ is_used: true, used_at: new Date() });
+    }
+
+    async deleteBackupCodes(userId) {
+        return this.db('auth_totp_backup_codes')
+            .where({ user_id: userId })
+            .del();
+    }
+
+    // --- Pending Registrations ---
+
+    async createPendingRegistration(data) {
+        const [row] = await this.db('pending_registrations').insert(data).returning('*');
+        return row;
+    }
+
+    async findLatestPendingByEmail(email) {
+        return this.db('pending_registrations')
+            .where({ email })
+            .orderBy('created_at', 'desc')
+            .first();
+    }
+
+    async findPendingById(id) {
+        return this.db('pending_registrations').where({ id }).first();
     }
 }
 

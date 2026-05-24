@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { ElementType } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { mockGroups, mockPlayers, mockSessions } from "@/lib/mock-data";
-import { getInitials } from "@/lib/utils";
+import {
+  useGetCoachGroupQuery,
+  useGetCoachSessionsQuery,
+  useMarkCoachAttendanceMutation,
+} from "@/lib/store/api/coachApi";
+import { formatDate, formatTime12, getInitials } from "@/lib/utils";
 import {
   Check,
   X,
@@ -23,13 +28,15 @@ import {
   AlertCircle,
   Save,
   CheckCircle2,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
 const statusConfig: Record<
   AttendanceStatus,
-  { label: string; color: string; icon: React.ElementType }
+  { label: string; color: string; icon: ElementType }
 > = {
   present: { label: "Present", color: "bg-emerald-500", icon: Check },
   absent: { label: "Absent", color: "bg-red-500", icon: X },
@@ -38,22 +45,43 @@ const statusConfig: Record<
 };
 
 export default function CoachMarkAttendancePage() {
-  const myGroups = mockGroups.filter((g) => ["g1", "g3"].includes(g.id));
-  const [selectedGroup, setSelectedGroup] = useState(myGroups[0]?.id || "");
-  const [saved, setSaved] = useState(false);
-  const players = mockPlayers.filter((p) => p.groupId === selectedGroup);
+  const {
+    data: sessionsData,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetCoachSessionsQuery({ limit: 100 });
+  const sessions = useMemo(
+    () =>
+      [...(sessionsData?.data ?? [])].sort((a, b) =>
+        b.date.localeCompare(a.date),
+      ),
+    [sessionsData?.data],
+  );
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const selectedSession = selectedSessionId || sessions[0]?.id || "";
+  const currentSession = sessions.find(
+    (session) => session.id === selectedSession,
+  );
+  const { data: groupDetail, isFetching: loadingPlayers } =
+    useGetCoachGroupQuery(currentSession?.groupId ?? "", {
+      skip: !currentSession?.groupId,
+    });
+  const players = groupDetail?.players ?? [];
   const [attendance, setAttendance] = useState<
     Record<string, { status: AttendanceStatus; notes: string }>
-  >(() =>
-    Object.fromEntries(
-      players.map((p) => [p.id, { status: "present" as AttendanceStatus, notes: "" }])
-    )
-  );
+  >({});
+  const [saved, setSaved] = useState(false);
+  const [markAttendance, { isLoading: isSaving, error: saveError }] =
+    useMarkCoachAttendanceMutation();
 
   const handleStatusChange = (playerId: string, status: AttendanceStatus) => {
     setAttendance((prev) => ({
       ...prev,
-      [playerId]: { ...prev[playerId], status, notes: prev[playerId]?.notes || "" },
+      [playerId]: {
+        status,
+        notes: prev[playerId]?.notes || "",
+      },
     }));
     setSaved(false);
   };
@@ -61,39 +89,59 @@ export default function CoachMarkAttendancePage() {
   const handleNotesChange = (playerId: string, notes: string) => {
     setAttendance((prev) => ({
       ...prev,
-      [playerId]: { ...prev[playerId], notes },
+      [playerId]: {
+        status: prev[playerId]?.status || "present",
+        notes,
+      },
     }));
-  };
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const handleMarkAll = (status: AttendanceStatus) => {
-    const newAttendance: Record<string, { status: AttendanceStatus; notes: string }> = {};
-    players.forEach((p) => {
-      newAttendance[p.id] = { status, notes: attendance[p.id]?.notes || "" };
-    });
-    setAttendance(newAttendance);
     setSaved(false);
   };
 
-  const counts = {
-    present: Object.values(attendance).filter((a) => a.status === "present")
-      .length,
-    absent: Object.values(attendance).filter((a) => a.status === "absent")
-      .length,
-    late: Object.values(attendance).filter((a) => a.status === "late").length,
-    excused: Object.values(attendance).filter((a) => a.status === "excused")
-      .length,
+  const handleSave = async () => {
+    if (!selectedSession || players.length === 0) return;
+
+    await markAttendance({
+      sessionId: selectedSession,
+      records: players.map((player) => ({
+        playerId: player.id,
+        status: attendance[player.id]?.status || "present",
+        notes: attendance[player.id]?.notes || undefined,
+      })),
+    }).unwrap();
+
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 3000);
   };
+
+  const handleMarkAll = (status: AttendanceStatus) => {
+    setAttendance(
+      Object.fromEntries(
+        players.map((player) => [
+          player.id,
+          { status, notes: attendance[player.id]?.notes || "" },
+        ]),
+      ),
+    );
+    setSaved(false);
+  };
+
+  const counts = players.reduce(
+    (acc, player) => {
+      const status = attendance[player.id]?.status || "present";
+      acc[status] += 1;
+      return acc;
+    },
+    { present: 0, absent: 0, late: 0, excused: 0 } as Record<
+      AttendanceStatus,
+      number
+    >,
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Mark Attendance"
-        description="Record today's session attendance"
+        description="Record session attendance from the backend schedule"
         breadcrumbs={[
           { label: "Home", href: "/coach/home" },
           { label: "Attendance", href: "/coach/attendance/history" },
@@ -101,34 +149,60 @@ export default function CoachMarkAttendancePage() {
         ]}
       />
 
-      {/* Group Selector */}
+      {isError && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-red-300">
+            <span>Could not load coach sessions.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="mr-1 h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedGroup} onValueChange={(v) => {
-          setSelectedGroup(v);
-          const newPlayers = mockPlayers.filter((p) => p.groupId === v);
-          setAttendance(
-            Object.fromEntries(
-              newPlayers.map((p) => [p.id, { status: "present" as AttendanceStatus, notes: "" }])
-            )
-          );
-        }}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Select group" />
+        <Select
+          value={selectedSession}
+          onValueChange={(value) => {
+            setSelectedSessionId(value);
+            setAttendance({});
+            setSaved(false);
+          }}
+          disabled={isLoading || sessions.length === 0}
+        >
+          <SelectTrigger className="w-full sm:w-[380px]">
+            <SelectValue
+              placeholder={isLoading ? "Loading sessions..." : "Select session"}
+            />
           </SelectTrigger>
           <SelectContent>
-            {myGroups.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {g.name}
+            {sessions.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {formatDate(session.date)} - {session.groupName} -{" "}
+                {formatTime12(session.startTime)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        {currentSession && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="capitalize">
+              {currentSession.type}
+            </Badge>
+            <Badge variant="secondary" className="capitalize">
+              {currentSession.status}
+            </Badge>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleMarkAll("present")}
+            disabled={!players.length}
           >
             <Check className="mr-1 h-4 w-4 text-emerald-400" />
             All Present
@@ -137,6 +211,7 @@ export default function CoachMarkAttendancePage() {
             variant="outline"
             size="sm"
             onClick={() => handleMarkAll("absent")}
+            disabled={!players.length}
           >
             <X className="mr-1 h-4 w-4 text-red-400" />
             All Absent
@@ -144,128 +219,148 @@ export default function CoachMarkAttendancePage() {
         </div>
       </div>
 
-      {/* Summary Bar */}
-      <div className="grid grid-cols-4 gap-3">
-        {(Object.entries(counts) as [AttendanceStatus, number][]).map(
-          ([status, count]) => {
-            const config = statusConfig[status];
-            return (
-              <Card key={status} className="border-border/50 bg-card">
-                <CardContent className="flex items-center gap-3 p-3">
+      {isLoading || loadingPlayers ? (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading attendance sheet...
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!isLoading && sessions.length === 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No sessions assigned to you yet.
+          </CardContent>
+        </Card>
+      )}
+
+      {players.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {(Object.entries(counts) as [AttendanceStatus, number][]).map(
+              ([status, count]) => {
+                const config = statusConfig[status];
+                return (
+                  <Card key={status} className="border-border/50 bg-card">
+                    <CardContent className="flex items-center gap-3 p-3">
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg ${config.color}/20`}
+                      >
+                        <config.icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold">{count}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {config.label}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              },
+            )}
+          </div>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">
+                Players ({players.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {players.map((player) => {
+                const currentStatus =
+                  attendance[player.id]?.status || "present";
+                return (
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${config.color}/20`}
+                    key={player.id}
+                    className="flex flex-col gap-3 rounded-lg border border-border/30 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <config.icon
-                      className={`h-4 w-4`}
-                      style={{
-                        color:
-                          status === "present"
-                            ? "#3ddc84"
-                            : status === "absent"
-                            ? "#ef4444"
-                            : status === "late"
-                            ? "#f59e0b"
-                            : "#6b7280",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{count}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {config.label}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          }
-        )}
-      </div>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-primary/20 text-sm text-primary">
+                          {getInitials(player.fullName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{player.fullName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {player.position} - #{player.rankInGroup}
+                        </p>
+                      </div>
+                    </div>
 
-      {/* Player List */}
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">
-            Players ({players.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {players.map((player) => {
-            const currentStatus = attendance[player.id]?.status || "present";
-            return (
-              <div
-                key={player.id}
-                className="flex flex-col gap-3 rounded-lg border border-border/30 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-primary/20 text-sm text-primary">
-                      {getInitials(player.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{player.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {player.position} · #{player.rankInGroup}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(
+                        Object.entries(statusConfig) as [
+                          AttendanceStatus,
+                          (typeof statusConfig)[AttendanceStatus],
+                        ][]
+                      ).map(([status, config]) => (
+                        <button
+                          key={status}
+                          onClick={() => handleStatusChange(player.id, status)}
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 transition-all ${
+                            currentStatus === status
+                              ? `${config.color} border-transparent text-white`
+                              : "border-border/30 bg-muted/20 text-muted-foreground hover:border-border"
+                          }`}
+                          title={config.label}
+                          type="button"
+                        >
+                          <config.icon className="h-4 w-4" />
+                        </button>
+                      ))}
+                      <Input
+                        placeholder="Notes..."
+                        className="min-w-[160px] flex-1 sm:w-44"
+                        value={attendance[player.id]?.notes || ""}
+                        onChange={(event) =>
+                          handleNotesChange(player.id, event.target.value)
+                        }
+                      />
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </CardContent>
+          </Card>
 
-                <div className="flex items-center gap-2">
-                  {(
-                    Object.entries(statusConfig) as [
-                      AttendanceStatus,
-                      (typeof statusConfig)[AttendanceStatus],
-                    ][]
-                  ).map(([status, config]) => (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusChange(player.id, status)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 transition-all ${
-                        currentStatus === status
-                          ? `${config.color} border-transparent text-white`
-                          : "border-border/30 bg-muted/20 text-muted-foreground hover:border-border"
-                      }`}
-                      title={config.label}
-                    >
-                      <config.icon className="h-4 w-4" />
-                    </button>
-                  ))}
-                  <Input
-                    placeholder="Notes..."
-                    className="ml-2 hidden w-40 sm:block"
-                    value={attendance[player.id]?.notes || ""}
-                    onChange={(e) =>
-                      handleNotesChange(player.id, e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      {/* Save Button */}
-      <div className="sticky bottom-4 flex justify-end">
-        <Button
-          size="lg"
-          onClick={handleSave}
-          className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-        >
-          {saved ? (
-            <>
-              <CheckCircle2 className="mr-2 h-5 w-5" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-5 w-5" />
-              Save Attendance
-            </>
+          {saveError && (
+            <p className="text-sm text-red-400">
+              Could not save attendance. Please try again.
+            </p>
           )}
-        </Button>
-      </div>
+
+          <div className="sticky bottom-4 flex justify-end">
+            <Button
+              size="lg"
+              onClick={handleSave}
+              disabled={isSaving || !selectedSession || !players.length}
+              className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-5 w-5" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-5 w-5" />
+                  Save Attendance
+                </>
+              )}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

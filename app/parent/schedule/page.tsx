@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { mockSessions, mockPlayers, mockGroups } from "@/lib/mock-data";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime12 } from "@/lib/utils";
 import {
   Calendar,
   Clock,
@@ -20,9 +20,7 @@ export default function ParentSchedulePage() {
   const childGroup = mockGroups.find((g) => g.id === child?.groupId);
   const sessions = mockSessions
     .filter((s) => s.groupId === child?.groupId)
-    .sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const statusColor: Record<string, string> = {
     upcoming: "bg-blue-500/10 text-blue-400 border-blue-500/30",
@@ -38,7 +36,7 @@ export default function ParentSchedulePage() {
       acc[date].push(session);
       return acc;
     },
-    {} as Record<string, typeof sessions>
+    {} as Record<string, typeof sessions>,
   );
 
   return (
@@ -105,7 +103,7 @@ export default function ParentSchedulePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {dateSessions.map((session) => {
                   const group = mockGroups.find(
-                    (g) => g.id === session.groupId
+                    (g) => g.id === session.groupId,
                   );
                   return (
                     <Card
@@ -115,7 +113,9 @@ export default function ParentSchedulePage() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="font-semibold">{session.groupName}</h4>
+                            <h4 className="font-semibold">
+                              {session.groupName}
+                            </h4>
                             <p className="text-xs text-muted-foreground">
                               {group?.name}
                             </p>
@@ -130,7 +130,8 @@ export default function ParentSchedulePage() {
                         <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5" />
-                            {session.startTime} — {session.endTime}
+                            {formatTime12(session.startTime)} —{" "}
+                            {formatTime12(session.endTime)}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5" />

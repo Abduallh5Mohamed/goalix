@@ -1,0 +1,474 @@
+const {
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+} = require('../../shared/errors');
+
+const needsOptions = new Set(['single_select', 'multi_select']);
+const numericTypes = new Set(['number', 'rating', 'percentage']);
+
+function toSnakeLikeKey(label) {
+    return String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 140);
+}
+
+function optionValue(label, value) {
+    return value ? String(value).trim() : toSnakeLikeKey(label);
+}
+
+function hasMeaningfulInput(value) {
+    if (value === false || value === 0) return true;
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return String(value).trim() !== '';
+}
+
+function jsonbValue(value) {
+    return JSON.stringify(value);
+}
+
+function normalizeMultiSelectValue(value) {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return value;
+
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+    } catch {
+        // Fall through to the user-friendly comma-separated fallback below.
+    }
+
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+class CustomDataService {
+    constructor(repo) {
+        this.repo = repo;
+    }
+
+    async _coachForUser(user) {
+        if (user.role !== 'coach') return null;
+        const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+        if (!coach) throw new ForbiddenError('Coach profile is not linked to this user');
+        return coach;
+    }
+
+    _canCoachSeeCategory(category, coachId) {
+        return category.visibility === 'global'
+            || category.visibility === 'shared'
+            || (category.visibility === 'specific_coach' && category.assigned_coach_id === coachId)
+            || (category.created_by_role === 'coach' && category.created_by_coach_id === coachId);
+    }
+
+    _assertCanSeeCategory(user, coach, category) {
+        if (user.role === 'admin') return;
+        if (!this._canCoachSeeCategory(category, coach.id)) {
+            throw new ForbiddenError('Coach cannot access this custom category');
+        }
+    }
+
+    _assertCanManageOwned(user, coach, row, label) {
+        if (user.role === 'admin') return;
+        if (row.created_by_role !== 'coach' || row.created_by_coach_id !== coach.id) {
+            throw new ForbiddenError(`Coach can only edit ${label} created by himself`);
+        }
+    }
+
+    async _assertPlayerAccess(user, coach, playerId) {
+        const player = await this.repo.findPlayerById(playerId, user.academyId);
+        if (!player) throw new NotFoundError('Player', playerId);
+        if (user.role === 'coach') {
+            const access = await this.repo.coachPlayerAccess(coach.id, playerId);
+            if (!access) throw new ForbiddenError('Coach cannot access this player');
+        }
+        return player;
+    }
+
+    async listCategories(user, filters = {}) {
+        const coach = await this._coachForUser(user);
+        return this.repo.getCategoriesWithFields(user, coach?.id, {
+            targetModule: filters.targetModule || 'player_profile',
+            includeInactive: filters.includeInactive,
+        });
+    }
+
+    async createCategory(user, data) {
+        const coach = await this._coachForUser(user);
+        const isCoach = user.role === 'coach';
+        const visibility = isCoach ? 'coach_only' : (data.visibility || 'global');
+        const assignedCoachId = isCoach ? coach.id : (data.assignedCoachId || null);
+
+        if (visibility === 'specific_coach' && !assignedCoachId) {
+            throw new BadRequestError('assignedCoachId is required for specific coach visibility');
+        }
+
+        const [row] = await this.repo.db('custom_categories').insert({
+            academy_id: user.academyId,
+            name: data.name,
+            description: data.description,
+            target_module: data.targetModule || 'player_profile',
+            created_by_role: isCoach ? 'coach' : 'admin',
+            created_by_id: user.userId,
+            created_by_coach_id: coach?.id || null,
+            assigned_coach_id: assignedCoachId,
+            visibility,
+            is_editable_by_coach: isCoach ? true : Boolean(data.isEditableByCoach),
+            is_system_default: !isCoach && Boolean(data.isSystemDefault),
+            is_active: data.isActive ?? true,
+            sort_order: data.sortOrder ?? 0,
+        }).returning('*');
+        return row;
+    }
+
+    async updateCategory(user, categoryId, data) {
+        const coach = await this._coachForUser(user);
+        const category = await this.repo.findCategoryById(categoryId, user.academyId);
+        if (!category) throw new NotFoundError('Custom category', categoryId);
+        this._assertCanManageOwned(user, coach, category, 'categories');
+
+        const [row] = await this.repo.db('custom_categories')
+            .where({ id: categoryId })
+            .update({
+                ...(data.name !== undefined ? { name: data.name } : {}),
+                ...(data.description !== undefined ? { description: data.description } : {}),
+                ...(user.role === 'admin' && data.targetModule !== undefined ? { target_module: data.targetModule } : {}),
+                ...(user.role === 'admin' && data.assignedCoachId !== undefined ? { assigned_coach_id: data.assignedCoachId } : {}),
+                ...(user.role === 'admin' && data.visibility !== undefined ? { visibility: data.visibility } : {}),
+                ...(user.role === 'admin' && data.isEditableByCoach !== undefined ? { is_editable_by_coach: data.isEditableByCoach } : {}),
+                ...(user.role === 'admin' && data.isSystemDefault !== undefined ? { is_system_default: data.isSystemDefault } : {}),
+                ...(data.isActive !== undefined ? { is_active: data.isActive } : {}),
+                ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async deleteCategory(user, categoryId) {
+        const coach = await this._coachForUser(user);
+        const category = await this.repo.findCategoryById(categoryId, user.academyId);
+        if (!category) throw new NotFoundError('Custom category', categoryId);
+        this._assertCanManageOwned(user, coach, category, 'categories');
+        await this.repo.db('custom_categories').where({ id: categoryId }).update({
+            deleted_at: new Date(),
+            is_active: false,
+        });
+        return { message: 'Custom category deleted' };
+    }
+
+    async createField(user, categoryId, data) {
+        const coach = await this._coachForUser(user);
+        const category = await this.repo.findCategoryById(categoryId, user.academyId);
+        if (!category) throw new NotFoundError('Custom category', categoryId);
+        this._assertCanSeeCategory(user, coach, category);
+        this._assertCanManageOwned(user, coach, category, 'fields inside admin-owned categories');
+        if (needsOptions.has(data.fieldType) && data.isRequired === false) {
+            // Select fields can be optional, but they still need options before being useful.
+        }
+        const [row] = await this.repo.db('custom_fields').insert({
+            category_id: categoryId,
+            label: data.label,
+            key: data.key || toSnakeLikeKey(data.label),
+            field_type: data.fieldType,
+            is_required: data.isRequired ?? true,
+            placeholder: data.placeholder,
+            default_value: data.defaultValue,
+            unit: data.unit,
+            min_value: data.minValue,
+            max_value: data.maxValue,
+            validation_rules: data.validationRules || {},
+            created_by_role: user.role === 'coach' ? 'coach' : 'admin',
+            created_by_id: user.userId,
+            created_by_coach_id: coach?.id || null,
+            is_editable_by_coach: user.role === 'coach' ? true : Boolean(data.isEditableByCoach),
+            is_active: data.isActive ?? true,
+            sort_order: data.sortOrder ?? 0,
+        }).returning('*');
+        return row;
+    }
+
+    async updateField(user, fieldId, data) {
+        const coach = await this._coachForUser(user);
+        const field = await this.repo.findFieldById(fieldId);
+        if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
+        this._assertCanManageOwned(user, coach, field, 'fields');
+        const [row] = await this.repo.db('custom_fields')
+            .where({ id: fieldId })
+            .update({
+                ...(data.label !== undefined ? { label: data.label } : {}),
+                ...(data.key !== undefined ? { key: data.key } : {}),
+                ...(data.fieldType !== undefined ? { field_type: data.fieldType } : {}),
+                ...(data.isRequired !== undefined ? { is_required: data.isRequired } : {}),
+                ...(data.placeholder !== undefined ? { placeholder: data.placeholder } : {}),
+                ...(data.defaultValue !== undefined ? { default_value: data.defaultValue } : {}),
+                ...(data.unit !== undefined ? { unit: data.unit } : {}),
+                ...(data.minValue !== undefined ? { min_value: data.minValue } : {}),
+                ...(data.maxValue !== undefined ? { max_value: data.maxValue } : {}),
+                ...(data.validationRules !== undefined ? { validation_rules: data.validationRules } : {}),
+                ...(user.role === 'admin' && data.isEditableByCoach !== undefined ? { is_editable_by_coach: data.isEditableByCoach } : {}),
+                ...(data.isActive !== undefined ? { is_active: data.isActive } : {}),
+                ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async deleteField(user, fieldId) {
+        const coach = await this._coachForUser(user);
+        const field = await this.repo.findFieldById(fieldId);
+        if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
+        this._assertCanManageOwned(user, coach, field, 'fields');
+        await this.repo.db.transaction(async (trx) => {
+            await trx('player_custom_values').where({ field_id: fieldId }).del();
+            await trx('custom_field_options').where({ field_id: fieldId }).update({
+                deleted_at: new Date(),
+                is_active: false,
+                updated_at: new Date(),
+            });
+            await trx('custom_fields').where({ id: fieldId }).update({
+                deleted_at: new Date(),
+                is_active: false,
+                updated_at: new Date(),
+            });
+        });
+        return { message: 'Custom field deleted' };
+    }
+
+    async createOption(user, fieldId, data) {
+        const coach = await this._coachForUser(user);
+        const field = await this.repo.findFieldById(fieldId);
+        if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
+        this._assertCanManageOwned(user, coach, field, 'options');
+        const [row] = await this.repo.db('custom_field_options').insert({
+            field_id: fieldId,
+            label: data.label,
+            value: optionValue(data.label, data.value),
+            created_by_role: user.role === 'coach' ? 'coach' : 'admin',
+            created_by_id: user.userId,
+            created_by_coach_id: coach?.id || null,
+            is_editable_by_coach: user.role === 'coach' ? true : Boolean(data.isEditableByCoach),
+            is_active: data.isActive ?? true,
+            sort_order: data.sortOrder ?? 0,
+        }).returning('*');
+        return row;
+    }
+
+    async updateOption(user, optionId, data) {
+        const coach = await this._coachForUser(user);
+        const option = await this.repo.findOptionById(optionId);
+        if (!option || option.academy_id !== user.academyId) throw new NotFoundError('Custom option', optionId);
+        this._assertCanManageOwned(user, coach, option, 'options');
+        const [row] = await this.repo.db('custom_field_options')
+            .where({ id: optionId })
+            .update({
+                ...(data.label !== undefined ? { label: data.label } : {}),
+                ...(data.value !== undefined || data.label !== undefined ? { value: optionValue(data.label || option.label, data.value) } : {}),
+                ...(user.role === 'admin' && data.isEditableByCoach !== undefined ? { is_editable_by_coach: data.isEditableByCoach } : {}),
+                ...(data.isActive !== undefined ? { is_active: data.isActive } : {}),
+                ...(data.sortOrder !== undefined ? { sort_order: data.sortOrder } : {}),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async deleteOption(user, optionId) {
+        const coach = await this._coachForUser(user);
+        const option = await this.repo.findOptionById(optionId);
+        if (!option || option.academy_id !== user.academyId) throw new NotFoundError('Custom option', optionId);
+        this._assertCanManageOwned(user, coach, option, 'options');
+        await this.repo.db('custom_field_options').where({ id: optionId }).update({
+            deleted_at: new Date(),
+            is_active: false,
+        });
+        return { message: 'Custom option deleted' };
+    }
+
+    _storedValueIsPresent(value) {
+        return hasMeaningfulInput(value.value_text)
+            || hasMeaningfulInput(value.value_long_text)
+            || hasMeaningfulInput(value.value_number)
+            || hasMeaningfulInput(value.value_decimal)
+            || hasMeaningfulInput(value.value_date)
+            || value.value_boolean !== null && value.value_boolean !== undefined
+            || hasMeaningfulInput(value.value_option_id)
+            || hasMeaningfulInput(value.value_json);
+    }
+
+    async _serializeValue(field, rawValue) {
+        const blank = {
+            value_text: null,
+            value_long_text: null,
+            value_number: null,
+            value_decimal: null,
+            value_date: null,
+            value_boolean: null,
+            value_option_id: null,
+            value_json: null,
+        };
+
+        if (!hasMeaningfulInput(rawValue)) return blank;
+
+        if (field.field_type === 'single_select') {
+            const option = await this.repo.db('custom_field_options')
+                .where({ id: rawValue, field_id: field.id, is_active: true })
+                .whereNull('deleted_at')
+                .first();
+            if (!option) throw new BadRequestError(`Invalid option for ${field.label}`);
+            return { ...blank, value_option_id: rawValue };
+        }
+
+        if (field.field_type === 'multi_select') {
+            const selectedOptionIds = normalizeMultiSelectValue(rawValue);
+            if (!Array.isArray(selectedOptionIds)) throw new BadRequestError(`${field.label} must be a list`);
+            const options = await this.repo.db('custom_field_options')
+                .where({ field_id: field.id, is_active: true })
+                .whereIn('id', selectedOptionIds)
+                .whereNull('deleted_at');
+            if (options.length !== selectedOptionIds.length) throw new BadRequestError(`Invalid options for ${field.label}`);
+            return { ...blank, value_json: jsonbValue(selectedOptionIds) };
+        }
+
+        if (numericTypes.has(field.field_type)) {
+            const parsed = Number(rawValue);
+            if (!Number.isFinite(parsed)) throw new BadRequestError(`${field.label} must be a number`);
+            if (field.min_value !== null && field.min_value !== undefined && parsed < Number(field.min_value)) {
+                throw new BadRequestError(`${field.label} is below minimum`);
+            }
+            if (field.max_value !== null && field.max_value !== undefined && parsed > Number(field.max_value)) {
+                throw new BadRequestError(`${field.label} is above maximum`);
+            }
+            return { ...blank, value_number: Math.round(parsed) };
+        }
+
+        if (field.field_type === 'decimal') {
+            const parsed = Number(rawValue);
+            if (!Number.isFinite(parsed)) throw new BadRequestError(`${field.label} must be a decimal number`);
+            return { ...blank, value_decimal: parsed };
+        }
+
+        if (field.field_type === 'boolean') {
+            return { ...blank, value_boolean: Boolean(rawValue) };
+        }
+
+        if (field.field_type === 'date') {
+            return { ...blank, value_date: rawValue };
+        }
+
+        if (field.field_type === 'long_text') {
+            return { ...blank, value_long_text: String(rawValue) };
+        }
+
+        if (field.field_type === 'file' || field.field_type === 'image') {
+            return { ...blank, value_json: jsonbValue(rawValue) };
+        }
+
+        return { ...blank, value_text: String(rawValue) };
+    }
+
+    _valueForResponse(value) {
+        if (!value) return null;
+        if (value.value_option_id) return value.value_option_id;
+        if (value.value_json !== null && value.value_json !== undefined) return value.value_json;
+        if (value.value_boolean !== null && value.value_boolean !== undefined) return value.value_boolean;
+        if (value.value_date) return value.value_date;
+        if (value.value_decimal !== null && value.value_decimal !== undefined) return Number(value.value_decimal);
+        if (value.value_number !== null && value.value_number !== undefined) return Number(value.value_number);
+        if (value.value_long_text) return value.value_long_text;
+        if (value.value_text) return value.value_text;
+        return null;
+    }
+
+    async getPlayerProfile(user, playerId) {
+        const coach = await this._coachForUser(user);
+        await this._assertPlayerAccess(user, coach, playerId);
+        const [categories, values] = await Promise.all([
+            this.listCategories(user, { targetModule: 'player_profile' }),
+            this.repo.getPlayerValues(playerId),
+        ]);
+        const valueByField = new Map(values.map((value) => [value.field_id, value]));
+        return {
+            categories,
+            values: values.map((value) => ({
+                ...value,
+                value: this._valueForResponse(value),
+            })),
+            missingRequiredFieldIds: this._missingRequiredFields(categories, valueByField),
+        };
+    }
+
+    _missingRequiredFields(categories, valueByField) {
+        const missing = [];
+        for (const category of categories) {
+            if (!category.is_active) continue;
+            for (const field of category.fields || []) {
+                if (!field.is_active || !field.is_required) continue;
+                const existing = valueByField.get(field.id);
+                if (!existing || !this._storedValueIsPresent(existing)) missing.push(field.id);
+            }
+        }
+        return missing;
+    }
+
+    async savePlayerValues(user, playerId, values = [], { markProfileComplete = false } = {}) {
+        const coach = await this._coachForUser(user);
+        await this._assertPlayerAccess(user, coach, playerId);
+        const categories = await this.listCategories(user, { targetModule: 'player_profile' });
+        const fields = categories.flatMap((category) => category.fields || []);
+        const fieldById = new Map(fields.map((field) => [field.id, field]));
+        const submittedFieldIds = new Set();
+
+        await this.repo.db.transaction(async (trx) => {
+            for (const item of values) {
+                const field = fieldById.get(item.fieldId);
+                if (!field || !field.is_active) throw new ForbiddenError('Cannot write to this custom field');
+                if (submittedFieldIds.has(item.fieldId)) throw new ConflictError('Duplicate custom field value in request');
+                submittedFieldIds.add(item.fieldId);
+                const serialized = await this._serializeValue(field, item.value);
+                await trx('player_custom_values')
+                    .insert({
+                        academy_id: user.academyId,
+                        player_id: playerId,
+                        field_id: item.fieldId,
+                        ...serialized,
+                        created_by_id: user.userId,
+                        updated_by_id: user.userId,
+                    })
+                    .onConflict(['player_id', 'field_id'])
+                    .merge({
+                        ...serialized,
+                        updated_by_id: user.userId,
+                        updated_at: new Date(),
+                    });
+            }
+
+            if (markProfileComplete) {
+                const existingRows = await trx('player_custom_values').where({ player_id: playerId });
+                const valueByField = new Map(existingRows.map((value) => [value.field_id, value]));
+                const missing = this._missingRequiredFields(categories, valueByField);
+                if (missing.length) {
+                    throw new BadRequestError('Player custom profile is missing required fields');
+                }
+                await trx('player_profiles').where({ id: playerId, academy_id: user.academyId }).update({
+                    profile_status: 'complete',
+                    profile_completed_at: new Date(),
+                    updated_at: new Date(),
+                });
+            }
+        });
+
+        return this.getPlayerProfile(user, playerId);
+    }
+}
+
+module.exports = CustomDataService;

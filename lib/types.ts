@@ -23,10 +23,12 @@ export type PreferredFoot = "left" | "right" | "both";
 export interface User {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   role: UserRole;
   avatarUrl?: string;
   phone?: string;
+  linkedPlayerId?: string | null;
   createdAt: string;
 }
 
@@ -53,10 +55,25 @@ export interface Branch {
   createdAt: string;
 }
 
+export interface BirthYearRange {
+  id: string;
+  label?: string;
+  fromYear: number;
+  toYear: number;
+}
+
+export interface BirthYearGroup {
+  label: string;
+  normalizedLabel: string;
+  birthYears: BirthYearRange[];
+}
+
 export interface BirthYear {
   id: string;
   branchId: string;
-  year: number;
+  label: string;
+  fromYear: number;
+  toYear: number;
   groupCount: number;
   playerCount: number;
 }
@@ -64,7 +81,8 @@ export interface BirthYear {
 export interface Group {
   id: string;
   branchId: string;
-  birthYearId: string;
+  birthYearIds?: string[];
+  birthYears?: BirthYearRange[];
   name: string;
   coachId: string;
   coachName: string;

@@ -1,17 +1,18 @@
 "use client";
 
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockSessions } from "@/lib/mock-data";
-import { formatDate } from "@/lib/utils";
-import { Calendar, Clock, Users, MapPin } from "lucide-react";
+import { useGetCoachSessionsQuery } from "@/lib/store/api/coachApi";
+import { formatDate, formatTime12 } from "@/lib/utils";
+import { Calendar, Clock, Users, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function CoachSchedulePage() {
-  const mySessions = mockSessions
-    .filter((s) => s.coachId === "c1")
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const { data, isLoading, isError } = useGetCoachSessionsQuery({ limit: 100 });
+  const mySessions = [...(data?.data ?? [])].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
 
   // Group sessions by date
   const sessionsByDate = mySessions.reduce(
@@ -20,7 +21,7 @@ export default function CoachSchedulePage() {
       acc[session.date].push(session);
       return acc;
     },
-    {} as Record<string, typeof mySessions>
+    {} as Record<string, typeof mySessions>,
   );
 
   const typeColors: Record<string, string> = {
@@ -40,6 +41,23 @@ export default function CoachSchedulePage() {
           { label: "Calendar" },
         ]}
       />
+
+      {isLoading && (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading schedule...
+          </CardContent>
+        </Card>
+      )}
+
+      {isError && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="p-4 text-sm text-red-300">
+            Could not load coach schedule.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Calendar-style view */}
       <div className="space-y-6">
@@ -76,7 +94,8 @@ export default function CoachSchedulePage() {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3.5 w-3.5" />
-                              {session.startTime} - {session.endTime}
+                              {formatTime12(session.startTime)} -{" "}
+                              {formatTime12(session.endTime)}
                             </span>
                             <span className="flex items-center gap-1">
                               <Users className="h-3.5 w-3.5" />
@@ -91,7 +110,10 @@ export default function CoachSchedulePage() {
                         </div>
                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted/30">
                           <span className="text-lg font-bold text-primary">
-                            {session.startTime.split(":")[0]}
+                            {formatTime12(session.startTime).replace(
+                              /:00\s/,
+                              " ",
+                            )}
                           </span>
                         </div>
                       </div>

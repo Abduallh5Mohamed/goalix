@@ -1,0 +1,777 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Loader2, Save, UserMinus, UserPlus } from "lucide-react";
+import { FormationPreview3D } from "@/components/coach/FormationPreview3D";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  type Match,
+  useGetCoachAdminMatchRequestsQuery,
+  useGetCoachFriendlyRequestsQuery,
+  useGetCoachGroupsScopedQuery,
+  useGetCoachMatchQuery,
+  useGetCoachMatchesQuery,
+  useGetCoachPlayersScopedQuery,
+  useUpdateCoachMatchTargetsMutation,
+  useUpsertMatchSquadMutation,
+  useUpsertMatchTacticsMutation,
+} from "@/lib/store/api/calendarApi";
+import { useGetCoachBirthdaysQuery } from "@/lib/store/api/coachApi";
+import { FORMATIONS, getFormationSlots } from "@/lib/football/formations";
+import { formatDate } from "@/lib/utils";
+
+type TargetMode = "group" | "birthday";
+type SlotState = Record<string, { playerId: string; instruction: string }>;
+
+const getApiMessage = (error: unknown, fallback: string) => {
+  const apiError = error as {
+    data?: {
+      message?: string;
+      errors?: Array<{ message?: string }>;
+      error?: { message?: string; details?: Array<{ message?: string }> };
+    };
+  };
+  return (
+    apiError.data?.error?.details?.[0]?.message ??
+    apiError.data?.errors?.[0]?.message ??
+    apiError.data?.error?.message ??
+    apiError.data?.message ??
+    fallback
+  );
+};
+
+export default function CoachMatchConfigurationPage() {
+  const { data: matchesRes, isLoading: loadingMatches } =
+    useGetCoachMatchesQuery();
+  const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
+  const { data: friendlyRequestsRes } = useGetCoachFriendlyRequestsQuery();
+  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: groups = [] } = useGetCoachGroupsScopedQuery();
+  const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
+  const [upsertSquad, { isLoading: savingSquad }] =
+    useUpsertMatchSquadMutation();
+  const [upsertTactics, { isLoading: savingTactics }] =
+    useUpsertMatchTacticsMutation();
+  const [updateTargets, { isLoading: savingTargets }] =
+    useUpdateCoachMatchTargetsMutation();
+
+  const matches = useMemo(
+    () =>
+      (matchesRes?.data ?? []).map((match) => ({
+        ...match,
+        groups:
+          match.groups?.length || !match.team_id
+            ? match.groups
+            : [
+                {
+                  id: match.team_id,
+                  name: match.team_name ?? "Selected group",
+                },
+              ],
+      })),
+    [matchesRes?.data],
+  );
+  const acceptedRequestMatches: Match[] = useMemo(
+    () => [
+      ...(adminRequestsRes?.data ?? [])
+        .filter(
+          (request) =>
+            request.status === "accepted" && request.created_match_id,
+        )
+        .map((request) => ({
+          id: request.created_match_id!,
+          event_id: null,
+          team_id: request.selected_group_id,
+          age_group_id: null,
+          opponent_name: request.opponent_name,
+          match_type: request.match_type,
+          match_date: request.match_date,
+          match_time: request.match_time,
+          location: request.location,
+          venue_type: request.venue_type,
+          referee_name: request.referee_name,
+          status: "scheduled" as const,
+          match_status: "scheduled",
+          organizer_notes: request.organizer_notes,
+          match_notes: null,
+          our_score: null,
+          opponent_score: null,
+          groups: request.selected_group_id
+            ? [
+                {
+                  id: request.selected_group_id,
+                  name: request.selected_group_name ?? "Selected group",
+                },
+              ]
+            : [],
+          birth_years: request.selected_birth_year_id
+            ? [
+                {
+                  id: request.selected_birth_year_id,
+                  label:
+                    request.selected_birth_year_name ?? "Selected birthday",
+                  fromYear: 0,
+                  toYear: 9999,
+                },
+              ]
+            : [],
+        })),
+      ...(friendlyRequestsRes?.data ?? [])
+        .filter(
+          (request) =>
+            request.status === "approved" && request.converted_match_id,
+        )
+        .map((request) => ({
+          id: request.converted_match_id!,
+          event_id: null,
+          team_id: request.team_id,
+          age_group_id: null,
+          opponent_name: request.suggested_opponent_name || "Friendly match",
+          match_type: "friendly" as const,
+          match_date: request.preferred_date,
+          match_time: request.preferred_time,
+          location: null,
+          venue_type: "neutral" as const,
+          referee_name: null,
+          status: "scheduled" as const,
+          match_status: "scheduled",
+          organizer_notes: request.reason,
+          match_notes: request.notes,
+          our_score: null,
+          opponent_score: null,
+          groups: request.team_id
+            ? [
+                {
+                  id: request.team_id,
+                  name: request.team_name ?? "Selected group",
+                },
+              ]
+            : [],
+          birth_years: request.birth_year_id
+            ? [
+                {
+                  id: request.birth_year_id,
+                  label: request.birth_year_name ?? "Selected birthday",
+                  fromYear: 0,
+                  toYear: 9999,
+                },
+              ]
+            : [],
+        })),
+    ],
+    [adminRequestsRes?.data, friendlyRequestsRes?.data],
+  );
+  const matchOptions = useMemo(
+    () => [
+      ...matches,
+      ...acceptedRequestMatches.filter(
+        (item) => !matches.some((match) => match.id === item.id),
+      ),
+    ],
+    [acceptedRequestMatches, matches],
+  );
+  const players = playersRes?.data ?? [];
+  const [matchId, setMatchId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search).get("matchId") ?? ""),
+  );
+  const [targetMode, setTargetMode] = useState<TargetMode | null>(null);
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [formation, setFormation] = useState("");
+  const [tacticalNotes, setTacticalNotes] = useState<string | null>(null);
+  const [slotState, setSlotState] = useState<SlotState | null>(null);
+  const [reserveIds, setReserveIds] = useState<string[] | null>(null);
+  const [reserveInstructions, setReserveInstructions] = useState<Record<
+    string,
+    string
+  > | null>(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+
+  const selectedMatch =
+    matchOptions.find((match) => match.id === matchId) ?? matchOptions[0];
+  const { data: selectedMatchDetails } = useGetCoachMatchQuery(
+    selectedMatch?.id ?? "",
+    { skip: !selectedMatch?.id },
+  );
+  const savedTargetMode: TargetMode =
+    selectedMatchDetails?.birth_years?.length &&
+    !selectedMatchDetails?.groups?.length
+      ? "birthday"
+      : selectedMatch?.birth_years?.length && !selectedMatch?.groups?.length
+        ? "birthday"
+        : "group";
+  const activeFormation =
+    formation || selectedMatchDetails?.tactics?.formation || "4-3-3";
+  const activeTacticalNotes =
+    tacticalNotes ?? selectedMatchDetails?.tactics?.tactical_notes ?? "";
+  const slots = getFormationSlots(activeFormation);
+  const savedLineup = useMemo(() => {
+    const nextSlots = getFormationSlots(activeFormation);
+    const nextSlotState: SlotState = {};
+    const usedSlotIds = new Set<string>();
+    const reserves: string[] = [];
+    const reserveInstructionMap: Record<string, string> = {};
+
+    selectedMatchDetails?.squad?.forEach((player) => {
+      if (player.squad_role !== "starter") {
+        reserves.push(player.player_id);
+        reserveInstructionMap[player.player_id] =
+          player.player_instruction ?? "";
+        return;
+      }
+
+      const slot =
+        nextSlots.find(
+          (item) => item.label === player.position && !usedSlotIds.has(item.id),
+        ) ?? nextSlots.find((item) => !usedSlotIds.has(item.id));
+      if (!slot) return;
+      usedSlotIds.add(slot.id);
+      nextSlotState[slot.id] = {
+        playerId: player.player_id,
+        instruction: player.player_instruction ?? "",
+      };
+    });
+
+    return {
+      slotState: nextSlotState,
+      reserveIds: reserves,
+      reserveInstructions: reserveInstructionMap,
+    };
+  }, [activeFormation, selectedMatchDetails?.squad]);
+  const activeSlotState = slotState ?? savedLineup.slotState;
+  const activeReserveIds = reserveIds ?? savedLineup.reserveIds;
+  const activeReserveInstructions =
+    reserveInstructions ?? savedLineup.reserveInstructions;
+  const selectedStarterIds = new Set(
+    Object.values(activeSlotState)
+      .map((item) => item.playerId)
+      .filter(Boolean),
+  );
+
+  const effectiveTargetMode: TargetMode = targetMode ?? savedTargetMode;
+
+  const matchGroups = selectedMatchDetails?.groups?.length
+    ? selectedMatchDetails.groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+      }))
+    : selectedMatch?.groups?.length
+      ? selectedMatch.groups.map((group) => ({
+          id: group.id,
+          name: group.name,
+        }))
+      : groups.map((group) => ({
+          id: group.group_id,
+          name: group.group_name,
+        }));
+
+  const matchBirthdays = selectedMatchDetails?.birth_years?.length
+    ? selectedMatchDetails.birth_years.map((birthday) => ({
+        id: birthday.id,
+        label: birthday.label,
+      }))
+    : selectedMatch?.birth_years?.length
+      ? selectedMatch.birth_years.map((birthday) => ({
+          id: birthday.id,
+          label: birthday.label,
+        }))
+      : birthdays.map((birthday) => ({
+          id: birthday.id,
+          label: birthday.label,
+        }));
+
+  const effectiveTargetId =
+    targetId ??
+    (effectiveTargetMode === "group"
+      ? matchGroups[0]?.id
+      : matchBirthdays[0]?.id) ??
+    "";
+
+  const targetPlayers = (() => {
+    if (!effectiveTargetId) return [];
+    if (effectiveTargetMode === "group") {
+      return players.filter(
+        (player) =>
+          player.group_id === effectiveTargetId &&
+          player.profile_status === "complete",
+      );
+    }
+    const birthday = birthdays.find((item) => item.id === effectiveTargetId);
+    if (!birthday) return [];
+    return players.filter((player) => {
+      const year = player.date_of_birth
+        ? new Date(player.date_of_birth).getFullYear()
+        : 0;
+      return (
+        player.profile_status === "complete" &&
+        player.branch_id === birthday.branchId &&
+        year >= birthday.fromYear &&
+        year <= birthday.toYear
+      );
+    });
+  })();
+  const targetPlayerIds = new Set(targetPlayers.map((player) => player.id));
+  const previewPlayerNames = Object.fromEntries(
+    slots.map((slot) => [
+      slot.id,
+      players.find((player) => player.id === activeSlotState[slot.id]?.playerId)
+        ?.full_name,
+    ]),
+  );
+
+  const updateSlot = (
+    slotId: string,
+    patch: Partial<{ playerId: string; instruction: string }>,
+  ) => {
+    setSlotState((prev) => {
+      const base = prev ?? activeSlotState;
+      return {
+        ...base,
+        [slotId]: {
+          playerId: base[slotId]?.playerId ?? "",
+          instruction: base[slotId]?.instruction ?? "",
+          ...patch,
+        },
+      };
+    });
+  };
+
+  const toggleReserve = (playerId: string) => {
+    setReserveIds((prev) => {
+      const base = prev ?? activeReserveIds;
+      return base.includes(playerId)
+        ? base.filter((id) => id !== playerId)
+        : [...base, playerId];
+    });
+    if (activeReserveIds.includes(playerId)) {
+      setReserveInstructions((prev) => {
+        const base = prev ?? activeReserveInstructions;
+        const next = { ...base };
+        delete next[playerId];
+        return next;
+      });
+    }
+  };
+
+  const saveConfiguration = async () => {
+    if (!selectedMatch) return;
+    setStatus("");
+    setError("");
+    const starters = slots
+      .map((slot) => ({ slot, state: activeSlotState[slot.id] }))
+      .filter(({ state }) => state?.playerId)
+      .map(({ slot, state }) => ({
+        playerId: state.playerId,
+        squadRole: "starter",
+        position: slot.label,
+        playerInstruction: state.instruction,
+      }));
+    const starterIds = new Set(starters.map((item) => item.playerId));
+    const reserves = activeReserveIds
+      .filter((playerId) => targetPlayerIds.has(playerId))
+      .filter((playerId) => !starterIds.has(playerId))
+      .map((playerId) => ({
+        playerId,
+        squadRole: "reserve",
+        playerInstruction: activeReserveInstructions[playerId] || "",
+      }));
+
+    try {
+      if (effectiveTargetId) {
+        await updateTargets({
+          matchId: selectedMatch.id,
+          body:
+            effectiveTargetMode === "group"
+              ? { groupId: effectiveTargetId }
+              : { birthYearId: effectiveTargetId },
+        }).unwrap();
+      }
+      await upsertTactics({
+        matchId: selectedMatch.id,
+        body: {
+          formation: activeFormation,
+          tacticalNotes: activeTacticalNotes,
+        },
+      }).unwrap();
+      if (starters.length || reserves.length) {
+        await upsertSquad({
+          matchId: selectedMatch.id,
+          players: [...starters, ...reserves],
+        }).unwrap();
+      }
+      setStatus("Configuration saved.");
+    } catch (err) {
+      setError(getApiMessage(err, "Could not save match configuration."));
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Matches Configuration"
+        description="Configure match target, lineup, substitutes, player instructions, and tactical shape."
+        breadcrumbs={[
+          { label: "Home", href: "/coach/home" },
+          { label: "Matches", href: "/coach/matches" },
+          { label: "Configuration" },
+        ]}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <CardTitle className="text-base">Match Setup</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingMatches && (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading matches...
+              </p>
+            )}
+            <div className="space-y-2">
+              <Label>Match</Label>
+              <Select
+                value={selectedMatch?.id ?? ""}
+                onValueChange={(value) => {
+                  const nextMatch = matchOptions.find(
+                    (match) => match.id === value,
+                  );
+                  setMatchId(value);
+                  setTargetMode(
+                    nextMatch?.groups?.length
+                      ? "group"
+                      : nextMatch?.birth_years?.length
+                        ? "birthday"
+                        : "group",
+                  );
+                  setTargetId(
+                    nextMatch?.groups?.[0]?.id ??
+                      nextMatch?.birth_years?.[0]?.id ??
+                      "",
+                  );
+                  setFormation("");
+                  setTacticalNotes(null);
+                  setSlotState(null);
+                  setReserveIds(null);
+                  setReserveInstructions(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select match" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchOptions.map((match) => (
+                    <SelectItem key={match.id} value={match.id}>
+                      {match.opponent_name} - {formatDate(match.match_date)} -{" "}
+                      {match.match_type === "friendly"
+                        ? "Friendly"
+                        : "Not friendly"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Target Type</Label>
+              <Select
+                value={effectiveTargetMode}
+                onValueChange={(value) => {
+                  setTargetMode(value as TargetMode);
+                  setTargetId("");
+                  setSlotState({});
+                  setReserveIds([]);
+                  setReserveInstructions({});
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="group">Group</SelectItem>
+                  <SelectItem value="birthday">Birthday</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>
+                {effectiveTargetMode === "group" ? "Group" : "Birthday"}
+              </Label>
+              <Select
+                value={effectiveTargetId}
+                onValueChange={(value) => {
+                  setTargetId(value);
+                  setSlotState({});
+                  setReserveIds([]);
+                  setReserveInstructions({});
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      effectiveTargetMode === "group"
+                        ? "Select group"
+                        : "Select birthday"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(effectiveTargetMode === "group"
+                    ? matchGroups
+                    : matchBirthdays
+                  ).map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {"name" in item ? item.name : item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Formation</Label>
+              <Select
+                value={activeFormation}
+                onValueChange={(value) => {
+                  setFormation(value);
+                  setSlotState({});
+                  setReserveIds(activeReserveIds);
+                  setReserveInstructions(activeReserveInstructions);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FORMATIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {
+                  FORMATIONS.find((item) => item.value === activeFormation)
+                    ?.notes
+                }
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Tactical Notes</Label>
+              <Textarea
+                value={activeTacticalNotes}
+                onChange={(event) => setTacticalNotes(event.target.value)}
+                placeholder="Pressing plan, build-up notes, set-piece reminders..."
+              />
+            </div>
+            {status && (
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                {status}
+              </p>
+            )}
+            {error && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <Button
+              className="w-full gap-2"
+              disabled={
+                !selectedMatch || savingTargets || savingSquad || savingTactics
+              }
+              onClick={saveConfiguration}
+            >
+              {savingTargets || savingSquad || savingTactics ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save Configuration
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="overflow-hidden border-border/50 bg-card/55">
+            <CardContent className="p-0">
+              <FormationPreview3D
+                formation={activeFormation}
+                playerNames={previewPlayerNames}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base">Starting Lineup</CardTitle>
+                <Badge variant="secondary">
+                  {targetPlayers.length} available players
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              {slots.map((slot) => {
+                const current = activeSlotState[slot.id];
+                const available = targetPlayers.filter(
+                  (player) =>
+                    player.id === current?.playerId ||
+                    !selectedStarterIds.has(player.id),
+                );
+                return (
+                  <div
+                    key={slot.id}
+                    className="space-y-2 rounded-md border border-border/50 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>{slot.label}</Label>
+                      <Badge variant="outline">{slot.line}</Badge>
+                    </div>
+                    <Select
+                      value={current?.playerId ?? ""}
+                      onValueChange={(value) =>
+                        updateSlot(slot.id, { playerId: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select player" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {available.map((player) => (
+                          <SelectItem key={player.id} value={player.id}>
+                            {player.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      value={current?.instruction ?? ""}
+                      onChange={(event) =>
+                        updateSlot(slot.id, { instruction: event.target.value })
+                      }
+                      placeholder="Player instruction"
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base">Substitutes</CardTitle>
+                <Badge variant="secondary">
+                  {activeReserveIds.filter((id) => targetPlayerIds.has(id)).length} selected
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+              <div className="space-y-2">
+                {targetPlayers
+                  .filter((player) => !selectedStarterIds.has(player.id))
+                  .map((player) => {
+                    const active = activeReserveIds.includes(player.id);
+                    return (
+                      <div
+                        key={player.id}
+                        className="grid gap-3 rounded-md border border-border/50 bg-muted/10 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {player.full_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {player.position || "Unassigned"} · {player.level}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant={active ? "default" : "outline"}
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => toggleReserve(player.id)}
+                        >
+                          {active ? (
+                            <UserMinus className="h-4 w-4" />
+                          ) : (
+                            <UserPlus className="h-4 w-4" />
+                          )}
+                          {active ? "Remove" : "Add"}
+                        </Button>
+                      </div>
+                    );
+                  })}
+              </div>
+              <div className="space-y-3 rounded-md border border-border/50 bg-muted/10 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Match Bench</Label>
+                  <Badge variant="outline">{activeReserveIds.length}</Badge>
+                </div>
+                {activeReserveIds.map((playerId) => {
+                  const player = targetPlayers.find(
+                    (item) => item.id === playerId,
+                  );
+                  if (!player || selectedStarterIds.has(player.id)) return null;
+                  return (
+                    <div key={playerId} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{player.full_name}</p>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => toggleReserve(playerId)}
+                          aria-label={`Remove ${player.full_name}`}
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={activeReserveInstructions[playerId] ?? ""}
+                        onChange={(event) =>
+                          setReserveInstructions((prev) => {
+                            const base = prev ?? activeReserveInstructions;
+                            return {
+                              ...base,
+                              [playerId]: event.target.value,
+                            };
+                          })
+                        }
+                        placeholder="Substitute instruction"
+                      />
+                    </div>
+                  );
+                })}
+                {!activeReserveIds.filter((id) => targetPlayerIds.has(id)).length && (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    No substitutes selected.
+                  </p>
+                )}
+              </div>
+              {!targetPlayers.length && (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No complete players found for this target.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

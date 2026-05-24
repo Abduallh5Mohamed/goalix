@@ -1,18 +1,25 @@
-"use client";
+﻿"use client";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AreaChart } from "@/components/charts/AreaChart";
 import { BarChart } from "@/components/charts/BarChart";
 import { Button } from "@/components/ui/button";
-import { mockAttendanceChartData, mockBranches, mockAttendanceRecords } from "@/lib/mock-data";
+import {
+  useGetAttendanceOverviewQuery,
+  useGetBranchesQuery,
+} from "@/lib/store/api/adminApi";
 import { FileDown } from "lucide-react";
 
 export default function AttendanceReportPage() {
-  const totalRecords = mockAttendanceRecords.length;
-  const presentCount = mockAttendanceRecords.filter((r) => r.status === "present").length;
-  const overallRate = Math.round((presentCount / totalRecords) * 100);
+  const { data: overview, isLoading } = useGetAttendanceOverviewQuery();
+  const { data: branches } = useGetBranchesQuery();
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  const totalRecords = (overview?.presentCount ?? 0) + (overview?.absentCount ?? 0) + (overview?.lateCount ?? 0) + (overview?.excusedCount ?? 0);
+  const overallRate = totalRecords > 0 ? Math.round(((overview?.presentCount ?? 0) / totalRecords) * 100) : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -31,52 +38,49 @@ export default function AttendanceReportPage() {
           </Button>
         }
       />
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <StatsCard label="Overall Rate" value={`${overallRate}%`} icon="ClipboardCheck" change={3.2} changeLabel="vs last month" />
-        <StatsCard label="Total Sessions" value="24" icon="Layers" />
-        <StatsCard label="Avg per Session" value="14.2" icon="Users" />
-        <StatsCard label="Perfect Attendance" value="3" icon="UserCheck" />
+        <StatsCard label="Overall Rate" value={`${overallRate}%`} icon="ClipboardCheck" />
+        <StatsCard label="Total Sessions" value={overview?.totalSessions ?? 0} icon="Layers" />
+        <StatsCard label="Present" value={overview?.presentCount ?? 0} icon="UserCheck" />
+        <StatsCard label="Absent" value={overview?.absentCount ?? 0} icon="Users" />
       </div>
-
-      <Card className="border-border/50 bg-card">
-        <CardHeader>
-          <CardTitle className="text-base">Weekly Attendance Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AreaChart
-            labels={mockAttendanceChartData.map((d) => d.label)}
-            datasets={[
-              {
-                label: "Attendance %",
-                data: mockAttendanceChartData.map((d) => d.value),
-                borderColor: "#22d3ee",
-                backgroundColor: "rgba(34,211,238,0.1)",
-              },
-            ]}
-            height={300}
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 bg-card">
-        <CardHeader>
-          <CardTitle className="text-base">Attendance by Branch</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BarChart
-            labels={mockBranches.filter((b) => b.status === "active").map((b) => b.name)}
-            datasets={[
-              {
-                label: "Attendance %",
-                data: [87, 91, 84],
-                backgroundColor: "#3ddc84",
-              },
-            ]}
-            height={280}
-          />
-        </CardContent>
-      </Card>
+      {overview?.byGroup && overview.byGroup.length > 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <CardTitle className="text-base">Attendance by Group</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarChart
+              labels={overview.byGroup.map((g) => g.groupName)}
+              datasets={[
+                {
+                  label: "Attendance %",
+                  data: overview.byGroup.map((g) => g.rate),
+                  backgroundColor: "#3ddc84",
+                },
+              ]}
+              height={280}
+            />
+          </CardContent>
+        </Card>
+      )}
+      {branches && branches.length > 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <CardTitle className="text-base">Branches</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {branches.map((b) => (
+                <div key={b.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <span className="font-medium text-sm">{b.name}</span>
+                  <span className="text-xs text-muted-foreground">{b.city ?? ""}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

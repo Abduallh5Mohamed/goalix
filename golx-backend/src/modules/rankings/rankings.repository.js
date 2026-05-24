@@ -10,14 +10,19 @@ class RankingsRepository extends BaseRepository {
         // Always scope by academy — prevents cross-tenant ranking read via ?groupId
         const query = this.db('ranking_snapshots')
             .join('player_profiles as pp', 'ranking_snapshots.player_id', 'pp.id')
-            .where('pp.academy_id', academyId)
+            .leftJoin('academy_groups as ag', 'ranking_snapshots.group_id', 'ag.id')
             .modify((q) => {
+                if (academyId) q.where('pp.academy_id', academyId);
                 if (period) q.where('ranking_snapshots.period', period);
                 if (groupId) q.where('ranking_snapshots.group_id', groupId);
             })
-            .select('ranking_snapshots.*');
+            .select(
+                'ranking_snapshots.*',
+                'pp.full_name as player_name',
+                'ag.name as group_name',
+            );
 
-        const [{ count }] = await query.clone().count('ranking_snapshots.id as count');
+        const [{ count }] = await query.clone().clearSelect().count('ranking_snapshots.id as count');
         const data = await query
             .orderBy([
                 { column: 'ranking_snapshots.total_score', order: 'desc' },
@@ -27,6 +32,14 @@ class RankingsRepository extends BaseRepository {
             .offset((page - 1) * limit);
 
         return { data, total: +count, page, totalPages: Math.ceil(+count / limit) || 1 };
+    }
+
+    // Monthly rankings: use the latest available period in the DB
+    async findRankingsByMonthPrefix(monthPeriod, options) {
+        const latestRow = await this.db('ranking_snapshots').max('period as p').first();
+        const latestPeriod = latestRow ? latestRow.p : null;
+        if (!latestPeriod) return { data: [], total: 0, page: options.page || 1, totalPages: 1 };
+        return this.findRankings(latestPeriod, options);
     }
 
     async findPlayerRankings(playerId, { page = 1, limit = 20 } = {}) {
@@ -147,22 +160,20 @@ class RankingsRepository extends BaseRepository {
             .first();
     }
 
-    // Verify that a group belongs to this academy (chain: group→birth_year→branch→academy)
+    // Verify that a group belongs to this academy (chain: group→branch→academy)
     async verifyGroupOwnership(groupId, academyId) {
         return this.db('academy_groups as ag')
-            .join('academy_birth_years as aby', 'ag.birth_year_id', 'aby.id')
-            .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
             .where('ag.id', groupId)
             .where('ab.academy_id', academyId)
             .first();
     }
 
-    // Verify that a match belongs to this academy (chain: match→group→birth_year→branch→academy)
+    // Verify that a match belongs to this academy (chain: match→group→branch→academy)
     async verifyMatchOwnership(matchId, academyId) {
         return this.db('match_records as mr')
             .join('academy_groups as ag', 'mr.group_id', 'ag.id')
-            .join('academy_birth_years as aby', 'ag.birth_year_id', 'aby.id')
-            .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
             .where('mr.id', matchId)
             .where('ab.academy_id', academyId)
             .first();

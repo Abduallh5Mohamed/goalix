@@ -1,0 +1,566 @@
+const { Router } = require("express");
+const validate = require("../../middleware/validate.middleware");
+const { authMiddleware } = require("../../middleware/auth.middleware");
+const { rbac, restrictTo } = require("../../middleware/rbac.middleware");
+const schema = require("./calendar.schema");
+
+function adminCalendarRoutes(controller) {
+  const router = Router();
+  router.use(authMiddleware, rbac("access_admin_dashboard"));
+
+  router.get(
+    "/calendar-events",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.adminListCalendarEvents,
+  );
+  router.post(
+    "/calendar-events",
+    rbac("manage_schedules"),
+    validate({ body: schema.adminCalendarEventSchema }),
+    controller.adminCreateCalendarEvent,
+  );
+  router.get(
+    "/calendar-events/:id",
+    validate({ params: schema.idParam }),
+    controller.adminGetCalendarEvent,
+  );
+  router.patch(
+    "/calendar-events/:id",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.updateAdminCalendarEventSchema,
+    }),
+    controller.adminUpdateCalendarEvent,
+  );
+  router.delete(
+    "/calendar-events/:id",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam }),
+    controller.adminDeleteCalendarEvent,
+  );
+
+  router.get(
+    "/matches",
+    validate({ query: schema.adminMatchFiltersQuery }),
+    controller.adminListMatches,
+  );
+  router.post(
+    "/matches",
+    rbac("manage_schedules"),
+    validate({ body: schema.adminMatchSchema }),
+    controller.adminCreateMatch,
+  );
+  router.get(
+    "/match-coach-requests",
+    validate({ query: schema.paginationQuery }),
+    controller.adminListCoachMatchRequests,
+  );
+  router.post(
+    "/match-coach-requests",
+    rbac("manage_schedules"),
+    validate({ body: schema.adminCoachMatchRequestSchema }),
+    controller.adminCreateCoachMatchRequest,
+  );
+  router.get(
+    "/matches/:id",
+    validate({ params: schema.idParam }),
+    controller.adminGetMatch,
+  );
+  router.patch(
+    "/matches/:id",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam, body: schema.updateAdminMatchSchema }),
+    controller.adminUpdateMatch,
+  );
+  router.patch(
+    "/matches/:id/postpone",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.adminPostponeMatchSchema,
+    }),
+    controller.adminPostponeMatch,
+  );
+  router.delete(
+    "/matches/:id/hard-delete",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam }),
+    controller.adminHardDeleteMatch,
+  );
+  router.delete(
+    "/matches/:id",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam }),
+    controller.adminDeleteMatch,
+  );
+  router.patch(
+    "/matches/:id/status",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam, body: schema.matchStatusSchema }),
+    controller.adminUpdateMatchStatus,
+  );
+
+  router.get(
+    "/friendly-match-requests",
+    validate({ query: schema.paginationQuery }),
+    controller.adminListFriendlyRequests,
+  );
+  router.patch(
+    "/friendly-match-requests/:id/approve",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.approveFriendlyRequestSchema,
+    }),
+    controller.adminApproveFriendlyRequest,
+  );
+  router.patch(
+    "/friendly-match-requests/:id/reject",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.rejectFriendlyRequestSchema,
+    }),
+    controller.adminRejectFriendlyRequest,
+  );
+  router.post(
+    "/friendly-match-requests/:id/convert-to-match",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.convertFriendlyRequestSchema,
+    }),
+    controller.adminConvertFriendlyRequest,
+  );
+
+  router.get(
+    "/reports/attendance",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.adminAttendanceReport,
+  );
+  router.get(
+    "/reports/performance",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.adminPerformanceReport,
+  );
+
+  router.get(
+    "/coach-groups",
+    validate({ query: schema.paginationQuery }),
+    controller.adminListCoachGroups,
+  );
+  router.post(
+    "/coach-groups",
+    rbac("manage_teams"),
+    validate({ body: schema.coachGroupAssignmentSchema }),
+    controller.adminCreateCoachGroup,
+  );
+  router.patch(
+    "/coach-groups/:id",
+    rbac("manage_teams"),
+    validate({
+      params: schema.coachGroupAssignmentParam,
+      body: schema.updateCoachGroupAssignmentSchema,
+    }),
+    controller.adminUpdateCoachGroup,
+  );
+  router.delete(
+    "/coach-groups/:id",
+    rbac("manage_teams"),
+    validate({ params: schema.coachGroupAssignmentParam }),
+    controller.adminDeleteCoachGroup,
+  );
+
+  router.get(
+    "/player-field-options",
+    validate({ query: schema.optionQuery }),
+    controller.listPlayerOptions,
+  );
+  router.post(
+    "/player-field-options",
+    rbac("manage_academy_settings"),
+    validate({ body: schema.optionSchema }),
+    controller.adminCreatePlayerOption,
+  );
+  router.patch(
+    "/player-field-options/:optionId",
+    rbac("manage_academy_settings"),
+    validate({ params: schema.optionParam, body: schema.updateOptionSchema }),
+    controller.adminUpdatePlayerOption,
+  );
+  router.delete(
+    "/player-field-options/:optionId",
+    rbac("manage_academy_settings"),
+    validate({ params: schema.optionParam }),
+    controller.adminDeletePlayerOption,
+  );
+
+  return router;
+}
+
+function coachCalendarRoutes(controller) {
+  const router = Router();
+  router.use(authMiddleware, restrictTo("coach"));
+
+  router.get(
+    "/calendar-events",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.coachListCalendarEvents,
+  );
+  router.get("/groups", controller.coachListGroups);
+  router.get(
+    "/groups/:id/players",
+    validate({ params: schema.idParam }),
+    controller.coachListGroupPlayers,
+  );
+  router.get(
+    "/players",
+    validate({ query: schema.coachPlayersQuery }),
+    controller.coachListPlayers,
+  );
+  router.get(
+    "/players/:id",
+    validate({ params: schema.idParam }),
+    controller.coachGetPlayerDetail,
+  );
+  router.post(
+    "/players",
+    validate({ body: schema.coachBasicPlayerSchema }),
+    controller.coachCreateBasicPlayer,
+  );
+  router.patch(
+    "/players/:id/complete-profile",
+    validate({
+      params: schema.idParam,
+      body: schema.coachCompletePlayerProfileSchema,
+    }),
+    controller.coachCompletePlayerProfile,
+  );
+
+  router.post(
+    "/training-events",
+    validate({ body: schema.coachTrainingEventSchema }),
+    controller.coachCreateTrainingEvent,
+  );
+  router.get(
+    "/training-events/:id",
+    validate({ params: schema.idParam }),
+    controller.coachGetTrainingEvent,
+  );
+  router.patch(
+    "/training-events/:id",
+    validate({
+      params: schema.idParam,
+      body: schema.updateCoachTrainingEventSchema,
+    }),
+    controller.coachUpdateTrainingEvent,
+  );
+  router.patch(
+    "/training-events/:id/status",
+    validate({ params: schema.idParam, body: schema.trainingStatusSchema }),
+    controller.coachUpdateTrainingEventStatus,
+  );
+  router.patch(
+    "/training-events/:id/extend",
+    validate({ params: schema.idParam, body: schema.trainingExtendSchema }),
+    controller.coachExtendTrainingEvent,
+  );
+
+  router.post(
+    "/events/:eventId/attendance",
+    validate({
+      params: schema.eventParam,
+      body: schema.attendanceRecordsSchema,
+    }),
+    controller.coachUpsertEventAttendance,
+  );
+  router.patch(
+    "/events/:eventId/attendance/:playerId",
+    validate({
+      params: schema.eventPlayerParam,
+      body: schema.updateEventAttendanceSchema,
+    }),
+    controller.coachUpdateEventAttendance,
+  );
+  router.post(
+    "/events/:eventId/evaluations",
+    validate({
+      params: schema.eventParam,
+      body: schema.evaluationRecordsSchema,
+    }),
+    controller.coachUpsertEventEvaluations,
+  );
+  router.patch(
+    "/evaluations/:id",
+    validate({
+      params: schema.evaluationParam,
+      body: schema.updateEvaluationSchema,
+    }),
+    controller.coachUpdateEvaluation,
+  );
+
+  router.get(
+    "/matches",
+    validate({ query: schema.adminMatchFiltersQuery }),
+    controller.coachListMatches,
+  );
+  router.get(
+    "/match-requests",
+    validate({ query: schema.paginationQuery }),
+    controller.coachListAdminMatchRequests,
+  );
+  router.post(
+    "/match-requests/:id/accept",
+    validate({
+      params: schema.idParam,
+      body: schema.coachResolveAdminMatchRequestSchema,
+    }),
+    controller.coachAcceptAdminMatchRequest,
+  );
+  router.get(
+    "/matches/:matchId",
+    validate({ params: schema.matchParam }),
+    controller.coachGetMatch,
+  );
+  router.post(
+    "/matches/:matchId/squad",
+    validate({ params: schema.matchParam, body: schema.squadSchema }),
+    controller.coachUpsertMatchSquad,
+  );
+  router.patch(
+    "/matches/:matchId/squad/:playerId",
+    validate({
+      params: schema.squadPlayerParam,
+      body: schema.updateSquadSchema,
+    }),
+    controller.coachUpdateMatchSquad,
+  );
+  router.delete(
+    "/matches/:matchId/squad/:playerId",
+    validate({ params: schema.squadPlayerParam }),
+    controller.coachDeleteMatchSquad,
+  );
+  router.patch(
+    "/matches/:matchId/targets",
+    validate({ params: schema.matchParam, body: schema.matchTargetSchema }),
+    controller.coachUpdateMatchTargets,
+  );
+  router.post(
+    "/matches/:matchId/tactics",
+    validate({ params: schema.matchParam, body: schema.tacticsSchema }),
+    controller.coachUpsertMatchTactics,
+  );
+  router.patch(
+    "/matches/:matchId/tactics",
+    validate({
+      params: schema.matchParam,
+      body: schema.tacticsSchema.partial(),
+    }),
+    controller.coachUpsertMatchTactics,
+  );
+  router.patch(
+    "/matches/:matchId/live-status",
+    validate({
+      params: schema.matchParam,
+      body: schema.matchLiveStatusUpdateSchema,
+    }),
+    controller.coachUpdateMatchLiveStatus,
+  );
+  router.post(
+    "/matches/:matchId/incidents",
+    validate({ params: schema.matchParam, body: schema.matchIncidentSchema }),
+    controller.coachRecordMatchIncident,
+  );
+  router.post(
+    "/matches/:matchId/goals",
+    validate({ params: schema.matchParam, body: schema.matchGoalSchema }),
+    controller.coachRecordMatchGoal,
+  );
+  router.post(
+    "/matches/:matchId/substitutions",
+    validate({
+      params: schema.matchParam,
+      body: schema.matchSubstitutionSchema,
+    }),
+    controller.coachRecordMatchSubstitution,
+  );
+  router.delete(
+    "/matches/:matchId/substitutions/:substitutionId",
+    validate({ params: schema.matchSubstitutionParam }),
+    controller.coachDeleteMatchSubstitution,
+  );
+  router.delete(
+    "/matches/:matchId/goals/:goalId",
+    validate({ params: schema.matchGoalParam }),
+    controller.coachDeleteMatchGoal,
+  );
+  router.delete(
+    "/matches/:matchId/incidents/:incidentId",
+    validate({ params: schema.matchIncidentParam }),
+    controller.coachDeleteMatchIncident,
+  );
+  router.post(
+    "/matches/:matchId/attendance",
+    validate({
+      params: schema.matchParam,
+      body: schema.matchAttendanceRecordsSchema,
+    }),
+    controller.coachUpsertMatchAttendance,
+  );
+  router.post(
+    "/matches/:matchId/player-stats",
+    validate({ params: schema.matchParam, body: schema.playerStatsSchema }),
+    controller.coachUpsertPlayerStats,
+  );
+  router.patch(
+    "/matches/:matchId/player-stats/:playerId",
+    validate({
+      params: schema.statsPlayerParam,
+      body: schema.updatePlayerStatsSchema,
+    }),
+    controller.coachUpdatePlayerStats,
+  );
+
+  router.post(
+    "/friendly-match-requests",
+    validate({ body: schema.friendlyRequestSchema }),
+    controller.coachCreateFriendlyRequest,
+  );
+  router.get(
+    "/friendly-match-requests",
+    validate({ query: schema.paginationQuery }),
+    controller.coachListFriendlyRequests,
+  );
+
+  router.get(
+    "/player-field-options",
+    validate({ query: schema.optionQuery }),
+    controller.listPlayerOptions,
+  );
+  router.post(
+    "/player-field-options",
+    validate({ body: schema.optionSchema }),
+    controller.coachCreatePlayerOption,
+  );
+  router.patch(
+    "/player-field-options/:optionId",
+    validate({ params: schema.optionParam, body: schema.updateOptionSchema }),
+    controller.coachUpdatePlayerOption,
+  );
+  router.delete(
+    "/player-field-options/:optionId",
+    validate({ params: schema.optionParam }),
+    controller.coachDeletePlayerOption,
+  );
+
+  router.get(
+    "/players/:id/progress",
+    validate({ params: schema.idParam }),
+    controller.coachGetPlayerProgress,
+  );
+
+  return router;
+}
+
+function playerCalendarRoutes(controller) {
+  const router = Router();
+  router.use(authMiddleware, restrictTo("player"));
+
+  router.get(
+    "/calendar-events",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.playerListCalendarEvents,
+  );
+  router.get(
+    "/matches",
+    validate({ query: schema.adminMatchFiltersQuery }),
+    controller.playerListMatches,
+  );
+  router.get(
+    "/matches/:id",
+    validate({ params: schema.playerMatchParam }),
+    controller.playerGetMatch,
+  );
+  router.get(
+    "/matches/:id/my-stats",
+    validate({ params: schema.playerMatchParam }),
+    controller.playerGetMatchStats,
+  );
+  router.get(
+    "/trainings",
+    validate({ query: schema.calendarFiltersQuery }),
+    controller.playerListTrainings,
+  );
+  router.get(
+    "/attendance",
+    validate({ query: schema.paginationQuery }),
+    controller.playerAttendanceHistory,
+  );
+  router.get(
+    "/evaluations",
+    validate({ query: schema.paginationQuery }),
+    controller.playerEvaluations,
+  );
+  router.get("/progress", controller.playerProgress);
+
+  return router;
+}
+
+function parentCalendarRoutes(controller) {
+  const router = Router();
+  router.use(authMiddleware, restrictTo("parent"));
+
+  router.get(
+    "/children/:childId/calendar-events",
+    validate({ params: schema.childParam, query: schema.calendarFiltersQuery }),
+    controller.parentListCalendarEvents,
+  );
+  router.get(
+    "/children/:childId/matches",
+    validate({
+      params: schema.childParam,
+      query: schema.adminMatchFiltersQuery,
+    }),
+    controller.parentListMatches,
+  );
+  router.get(
+    "/children/:childId/matches/:matchId",
+    validate({ params: schema.childMatchParam }),
+    controller.parentGetMatch,
+  );
+  router.get(
+    "/children/:childId/matches/:matchId/stats",
+    validate({ params: schema.childMatchParam }),
+    controller.parentGetMatchStats,
+  );
+  router.get(
+    "/children/:childId/trainings",
+    validate({ params: schema.childParam, query: schema.calendarFiltersQuery }),
+    controller.parentListTrainings,
+  );
+  router.get(
+    "/children/:childId/attendance",
+    validate({ params: schema.childParam, query: schema.paginationQuery }),
+    controller.parentAttendanceHistory,
+  );
+  router.get(
+    "/children/:childId/evaluations",
+    validate({ params: schema.childParam, query: schema.paginationQuery }),
+    controller.parentEvaluations,
+  );
+  router.get(
+    "/children/:childId/progress",
+    validate({ params: schema.childParam }),
+    controller.parentProgress,
+  );
+
+  return router;
+}
+
+module.exports = {
+  adminCalendarRoutes,
+  coachCalendarRoutes,
+  playerCalendarRoutes,
+  parentCalendarRoutes,
+};

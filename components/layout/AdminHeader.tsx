@@ -20,6 +20,7 @@ import Link from "next/link";
 export function AdminHeader() {
   const { user } = useCurrentUser();
   const { logout } = useAuth();
+  const displayIdentifier = user?.email || user?.username || "";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-card/80 px-4 backdrop-blur-md lg:px-6">
@@ -59,7 +60,7 @@ export function AdminHeader() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel className="font-normal">
               <p className="text-sm font-medium">{user?.fullName}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <p className="text-xs text-muted-foreground">{displayIdentifier}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>

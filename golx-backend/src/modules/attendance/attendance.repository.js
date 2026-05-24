@@ -5,30 +5,28 @@ class AttendanceRepository extends BaseRepository {
         super('attendance_sessions', db);
     }
 
-    // ─── Sessions ───────────────────────────────────────────────────────
     async findSessions({ groupId, coachId, status, dateFrom, dateTo, academyId, page = 1, limit = 20 }) {
-        const query = this.db('attendance_sessions').modify((q) => {
-            // Always scope to the requesting academy — prevents cross-tenant IDOR
-            if (academyId) {
-                q.whereIn('group_id',
-                    this.db('academy_groups as ag')
-                        .join('academy_birth_years as aby', 'ag.birth_year_id', 'aby.id')
-                        .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
-                        .where('ab.academy_id', academyId)
-                        .select('ag.id'),
-                );
-            }
-            if (groupId) q.where('group_id', groupId);
-            if (coachId) q.where('coach_id', coachId);
-            if (status) q.where('status', status);
-            if (dateFrom) q.where('session_date', '>=', dateFrom);
-            if (dateTo) q.where('session_date', '<=', dateTo);
-        });
+        const query = this.db('attendance_sessions as s')
+            .join('academy_groups as ag', 's.group_id', 'ag.id')
+            .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
+            .leftJoin('coach_profiles as cp', 's.coach_id', 'cp.id')
+            .where('ab.academy_id', academyId)
+            .modify((q) => {
+                if (groupId) q.where('s.group_id', groupId);
+                if (coachId) q.where('s.coach_id', coachId);
+                if (status) q.where('s.status', status);
+                if (dateFrom) q.where('s.session_date', '>=', dateFrom);
+                if (dateTo) q.where('s.session_date', '<=', dateTo);
+            });
 
-        const [{ count }] = await query.clone().count('id as count');
+        const [{ count }] = await query.clone().count('s.id as count');
         const data = await query
-            .select('*')
-            .orderBy('session_date', 'desc')
+            .select(
+                's.*',
+                'ag.name as group_name',
+                'cp.full_name as coach_name',
+            )
+            .orderBy('s.session_date', 'desc')
             .limit(limit)
             .offset((page - 1) * limit);
 
@@ -39,12 +37,10 @@ class AttendanceRepository extends BaseRepository {
         return this.db('attendance_sessions').where({ id }).first();
     }
 
-    // Academy-scoped getter — prevents IDOR across tenants
     async findSessionByIdAndAcademy(id, academyId) {
         return this.db('attendance_sessions as s')
             .join('academy_groups as ag', 's.group_id', 'ag.id')
-            .join('academy_birth_years as aby', 'ag.birth_year_id', 'aby.id')
-            .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
             .where('s.id', id)
             .where('ab.academy_id', academyId)
             .select('s.*')
@@ -64,7 +60,6 @@ class AttendanceRepository extends BaseRepository {
         return row;
     }
 
-    // ─── Attendance Records ─────────────────────────────────────────────
     async findAttendanceBySession(sessionId) {
         return this.db('attendance_marks')
             .where({ session_id: sessionId })
@@ -98,25 +93,23 @@ class AttendanceRepository extends BaseRepository {
             session_id: sessionId,
             player_id: r.playerId,
             status: r.status,
+            notes: r.notes || null,
             marked_by: markedBy,
             marked_at: new Date(),
         }));
 
-        // Upsert: insert or update on conflict
         return this.db('attendance_marks')
             .insert(rows)
             .onConflict(['session_id', 'player_id'])
-            .merge(['status', 'marked_by', 'marked_at'])
+            .merge(['status', 'notes', 'marked_by', 'marked_at'])
             .returning('*');
     }
 
-    // ─── Overview / Stats ──────────────────────────────────────────────
     async getAttendanceOverview({ groupId, branchId, dateFrom, dateTo, academyId }) {
         const query = this.db('attendance_marks')
             .join('attendance_sessions', 'attendance_marks.session_id', 'attendance_sessions.id')
             .join('academy_groups as ag', 'attendance_sessions.group_id', 'ag.id')
-            .join('academy_birth_years as aby', 'ag.birth_year_id', 'aby.id')
-            .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
             .where('ab.academy_id', academyId)
             .modify((q) => {
                 if (groupId) q.where('attendance_sessions.group_id', groupId);
@@ -132,7 +125,7 @@ class AttendanceRepository extends BaseRepository {
     }
 
     async getPlayerAttendanceRate(playerId, dateFrom, dateTo) {
-        const result = await this.db('attendance_marks')
+        return this.db('attendance_marks')
             .join('attendance_sessions', 'attendance_marks.session_id', 'attendance_sessions.id')
             .where('attendance_marks.player_id', playerId)
             .modify((q) => {
@@ -147,8 +140,6 @@ class AttendanceRepository extends BaseRepository {
                 this.db.raw("COUNT(*) FILTER (WHERE attendance_marks.status = 'excused') as excused"),
             )
             .first();
-
-        return result;
     }
 }
 

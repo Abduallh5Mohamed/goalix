@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const env = require('../config/env');
 const ApiResponse = require('../shared/api-response');
 
 // Use req.ip which is set correctly when app.set('trust proxy', 1) is configured.
@@ -36,4 +37,20 @@ const authLimiter = rateLimit({
     },
 });
 
-module.exports = { apiLimiter, authLimiter };
+/**
+ * Stricter admin auth rate limiter: fewer attempts allowed
+ */
+const adminAuthLimiter = rateLimit({
+    windowMs: (env.ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES || 15) * 60 * 1000,
+    max: env.ADMIN_AUTH_RATE_LIMIT_MAX || 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator,
+    handler: (_req, res) => {
+        res.status(429).json(
+            ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many admin authentication attempts, please try again later'),
+        );
+    },
+});
+
+module.exports = { apiLimiter, authLimiter, adminAuthLimiter };

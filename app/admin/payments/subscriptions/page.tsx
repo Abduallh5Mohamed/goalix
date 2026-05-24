@@ -3,77 +3,102 @@
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { mockSubscriptions } from "@/lib/mock-data";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Subscription } from "@/lib/types";
-import { PAYMENT_STATUS_CONFIG } from "@/lib/constants";
+import { RefreshCw } from "lucide-react";
+import { useGetSubscriptionsQuery, type Subscription } from "@/lib/store/api/adminApi";
+
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
+  active: "success",
+  paid: "success",
+  pending: "warning",
+  overdue: "destructive",
+  expired: "secondary",
+  cancelled: "destructive",
+};
 
 const columns: Column<Subscription>[] = [
   {
-    key: "player",
-    header: "Player",
+    key: "id",
+    header: "ID",
     accessor: (row) => (
-      <div>
-        <p className="font-medium">{row.playerName}</p>
-        <p className="text-xs text-muted-foreground">Parent: {row.parentName}</p>
-      </div>
+      <span className="font-mono text-xs text-primary">{row.id.slice(0, 8).toUpperCase()}</span>
     ),
-    sortable: true,
-    sortValue: (row) => row.playerName,
   },
   {
     key: "plan",
     header: "Plan",
     accessor: (row) => (
-      <Badge variant="outline" className="capitalize">{row.plan}</Badge>
+      <Badge variant="outline" className="capitalize">{row.plan_id}</Badge>
     ),
     sortable: true,
-    sortValue: (row) => row.plan,
+    sortValue: (row) => row.plan_id,
   },
   {
     key: "amount",
     header: "Amount",
     accessor: (row) => (
-      <span className="font-semibold">{formatCurrency(row.amount)}</span>
+      <span className="font-semibold">{formatCurrency(parseFloat(row.amount))}</span>
     ),
     sortable: true,
-    sortValue: (row) => row.amount,
+    sortValue: (row) => parseFloat(row.amount),
   },
   {
     key: "period",
     header: "Period",
     accessor: (row) => (
       <span className="text-xs text-muted-foreground">
-        {formatDate(row.startDate)} – {formatDate(row.endDate)}
+        {formatDate(row.starts_at)} - {formatDate(row.ends_at)}
       </span>
     ),
     sortable: true,
-    sortValue: (row) => row.startDate,
-  },
-  {
-    key: "renewal",
-    header: "Renewal",
-    accessor: (row) => formatDate(row.renewalDate),
-    sortable: true,
-    sortValue: (row) => row.renewalDate,
+    sortValue: (row) => row.starts_at,
   },
   {
     key: "status",
     header: "Status",
-    accessor: (row) => {
-      const cfg = PAYMENT_STATUS_CONFIG[row.status];
-      return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
-    },
+    accessor: (row) => (
+      <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"} className="capitalize">
+        {row.status}
+      </Badge>
+    ),
     sortable: true,
     sortValue: (row) => row.status,
   },
 ];
 
 export default function SubscriptionsPage() {
+  const { data, isLoading, isError, refetch } = useGetSubscriptionsQuery({ limit: 50 });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-6">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <p className="text-muted-foreground">Failed to load subscriptions.</p>
+        <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const subscriptions = data?.data ?? [];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Subscriptions"
+        title={`Subscriptions (${data?.pagination?.total ?? subscriptions.length})`}
         description="Manage all active subscriptions and renewal dates."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
@@ -83,11 +108,11 @@ export default function SubscriptionsPage() {
       />
 
       <DataTable
-        data={mockSubscriptions}
+        data={subscriptions}
         columns={columns}
         searchable
         searchPlaceholder="Search subscriptions..."
-        searchKey={(row) => `${row.playerName} ${row.parentName} ${row.plan}`}
+        searchKey={(row) => `${row.id} ${row.plan_id} ${row.status}`}
       />
     </div>
   );

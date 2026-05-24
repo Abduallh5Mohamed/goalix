@@ -11,13 +11,13 @@ import {
   mockPlayers,
 } from "@/lib/mock-data";
 import { ATTENDANCE_STATUS_CONFIG } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime12 } from "@/lib/utils";
 import { CalendarCheck, Clock, Calendar } from "lucide-react";
 
 export default function PlayerAttendancePage() {
   const player = mockPlayers.find((p) => p.id === "p1")!;
   const playerRecords = mockAttendanceRecords.filter(
-    (r) => r.playerId === "p1"
+    (r) => r.playerId === "p1",
   );
 
   const statusCounts = {
@@ -33,7 +33,7 @@ export default function PlayerAttendancePage() {
     ([key, config]) => ({
       label: config.label,
       value: statusCounts[key as keyof typeof statusCounts] || 0,
-    })
+    }),
   );
 
   return (
@@ -87,9 +87,7 @@ export default function PlayerAttendancePage() {
         {/* Chart */}
         <Card className="border-border/50 bg-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Breakdown
-            </CardTitle>
+            <CardTitle className="text-base font-semibold">Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             <DoughnutChart
@@ -111,7 +109,7 @@ export default function PlayerAttendancePage() {
             <CardContent className="space-y-2">
               {playerRecords.map((record) => {
                 const session = mockSessions.find(
-                  (s) => s.id === record.sessionId
+                  (s) => s.id === record.sessionId,
                 );
                 return (
                   <div
@@ -132,7 +130,7 @@ export default function PlayerAttendancePage() {
                           {session && (
                             <>
                               <Clock className="ml-1 h-3 w-3" />
-                              {session.startTime}
+                              {formatTime12(session.startTime)}
                             </>
                           )}
                         </div>
@@ -143,10 +141,7 @@ export default function PlayerAttendancePage() {
                         )}
                       </div>
                     </div>
-                    <StatusBadge
-                      status={record.status}
-                      type="attendance"
-                    />
+                    <StatusBadge status={record.status} type="attendance" />
                   </div>
                 );
               })}

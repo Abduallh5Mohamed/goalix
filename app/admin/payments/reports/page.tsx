@@ -1,21 +1,33 @@
-"use client";
+﻿"use client";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart } from "@/components/charts/BarChart";
-import { LineChart } from "@/components/charts/LineChart";
 import { DoughnutChart } from "@/components/charts/DoughnutChart";
 import { Button } from "@/components/ui/button";
-import { mockSubscriptions, mockRevenueChartData } from "@/lib/mock-data";
+import {
+  useGetPaymentOverviewQuery,
+  useGetSubscriptionsQuery,
+} from "@/lib/store/api/adminApi";
 import { formatCurrency } from "@/lib/utils";
 import { FileDown } from "lucide-react";
 
 export default function PaymentReportsPage() {
-  const totalRevenue = mockSubscriptions.filter((s) => s.status === "paid").reduce((sum, s) => sum + s.amount, 0);
-  const monthlyCount = mockSubscriptions.filter((s) => s.plan === "monthly").length;
-  const quarterlyCount = mockSubscriptions.filter((s) => s.plan === "quarterly").length;
-  const yearlyCount = mockSubscriptions.filter((s) => s.plan === "yearly").length;
+  const { data: overview, isLoading: loadingOverview } = useGetPaymentOverviewQuery();
+  const { data: subsRes, isLoading: loadingSubs } = useGetSubscriptionsQuery({ limit: 200 });
+
+  if (loadingOverview || loadingSubs) return <LoadingSkeleton />;
+
+  const paidItem = overview?.find((o) => o.status === "paid");
+  const totalRevenue = paidItem ? Number(paidItem.total_amount) : 0;
+  const paidCount = paidItem ? Number(paidItem.count) : 1;
+  const avgPerPlayer = paidCount > 0 ? totalRevenue / paidCount : 0;
+
+  const statusCounts = (overview ?? []).reduce<Record<string, number>>((acc, o) => {
+    acc[o.status] = Number(o.count);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -34,46 +46,45 @@ export default function PaymentReportsPage() {
           </Button>
         }
       />
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatsCard label="Total Revenue (Collected)" value={formatCurrency(totalRevenue)} icon="CreditCard" />
-        <StatsCard label="Avg per Player" value={formatCurrency(totalRevenue / mockSubscriptions.filter(s => s.status === "paid").length || 1)} icon="Users" />
-        <StatsCard label="Collection Rate" value="71%" icon="ClipboardCheck" change={5} changeLabel="vs last month" />
+        <StatsCard label="Avg per Player" value={formatCurrency(avgPerPlayer)} icon="Users" />
+        <StatsCard label="Total Subscriptions" value={subsRes?.pagination?.total ?? 0} icon="ClipboardCheck" />
       </div>
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Monthly Revenue</CardTitle>
+            <CardTitle className="text-base">Payment Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <LineChart
-              labels={mockRevenueChartData.map((d) => d.label)}
-              datasets={[
-                {
-                  label: "Revenue (EGP)",
-                  data: mockRevenueChartData.map((d) => d.value),
-                  borderColor: "#22d3ee",
-                  backgroundColor: "rgba(34,211,238,0.1)",
-                  fill: true,
-                },
-              ]}
-              height={280}
-            />
+            {overview && overview.length > 0 ? (
+              <DoughnutChart
+                labels={overview.map((o) => o.status)}
+                data={overview.map((o) => Number(o.count))}
+                colors={["#3ddc84", "#f59e0b", "#ef4444", "#22d3ee"]}
+                height={260}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">No payment data.</p>
+            )}
           </CardContent>
         </Card>
-
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Plan Distribution</CardTitle>
+            <CardTitle className="text-base">Revenue by Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <DoughnutChart
-              labels={["Monthly", "Quarterly", "Yearly"]}
-              data={[monthlyCount, quarterlyCount, yearlyCount]}
-              colors={["#22d3ee", "#3ddc84", "#f59e0b"]}
-              height={260}
-            />
+            <div className="space-y-3">
+              {(overview ?? []).map((item) => (
+                <div key={item.status} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <span className="font-medium text-sm capitalize">{item.status}</span>
+                  <div className="text-right">
+                    <p className="font-bold">{formatCurrency(Number(item.total_amount))}</p>
+                    <p className="text-xs text-muted-foreground">{item.count} subscriptions</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
