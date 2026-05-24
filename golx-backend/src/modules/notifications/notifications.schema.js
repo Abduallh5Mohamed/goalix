@@ -1,0 +1,42 @@
+const { z } = require('zod');
+
+const uuidParam = z.object({ id: z.string().uuid() });
+
+const sendNotificationSchema = z.object({
+    userId: z.string().uuid().optional(),
+    type: z.enum(['info', 'warning', 'success', 'error']).default('info'),
+    title: z.string().min(1).max(200),
+    body: z.string().max(2000),
+    channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
+    targetRole: z.string().optional(), // broadcast to role
+});
+
+const bulkNotificationSchema = z.object({
+    type: z.enum(['info', 'warning', 'success', 'error']).default('info'),
+    title: z.string().min(1).max(200),
+    body: z.string().max(2000),
+    channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
+    targetRole: z.string().optional(),
+});
+
+const notificationsQuery = z.object({
+    isRead: z.enum(['true', 'false']).optional(),
+    type: z.enum(['info', 'warning', 'success', 'error']).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+const logsQuerySchema = z.object({
+    channel: z.enum(['in_app', 'push', 'email', 'sms']).optional(),
+    status: z.enum(['sent', 'delivered', 'failed']).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+module.exports = {
+    uuidParam,
+    sendNotificationSchema,
+    bulkNotificationSchema,
+    notificationsQuery,
+    logsQuerySchema,
+};

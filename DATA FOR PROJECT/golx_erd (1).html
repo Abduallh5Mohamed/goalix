@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GolX — Database ERD</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f8f7f2;
+    color: #1a1a18;
+    padding: 32px 24px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #1a1a18;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #73726c;
+    margin-bottom: 24px;
+  }
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #e0dfd7;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .leg-item { display: flex; align-items: center; gap: 6px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+  #erd {
+    background: #fff;
+    border: 1px solid #e0dfd7;
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  #erd svg { width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<h1>GolX — Database ERD</h1>
+<p class="subtitle">27 tables · 1 PostgreSQL database (golx_main) · Modular Monolith architecture</p>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:#1D9E75"></div><span>Auth + Academy</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#534AB7"></div><span>Players + Coaches</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#BA7517"></div><span>Attendance + Evaluations</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#D85A30"></div><span>Rankings + Matches</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#D4537E"></div><span>Payments</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#639922"></div><span>AI + Nutrition</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#888780"></div><span>Shared (Audit + Media)</span></div>
+</div>
+
+<div id="erd"></div>
+
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  themeVariables: {
+    darkMode: false,
+    fontSize: '12px',
+    lineColor: '#73726c',
+    textColor: '#3d3d3a',
+    primaryColor: '#E1F5EE',
+    primaryBorderColor: '#0F6E56',
+    primaryTextColor: '#085041',
+    secondaryColor: '#EEEDFE',
+    secondaryBorderColor: '#534AB7',
+    secondaryTextColor: '#3C3489',
+    tertiaryColor: '#FAEEDA',
+    tertiaryBorderColor: '#854F0B',
+    tertiaryTextColor: '#633806',
+  },
+  er: {
+    diagramPadding: 24,
+    layoutDirection: 'TB',
+    minEntityWidth: 120,
+    minEntityHeight: 75,
+    entityPadding: 15,
+    useMaxWidth: true
+  }
+});
+
+const diagram = `erDiagram
+  auth_users {
+    uuid id PK
+    varchar email UK
+    varchar phone UK
+    text password_hash
+    enum role
+    uuid academy_id FK
+    uuid branch_id FK
+    boolean is_active
+    timestamptz last_login_at
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  auth_refresh_tokens {
+    uuid id PK
+    uuid user_id FK
+    text token_hash UK
+    timestamptz expires_at
+    boolean is_revoked
+    timestamptz created_at
+  }
+  auth_password_resets {
+    uuid id PK
+    uuid user_id FK
+    text token_hash UK
+    timestamptz expires_at
+    boolean is_used
+    timestamptz created_at
+  }
+  academy_academies {
+    uuid id PK
+    varchar name
+    uuid owner_user_id FK
+    text logo_url
+    jsonb settings
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  academy_branches {
+    uuid id PK
+    uuid academy_id FK
+    varchar name
+    text address
+    point location
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  academy_birth_years {
+    uuid id PK
+    uuid branch_id FK
+    smallint year
+    varchar label
+    timestamptz created_at
+  }
+  academy_groups {
+    uuid id PK
+    uuid birth_year_id FK
+    varchar name
+    smallint max_players
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  academy_schedules {
+    uuid id PK
+    uuid group_id FK
+    smallint day_of_week
+    time start_time
+    time end_time
+    varchar location
+  }
+  player_profiles {
+    uuid id PK
+    uuid user_id FK
+    uuid academy_id FK
+    varchar full_name
+    date date_of_birth
+    enum level
+    varchar position
+    enum preferred_foot
+    text photo_url
+    varchar guardian_name
+    varchar guardian_phone
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  player_group_assignments {
+    uuid id PK
+    uuid player_id FK
+    uuid group_id FK
+    timestamptz joined_at
+    timestamptz left_at
+  }
+  player_measurements {
+    uuid id PK
+    uuid player_id FK
+    decimal height_cm
+    decimal weight_kg
+    date measured_at
+    uuid measured_by FK
+  }
+  player_injury_history {
+    uuid id PK
+    uuid player_id FK
+    varchar injury_type
+    date injury_date
+    date recovery_date
+    text notes
+    uuid reported_by FK
+  }
+  coach_profiles {
+    uuid id PK
+    uuid user_id FK
+    uuid academy_id FK
+    varchar full_name
+    varchar specialization
+    text bio
+    text photo_url
+    timestamptz created_at
+    timestamptz deleted_at
+  }
+  coach_group_assignments {
+    uuid id PK
+    uuid coach_id FK
+    uuid group_id FK
+    enum role
+    timestamptz assigned_at
+  }
+  coach_performance_scores {
+    uuid id PK
+    uuid coach_id FK
+    varchar period
+    decimal player_improvement
+    decimal injury_frequency
+    decimal attendance_consistency
+    decimal data_entry_score
+    decimal total_score
+    timestamptz calculated_at
+  }
+  attendance_sessions {
+    uuid id PK
+    uuid group_id FK
+    uuid coach_id FK
+    date session_date
+    enum status
+    text notes
+    timestamptz created_at
+  }
+  attendance_marks {
+    uuid id PK
+    uuid session_id FK
+    uuid player_id FK
+    enum status
+    timestamptz marked_at
+    uuid marked_by FK
+  }
+  evaluation_coach_ratings {
+    uuid id PK
+    uuid coach_id FK
+    uuid player_id FK
+    uuid group_id FK
+    decimal score
+    text notes
+    date eval_date
+    timestamptz created_at
+  }
+  evaluation_discipline_scores {
+    uuid id PK
+    uuid player_id FK
+    uuid group_id FK
+    decimal score
+    text reason
+    date eval_date
+    uuid recorded_by FK
+  }
+  match_records {
+    uuid id PK
+    uuid group_id FK
+    varchar opponent
+    date match_date
+    smallint goals_for
+    smallint goals_against
+    enum result
+    timestamptz created_at
+  }
+  match_player_stats {
+    uuid id PK
+    uuid match_id FK
+    uuid player_id FK
+    smallint minutes_played
+    smallint goals
+    smallint assists
+    decimal performance_score
+  }
+  ranking_snapshots {
+    uuid id PK
+    uuid player_id FK
+    uuid group_id FK
+    decimal total_score
+    smallint rank
+    varchar period
+    enum trend
+    timestamptz calculated_at
+  }
+  ranking_score_breakdown {
+    uuid id PK
+    uuid ranking_id FK
+    decimal coach_eval_score
+    decimal attendance_score
+    decimal discipline_score
+    decimal match_score
+    decimal ai_score
+  }
+  payment_subscriptions {
+    uuid id PK
+    uuid player_id FK
+    uuid group_id FK
+    enum plan
+    decimal amount
+    char currency
+    date starts_at
+    date ends_at
+    enum status
+    timestamptz created_at
+  }
+  payment_invoices {
+    uuid id PK
+    uuid subscription_id FK
+    decimal amount
+    date due_date
+    timestamptz paid_at
+    enum status
+    timestamptz created_at
+  }
+  payment_transactions {
+    uuid id PK
+    uuid invoice_id FK
+    varchar gateway
+    varchar gateway_ref UK
+    decimal amount
+    enum status
+    timestamptz created_at
+  }
+  notification_inbox {
+    uuid id PK
+    uuid user_id FK
+    varchar type
+    varchar title
+    text body
+    jsonb data
+    boolean is_read
+    timestamptz sent_at
+    timestamptz created_at
+  }
+  notification_device_tokens {
+    uuid id PK
+    uuid user_id FK
+    text token UK
+    enum platform
+    timestamptz created_at
+  }
+  ai_analyses {
+    uuid id PK
+    uuid player_id FK
+    enum type
+    jsonb input_data
+    jsonb result
+    varchar model_version
+    timestamptz created_at
+  }
+  ai_recommendations {
+    uuid id PK
+    uuid analysis_id FK
+    uuid player_id FK
+    text content
+    enum priority
+    boolean is_dismissed
+    timestamptz created_at
+  }
+  nutrition_plans {
+    uuid id PK
+    uuid player_id FK
+    jsonb meal_plan
+    jsonb hydration
+    varchar generated_by
+    date valid_from
+    date valid_to
+    timestamptz created_at
+  }
+  audit_logs {
+    bigserial id PK
+    uuid user_id FK
+    varchar action
+    varchar table_name
+    uuid record_id
+    jsonb old_data
+    jsonb new_data
+    inet ip_address
+    timestamptz created_at
+  }
+  media_files {
+    uuid id PK
+    uuid uploader_id FK
+    varchar entity_type
+    uuid entity_id
+    text url
+    text storage_key
+    bigint size_bytes
+    varchar mime_type
+    timestamptz created_at
+  }
+
+  auth_users ||--o{ auth_refresh_tokens : "has"
+  auth_users ||--o{ auth_password_resets : "requests"
+  auth_users ||--o| player_profiles : "is"
+  auth_users ||--o| coach_profiles : "is"
+  auth_users ||--o{ notification_inbox : "receives"
+  auth_users ||--o{ notification_device_tokens : "registers"
+  auth_users ||--o{ audit_logs : "triggers"
+
+  academy_academies ||--o{ academy_branches : "has"
+  academy_academies ||--o{ auth_users : "contains"
+  academy_academies ||--o{ player_profiles : "enrolls"
+  academy_academies ||--o{ coach_profiles : "employs"
+
+  academy_branches ||--o{ academy_birth_years : "has"
+  academy_birth_years ||--o{ academy_groups : "has"
+  academy_groups ||--o{ academy_schedules : "has"
+
+  player_profiles ||--o{ player_group_assignments : "assigned via"
+  academy_groups ||--o{ player_group_assignments : "contains"
+  player_profiles ||--o{ player_measurements : "has"
+  player_profiles ||--o{ player_injury_history : "has"
+
+  coach_profiles ||--o{ coach_group_assignments : "assigned via"
+  academy_groups ||--o{ coach_group_assignments : "managed by"
+  coach_profiles ||--o{ coach_performance_scores : "scored in"
+
+  academy_groups ||--o{ attendance_sessions : "has"
+  coach_profiles ||--o{ attendance_sessions : "conducts"
+  attendance_sessions ||--o{ attendance_marks : "contains"
+  player_profiles ||--o{ attendance_marks : "marked in"
+
+  coach_profiles ||--o{ evaluation_coach_ratings : "gives"
+  player_profiles ||--o{ evaluation_coach_ratings : "receives"
+  player_profiles ||--o{ evaluation_discipline_scores : "has"
+
+  academy_groups ||--o{ match_records : "plays"
+  match_records ||--o{ match_player_stats : "has"
+  player_profiles ||--o{ match_player_stats : "stats in"
+
+  player_profiles ||--o{ ranking_snapshots : "ranked in"
+  academy_groups ||--o{ ranking_snapshots : "ranks within"
+  ranking_snapshots ||--|| ranking_score_breakdown : "detailed by"
+
+  player_profiles ||--o{ payment_subscriptions : "has"
+  academy_groups ||--o{ payment_subscriptions : "for"
+  payment_subscriptions ||--o{ payment_invoices : "generates"
+  payment_invoices ||--o{ payment_transactions : "paid via"
+
+  player_profiles ||--o{ ai_analyses : "analyzed in"
+  ai_analyses ||--o{ ai_recommendations : "produces"
+  player_profiles ||--o{ ai_recommendations : "receives"
+  player_profiles ||--o{ nutrition_plans : "has"
+`;
+
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>
+</body>
+</html>
