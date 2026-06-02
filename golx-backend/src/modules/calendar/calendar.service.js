@@ -161,12 +161,28 @@ class CalendarService {
     if (typeof row.value_text === "string" && optionLabels.has(row.value_text)) {
       return optionLabels.get(row.value_text);
     }
-    if (typeof row.value_json === "string" && optionLabels.has(row.value_json)) {
-      return optionLabels.get(row.value_json);
+  if (typeof row.value_json === "string" && optionLabels.has(row.value_json)) {
+    return optionLabels.get(row.value_json);
+  }
+  if (typeof row.value_json === "string") {
+    try {
+      const parsed = JSON.parse(row.value_json);
+      if (Array.isArray(parsed)) {
+        const labels = parsed
+          .map((value) => optionLabels.get(value) || value)
+          .filter(Boolean);
+        return labels.length ? labels.join(", ") : null;
+      }
+      if (typeof parsed === "string" && optionLabels.has(parsed)) {
+        return optionLabels.get(parsed);
+      }
+    } catch {
+      // Fall through to the raw value below.
     }
-    if (Array.isArray(row.value_json)) {
-      const labels = row.value_json
-        .map((value) => optionLabels.get(value) || value)
+  }
+  if (Array.isArray(row.value_json)) {
+    const labels = row.value_json
+      .map((value) => optionLabels.get(value) || value)
         .filter(Boolean);
       return labels.length ? labels.join(", ") : null;
     }
@@ -214,6 +230,20 @@ class CalendarService {
       }
       if (typeof row.value_json === "string" && uuidPattern.test(row.value_json)) {
         optionIds.add(row.value_json);
+      }
+      if (typeof row.value_json === "string") {
+        try {
+          const parsed = JSON.parse(row.value_json);
+          if (Array.isArray(parsed)) {
+            parsed
+              .filter((value) => typeof value === "string" && uuidPattern.test(value))
+              .forEach((value) => optionIds.add(value));
+          } else if (typeof parsed === "string" && uuidPattern.test(parsed)) {
+            optionIds.add(parsed);
+          }
+        } catch {
+          // Ignore non-JSON strings.
+        }
       }
       if (Array.isArray(row.value_json)) {
         row.value_json
@@ -880,6 +910,44 @@ class CalendarService {
     }
   }
 
+  async _playerMatchAccessContext(player) {
+    const [groupRows, birthYearRows] = await Promise.all([
+      this.repo.findPlayerGroups(player.id),
+      this.repo.findBirthYearsForPlayer(player),
+    ]);
+
+    return {
+      groupIds: groupRows.map((row) => row.group_id),
+      birthYearIds: birthYearRows.map((row) => row.id),
+    };
+  }
+
+  _configuredMatchQueryForPlayer(academyId, filters, context) {
+    const { groupIds, birthYearIds } = context;
+    if (!groupIds.length && !birthYearIds.length) return null;
+
+    return this.repo
+      .matchListQuery(academyId, {
+        ...filters,
+        groupIds,
+        birthYearIds,
+      })
+      .whereExists(function configuredMatch() {
+        this.select(1)
+          .from("match_tactics as mt")
+          .whereRaw("mt.match_id = m.id");
+      });
+  }
+
+  async _playerVisibleMatchQuery(player, academyId, filters = {}) {
+    const context = await this._playerMatchAccessContext(player);
+    return this._configuredMatchQueryForPlayer(
+      academyId,
+      filters,
+      context,
+    );
+  }
+
   _ensureMatchDayReady(match) {
     if (!match.tactics || !match.squad?.length) {
       throw new BadRequestError(
@@ -1224,6 +1292,36 @@ class CalendarService {
     return notified;
   }
 
+  async _deleteUnconfiguredOverdueMatches(matches, trx) {
+    const matchIds = matches.map((match) => match.id).filter(Boolean);
+    if (!matchIds.length) return;
+
+    for (const matchId of matchIds) {
+      await this._deleteMatchLinkedRequests(trx, matchId);
+    }
+
+    await trx("notification_inbox")
+      .where("type", "match")
+      .andWhere((query) => {
+        query
+          .whereIn(trx.raw("data->>'matchId'"), matchIds)
+          .orWhereIn(trx.raw("data->'match'->>'id'"), matchIds);
+      })
+      .del();
+
+    const eventIds = matches.map((match) => match.event_id).filter(Boolean);
+    if (eventIds.length) {
+      await trx("calendar_events").whereIn("id", eventIds).del();
+    }
+
+    const matchesWithoutEvents = matches
+      .filter((match) => !match.event_id)
+      .map((match) => match.id);
+    if (matchesWithoutEvents.length) {
+      await trx("matches").whereIn("id", matchesWithoutEvents).del();
+    }
+  }
+
   async _finalizeOverdueMatches(academyId, { matchId } = {}) {
     const candidates = await this.repo.findAutoFinishMatchCandidates(
       academyId,
@@ -1235,8 +1333,20 @@ class CalendarService {
     );
     if (!dueMatches.length) return new Set();
 
+    const unconfiguredMatches = dueMatches.filter(
+      (match) =>
+        match.match_status === "scheduled" &&
+        (!match.has_tactics || Number(match.squad_count || 0) === 0),
+    );
+    const unconfiguredMatchIds = new Set(
+      unconfiguredMatches.map((match) => match.id),
+    );
+    const configuredMatches = dueMatches.filter(
+      (match) => !unconfiguredMatchIds.has(match.id),
+    );
+
     const targetSnapshots = new Map();
-    for (const match of dueMatches) {
+    for (const match of configuredMatches) {
       const [groupIds, birthYearIds] = await Promise.all([
         this.repo.getMatchGroupIds(match.id),
         this.repo.getMatchBirthYearIds(match.id),
@@ -1252,9 +1362,13 @@ class CalendarService {
       );
     }
 
-    const eventIds = dueMatches.map((match) => match.event_id).filter(Boolean);
+    const eventIds = configuredMatches.map((match) => match.event_id).filter(Boolean);
     await this.repo.db.transaction(async (trx) => {
-      for (const match of dueMatches) {
+      if (unconfiguredMatches.length) {
+        await this._deleteUnconfiguredOverdueMatches(unconfiguredMatches, trx);
+      }
+
+      for (const match of configuredMatches) {
         await trx("matches")
           .where({ id: match.id })
           .whereIn("status", ["scheduled", "postponed"])
@@ -1273,13 +1387,13 @@ class CalendarService {
           .update({
             status: "finished",
             updated_at: now,
-          });
+        });
       }
     });
-    for (const match of dueMatches) {
+    for (const match of configuredMatches) {
       await this._syncMatchMinutes(match.id, academyId, null);
     }
-    return new Set(dueMatches.map((match) => match.id));
+    return new Set(configuredMatches.map((match) => match.id));
   }
 
   async _completeExpiredTrainingEvents(academyId, { eventId } = {}) {
@@ -1309,7 +1423,10 @@ class CalendarService {
   }
 
   async notifyDueMatchDays() {
-    const candidates = await this.repo.findDueMatchDayCandidates();
+    const [candidates, autoFinishAcademies] = await Promise.all([
+      this.repo.findDueMatchDayCandidates(),
+      this.repo.findAutoFinishCandidateAcademyIds(),
+    ]);
     const byAcademy = candidates.reduce((map, match) => {
       if (!map.has(match.academy_id)) map.set(match.academy_id, []);
       map.get(match.academy_id).push(match);
@@ -1320,6 +1437,9 @@ class CalendarService {
     for (const [academyId, matches] of byAcademy.entries()) {
       const notified = await this._notifyMatchDayIfDue(academyId, matches);
       notifiedCount += notified.size;
+    }
+    for (const row of autoFinishAcademies) {
+      await this._finalizeOverdueMatches(row.academy_id);
     }
     return notifiedCount;
   }
@@ -1685,11 +1805,7 @@ class CalendarService {
           birthYearIds,
         );
         await this._notifyUsers(
-          [
-            ...users.coaches.map((user) => user.user_id),
-            ...users.players.map((user) => user.user_id),
-            ...users.parents.map((user) => user.user_id),
-          ],
+          users.coaches.map((user) => user.user_id),
           "New match scheduled",
           `${data.opponentName} on ${data.matchDate}`,
           "match",
@@ -5103,10 +5219,16 @@ class CalendarService {
   async playerListMatches(userId, academyId, filters) {
     const player = await this._getPlayer(userId, academyId);
     await this._finalizeOverdueMatches(academyId);
-    const groupRows = await this.repo.findPlayerGroups(player.id);
-    const groupIds = groupRows.map((row) => row.group_id);
+    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+      player,
+      academyId,
+      filters,
+    );
+    if (!visibleMatchesQuery) {
+      return { data: [], total: 0, page: filters.page || 1, totalPages: 1 };
+    }
     const result = await this.repo.paginate(
-      this.repo.matchListQuery(academyId, { ...filters, groupIds }),
+      visibleMatchesQuery,
       filters,
       "m.id",
     );
@@ -5181,9 +5303,15 @@ class CalendarService {
   async playerGetMatch(userId, academyId, matchId) {
     const player = await this._getPlayer(userId, academyId);
     const match = await this.adminGetMatch(academyId, matchId);
-    const groupRows = await this.repo.findPlayerGroups(player.id);
-    const matchGroupIds = await this.repo.getMatchGroupIds(matchId);
-    if (!groupRows.some((row) => matchGroupIds.includes(row.group_id)))
+    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+      player,
+      academyId,
+      {},
+    );
+    const visibleMatch = visibleMatchesQuery
+      ? await visibleMatchesQuery.where("m.id", matchId).first()
+      : null;
+    if (!visibleMatch)
       throw new ForbiddenError("Player cannot access this match");
     return match;
   }
@@ -5302,6 +5430,7 @@ class CalendarService {
     const groupIds = groupRows.map((row) => row.group_id);
     const birthYearRows = await this.repo.findBirthYearsForPlayer(player);
     const birthYearIds = birthYearRows.map((row) => row.id);
+    const matchAccessContext = { groupIds, birthYearIds };
     const countRows = async (query) => {
       const { count } = await this.repo.db
         .from(query.clone().clearOrder().as("counted_rows"))
@@ -5321,8 +5450,11 @@ class CalendarService {
       .whereRaw("ce.start_datetime <= CURRENT_TIMESTAMP");
     const hasMatchTargets = Boolean(groupIds.length || birthYearIds.length);
     const visiblePastMatchesQuery = hasMatchTargets
-      ? this.repo
-          .matchListQuery(academyId, { groupIds, birthYearIds })
+      ? this._configuredMatchQueryForPlayer(
+          academyId,
+          {},
+          matchAccessContext,
+        )
           .andWhere((scope) => {
             scope
               .where("m.match_status", "finished")
@@ -5491,22 +5623,34 @@ class CalendarService {
   }
 
   async parentListMatches(parentUserId, academyId, childId, filters) {
-    await this._assertParentChild(parentUserId, childId, academyId);
+    const player = await this._assertParentChild(parentUserId, childId, academyId);
     await this._finalizeOverdueMatches(academyId);
-    const groupRows = await this.repo.findPlayerGroups(childId);
-    const groupIds = groupRows.map((row) => row.group_id);
+    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+      player,
+      academyId,
+      filters,
+    );
+    if (!visibleMatchesQuery) {
+      return { data: [], total: 0, page: filters.page || 1, totalPages: 1 };
+    }
     return this.repo.paginate(
-      this.repo.matchListQuery(academyId, { ...filters, groupIds }),
+      visibleMatchesQuery,
       filters,
       "m.id",
     );
   }
 
   async parentGetMatch(parentUserId, academyId, childId, matchId) {
-    await this._assertParentChild(parentUserId, childId, academyId);
-    const groupRows = await this.repo.findPlayerGroups(childId);
-    const matchGroupIds = await this.repo.getMatchGroupIds(matchId);
-    if (!groupRows.some((row) => matchGroupIds.includes(row.group_id)))
+    const player = await this._assertParentChild(parentUserId, childId, academyId);
+    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+      player,
+      academyId,
+      {},
+    );
+    const visibleMatch = visibleMatchesQuery
+      ? await visibleMatchesQuery.where("m.id", matchId).first()
+      : null;
+    if (!visibleMatch)
       throw new ForbiddenError("Parent cannot access this match");
     return this.adminGetMatch(academyId, matchId);
   }

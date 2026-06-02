@@ -24,7 +24,7 @@ const getTrainingClockSnapshot = () => trainingClockSnapshot;
 const getServerTrainingClockSnapshot = () => 0;
 
 export default function CoachTrainingListPage() {
-  const { data, isLoading } = useGetCoachCalendarEventsQuery();
+  const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
   const nowMs = useSyncExternalStore(
     subscribeTrainingClock,
     getTrainingClockSnapshot,
@@ -51,12 +51,17 @@ export default function CoachTrainingListPage() {
       />
 
       <div className="flex justify-end">
-        <Button asChild className="gap-2">
-          <Link href="/coach/training/create">
-            <Plus className="h-4 w-4" />
-            Create Training
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            Refresh
+          </Button>
+          <Button asChild className="gap-2">
+            <Link href="/coach/training/create">
+              <Plus className="h-4 w-4" />
+              Create Training
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="border-border/50 bg-card">
@@ -68,6 +73,12 @@ export default function CoachTrainingListPage() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading trainings...
+            </div>
+          )}
+
+          {isError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              Could not load backend training data. Make sure the backend is running and your coach session is valid.
             </div>
           )}
 
@@ -153,7 +164,7 @@ export default function CoachTrainingListPage() {
 
           {!trainings.length && !isLoading && (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No training sessions yet.
+              No backend training sessions are visible for this coach yet. Create a training event and target one of this coach&apos;s assigned groups, birth years, or players.
             </div>
           )}
         </CardContent>

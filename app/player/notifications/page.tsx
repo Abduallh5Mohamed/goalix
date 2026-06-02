@@ -2,6 +2,6 @@
 
 import { NotificationsCenter } from "@/components/notifications/NotificationsCenter";
 
-export default function ParentNotificationsPage() {
-  return <NotificationsCenter role="parent" />;
+export default function PlayerNotificationsPage() {
+  return <NotificationsCenter role="player" />;
 }
