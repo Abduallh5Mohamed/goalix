@@ -19,7 +19,6 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 const readiness = [
   { label: "Match Readiness", value: "82%", sub: "82", accent: "lime" },
@@ -156,7 +155,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 
 export default function AdminDashboardPage() {
   return (
-    <DashboardFrame role="admin">
+    <>
       <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal text-white md:text-6xl">Welcome back, Admin</h1>
@@ -328,6 +327,6 @@ export default function AdminDashboardPage() {
           </Panel>
         ))}
       </div>
-    </DashboardFrame>
+    </>
   );
 }

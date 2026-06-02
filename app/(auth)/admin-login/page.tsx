@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+    ArrowLeft,
+    ArrowRight,
+    Eye,
+    EyeOff,
+    KeyRound,
+    Loader2,
+    LockKeyhole,
+    ShieldCheck,
+    UserCheck,
+} from "lucide-react";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { loginFailure, loginStart, loginSuccess } from "@/lib/store/slices/authSlice";
 import { ROLE_ROUTES } from "@/lib/constants";
@@ -9,14 +22,6 @@ import type { UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { KeyRound, Loader2, ShieldCheck } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -64,6 +69,7 @@ export default function AdminLoginPage() {
     const [step, setStep] = useState<Step>("credentials");
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [tempToken, setTempToken] = useState("");
     const [totpCode, setTotpCode] = useState("");
     const [backupCode, setBackupCode] = useState("");
@@ -196,84 +202,107 @@ export default function AdminLoginPage() {
         }
     };
 
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col items-center gap-3">
-                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
-                    {step === "credentials" ? (
-                        <ShieldCheck className="h-8 w-8 text-primary" />
-                    ) : (
-                        <KeyRound className="h-8 w-8 text-primary" />
-                    )}
-                </div>
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold text-foreground">Admin / Coach Portal</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {step === "credentials"
-                            ? "Sign in with the account created by the admin"
-                            : "Two-factor authentication required"}
-                    </p>
-                </div>
-            </div>
+    const title = step === "credentials" ? "Staff portal" : step === "totp" ? "Verify access" : "Backup code";
+    const description =
+        step === "credentials"
+            ? "Admins and coaches sign in here."
+            : step === "totp"
+              ? "Enter the 6-digit code from your authenticator app."
+              : "Use one of your saved backup codes.";
 
-            <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                <CardHeader className="pb-4">
-                    <CardTitle className="text-lg">
-                        {step === "credentials" && "Staff Sign In"}
-                        {step === "totp" && "Enter Verification Code"}
-                        {step === "backup" && "Enter Backup Code"}
-                    </CardTitle>
-                    <CardDescription>
-                        {step === "credentials" && "Admins and coaches use this login page"}
-                        {step === "totp" && "Open your authenticator app and enter the 6-digit code"}
-                        {step === "backup" && "Enter one of your backup codes"}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+    return (
+        <div className="mx-auto grid min-h-[calc(100dvh-40px)] w-full max-w-6xl items-center gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <section className="mx-auto w-full max-w-md lg:order-2">
+                <div className="mb-7 flex items-center justify-between">
+                    <Link href="/" className="inline-flex h-11 items-center gap-2 rounded-[8px] border border-white/10 bg-white/[0.06] px-4 text-sm font-semibold text-slate-200 transition hover:border-[#2D9AD5]/45 hover:text-white">
+                        <ArrowLeft size={16} />
+                        Home
+                    </Link>
+                    <Image src="/Logo.png" alt="Goalix" width={112} height={34} priority className="h-auto w-[112px] object-contain lg:hidden" />
+                </div>
+
+                <div className="rounded-[8px] border border-[#2D9AD5]/20 bg-white/[0.07] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl sm:p-7">
+                    <div className="mb-7">
+                        <div className="mb-4 grid h-12 w-12 place-items-center rounded-[8px] border border-[#B2D23B]/30 bg-[#B2D23B]/10 text-[#B2D23B]">
+                            {step === "credentials" ? <ShieldCheck size={24} /> : <KeyRound size={24} />}
+                        </div>
+                        <h1 className="font-display text-4xl font-black uppercase leading-none tracking-normal">{title}</h1>
+                        <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
+                    </div>
+
                     {step === "credentials" && (
-                        <form onSubmit={handleCredentials} className="space-y-4">
+                        <form onSubmit={handleCredentials} className="space-y-5">
                             <div className="space-y-2">
-                                <Label htmlFor="staff-identifier">Admin email / Coach username</Label>
-                                <Input
-                                    id="staff-identifier"
-                                    type="text"
-                                    placeholder="admin@example.com or coach.username"
-                                    value={identifier}
-                                    onChange={(event) => setIdentifier(event.target.value)}
-                                    autoComplete="username"
-                                    required
-                                />
+                                <Label htmlFor="staff-identifier" className="text-slate-200">Admin email / Coach username</Label>
+                                <div className="relative">
+                                    <UserCheck className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                    <Input
+                                        id="staff-identifier"
+                                        type="text"
+                                        placeholder="admin@example.com or coach.username"
+                                        value={identifier}
+                                        onChange={(event) => setIdentifier(event.target.value)}
+                                        autoComplete="username"
+                                        required
+                                        className="h-12 border-white/10 bg-[#071B2C]/72 pl-10 text-white placeholder:text-slate-500 focus-visible:ring-[#2D9AD5]"
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="staff-password">Password</Label>
-                                <Input
-                                    id="staff-password"
-                                    type="password"
-                                    placeholder="Password"
-                                    value={password}
-                                    onChange={(event) => setPassword(event.target.value)}
-                                    autoComplete="current-password"
-                                    required
-                                />
+                                <Label htmlFor="staff-password" className="text-slate-200">Password</Label>
+                                <div className="relative">
+                                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                    <Input
+                                        id="staff-password"
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Password"
+                                        value={password}
+                                        onChange={(event) => setPassword(event.target.value)}
+                                        autoComplete="current-password"
+                                        required
+                                        className="h-12 border-white/10 bg-[#071B2C]/72 pl-10 pr-12 text-white placeholder:text-slate-500 focus-visible:ring-[#2D9AD5]"
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                        onClick={() => setShowPassword((current) => !current)}
+                                        className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-[8px] text-slate-400 transition hover:bg-white/10 hover:text-white"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
-                            {error && <p className="text-sm text-red-400">{error}</p>}
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            {error && (
+                                <p className="rounded-[8px] border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {error}
+                                </p>
+                            )}
+                            <Button type="submit" size="lg" className="h-12 w-full rounded-[8px] bg-gradient-to-r from-[#B2D23B] via-[#51B848] to-[#2D9AD5] font-bold text-[#07111f] hover:opacity-95" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <Loader2 className="h-4 w-4 animate-spin" />
                                         Signing in...
                                     </>
                                 ) : (
-                                    "Sign in"
+                                    <>
+                                        Sign in
+                                        <ArrowRight size={18} />
+                                    </>
                                 )}
                             </Button>
+                            <p className="text-center text-xs text-slate-400">
+                                Player or parent?{" "}
+                                <Link href="/login" className="font-semibold text-[#2D9AD5] hover:text-[#B2D23B]">
+                                    Use academy login
+                                </Link>
+                            </p>
                         </form>
                     )}
 
                     {step === "totp" && (
-                        <form onSubmit={handleTotpVerify} className="space-y-4">
+                        <form onSubmit={handleTotpVerify} className="space-y-5">
                             <div className="space-y-2">
-                                <Label htmlFor="totp-code">Verification Code</Label>
+                                <Label htmlFor="totp-code" className="text-slate-200">Verification Code</Label>
                                 <Input
                                     id="totp-code"
                                     type="text"
@@ -286,38 +315,41 @@ export default function AdminLoginPage() {
                                     autoFocus
                                     autoComplete="one-time-code"
                                     required
-                                    className="text-center text-2xl tracking-[0.5em] font-mono"
+                                    className="h-14 border-white/10 bg-[#071B2C]/72 text-center font-mono text-2xl tracking-[0.45em] text-white placeholder:text-slate-600 focus-visible:ring-[#2D9AD5]"
                                 />
                             </div>
-                            {error && <p className="text-sm text-red-400">{error}</p>}
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            {error && (
+                                <p className="rounded-[8px] border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {error}
+                                </p>
+                            )}
+                            <Button type="submit" size="lg" className="h-12 w-full rounded-[8px] bg-gradient-to-r from-[#B2D23B] via-[#51B848] to-[#2D9AD5] font-bold text-[#07111f] hover:opacity-95" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <Loader2 className="h-4 w-4 animate-spin" />
                                         Verifying...
                                     </>
                                 ) : (
                                     "Verify"
                                 )}
                             </Button>
-                            <Button
+                            <button
                                 type="button"
-                                variant="ghost"
-                                className="w-full text-muted-foreground"
+                                className="h-11 w-full rounded-[8px] border border-white/10 text-sm font-semibold text-slate-300 transition hover:border-[#2D9AD5]/40 hover:text-white"
                                 onClick={() => {
                                     setError("");
                                     setStep("backup");
                                 }}
                             >
                                 Use backup code instead
-                            </Button>
+                            </button>
                         </form>
                     )}
 
                     {step === "backup" && (
-                        <form onSubmit={handleBackupVerify} className="space-y-4">
+                        <form onSubmit={handleBackupVerify} className="space-y-5">
                             <div className="space-y-2">
-                                <Label htmlFor="backup-code">Backup Code</Label>
+                                <Label htmlFor="backup-code" className="text-slate-200">Backup Code</Label>
                                 <Input
                                     id="backup-code"
                                     type="text"
@@ -326,35 +358,72 @@ export default function AdminLoginPage() {
                                     onChange={(event) => setBackupCode(event.target.value)}
                                     autoFocus
                                     required
-                                    className="text-center text-lg font-mono"
+                                    className="h-12 border-white/10 bg-[#071B2C]/72 text-center font-mono text-lg text-white placeholder:text-slate-600 focus-visible:ring-[#2D9AD5]"
                                 />
                             </div>
-                            {error && <p className="text-sm text-red-400">{error}</p>}
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            {error && (
+                                <p className="rounded-[8px] border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {error}
+                                </p>
+                            )}
+                            <Button type="submit" size="lg" className="h-12 w-full rounded-[8px] bg-gradient-to-r from-[#B2D23B] via-[#51B848] to-[#2D9AD5] font-bold text-[#07111f] hover:opacity-95" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <Loader2 className="h-4 w-4 animate-spin" />
                                         Verifying...
                                     </>
                                 ) : (
                                     "Verify Backup Code"
                                 )}
                             </Button>
-                            <Button
+                            <button
                                 type="button"
-                                variant="ghost"
-                                className="w-full text-muted-foreground"
+                                className="h-11 w-full rounded-[8px] border border-white/10 text-sm font-semibold text-slate-300 transition hover:border-[#2D9AD5]/40 hover:text-white"
                                 onClick={() => {
                                     setError("");
                                     setStep("totp");
                                 }}
                             >
                                 Use authenticator code instead
-                            </Button>
+                            </button>
                         </form>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </section>
+
+            <section className="relative hidden min-h-[660px] overflow-hidden rounded-[8px] border border-[#2D9AD5]/20 bg-[#07111f] p-8 shadow-[0_30px_100px_rgba(0,0,0,0.34)] lg:block">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_12%,rgba(178,210,59,0.18),transparent_30%),linear-gradient(145deg,rgba(7,27,44,0.44),rgba(7,17,31,0.98))]" />
+                <div className="relative z-10 flex items-center justify-between">
+                    <Image src="/Logo.png" alt="Goalix" width={126} height={38} priority className="h-auto w-[126px] object-contain" />
+                    <span className="rounded-full border border-[#2D9AD5]/35 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#2D9AD5]">
+                        Staff Access
+                    </span>
+                </div>
+
+                <div className="relative z-10 mt-16 max-w-md">
+                    <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#B2D23B]">Command Center</p>
+                    <h1 className="mt-4 font-display text-6xl font-black uppercase leading-[0.9] tracking-normal">
+                        Control the academy flow.
+                    </h1>
+                    <p className="mt-5 max-w-sm text-base leading-7 text-slate-300">
+                        Manage training, attendance, players and match operations.
+                    </p>
+                </div>
+
+                <div className="absolute bottom-8 left-8 right-8 z-10 grid grid-cols-2 gap-3">
+                    {[
+                        ["Admin", "Academy OS"],
+                        ["Coach", "Team Hub"],
+                        ["2FA", "Protected"],
+                        ["Live", "Operations"],
+                    ].map(([value, label]) => (
+                        <div key={label} className="rounded-[8px] border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                            <strong className="font-display text-3xl text-white">{value}</strong>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">{label}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }

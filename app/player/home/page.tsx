@@ -17,7 +17,6 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 const metrics = [
   { label: "Match Rating", value: "7.6", sub: "Last Match", trend: "+ 0.8" },
@@ -97,7 +96,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 
 export default function PlayerHomePage() {
   return (
-    <DashboardFrame role="player">
+    <>
       <div className="mb-5 grid gap-5 xl:grid-cols-[1fr_0.82fr_160px]">
         <div>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Player</h1>
@@ -165,6 +164,6 @@ export default function PlayerHomePage() {
         <Panel className="p-5"><h2 className="mb-5 text-xl font-semibold">Achievements</h2><div className="grid grid-cols-3 gap-4 text-center">{["Player of the Match|3x","Top Performer|5x","Consistency Streak|7 Matches"].map((a) => { const [t,v]=a.split("|"); return <div key={t}><Medal className="mx-auto h-14 w-14 text-yellow-400" /><p className="mt-2 text-sm">{t}</p><strong className="text-lime-300">{v}</strong></div>; })}</div></Panel>
         <Panel className="p-5 text-center"><h2 className="mb-5 text-left text-xl font-semibold">Next Milestone</h2><Ring value={80} color="teal" /><p className="mt-3 font-semibold">Goal Contribution</p><p className="text-sm text-slate-400">2 more to unlock</p></Panel>
       </div>
-    </DashboardFrame>
+    </>
   );
 }

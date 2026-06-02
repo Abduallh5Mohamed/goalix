@@ -20,7 +20,6 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { DashboardFrame } from "@/components/layout/DashboardFrame";
 import { mockEvaluations, mockGroups, mockPlayers, mockSessions } from "@/lib/mock-data";
 
 const readiness = [
@@ -162,7 +161,7 @@ export default function CoachHomePage() {
   ];
 
   return (
-    <DashboardFrame role="coach">
+    <>
       <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">Coach performance hub</p>
@@ -383,6 +382,6 @@ export default function CoachHomePage() {
           </div>
         </Panel>
       </div>
-    </DashboardFrame>
+    </>
   );
 }

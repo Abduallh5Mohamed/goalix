@@ -4,15 +4,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { mockPlayers, mockEvaluations } from "@/lib/mock-data";
-import { Dumbbell, Target, Zap, Clock, Check } from "lucide-react";
+import { Zap, Clock, Check } from "lucide-react";
 
 export default function PlayerTrainingPage() {
-  const player = mockPlayers.find((p) => p.id === "p1")!;
-  const latestEval = mockEvaluations
-    .filter((e) => e.playerId === "p1")
-    .sort((a, b) => b.date.localeCompare(a.date))[0];
-
   // Generate mock training plan based on evaluation
   const trainingPlan = [
     {
