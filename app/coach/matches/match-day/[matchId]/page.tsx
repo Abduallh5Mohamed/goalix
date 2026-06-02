@@ -102,6 +102,9 @@ export default function CoachMatchDayPage() {
   const matchId = String(params.matchId || "");
   const { data: match, isLoading } = useGetCoachMatchQuery(matchId, {
     skip: !matchId,
+    pollingInterval: 15000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
   });
   const [upsertAttendance, { isLoading: savingAttendance }] =
     useUpsertMatchAttendanceMutation();
@@ -154,7 +157,13 @@ export default function CoachMatchDayPage() {
 
   const configured = Boolean(match?.tactics && match.squad?.length);
   const startMs = matchStartTimestamp(match);
-  const unlockMs = startMs - 5 * 60 * 1000;
+  const matchDayOpenMinutes = Number(
+    match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ?? 5,
+  );
+  const safeMatchDayOpenMinutes = Number.isFinite(matchDayOpenMinutes)
+    ? Math.max(0, Math.min(240, Math.round(matchDayOpenMinutes)))
+    : 5;
+  const unlockMs = startMs - safeMatchDayOpenMinutes * 60 * 1000;
   const kickOffReached = Boolean(startMs && nowMs >= startMs);
   const matchDayOpen = Boolean(
     match && configured && match.status !== "cancelled" && nowMs >= unlockMs,
@@ -698,8 +707,8 @@ export default function CoachMatchDayPage() {
             <div>
               <p className="font-medium">Match day is locked</p>
               <p className="text-sm text-muted-foreground">
-                Operations open 5 minutes before kick-off so attendance can be
-                marked before the match starts.
+                Operations open {safeMatchDayOpenMinutes} minutes before
+                kick-off so attendance can be marked before the match starts.
               </p>
             </div>
             <Badge variant="secondary">

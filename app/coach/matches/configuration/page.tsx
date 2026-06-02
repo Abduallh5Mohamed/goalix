@@ -144,7 +144,11 @@ const getApiMessage = (error: unknown, fallback: string) => {
 
 export default function CoachMatchConfigurationPage() {
   const { data: matchesRes, isLoading: loadingMatches } =
-    useGetCoachMatchesQuery();
+    useGetCoachMatchesQuery(undefined, {
+      pollingInterval: 15000,
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    });
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
   const { data: friendlyRequestsRes } = useGetCoachFriendlyRequestsQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });

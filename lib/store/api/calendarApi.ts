@@ -94,6 +94,7 @@ export interface CalendarEvent {
 export interface Match {
   id: string;
   event_id: string | null;
+  academy_settings?: Record<string, unknown> | null;
   team_id: string | null;
   age_group_id: string | null;
   team_name?: string | null;
@@ -115,6 +116,8 @@ export interface Match {
   finished_at?: string | null;
   evaluations_finalized_at?: string | null;
   evaluations_finalized_by_coach_id?: string | null;
+  evaluation_edit_request?: MatchEvaluationEditRequest | null;
+  evaluation_edit_unlocked_until?: string | null;
   organizer_notes: string | null;
   match_notes: string | null;
   our_score: number | null;
@@ -152,6 +155,29 @@ export interface MatchSquad {
 export type MatchEvaluationCandidate = MatchSquad & {
   is_target_fallback?: boolean;
 };
+
+export interface MatchEvaluationEditRequest {
+  id: string;
+  academy_id: string;
+  match_id: string;
+  coach_id: string;
+  requested_by_user_id: string | null;
+  reviewed_by_admin_id: string | null;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+  admin_response: string | null;
+  approved_at: string | null;
+  expires_at: string | null;
+  consumed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  coach_name?: string | null;
+  coach_user_id?: string | null;
+  opponent_name?: string | null;
+  match_date?: string | null;
+  match_time?: string | null;
+  evaluations_finalized_at?: string | null;
+}
 
 export interface MatchTactics {
   id: string;
@@ -562,6 +588,7 @@ export interface TrainingEvaluation {
   coach_notes: string | null;
   improvement_plan: string | null;
   development_notes?: string | null;
+  visibility: "private" | "player_and_parent" | "admin_only";
 }
 
 export interface TrainingParticipant extends CoachPlayer {
@@ -708,6 +735,7 @@ export const calendarApi = createApi({
     "Reports",
     "InjuryRiskInputs",
     "Notifications",
+    "EvaluationEditRequests",
   ],
   endpoints: (builder) => ({
     getAdminCalendarEvents: builder.query<
@@ -740,6 +768,25 @@ export const calendarApi = createApi({
       }),
       transformResponse: (res: { data: CalendarEvent }) => res.data,
       invalidatesTags: ["CalendarEvents"],
+    }),
+    hardDeleteAdminTrainingEvent: builder.mutation<
+      { message: string; affectedPlayers: number },
+      string
+    >({
+      query: (id) => ({
+        url: `/admin/calendar-events/${id}/hard-delete-training`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: {
+        data: { message: string; affectedPlayers: number };
+      }) => res.data,
+      invalidatesTags: [
+        "CalendarEvents",
+        "CoachPlayers",
+        "Reports",
+        "InjuryRiskInputs",
+        "Notifications",
+      ],
     }),
     getAdminMatches: builder.query<
       PaginatedResponse<Match>,
@@ -789,6 +836,46 @@ export const calendarApi = createApi({
       }),
       transformResponse: (res: { data: AdminCoachMatchRequest }) => res.data,
       invalidatesTags: ["FriendlyRequests"],
+    }),
+    getAdminEvaluationEditRequests: builder.query<
+      PaginatedResponse<MatchEvaluationEditRequest>,
+      { status?: MatchEvaluationEditRequest["status"]; page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.status) params.set("status", args.status);
+        return `/admin/evaluation-edit-requests?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<MatchEvaluationEditRequest>) =>
+        toPaginated(res),
+      providesTags: ["EvaluationEditRequests"],
+    }),
+    approveEvaluationEditRequest: builder.mutation<
+      MatchEvaluationEditRequest,
+      { id: string; adminResponse?: string }
+    >({
+      query: ({ id, adminResponse }) => ({
+        url: `/admin/evaluation-edit-requests/${id}/approve`,
+        method: "PATCH",
+        body: { adminResponse },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["EvaluationEditRequests", "Matches", "Notifications"],
+    }),
+    rejectEvaluationEditRequest: builder.mutation<
+      MatchEvaluationEditRequest,
+      { id: string; adminResponse?: string }
+    >({
+      query: ({ id, adminResponse }) => ({
+        url: `/admin/evaluation-edit-requests/${id}/reject`,
+        method: "PATCH",
+        body: { adminResponse },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["EvaluationEditRequests", "Notifications"],
     }),
     updateAdminMatch: builder.mutation<
       Match,
@@ -1083,6 +1170,18 @@ export const calendarApi = createApi({
       query: (id) => `/coach/matches/${id}`,
       transformResponse: (res: { data: Match }) => res.data,
       providesTags: ["Matches"],
+    }),
+    requestMatchEvaluationEdit: builder.mutation<
+      MatchEvaluationEditRequest,
+      { matchId: string; reason?: string }
+    >({
+      query: ({ matchId, reason }) => ({
+        url: `/coach/matches/${matchId}/evaluation-edit-requests`,
+        method: "POST",
+        body: { reason },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["Matches", "EvaluationEditRequests", "Notifications"],
     }),
     upsertMatchSquad: builder.mutation<
       MatchSquad[],
@@ -1587,11 +1686,15 @@ export const calendarApi = createApi({
 export const {
   useGetAdminCalendarEventsQuery,
   useCreateAdminCalendarEventMutation,
+  useHardDeleteAdminTrainingEventMutation,
   useGetAdminMatchesQuery,
   useGetAdminMatchQuery,
   useCreateAdminMatchMutation,
   useGetAdminCoachMatchRequestsQuery,
   useCreateAdminCoachMatchRequestMutation,
+  useGetAdminEvaluationEditRequestsQuery,
+  useApproveEvaluationEditRequestMutation,
+  useRejectEvaluationEditRequestMutation,
   useUpdateAdminMatchMutation,
   useUpdateAdminMatchStatusMutation,
   usePostponeAdminMatchMutation,
@@ -1620,6 +1723,7 @@ export const {
   useUpsertTrainingEvaluationsMutation,
   useGetCoachMatchesQuery,
   useGetCoachMatchQuery,
+  useRequestMatchEvaluationEditMutation,
   useUpsertMatchSquadMutation,
   useUpdateMatchSquadPlayerMutation,
   useDeleteMatchSquadPlayerMutation,

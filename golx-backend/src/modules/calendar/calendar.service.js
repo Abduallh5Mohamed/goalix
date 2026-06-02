@@ -69,15 +69,33 @@ const combineDateTime = (date, time, timeZone = DEFAULT_TIME_ZONE) => {
 const matchKickoffAt = (match) =>
   new Date(`${datePart(match.match_date)}T${timePart(match.match_time)}:00`);
 const MATCH_AUTO_FINISH_HOURS = 3;
+const MATCH_EVALUATION_REOPEN_HOURS = 24;
 const matchAutoFinishAt = (match) => {
   const finishAt = matchKickoffAt(match);
   finishAt.setHours(finishAt.getHours() + MATCH_AUTO_FINISH_HOURS);
   return finishAt;
 };
-const MATCH_DAY_UNLOCK_MINUTES = 5;
-const matchDayUnlockAt = (match) => {
+const matchNoShowDeleteAt = (match) => {
+  return matchKickoffAt(match);
+};
+const isGoalkeeperPosition = (position) => {
+  const normalized = String(position || "").trim().toLowerCase();
+  return normalized === "gk" || normalized.includes("goalkeeper");
+};
+const DEFAULT_MATCH_DAY_UNLOCK_MINUTES = 5;
+const academyMatchDayUnlockMinutes = (academySettings) => {
+  const raw =
+    academySettings?.matchDayOpenMinutesBeforeKickoff ??
+    academySettings?.match_day_open_minutes_before_kickoff;
+  const minutes = Number(raw);
+  if (!Number.isFinite(minutes)) return DEFAULT_MATCH_DAY_UNLOCK_MINUTES;
+  return Math.max(0, Math.min(240, Math.round(minutes)));
+};
+const matchDayUnlockAt = (match, academySettings = null) => {
   const unlockAt = matchKickoffAt(match);
-  unlockAt.setMinutes(unlockAt.getMinutes() - MATCH_DAY_UNLOCK_MINUTES);
+  unlockAt.setMinutes(
+    unlockAt.getMinutes() - academyMatchDayUnlockMinutes(academySettings),
+  );
   return unlockAt;
 };
 const trainingStartsAt = (event) => new Date(event.start_datetime);
@@ -675,6 +693,7 @@ class CalendarService {
     body,
     data,
     trx = this.repo.db,
+    type = "training",
   ) {
     const userIds = [];
     if (groupIds.length) {
@@ -708,7 +727,7 @@ class CalendarService {
         ...parents.map((row) => row.user_id),
       );
     }
-    return this._notifyUsers(userIds, title, body, "training", data, trx);
+    return this._notifyUsers(userIds, title, body, type, data, trx);
   }
 
   _notificationRows(userIds, title, body, type, data = {}) {
@@ -753,6 +772,28 @@ class CalendarService {
       data,
       trx,
     );
+  }
+
+  _evaluationEditWindow(row) {
+    if (!row || row.status !== "approved" || row.consumed_at || !row.expires_at) {
+      return { active: false };
+    }
+    return { active: new Date(row.expires_at) > new Date() };
+  }
+
+  async _decorateMatchEvaluationAccess(match, coachId) {
+    if (!match?.id || !coachId) return match;
+    const request = await this.repo.latestEvaluationEditRequest(match.id, coachId);
+    const window = this._evaluationEditWindow(request);
+    return {
+      ...match,
+      evaluation_edit_request: request || null,
+      evaluation_edit_unlocked_until: window.active ? request.expires_at : null,
+    };
+  }
+
+  async _activeEvaluationEditRequest(matchId, coachId, trx = this.repo.db) {
+    return this.repo.activeEvaluationEditRequest(matchId, coachId, trx);
   }
 
   async _notifyGroups(
@@ -898,7 +939,7 @@ class CalendarService {
   }
 
   _matchDayWindowOpen(match) {
-    return matchDayUnlockAt(match) <= new Date();
+    return matchDayUnlockAt(match, match.academy_settings) <= new Date();
   }
 
   _ensureMatchCanBeConfigured(match) {
@@ -917,35 +958,58 @@ class CalendarService {
     ]);
 
     return {
+      playerId: player.id,
       groupIds: groupRows.map((row) => row.group_id),
       birthYearIds: birthYearRows.map((row) => row.id),
     };
   }
 
   _configuredMatchQueryForPlayer(academyId, filters, context) {
-    const { groupIds, birthYearIds } = context;
-    if (!groupIds.length && !birthYearIds.length) return null;
+    const { playerId, groupIds, birthYearIds } = context;
+    if (!playerId && !groupIds.length && !birthYearIds.length) return null;
 
-    return this.repo
+    const query = this.repo
       .matchListQuery(academyId, {
         ...filters,
-        groupIds,
-        birthYearIds,
+        ...(!playerId
+          ? {
+              groupIds,
+              birthYearIds,
+            }
+          : {}),
       })
       .whereExists(function configuredMatch() {
         this.select(1)
           .from("match_tactics as mt")
           .whereRaw("mt.match_id = m.id");
       });
+
+    if (!playerId) return query;
+
+    return query.andWhere((scope) => {
+      if (groupIds.length) {
+        scope
+          .orWhereIn("ceg.group_id", groupIds)
+          .orWhereIn("m.team_id", groupIds)
+          .orWhereIn("m.age_group_id", groupIds);
+      }
+      if (birthYearIds.length) {
+        scope.orWhereIn("ceby.birth_year_id", birthYearIds);
+      }
+      scope.orWhereExists(function playerInSquad() {
+        this.select(1)
+          .from("match_squads as ms_visible")
+          .whereRaw("ms_visible.match_id = m.id")
+          .where("ms_visible.player_id", playerId);
+      });
+    });
   }
 
   async _playerVisibleMatchQuery(player, academyId, filters = {}) {
     const context = await this._playerMatchAccessContext(player);
-    return this._configuredMatchQueryForPlayer(
-      academyId,
-      filters,
-      context,
-    );
+    return {
+      query: this._configuredMatchQueryForPlayer(academyId, filters, context),
+    };
   }
 
   _ensureMatchDayReady(match) {
@@ -1223,6 +1287,48 @@ class CalendarService {
     );
   }
 
+  _matchAttendanceOccurredAt(match) {
+    if (!match) return null;
+    if (match.finished_at) return match.finished_at;
+    if (!match.match_date || !match.match_time) return match.match_date || null;
+    return combineDateTime(datePart(match.match_date), timePart(match.match_time));
+  }
+
+  async _matchAffectedPlayerIds(matchId, trx = this.repo.db) {
+    const [squadRows, attendanceRows] = await Promise.all([
+      trx("match_squads").where({ match_id: matchId }).select("player_id"),
+      trx("match_attendance").where({ match_id: matchId }).select("player_id"),
+    ]);
+    return uniq([
+      ...squadRows.map((row) => row.player_id),
+      ...attendanceRows.map((row) => row.player_id),
+    ]);
+  }
+
+  async _refreshMatchInjuryRiskMonthlyAttendance(
+    academyId,
+    match,
+    trx = this.repo.db,
+    { playerIds, occurredAts = [] } = {},
+  ) {
+    const affectedPlayerIds =
+      playerIds || (await this._matchAffectedPlayerIds(match.id, trx));
+    if (!affectedPlayerIds.length) return;
+    const uniqueMonthDates = uniq(
+      [this._matchAttendanceOccurredAt(match), ...occurredAts]
+        .filter(Boolean)
+        .map((occurredAt) => datePart(occurredAt)),
+    );
+    for (const occurredAt of uniqueMonthDates) {
+      await this._refreshInjuryRiskMonthlyAttendance(
+        academyId,
+        affectedPlayerIds,
+        occurredAt,
+        trx,
+      );
+    }
+  }
+
   async _incrementPlayerGoalStat(trx, matchId, playerId, coachId, field, delta) {
     const insertValue = Math.max(delta, 0);
     const patch =
@@ -1265,7 +1371,11 @@ class CalendarService {
       const notifiedAt = match.match_day_notified_at
         ? new Date(match.match_day_notified_at)
         : null;
-      if (notifiedAt && notifiedAt >= matchDayUnlockAt(match)) return false;
+      if (
+        notifiedAt &&
+        notifiedAt >= matchDayUnlockAt(match, match.academy_settings)
+      )
+        return false;
       return this._matchDayWindowOpen(match);
     });
     for (const match of dueMatches) {
@@ -1278,7 +1388,11 @@ class CalendarService {
           .where((query) => {
             query
               .whereNull("match_day_notified_at")
-              .orWhere("match_day_notified_at", "<", matchDayUnlockAt(match));
+              .orWhere(
+                "match_day_notified_at",
+                "<",
+                matchDayUnlockAt(match, match.academy_settings),
+              );
           })
           .update({
             match_day_notified_at: notifiedAt,
@@ -1292,9 +1406,17 @@ class CalendarService {
     return notified;
   }
 
-  async _deleteUnconfiguredOverdueMatches(matches, trx) {
+  async _deleteNoShowMatches(academyId, matches, trx) {
     const matchIds = matches.map((match) => match.id).filter(Boolean);
     if (!matchIds.length) return;
+
+    const affectedPlayersByMatch = new Map();
+    for (const match of matches) {
+      affectedPlayersByMatch.set(
+        match.id,
+        await this._matchAffectedPlayerIds(match.id, trx),
+      );
+    }
 
     for (const matchId of matchIds) {
       await this._deleteMatchLinkedRequests(trx, matchId);
@@ -1320,6 +1442,15 @@ class CalendarService {
     if (matchesWithoutEvents.length) {
       await trx("matches").whereIn("id", matchesWithoutEvents).del();
     }
+
+    for (const match of matches) {
+      await this._refreshMatchInjuryRiskMonthlyAttendance(
+        academyId,
+        match,
+        trx,
+        { playerIds: affectedPlayersByMatch.get(match.id) || [] },
+      );
+    }
   }
 
   async _finalizeOverdueMatches(academyId, { matchId } = {}) {
@@ -1329,20 +1460,29 @@ class CalendarService {
     );
     const now = new Date();
     const dueMatches = candidates.filter(
-      (match) => matchAutoFinishAt(match) <= now,
+      (match) => matchNoShowDeleteAt(match) <= now || matchAutoFinishAt(match) <= now,
     );
     if (!dueMatches.length) return new Set();
 
-    const unconfiguredMatches = dueMatches.filter(
-      (match) =>
-        match.match_status === "scheduled" &&
-        (!match.has_tactics || Number(match.squad_count || 0) === 0),
+    const noShowMatches = dueMatches.filter(
+      (match) => {
+        const squadCount = Number(match.squad_count || 0);
+        const attendanceCount = Number(match.attendance_count || 0);
+        return (
+          match.match_status === "scheduled" &&
+          !match.started_at &&
+          (squadCount === 0 || attendanceCount < squadCount) &&
+          matchNoShowDeleteAt(match) <= now
+        );
+      },
     );
-    const unconfiguredMatchIds = new Set(
-      unconfiguredMatches.map((match) => match.id),
+    const noShowMatchIds = new Set(
+      noShowMatches.map((match) => match.id),
     );
     const configuredMatches = dueMatches.filter(
-      (match) => !unconfiguredMatchIds.has(match.id),
+      (match) =>
+        !noShowMatchIds.has(match.id) &&
+        matchAutoFinishAt(match) <= now,
     );
 
     const targetSnapshots = new Map();
@@ -1364,22 +1504,28 @@ class CalendarService {
 
     const eventIds = configuredMatches.map((match) => match.event_id).filter(Boolean);
     await this.repo.db.transaction(async (trx) => {
-      if (unconfiguredMatches.length) {
-        await this._deleteUnconfiguredOverdueMatches(unconfiguredMatches, trx);
+      if (noShowMatches.length) {
+        await this._deleteNoShowMatches(academyId, noShowMatches, trx);
       }
 
       for (const match of configuredMatches) {
+        const finishedAt = match.finished_at || matchAutoFinishAt(match);
         await trx("matches")
           .where({ id: match.id })
           .whereIn("status", ["scheduled", "postponed"])
           .update({
             status: "completed",
             match_status: "finished",
-            finished_at: match.finished_at || matchAutoFinishAt(match),
+            finished_at: finishedAt,
             target_snapshot: JSON.stringify(targetSnapshots.get(match.id)),
             updated_at: now,
           });
         await this._refreshMatchSquadSnapshots(match.id, trx);
+        await this._refreshMatchInjuryRiskMonthlyAttendance(
+          academyId,
+          { ...match, finished_at: finishedAt },
+          trx,
+        );
       }
       if (eventIds.length) {
         await trx("calendar_events")
@@ -1684,7 +1830,10 @@ class CalendarService {
   }
 
   async adminDeleteCalendarEvent(academyId, eventId) {
-    await this.adminGetCalendarEvent(academyId, eventId);
+    const event = await this.adminGetCalendarEvent(academyId, eventId);
+    if (event.event_type === "training") {
+      return this.adminHardDeleteTrainingEvent(academyId, eventId);
+    }
     await this.repo.db.transaction(async (trx) => {
       const linkedMatches = await trx("matches")
         .where({ event_id: eventId })
@@ -1710,6 +1859,84 @@ class CalendarService {
         .update({ deleted_at: new Date(), status: "cancelled" });
     });
     return { message: "Calendar event deleted" };
+  }
+
+  async _trainingTargetPlayerIds(event, academyId) {
+    const groupIds = (event.groups || []).map((group) => group.id);
+    const birthYearIds = (event.birth_years || []).map((birthYear) => birthYear.id);
+    const directPlayerIds = (event.players || []).map((player) => player.id);
+    const [groupPlayers, birthYearPlayers, directPlayers] = await Promise.all([
+      this.repo.findGroupPlayers(groupIds),
+      this.repo.findPlayersForBirthYears(academyId, birthYearIds),
+      directPlayerIds.length
+        ? this.repo
+            .db("player_profiles")
+            .whereIn("id", directPlayerIds)
+            .where("academy_id", academyId)
+            .whereNull("deleted_at")
+            .select("id")
+        : [],
+    ]);
+    return uniq([
+      ...groupPlayers.map((player) => player.id),
+      ...birthYearPlayers.map((player) => player.id),
+      ...directPlayers.map((player) => player.id),
+    ]);
+  }
+
+  async adminHardDeleteTrainingEvent(academyId, eventId) {
+    const event = await this.adminGetCalendarEvent(academyId, eventId);
+    if (event.event_type !== "training") {
+      throw new BadRequestError("Only training events can be hard deleted here");
+    }
+
+    const [targetPlayerIds, attendanceRows] = await Promise.all([
+      this._trainingTargetPlayerIds(event, academyId),
+      this.repo
+        .db("event_attendance")
+        .where({ event_id: eventId })
+        .select("player_id"),
+    ]);
+    const affectedPlayerIds = uniq([
+      ...targetPlayerIds,
+      ...attendanceRows.map((row) => row.player_id),
+    ]);
+
+    await this.repo.db.transaction(async (trx) => {
+      await trx("notification_inbox")
+        .whereRaw("data->>'eventId' = ?", [eventId])
+        .orWhereRaw("data->>'trainingEventId' = ?", [eventId])
+        .orWhereRaw("data->'event'->>'id' = ?", [eventId])
+        .del();
+
+      if (affectedPlayerIds.length) {
+        await trx("ai_analyses")
+          .where("type", "injury_risk")
+          .whereIn("player_id", affectedPlayerIds)
+          .del();
+      }
+
+      const deleted = await trx("calendar_events")
+        .where({
+          id: eventId,
+          academy_id: academyId,
+          event_type: "training",
+        })
+        .del();
+      if (!deleted) throw new NotFoundError("Training event", eventId);
+
+      await this._refreshInjuryRiskMonthlyAttendance(
+        academyId,
+        affectedPlayerIds,
+        event.start_datetime,
+        trx,
+      );
+    });
+
+    return {
+      message: "Training event permanently deleted",
+      affectedPlayers: affectedPlayerIds.length,
+    };
   }
 
   async _deleteMatchLinkedRequests(trx, matchId) {
@@ -1926,6 +2153,15 @@ class CalendarService {
                 : match.age_group_id,
           })
         : null;
+    const shouldRefreshAttendance =
+      data.status !== undefined ||
+      data.matchDate !== undefined ||
+      data.matchTime !== undefined;
+    const affectedPlayerIds = shouldRefreshAttendance
+      ? await this._matchAffectedPlayerIds(matchId)
+      : [];
+    const previousAttendanceOccurredAt =
+      shouldRefreshAttendance ? this._matchAttendanceOccurredAt(match) : null;
 
     await this.repo.db.transaction(async (trx) => {
       const updateData = {};
@@ -2008,6 +2244,27 @@ class CalendarService {
       );
     });
 
+    if (shouldRefreshAttendance) {
+      await this._refreshMatchInjuryRiskMonthlyAttendance(
+        academyId,
+        {
+          ...match,
+          match_date: data.matchDate || match.match_date,
+          match_time:
+            data.matchTime !== undefined ? toTime(data.matchTime) : match.match_time,
+          finished_at:
+            data.status === "finished"
+              ? match.finished_at || new Date()
+              : match.finished_at,
+        },
+        this.repo.db,
+        {
+          playerIds: affectedPlayerIds,
+          occurredAts: [previousAttendanceOccurredAt],
+        },
+      );
+    }
+
     return this.adminGetMatch(academyId, matchId);
   }
 
@@ -2032,6 +2289,8 @@ class CalendarService {
       data.location !== undefined ? data.location || null : match.location;
     const now = new Date();
     const start = combineDateTime(data.matchDate, data.matchTime);
+    const affectedPlayerIds = await this._matchAffectedPlayerIds(matchId);
+    const previousAttendanceOccurredAt = this._matchAttendanceOccurredAt(match);
 
     await this.repo.db.transaction(async (trx) => {
       await trx("match_postponements").insert({
@@ -2118,11 +2377,27 @@ class CalendarService {
       }
     });
 
+    await this._refreshMatchInjuryRiskMonthlyAttendance(
+      academyId,
+      {
+        ...match,
+        match_date: data.matchDate,
+        match_time: toTime(data.matchTime),
+        finished_at: null,
+      },
+      this.repo.db,
+      {
+        playerIds: affectedPlayerIds,
+        occurredAts: [previousAttendanceOccurredAt],
+      },
+    );
+
     return this.adminGetMatch(academyId, matchId);
   }
 
   async adminDeleteMatch(academyId, matchId) {
     const match = await this.adminGetMatch(academyId, matchId);
+    const affectedPlayerIds = await this._matchAffectedPlayerIds(matchId);
     await this.repo.db.transaction(async (trx) => {
       await this._deleteMatchLinkedRequests(trx, matchId);
       await trx("matches").where({ id: matchId }).update({
@@ -2134,6 +2409,12 @@ class CalendarService {
         await trx("calendar_events")
           .where({ id: match.event_id })
           .update({ status: "cancelled", deleted_at: new Date() });
+      await this._refreshMatchInjuryRiskMonthlyAttendance(
+        academyId,
+        match,
+        trx,
+        { playerIds: affectedPlayerIds },
+      );
     });
     return { message: "Match deleted" };
   }
@@ -2141,6 +2422,7 @@ class CalendarService {
   async adminHardDeleteMatch(academyId, matchId) {
     const match = await this.repo.findMatchForHardDelete(matchId, academyId);
     if (!match) throw new NotFoundError("Match", matchId);
+    const affectedPlayerIds = await this._matchAffectedPlayerIds(matchId);
 
     await this.repo.db.transaction(async (trx) => {
       await this._deleteMatchLinkedRequests(trx, matchId);
@@ -2150,6 +2432,12 @@ class CalendarService {
       } else {
         await trx("matches").where({ id: matchId }).del();
       }
+      await this._refreshMatchInjuryRiskMonthlyAttendance(
+        academyId,
+        match,
+        trx,
+        { playerIds: affectedPlayerIds },
+      );
     });
 
     return { message: "Match permanently deleted" };
@@ -3420,6 +3708,7 @@ class CalendarService {
       `${event.title}: ${status}`,
       { eventId },
       this.repo.db,
+      "attendance",
     );
     return this._trainingEventWithParticipants(
       await this.repo.findEventById(eventId, academyId),
@@ -3527,14 +3816,14 @@ class CalendarService {
         updated_at: new Date(),
       })
       .returning("*");
-    await this._notifyGroups(
-      groupIds,
+    await this._notifyTrainingTargets(
+      academyId,
+      { groupIds, birthYearIds, playerIds },
       "Attendance marked",
       event.title,
-      "attendance",
       { eventId },
       this.repo.db,
-      true,
+      "evaluation",
     );
     await this._refreshInjuryRiskMonthlyAttendance(
       academyId,
@@ -3633,15 +3922,20 @@ class CalendarService {
       .onConflict(["event_id", "player_id", "coach_id"])
       .merge()
       .returning("*");
-    await this._notifyGroups(
-      groupIds,
-      "Player evaluation added",
-      event.title,
-      "evaluation",
-      { eventId },
-      this.repo.db,
-      true,
-    );
+    const publishedPlayerIds = result
+      .filter((row) => row.visibility === "player_and_parent")
+      .map((row) => row.player_id);
+    if (publishedPlayerIds.length) {
+      await this._notifyTrainingTargets(
+        academyId,
+        { playerIds: publishedPlayerIds },
+        "Player evaluation published",
+        event.title,
+        { eventId },
+        this.repo.db,
+        "evaluation",
+      );
+    }
     return result;
   }
 
@@ -3851,9 +4145,14 @@ class CalendarService {
     );
     if (["first_half", "second_half"].includes(match.match_status)) {
       await this._syncMatchMinutes(matchId, academyId, coach.id);
-      return this.repo.findMatchById(matchId, academyId);
+      return this._decorateMatchEvaluationAccess(
+        await this.repo.findMatchById(matchId, academyId),
+        coach.id,
+      );
     }
-    if (match.squad?.length) return match;
+    if (match.squad?.length) {
+      return this._decorateMatchEvaluationAccess(match, coach.id);
+    }
 
     const players = await this._ensurePlayersInMatchTargets(
       [],
@@ -3862,7 +4161,7 @@ class CalendarService {
       academyId,
       { requireComplete: true },
     );
-    return {
+    return this._decorateMatchEvaluationAccess({
       ...match,
       evaluation_candidates: players.map((player) => ({
         id: `target-${player.id}`,
@@ -3876,7 +4175,152 @@ class CalendarService {
         profile_status: player.profile_status,
         is_target_fallback: true,
       })),
-    };
+    }, coach.id);
+  }
+
+  async coachRequestMatchEvaluationEdit(userId, academyId, matchId, data = {}) {
+    const coach = await this._getCoach(userId, academyId);
+    const { match } = await this._ensureCoachCanAccessMatch(
+      coach,
+      academyId,
+      matchId,
+      "can_evaluate_players",
+    );
+    if (!match.evaluations_finalized_at) {
+      throw new BadRequestError("Match evaluations are not locked yet");
+    }
+
+    const activeRequest = await this._activeEvaluationEditRequest(matchId, coach.id);
+    if (activeRequest) {
+      throw new BadRequestError("Match evaluations are already open for editing");
+    }
+
+    const pendingRequest = await this.repo
+      .db("match_evaluation_edit_requests")
+      .where({
+        match_id: matchId,
+        coach_id: coach.id,
+        status: "pending",
+      })
+      .first();
+    if (pendingRequest) return pendingRequest;
+
+    const [request] = await this.repo
+      .db("match_evaluation_edit_requests")
+      .insert({
+        academy_id: academyId,
+        match_id: matchId,
+        coach_id: coach.id,
+        requested_by_user_id: userId,
+        reason: data.reason || null,
+      })
+      .returning("*");
+
+    await this._notifyAdmins(
+      academyId,
+      "Evaluation edit request",
+      `${coach.full_name} requested to reopen ${match.opponent_name} evaluation.`,
+      "evaluation",
+      { matchId, requestId: request.id },
+    );
+
+    return request;
+  }
+
+  async adminListEvaluationEditRequests(academyId, filters) {
+    return this.repo.paginate(
+      this.repo.evaluationEditRequestsQuery(academyId, filters),
+      filters,
+      "meer.id",
+    );
+  }
+
+  async adminApproveEvaluationEditRequest(
+    academyId,
+    adminUserId,
+    requestId,
+    data = {},
+  ) {
+    const request = await this.repo.findEvaluationEditRequestById(
+      requestId,
+      academyId,
+    );
+    if (!request) throw new NotFoundError("Evaluation edit request", requestId);
+    if (request.status !== "pending") {
+      throw new BadRequestError("This evaluation edit request is no longer pending");
+    }
+
+    const now = new Date();
+    const expiresAt = addHours(now.toISOString(), MATCH_EVALUATION_REOPEN_HOURS);
+    await this.repo.db.transaction(async (trx) => {
+      await trx("match_evaluation_edit_requests")
+        .where({
+          match_id: request.match_id,
+          coach_id: request.coach_id,
+          status: "approved",
+        })
+        .whereNull("consumed_at")
+        .update({ consumed_at: now, updated_at: now });
+
+      await trx("match_evaluation_edit_requests")
+        .where({ id: requestId })
+        .update({
+          status: "approved",
+          reviewed_by_admin_id: adminUserId,
+          admin_response: data.adminResponse || null,
+          approved_at: now,
+          expires_at: expiresAt,
+          updated_at: now,
+        });
+
+      await this._notifyUsers(
+        [request.coach_user_id],
+        "Evaluation edit approved",
+        `${request.opponent_name} evaluation is open for 24 hours.`,
+        "evaluation",
+        { matchId: request.match_id, requestId, expiresAt },
+        trx,
+      );
+    });
+
+    return this.repo.findEvaluationEditRequestById(requestId, academyId);
+  }
+
+  async adminRejectEvaluationEditRequest(
+    academyId,
+    adminUserId,
+    requestId,
+    data = {},
+  ) {
+    const request = await this.repo.findEvaluationEditRequestById(
+      requestId,
+      academyId,
+    );
+    if (!request) throw new NotFoundError("Evaluation edit request", requestId);
+    if (request.status !== "pending") {
+      throw new BadRequestError("This evaluation edit request is no longer pending");
+    }
+
+    const [row] = await this.repo
+      .db("match_evaluation_edit_requests")
+      .where({ id: requestId })
+      .update({
+        status: "rejected",
+        reviewed_by_admin_id: adminUserId,
+        admin_response: data.adminResponse || null,
+        updated_at: new Date(),
+      })
+      .returning("*");
+
+    await this._notifyUsers(
+      [request.coach_user_id],
+      "Evaluation edit rejected",
+      `${request.opponent_name} evaluation edit request was rejected.`,
+      "evaluation",
+      { matchId: request.match_id, requestId },
+    );
+
+    return { ...request, ...row };
   }
 
   async coachUpsertMatchSquad(userId, academyId, matchId, payload) {
@@ -4195,6 +4639,12 @@ class CalendarService {
         .db("calendar_events")
         .where({ id: match.event_id })
         .update({ status: "finished", updated_at: now });
+    }
+    if (data.matchStatus === "finished") {
+      await this._refreshMatchInjuryRiskMonthlyAttendance(
+        academyId,
+        { ...match, ...row },
+      );
     }
     const statusLabel = data.matchStatus.replace("_", " ");
     await this._notifyAdmins(
@@ -4656,7 +5106,20 @@ class CalendarService {
     return result;
   }
 
-  _statsRows(matchId, coachId, records) {
+  async _matchSquadPositionByPlayer(matchId, match) {
+    if (match?.squad?.length) {
+      return new Map(
+        match.squad.map((player) => [player.player_id, player.position]),
+      );
+    }
+    const rows = await this.repo
+      .db("match_squads")
+      .where({ match_id: matchId })
+      .select("player_id", "position");
+    return new Map(rows.map((player) => [player.player_id, player.position]));
+  }
+
+  _statsRows(matchId, coachId, records, positionByPlayer = new Map()) {
     return records.map((record) => ({
       match_id: matchId,
       player_id: record.playerId,
@@ -4674,7 +5137,9 @@ class CalendarService {
       duels_won: record.duelsWon ?? 0,
       duels_lost: record.duelsLost ?? 0,
       possession_losses: record.possessionLosses ?? 0,
-      saves: record.saves ?? 0,
+      saves: isGoalkeeperPosition(positionByPlayer.get(record.playerId))
+        ? (record.saves ?? 0)
+        : 0,
       yellow_cards: record.yellowCards ?? 0,
       red_cards: record.redCards ?? 0,
       fouls: record.fouls ?? 0,
@@ -4705,7 +5170,10 @@ class CalendarService {
       matchId,
       "can_evaluate_players",
     );
-    if (match.evaluations_finalized_at) {
+    const activeEditRequest = match.evaluations_finalized_at
+      ? await this._activeEvaluationEditRequest(matchId, coach.id)
+      : null;
+    if (match.evaluations_finalized_at && !activeEditRequest) {
       throw new BadRequestError("Match evaluations are locked");
     }
     if (payload.finalize && match.match_status !== "finished") {
@@ -4719,9 +5187,10 @@ class CalendarService {
       academyId,
       { requireComplete: true },
     );
+    const positionByPlayer = await this._matchSquadPositionByPlayer(matchId, match);
     const result = await this.repo.db.transaction(async (trx) => {
       const rows = await trx("match_player_stats")
-        .insert(this._statsRows(matchId, coach.id, records))
+        .insert(this._statsRows(matchId, coach.id, records, positionByPlayer))
         .onConflict(["match_id", "player_id"])
         .merge()
         .returning("*");
@@ -4732,6 +5201,11 @@ class CalendarService {
           evaluations_finalized_by_coach_id: coach.id,
           updated_at: new Date(),
         });
+        if (activeEditRequest) {
+          await trx("match_evaluation_edit_requests")
+            .where({ id: activeEditRequest.id })
+            .update({ consumed_at: new Date(), updated_at: new Date() });
+        }
       }
 
       return rows;
@@ -4748,7 +5222,10 @@ class CalendarService {
       matchId,
       "can_evaluate_players",
     );
-    if (match.evaluations_finalized_at) {
+    const activeEditRequest = match.evaluations_finalized_at
+      ? await this._activeEvaluationEditRequest(matchId, coach.id)
+      : null;
+    if (match.evaluations_finalized_at && !activeEditRequest) {
       throw new BadRequestError("Match evaluations are locked");
     }
     await this._ensurePlayersInMatchTargets(
@@ -4758,11 +5235,12 @@ class CalendarService {
       academyId,
       { requireComplete: true },
     );
+    const positionByPlayer = await this._matchSquadPositionByPlayer(matchId, match);
     const [row] = await this.repo
       .db("match_player_stats")
       .where({ match_id: matchId, player_id: playerId })
       .update({
-        ...this._statsRows(matchId, coach.id, [{ ...data, playerId }])[0],
+        ...this._statsRows(matchId, coach.id, [{ ...data, playerId }], positionByPlayer)[0],
         updated_at: new Date(),
       })
       .returning("*");
@@ -5219,7 +5697,7 @@ class CalendarService {
   async playerListMatches(userId, academyId, filters) {
     const player = await this._getPlayer(userId, academyId);
     await this._finalizeOverdueMatches(academyId);
-    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+    const { query: visibleMatchesQuery } = await this._playerVisibleMatchQuery(
       player,
       academyId,
       filters,
@@ -5257,9 +5735,11 @@ class CalendarService {
         .select("mt.*", "cp.full_name as coach_name"),
       this.repo
         .db("match_player_stats as mps")
+        .join("matches as m", "mps.match_id", "m.id")
         .join("player_profiles as pp", "mps.player_id", "pp.id")
         .whereIn("mps.match_id", matchIds)
         .where("mps.player_id", player.id)
+        .whereNotNull("m.evaluations_finalized_at")
         .select(
           "mps.*",
           this.repo.db.raw("pp.full_name as player_name"),
@@ -5303,7 +5783,7 @@ class CalendarService {
   async playerGetMatch(userId, academyId, matchId) {
     const player = await this._getPlayer(userId, academyId);
     const match = await this.adminGetMatch(academyId, matchId);
-    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+    const { query: visibleMatchesQuery } = await this._playerVisibleMatchQuery(
       player,
       academyId,
       {},
@@ -5313,12 +5793,27 @@ class CalendarService {
       : null;
     if (!visibleMatch)
       throw new ForbiddenError("Player cannot access this match");
-    return match;
+    return {
+      ...match,
+      squad: (match.squad || []).filter((row) => row.player_id === player.id),
+      stats: match.evaluations_finalized_at
+        ? (match.stats || []).filter((row) => row.player_id === player.id)
+        : [],
+      attendance: (match.attendance || []).filter(
+        (row) => row.player_id === player.id,
+      ),
+      incidents: (match.incidents || []).filter(
+        (row) => row.player_id === player.id,
+      ),
+    };
   }
 
   async playerGetMatchStats(userId, academyId, matchId) {
     const player = await this._getPlayer(userId, academyId);
-    await this.playerGetMatch(userId, academyId, matchId);
+    const match = await this.playerGetMatch(userId, academyId, matchId);
+    if (!match.evaluations_finalized_at) {
+      return null;
+    }
     return this.repo
       .db("match_player_stats")
       .where({ match_id: matchId, player_id: player.id })
@@ -5335,6 +5830,8 @@ class CalendarService {
         .join("calendar_events as ce", "ea.event_id", "ce.id")
         .where("ea.player_id", playerId)
         .where("ce.academy_id", academyId)
+        .whereNull("ce.deleted_at")
+        .whereNot("ce.status", "cancelled")
         .select(
           db.raw("'training' as record_type"),
           db.raw("CONCAT('training:', ea.id) as id"),
@@ -5353,8 +5850,12 @@ class CalendarService {
         ),
       db("match_attendance as ma")
         .join("matches as m", "ma.match_id", "m.id")
+        .join("calendar_events as ce", "ce.id", "m.event_id")
         .where("ma.player_id", playerId)
         .whereNull("m.deleted_at")
+        .whereNull("ce.deleted_at")
+        .whereNot("m.status", "cancelled")
+        .whereNot("m.match_status", "cancelled")
         .select(
           db.raw("'match' as record_type"),
           db.raw("CONCAT('match:', ma.id) as id"),
@@ -5409,6 +5910,8 @@ class CalendarService {
       .join("calendar_events as ce", "pee.event_id", "ce.id")
       .where("pee.player_id", player.id)
       .where("ce.academy_id", academyId)
+      .whereNull("ce.deleted_at")
+      .whereNot("ce.status", "cancelled")
       .where("pee.visibility", "player_and_parent")
       .select("pee.*", "ce.title", "ce.event_type", "ce.start_datetime")
       .orderBy("ce.start_datetime", "desc");
@@ -5430,7 +5933,7 @@ class CalendarService {
     const groupIds = groupRows.map((row) => row.group_id);
     const birthYearRows = await this.repo.findBirthYearsForPlayer(player);
     const birthYearIds = birthYearRows.map((row) => row.id);
-    const matchAccessContext = { groupIds, birthYearIds };
+    const matchAccessContext = { playerId: player.id, groupIds, birthYearIds };
     const countRows = async (query) => {
       const { count } = await this.repo.db
         .from(query.clone().clearOrder().as("counted_rows"))
@@ -5448,20 +5951,16 @@ class CalendarService {
       .whereNot("ce.visibility", "coaches_only")
       .whereNotIn("ce.status", ["cancelled", "postponed"])
       .whereRaw("ce.start_datetime <= CURRENT_TIMESTAMP");
-    const hasMatchTargets = Boolean(groupIds.length || birthYearIds.length);
-    const visiblePastMatchesQuery = hasMatchTargets
-      ? this._configuredMatchQueryForPlayer(
-          academyId,
-          {},
-          matchAccessContext,
-        )
-          .andWhere((scope) => {
-            scope
-              .where("m.match_status", "finished")
-              .orWhere("m.status", "completed")
-              .orWhereRaw("m.match_date <= CURRENT_DATE");
-          })
-      : null;
+    const visiblePastMatchesQuery = this._configuredMatchQueryForPlayer(
+      academyId,
+      {},
+      matchAccessContext,
+    ).andWhere((scope) => {
+      scope
+        .where("m.match_status", "finished")
+        .orWhere("m.status", "completed")
+        .orWhereRaw("m.match_date <= CURRENT_DATE");
+    });
 
     const [
       trainingAttendance,
@@ -5480,6 +5979,8 @@ class CalendarService {
           .where("ea.player_id", player.id)
           .where("ce.academy_id", academyId)
           .where("ce.event_type", "training")
+          .whereNull("ce.deleted_at")
+          .whereNot("ce.status", "cancelled")
           .select(
             this.repo.db.raw("COUNT(*)::int as total"),
             this.repo.db.raw(
@@ -5490,8 +5991,12 @@ class CalendarService {
         this.repo
           .db("match_attendance as ma")
           .join("matches as m", "ma.match_id", "m.id")
+          .join("calendar_events as ce", "ce.id", "m.event_id")
           .where("ma.player_id", player.id)
           .whereNull("m.deleted_at")
+          .whereNull("ce.deleted_at")
+          .whereNot("m.status", "cancelled")
+          .whereNot("m.match_status", "cancelled")
           .select(
             this.repo.db.raw("COUNT(*)::int as total"),
             this.repo.db.raw(
@@ -5502,6 +6007,7 @@ class CalendarService {
         this.repo
           .db("match_squads as ms")
           .join("matches as m", "ms.match_id", "m.id")
+          .join("calendar_events as ce", "ce.id", "m.event_id")
           .where("ms.player_id", player.id)
           .andWhere((scope) => {
             scope
@@ -5509,37 +6015,62 @@ class CalendarService {
               .orWhere("m.match_status", "finished");
           })
           .whereNull("m.deleted_at")
+          .whereNull("ce.deleted_at")
+          .whereNot("m.status", "cancelled")
+          .whereNot("m.match_status", "cancelled")
           .count("ms.id as count")
           .first(),
         countRows(visiblePastTrainingsQuery),
-        visiblePastMatchesQuery ? countRows(visiblePastMatchesQuery) : 0,
+        countRows(visiblePastMatchesQuery),
         this.repo
-          .db("player_event_evaluations")
-          .where({ player_id: player.id })
-          .avg("overall_rating as average")
+          .db("player_event_evaluations as pee")
+          .join("calendar_events as ce", "pee.event_id", "ce.id")
+          .where("pee.player_id", player.id)
+          .where("ce.academy_id", academyId)
+          .where("pee.visibility", "player_and_parent")
+          .whereNull("ce.deleted_at")
+          .whereNot("ce.status", "cancelled")
+          .avg("pee.overall_rating as average")
           .first(),
         this.repo
           .db("match_player_stats as mps")
           .join("matches as m", "mps.match_id", "m.id")
+          .join("calendar_events as ce", "ce.id", "m.event_id")
           .where("mps.player_id", player.id)
           .whereNull("m.deleted_at")
+          .whereNull("ce.deleted_at")
+          .whereNot("m.status", "cancelled")
+          .whereNot("m.match_status", "cancelled")
+          .whereNotNull("m.evaluations_finalized_at")
           .avg("mps.performance_rating as average")
           .first(),
         this.repo
-          .db("match_player_stats")
-          .where({ player_id: player.id })
+          .db("match_player_stats as mps")
+          .join("matches as m", "mps.match_id", "m.id")
+          .join("calendar_events as ce", "ce.id", "m.event_id")
+          .where("mps.player_id", player.id)
+          .whereNull("m.deleted_at")
+          .whereNull("ce.deleted_at")
+          .whereNot("m.status", "cancelled")
+          .whereNot("m.match_status", "cancelled")
+          .whereNotNull("m.evaluations_finalized_at")
           .sum({
-            goals: "goals",
-            assists: "assists",
-            yellow_cards: "yellow_cards",
-            red_cards: "red_cards",
+            goals: "mps.goals",
+            assists: "mps.assists",
+            yellow_cards: "mps.yellow_cards",
+            red_cards: "mps.red_cards",
           })
           .first(),
         this.repo
           .db("match_player_stats as mps")
           .join("matches as m", "mps.match_id", "m.id")
+          .join("calendar_events as ce", "ce.id", "m.event_id")
           .where("mps.player_id", player.id)
           .whereNull("m.deleted_at")
+          .whereNull("ce.deleted_at")
+          .whereNot("m.status", "cancelled")
+          .whereNot("m.match_status", "cancelled")
+          .whereNotNull("m.evaluations_finalized_at")
           .whereRaw("m.match_date >= (CURRENT_DATE - INTERVAL '7 days')::date")
           .whereRaw("m.match_date <= CURRENT_DATE")
           .select(
@@ -5625,7 +6156,7 @@ class CalendarService {
   async parentListMatches(parentUserId, academyId, childId, filters) {
     const player = await this._assertParentChild(parentUserId, childId, academyId);
     await this._finalizeOverdueMatches(academyId);
-    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+    const { query: visibleMatchesQuery } = await this._playerVisibleMatchQuery(
       player,
       academyId,
       filters,
@@ -5642,7 +6173,7 @@ class CalendarService {
 
   async parentGetMatch(parentUserId, academyId, childId, matchId) {
     const player = await this._assertParentChild(parentUserId, childId, academyId);
-    const visibleMatchesQuery = await this._playerVisibleMatchQuery(
+    const { query: visibleMatchesQuery } = await this._playerVisibleMatchQuery(
       player,
       academyId,
       {},
@@ -5652,11 +6183,27 @@ class CalendarService {
       : null;
     if (!visibleMatch)
       throw new ForbiddenError("Parent cannot access this match");
-    return this.adminGetMatch(academyId, matchId);
+    const match = await this.adminGetMatch(academyId, matchId);
+    return {
+      ...match,
+      squad: (match.squad || []).filter((row) => row.player_id === childId),
+      stats: match.evaluations_finalized_at
+        ? (match.stats || []).filter((row) => row.player_id === childId)
+        : [],
+      attendance: (match.attendance || []).filter(
+        (row) => row.player_id === childId,
+      ),
+      incidents: (match.incidents || []).filter(
+        (row) => row.player_id === childId,
+      ),
+    };
   }
 
   async parentGetMatchStats(parentUserId, academyId, childId, matchId) {
-    await this.parentGetMatch(parentUserId, academyId, childId, matchId);
+    const match = await this.parentGetMatch(parentUserId, academyId, childId, matchId);
+    if (!match.evaluations_finalized_at) {
+      return null;
+    }
     return this.repo
       .db("match_player_stats")
       .where({ match_id: matchId, player_id: childId })
@@ -5675,6 +6222,8 @@ class CalendarService {
       .join("calendar_events as ce", "pee.event_id", "ce.id")
       .where("pee.player_id", childId)
       .where("ce.academy_id", academyId)
+      .whereNull("ce.deleted_at")
+      .whereNot("ce.status", "cancelled")
       .where("pee.visibility", "player_and_parent")
       .select("pee.*", "ce.title", "ce.event_type", "ce.start_datetime")
       .orderBy("ce.start_datetime", "desc");

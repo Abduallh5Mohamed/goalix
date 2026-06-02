@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { CalendarDays, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, CalendarDays, Loader2, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { MonthCalendar } from "@/components/shared/MonthCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -27,9 +28,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useGetGroupsQuery } from "@/lib/store/api/adminApi";
 import {
+  type CalendarEvent,
   useCreateAdminCalendarEventMutation,
   useGetAdminCalendarEventsQuery,
   useGetAdminMatchesQuery,
+  useHardDeleteAdminTrainingEventMutation,
 } from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
@@ -44,12 +47,33 @@ const eventTypes = [
   "assessment_day",
 ] as const;
 
+const getApiMessage = (error: unknown, fallback: string) => {
+  const apiError = error as {
+    data?: {
+      message?: string;
+      errors?: Array<{ message?: string }>;
+      error?: { message?: string; details?: Array<{ message?: string }> };
+    };
+  };
+  return (
+    apiError.data?.error?.details?.[0]?.message ??
+    apiError.data?.errors?.[0]?.message ??
+    apiError.data?.error?.message ??
+    apiError.data?.message ??
+    fallback
+  );
+};
+
 export default function AdminCalendarPage() {
   const { data, isLoading } = useGetAdminCalendarEventsQuery({ limit: 100 });
   const { data: matchesRes, isLoading: loadingMatches } =
     useGetAdminMatchesQuery({ limit: 100 });
   const { data: groups = [] } = useGetGroupsQuery({});
   const [open, setOpen] = useState(false);
+  const [deleteTrainingRow, setDeleteTrainingRow] =
+    useState<CalendarEvent | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [form, setForm] = useState({
     title: "",
     eventType: "meeting",
@@ -62,6 +86,8 @@ export default function AdminCalendarPage() {
   });
   const [createEvent, { isLoading: isCreating }] =
     useCreateAdminCalendarEventMutation();
+  const [hardDeleteTraining, { isLoading: deletingTraining }] =
+    useHardDeleteAdminTrainingEventMutation();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -89,8 +115,30 @@ export default function AdminCalendarPage() {
     });
   };
 
+  const handleHardDeleteTraining = async () => {
+    if (!deleteTrainingRow) return;
+    const expected = `delete training forever ${deleteTrainingRow.title}`;
+    setDeleteError("");
+
+    if (deleteConfirm.trim() !== expected) {
+      setDeleteError(`Type "${expected}" to confirm permanent deletion.`);
+      return;
+    }
+
+    try {
+      await hardDeleteTraining(deleteTrainingRow.id).unwrap();
+      setDeleteTrainingRow(null);
+      setDeleteConfirm("");
+    } catch (error) {
+      setDeleteError(
+        getApiMessage(error, "Could not permanently delete training."),
+      );
+    }
+  };
+
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const matches = useMemo(() => matchesRes?.data ?? [], [matchesRes?.data]);
+  const deleteExpected = `delete training forever ${deleteTrainingRow?.title ?? ""}`;
   const calendarItems = useMemo(
     () => [
       ...events.map((event) => ({
@@ -238,6 +286,69 @@ export default function AdminCalendarPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={Boolean(deleteTrainingRow)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setDeleteTrainingRow(null);
+            setDeleteConfirm("");
+            setDeleteError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle>Delete Training Forever</DialogTitle>
+            <DialogDescription>
+              This permanently removes the training event, targets, attendance,
+              evaluations, notifications, and affected injury-risk outputs. Type{" "}
+              <span className="font-semibold text-foreground">
+                {deleteExpected}
+              </span>{" "}
+              to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-training-confirm">Confirmation</Label>
+            <Input
+              id="delete-training-confirm"
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              placeholder={deleteExpected}
+            />
+          </div>
+          {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteTrainingRow(null);
+                setDeleteConfirm("");
+                setDeleteError("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                deletingTraining || deleteConfirm.trim() !== deleteExpected
+              }
+              onClick={handleHardDeleteTraining}
+              className="gap-2"
+            >
+              {deletingTraining && <Loader2 className="h-4 w-4 animate-spin" />}
+              Delete Forever
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <MonthCalendar title="Academy Calendar" items={calendarItems} />
 
       {isLoading || loadingMatches ? (
@@ -284,6 +395,22 @@ export default function AdminCalendarPage() {
                     </p>
                   </div>
                 </div>
+                {event.event_type === "training" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5 self-start sm:self-center"
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleteConfirm("");
+                      setDeleteTrainingRow(event);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete forever
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}

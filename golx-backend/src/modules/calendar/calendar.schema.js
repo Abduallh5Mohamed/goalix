@@ -134,6 +134,24 @@ const paginationQuery = z.object({
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 
+const evaluationEditRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+const evaluationEditRequestsQuery = paginationQuery.extend({
+  status: evaluationEditRequestStatusSchema.optional(),
+});
+
+const evaluationEditRequestSchema = z.object({
+  reason: z.string().max(2000).optional(),
+});
+
+const evaluationEditRequestReviewSchema = z.object({
+  adminResponse: z.string().max(3000).optional(),
+});
+
 const coachPlayersQuery = paginationQuery.extend({
   customFieldId: uuid.optional(),
   customValue: z.string().max(255).optional(),
@@ -382,7 +400,7 @@ const evaluationRecordsSchema = z.object({
         coachNotes: z.string().max(3000).optional(),
         improvementPlan: z.string().max(3000).optional(),
         developmentNotes: z.string().max(3000).optional(),
-        visibility: evaluationVisibilitySchema.default("player_and_parent"),
+        visibility: evaluationVisibilitySchema.default("private"),
       }),
     )
     .min(1)
@@ -701,6 +719,9 @@ module.exports = {
   evaluationParam,
   coachGroupAssignmentParam,
   paginationQuery,
+  evaluationEditRequestsQuery,
+  evaluationEditRequestSchema,
+  evaluationEditRequestReviewSchema,
   coachPlayersQuery,
   calendarFiltersQuery,
   adminMatchFiltersQuery,
