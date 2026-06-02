@@ -245,7 +245,7 @@ export function PortalTopNav({ role }: { role: UserRole }) {
   const notifications = notificationsData?.data ?? [];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#1c344e]/80 bg-[#030812]/86 px-4 py-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+    <header className="goalix-portal-nav sticky top-0 z-40 border-b border-[#1c344e]/80 bg-[#030812]/86 px-4 py-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1840px] items-center gap-4">
         <DashboardBrand href={ROLE_ROUTES[role]} subtitle={roleTitles[role]} className="w-[210px] shrink-0" />
 
@@ -370,7 +370,7 @@ export function PortalTopNav({ role }: { role: UserRole }) {
       </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 bg-[#020711]/95 p-4 backdrop-blur-xl xl:hidden">
+        <div className="goalix-portal-mobile fixed inset-0 z-50 bg-[#020711]/95 p-4 backdrop-blur-xl xl:hidden">
           <div className="mb-5 flex items-center justify-between">
             <DashboardBrand href={ROLE_ROUTES[role]} subtitle={roleTitles[role]} className="w-[210px]" />
             <Button

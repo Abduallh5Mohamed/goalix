@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -48,6 +48,7 @@ import {
   formatTime12,
   localDateTimeTimestamp,
 } from "@/lib/utils";
+import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 type IconType = React.ComponentType<{ className?: string }>;
 
@@ -364,6 +365,10 @@ function MiniTrend({ points }: { points: TrendPoint[] }) {
   );
 }
 
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+}
+
 export default function PlayerHomePage() {
   const profileQuery = useGetPlayerProfileQuery();
   const progressQuery = useGetPlayerProgressQuery();
@@ -607,6 +612,39 @@ export default function PlayerHomePage() {
               Calendar
               <ChevronRight className="h-4 w-4" />
             </Link>
+    <DashboardFrame role="player">
+      <div className="mb-5 grid gap-5 xl:grid-cols-[1fr_0.82fr_160px]">
+        <div>
+          <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Player</h1>
+          <p className="mt-2 text-lg text-slate-300">Here&apos;s your personal performance overview</p>
+        </div>
+        <blockquote className="border-l border-[#263f59] pl-7 text-slate-200">
+          <span className="text-4xl font-black text-lime-300">“</span> Focus on the process, the results will follow.
+          <p className="mt-2 text-sm text-slate-400">- Coach</p>
+        </blockquote>
+        <Ring value={82} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_2.8fr]">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden xl:row-span-2">
+          <div className="relative min-h-[405px] p-5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(182,255,0,0.28),transparent_28%)]" />
+            <div className="absolute right-7 top-10 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
+            <Image src="/Player.png" alt="Goalix player placeholder" fill sizes="360px" className="object-cover object-center opacity-80 mix-blend-screen" priority />
+            <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172a] to-transparent" />
+            <div className="absolute bottom-6 left-5 right-5">
+              <h2 className="text-3xl font-semibold">Noah Williams</h2>
+              <p className="mt-1 text-lg"><span className="font-bold text-lime-300">RW</span> <span className="text-slate-300">• Winger</span></p>
+              <div className="mt-5 grid grid-cols-4 gap-3 border-t border-[#2a4460] pt-4 text-sm">
+                {["Age|24", "Height|178 cm", "Weight|72 kg", "Foot|Left"].map((item) => {
+                  const [label, value] = item.split("|");
+                  return <div key={label}><div className="text-slate-400">{label}</div><div className="font-semibold">{value}</div></div>;
+                })}
+              </div>
+            </div>
+            <div className="absolute bottom-32 right-5 rounded-2xl border border-lime-300/35 bg-[#07111f]/85 px-4 py-3 text-center">
+              <div className="text-xs text-slate-300">OVR</div><div className="font-display text-4xl font-bold text-lime-300">87</div>
+            </div>
           </div>
         }
       />
@@ -1079,5 +1117,13 @@ export default function PlayerHomePage() {
         </>
       )}
     </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.45fr_0.45fr_1fr_0.65fr]">
+        <Panel className="grid grid-cols-5 gap-0 p-5 text-center"><h2 className="col-span-5 mb-5 text-left text-xl font-semibold">Season Highlights</h2>{[["9","Goals"],["6","Assists"],["23","Key Passes"],["24","Shots on Target"],["8.2","Avg Rating"]].map(([v,l]) => <div key={l} className="border-r border-[#2a4460] last:border-r-0"><Star className="mx-auto mb-3 text-lime-300" /><strong className="font-display text-3xl">{v}</strong><p className="text-sm text-slate-400">{l}</p></div>)}</Panel>
+        <Panel className="p-5 text-center"><h2 className="text-left text-lg font-semibold">Top Speed</h2><Ring value={84} color="cyan" /><strong className="font-display text-4xl">33.6</strong><p className="text-sm text-slate-400">km/h</p></Panel>
+        <Panel className="p-5 text-center"><h2 className="text-left text-lg font-semibold">Distance</h2><Ring value={72} color="cyan" /><strong className="font-display text-4xl">11.2</strong><p className="text-sm text-slate-400">km</p></Panel>
+        <Panel className="p-5"><h2 className="mb-5 text-xl font-semibold">Achievements</h2><div className="grid grid-cols-3 gap-4 text-center">{["Player of the Match|3x","Top Performer|5x","Consistency Streak|7 Matches"].map((a) => { const [t,v]=a.split("|"); return <div key={t}><Medal className="mx-auto h-14 w-14 text-yellow-400" /><p className="mt-2 text-sm">{t}</p><strong className="text-lime-300">{v}</strong></div>; })}</div></Panel>
+        <Panel className="p-5 text-center"><h2 className="mb-5 text-left text-xl font-semibold">Next Milestone</h2><Ring value={80} color="teal" /><p className="mt-3 font-semibold">Goal Contribution</p><p className="text-sm text-slate-400">2 more to unlock</p></Panel>
+      </div>
+    </DashboardFrame>
   );
 }
