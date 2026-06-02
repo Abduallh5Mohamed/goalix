@@ -20,11 +20,13 @@ import {
   Baby,
   CreditCard,
   Bell,
+  BrainCircuit,
   Cake,
   ChevronDown,
   Menu,
   X,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -35,6 +37,7 @@ import { getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
   Home,
+  MessageSquare,
   Users,
   ClipboardCheck,
   Star,
@@ -47,6 +50,7 @@ const iconMap: Record<string, React.ElementType> = {
   Baby,
   CreditCard,
   Bell,
+  BrainCircuit,
   Cake,
 };
 

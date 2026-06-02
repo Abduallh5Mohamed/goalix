@@ -237,6 +237,23 @@ function coachCalendarRoutes(controller) {
     }),
     controller.coachCompletePlayerProfile,
   );
+  router.get(
+    "/injury-risk/pain-discomfort",
+    controller.coachListInjuryRiskPainDiscomfort,
+  );
+  router.post(
+    "/injury-risk/pain-discomfort",
+    validate({ body: schema.injuryRiskPainDiscomfortSchema }),
+    controller.coachUpsertInjuryRiskPainDiscomfort,
+  );
+  router.get(
+    "/injury-risk/predictions",
+    controller.coachListInjuryRiskPredictions,
+  );
+  router.post(
+    "/injury-risk/predictions/run",
+    controller.coachRunInjuryRiskModel,
+  );
 
   router.post(
     "/training-events",
@@ -472,6 +489,7 @@ function playerCalendarRoutes(controller) {
     validate({ query: schema.calendarFiltersQuery }),
     controller.playerListCalendarEvents,
   );
+  router.get("/profile", controller.playerGetProfile);
   router.get(
     "/matches",
     validate({ query: schema.adminMatchFiltersQuery }),

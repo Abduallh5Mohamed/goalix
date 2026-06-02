@@ -2,6 +2,7 @@ import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { loginSuccess, logout } from "../slices/authSlice";
 import type { UserRole } from "@/lib/types";
+import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -41,6 +42,11 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
   let result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error?.status === 401) {
+    if (!hasAuthSessionMarker()) {
+      api.dispatch(logout());
+      return result;
+    }
+
     if (!refreshPromise) {
       refreshPromise = (async () => {
         const refreshResult = await rawBaseQuery(
@@ -54,10 +60,12 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
 
         if (apiUser) {
           const user = mapApiUser(apiUser);
+          rememberAuthSession();
           api.dispatch(loginSuccess({ user, role: user.role }));
           return true;
         }
 
+        forgetAuthSession();
         api.dispatch(logout());
         return false;
       })();

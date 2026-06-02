@@ -3,6 +3,7 @@ const env = require('./config/env');
 const logger = require('./shared/logger');
 const { connectRedis, isRedisAvailable } = require('./infrastructure/redis');
 const { startWorkers, stopWorkers } = require('./workers');
+const setupChatSocket = require('./realtime/chat.socket');
 
 let workers = null;
 
@@ -26,10 +27,13 @@ async function main() {
         logger.info(`🚀 GOLX API running on port ${env.PORT} [${env.NODE_ENV}]`);
     });
 
+    const io = setupChatSocket(server, app.locals.services.chatService);
+
     // Graceful shutdown
     const shutdown = async (signal) => {
         logger.info({ signal }, 'Shutting down gracefully…');
         server.close(async () => {
+            io.close();
             await stopWorkers(workers);
             logger.info('Server closed');
             process.exit(0);

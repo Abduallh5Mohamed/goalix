@@ -69,10 +69,10 @@ function SessionContent() {
           { label: "Session Detail" },
         ]}
         actions={
-          <Link href="/coach/attendance/mark">
+          <Link href="/coach/training">
             <Button size="sm">
               <ClipboardCheck className="mr-1 h-4 w-4" />
-              Mark Attendance
+              Training Attendance
             </Button>
           </Link>
         }
