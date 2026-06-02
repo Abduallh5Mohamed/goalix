@@ -11,6 +11,7 @@ import {
 } from "@/lib/store/slices/authSlice";
 import { ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
+import { forgetAuthSession, rememberAuthSession } from "@/lib/auth/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               linkedPlayerId: apiUser.linkedPlayerId ?? apiUser.linked_player_id ?? null,
               createdAt: apiUser.created_at ?? new Date().toISOString(),
             };
+            rememberAuthSession();
             dispatch(loginSuccess({ user, role: user.role }));
             router.push(ROLE_ROUTES[user.role]);
             return;
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       credentials: "include",
     }).catch(() => {});
+    forgetAuthSession();
     dispatch(logoutAction());
     router.push(redirectTo);
   }, [currentRole, dispatch, router]);

@@ -31,7 +31,7 @@ const readiness = [
 ];
 
 const actions = [
-  { icon: ClipboardCheck, title: "Mark Attendance", subtitle: "Today, 16:00", href: "/coach/attendance/mark", done: true },
+  { icon: ClipboardCheck, title: "Training Attendance", subtitle: "Open active sessions", href: "/coach/training", done: true },
   { icon: Star, title: "New Evaluation", subtitle: "U13 Elite Group", href: "/coach/evaluations/new", done: true },
   { icon: FilePlay, title: "Video Analysis", subtitle: "Review last match", href: "/coach/evaluations/history", done: false },
   { icon: ShieldCheck, title: "Opposition Report", subtitle: "vs FC United", href: "/coach/schedule", done: false },

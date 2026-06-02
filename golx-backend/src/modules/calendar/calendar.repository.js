@@ -987,7 +987,15 @@ class CalendarRepository {
     return this.db("friendly_match_requests as fmr")
       .join("coach_profiles as cp", "fmr.coach_id", "cp.id")
       .leftJoin("academy_groups as ag", "fmr.team_id", "ag.id")
+      .leftJoin("matches as converted_match", "fmr.converted_match_id", "converted_match.id")
       .where("cp.academy_id", academyId)
+      .where((linked) => {
+        linked.whereNull("fmr.converted_match_id").orWhere((activeMatch) => {
+          activeMatch
+            .whereNotNull("converted_match.id")
+            .whereNull("converted_match.deleted_at");
+        });
+      })
       .modify((q) => {
         if (filters.coachId) q.where("fmr.coach_id", filters.coachId);
         if (filters.status) q.where("fmr.status", filters.status);
@@ -1090,12 +1098,21 @@ class CalendarRepository {
     return this.db("admin_match_coach_requests as amcr")
       .join("coach_profiles as cp", "amcr.coach_id", "cp.id")
       .leftJoin("academy_groups as ag", "amcr.selected_group_id", "ag.id")
+      .leftJoin("matches as accepted_match", "amcr.created_match_id", "accepted_match.id")
       .leftJoin(
         "academy_birth_years as aby",
         "amcr.selected_birth_year_id",
         "aby.id",
       )
       .where("amcr.academy_id", academyId)
+      .where((linked) => {
+        linked.where("amcr.status", "<>", "accepted").orWhere((activeMatch) => {
+          activeMatch
+            .whereNotNull("amcr.created_match_id")
+            .whereNotNull("accepted_match.id")
+            .whereNull("accepted_match.deleted_at");
+        });
+      })
       .modify((q) => {
         if (filters.coachId) q.where("amcr.coach_id", filters.coachId);
         if (filters.status) q.where("amcr.status", filters.status);
@@ -1110,6 +1127,43 @@ class CalendarRepository {
         ),
       )
       .orderBy("amcr.created_at", "desc");
+  }
+
+  async deleteStaleMatchRequests(academyId) {
+    await this.db.raw(
+      `
+        DELETE FROM friendly_match_requests fmr
+        USING coach_profiles cp
+        WHERE fmr.coach_id = cp.id
+          AND cp.academy_id = ?
+          AND fmr.converted_match_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM matches m
+            WHERE m.id = fmr.converted_match_id
+              AND m.deleted_at IS NULL
+          )
+      `,
+      [academyId],
+    );
+
+    await this.db.raw(
+      `
+        DELETE FROM admin_match_coach_requests amcr
+        WHERE amcr.academy_id = ?
+          AND amcr.status = 'accepted'
+          AND (
+            amcr.created_match_id IS NULL
+            OR NOT EXISTS (
+              SELECT 1
+              FROM matches m
+              WHERE m.id = amcr.created_match_id
+                AND m.deleted_at IS NULL
+            )
+          )
+      `,
+      [academyId],
+    );
   }
 
   findAdminMatchCoachRequestById(requestId, academyId) {

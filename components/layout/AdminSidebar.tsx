@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import {
   LayoutDashboard,
+  MessageSquare,
   GraduationCap,
   Users,
   UserCheck,
@@ -29,6 +30,7 @@ import { toggleSidebarCollapse, setMobileSidebarOpen } from "@/lib/store/slices/
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard,
+  MessageSquare,
   GraduationCap,
   Users,
   UserCheck,

@@ -1,3 +1,8 @@
+import argparse
+import json
+from pathlib import Path
+import sys
+
 import joblib
 import pandas as pd
 
@@ -5,7 +10,9 @@ import pandas as pd
 # LOAD MODEL
 # =========================
 
-MODEL_PATH = "football_academy_injury_risk_model_v3.joblib"
+MODEL_PATH = Path(__file__).resolve().with_name(
+    "football_academy_injury_risk_model_v3.joblib"
+)
 
 model = joblib.load(MODEL_PATH)
 
@@ -105,11 +112,51 @@ def predict_injury_risk(record):
 
     return result
 
+
+def predict_record(record):
+    prediction = predict_injury_risk(record)
+
+    return {
+        "player_id": record.get("player_id"),
+        "player_name": record.get("player_name"),
+        **prediction,
+    }
+
+
+def predict_payload(payload):
+    records = payload
+    if isinstance(payload, dict):
+        records = payload.get("records", [payload])
+
+    if not isinstance(records, list):
+        raise ValueError("Input payload must be a record or list of records")
+
+    results = []
+    for record in records:
+        try:
+            results.append(predict_record(record))
+        except Exception as exc:
+            results.append({
+                "player_id": record.get("player_id") if isinstance(record, dict) else None,
+                "player_name": record.get("player_name") if isinstance(record, dict) else None,
+                "error": str(exc),
+            })
+
+    return results
+
 # =========================
 # TEST EXAMPLE
 # =========================
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--json-stdin", action="store_true")
+    args = parser.parse_args()
+
+    if args.json_stdin:
+        payload = json.loads(sys.stdin.read() or "[]")
+        print(json.dumps(predict_payload(payload), ensure_ascii=False))
+        sys.exit(0)
 
     sample_player = {
         "age": 16,

@@ -53,28 +53,33 @@ const assertActiveAdminAccount = async (decoded) => {
     }
 };
 
+const authenticateAccessToken = async (token) => {
+    if (!token) {
+        throw new UnauthorizedError('Missing access token');
+    }
+
+    const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
+    await assertActiveAccessSession(decoded);
+    await assertActiveAdminAccount(decoded);
+    return createAbility({
+        userId: decoded.userId,
+        role: decoded.role,
+        academyId: decoded.academyId,
+        branchId: decoded.branchId,
+        linkedPlayerId: decoded.linkedPlayerId,
+        sessionId: decoded.jti,
+    }, db);
+};
+
 /**
  * Auth middleware. Browser clients authenticate with an httpOnly accessToken
  * cookie; Authorization: Bearer is retained for non-browser API clients.
  */
 const authMiddleware = async (req, _res, next) => {
     const token = readAccessToken(req);
-    if (!token) {
-        return next(new UnauthorizedError('Missing access token'));
-    }
 
     try {
-        const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
-        await assertActiveAccessSession(decoded);
-        await assertActiveAdminAccount(decoded);
-        req.user = createAbility({
-            userId: decoded.userId,
-            role: decoded.role,
-            academyId: decoded.academyId,
-            branchId: decoded.branchId,
-            linkedPlayerId: decoded.linkedPlayerId,
-            sessionId: decoded.jti,
-        }, db);
+        req.user = await authenticateAccessToken(token);
         return next();
     } catch (err) {
         if (err instanceof UnauthorizedError) return next(err);
@@ -112,4 +117,4 @@ const optionalAuth = (req, _res, next) => {
     return next();
 };
 
-module.exports = { authMiddleware, optionalAuth };
+module.exports = { authMiddleware, authenticateAccessToken, optionalAuth, readAccessToken };

@@ -438,6 +438,67 @@ class CalendarController {
     }
   };
 
+  coachListInjuryRiskPainDiscomfort = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachListInjuryRiskPainDiscomfort(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachUpsertInjuryRiskPainDiscomfort = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachUpsertInjuryRiskPainDiscomfort(
+            req.user.userId,
+            req.user.academyId,
+            req.body.records,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachListInjuryRiskPredictions = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachListInjuryRiskPredictions(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachRunInjuryRiskModel = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachRunInjuryRiskModel(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachGetPlayerDetail = async (req, res, next) => {
     try {
       res.json(
@@ -1083,6 +1144,21 @@ class CalendarController {
         { ...req.query, page, limit },
       );
       this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerGetProfile = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.playerGetProfile(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
     } catch (err) {
       next(err);
     }

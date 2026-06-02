@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Loader2, Save, UserMinus, UserPlus } from "lucide-react";
 import { FormationPreview3D } from "@/components/coach/FormationPreview3D";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  type CoachPlayer,
   type Match,
   useGetCoachAdminMatchRequestsQuery,
   useGetCoachFriendlyRequestsQuery,
@@ -30,10 +31,99 @@ import {
 } from "@/lib/store/api/calendarApi";
 import { useGetCoachBirthdaysQuery } from "@/lib/store/api/coachApi";
 import { FORMATIONS, getFormationSlots } from "@/lib/football/formations";
-import { formatDate } from "@/lib/utils";
+import { formatDate, localDateTimeTimestamp } from "@/lib/utils";
 
 type TargetMode = "group" | "birthday";
 type SlotState = Record<string, { playerId: string; instruction: string }>;
+
+const closedMatchStatuses = new Set(["cancelled", "finished", "completed"]);
+const MATCH_AUTO_FINISH_HOURS = 3;
+const CAM_ALLOWED_MAIN_POSITIONS = new Set(["CAM", "ST", "CM", "LW", "RW"]);
+const POSITION_ALIASES: Record<string, string> = {
+  GOALKEEPER: "GK",
+  "GOAL KEEPER": "GK",
+  KEEPER: "GK",
+  "CENTER BACK": "CB",
+  "CENTRE BACK": "CB",
+  "LEFT BACK": "LB",
+  "RIGHT BACK": "RB",
+  "DEFENSIVE MIDFIELDER": "CDM",
+  "CENTRAL MIDFIELDER": "CM",
+  MIDFIELDER: "CM",
+  "ATTACKING MIDFIELDER": "CAM",
+  STRIKER: "ST",
+  FORWARD: "ST",
+  "LEFT WINGER": "LW",
+  "RIGHT WINGER": "RW",
+};
+
+let configurationClockSnapshot = 0;
+const subscribeConfigurationClock = (onStoreChange: () => void) => {
+  configurationClockSnapshot = Date.now();
+  onStoreChange();
+  const intervalId = window.setInterval(() => {
+    configurationClockSnapshot = Date.now();
+    onStoreChange();
+  }, 30000);
+  return () => window.clearInterval(intervalId);
+};
+const getConfigurationClockSnapshot = () => configurationClockSnapshot;
+const getServerConfigurationClockSnapshot = () => 0;
+
+const normalizePosition = (value?: string | null) => {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ");
+  return POSITION_ALIASES[normalized] ?? normalized;
+};
+
+const customProfileValue = (
+  player: Pick<CoachPlayer, "customProfile">,
+  key: string,
+  label: string,
+) => {
+  const field = (player.customProfile ?? []).find(
+    (item) =>
+      item.key.toLowerCase() === key.toLowerCase() ||
+      item.label.toLowerCase() === label.toLowerCase(),
+  );
+  const value = field?.value;
+  return value === null || value === undefined ? "" : String(value);
+};
+
+const playerMainPosition = (
+  player: Pick<CoachPlayer, "position" | "customProfile">,
+) => customProfileValue(player, "main_position", "Main Position") || player.position || "";
+
+const slotAllowsPlayer = (slotLabel: string, player: CoachPlayer) => {
+  const slotPosition = normalizePosition(slotLabel);
+  const mainPosition = normalizePosition(playerMainPosition(player));
+  if (!mainPosition) return false;
+  if (slotPosition === "CAM") return CAM_ALLOWED_MAIN_POSITIONS.has(mainPosition);
+  return mainPosition === slotPosition;
+};
+
+const matchAutoFinishTimestamp = (match: {
+  match_date: string;
+  match_time: string;
+}) => {
+  const start = localDateTimeTimestamp(match.match_date, match.match_time);
+  return start ? start + MATCH_AUTO_FINISH_HOURS * 60 * 60 * 1000 : 0;
+};
+
+function isConfigurableMatch(match: Match, nowMs: number) {
+  if (closedMatchStatuses.has(match.status)) return false;
+  if (closedMatchStatuses.has(match.match_status)) return false;
+  if (
+    match.match_status === "scheduled" &&
+    matchAutoFinishTimestamp(match) <= nowMs
+  ) {
+    return false;
+  }
+  return true;
+}
 
 const getApiMessage = (error: unknown, fallback: string) => {
   const apiError = error as {
@@ -66,6 +156,11 @@ export default function CoachMatchConfigurationPage() {
     useUpsertMatchTacticsMutation();
   const [updateTargets, { isLoading: savingTargets }] =
     useUpdateCoachMatchTargetsMutation();
+  const nowMs = useSyncExternalStore(
+    subscribeConfigurationClock,
+    getConfigurationClockSnapshot,
+    getServerConfigurationClockSnapshot,
+  );
 
   const matches = useMemo(
     () =>
@@ -90,97 +185,112 @@ export default function CoachMatchConfigurationPage() {
           (request) =>
             request.status === "accepted" && request.created_match_id,
         )
-        .map((request) => ({
-          id: request.created_match_id!,
-          event_id: null,
-          team_id: request.selected_group_id,
-          age_group_id: null,
-          opponent_name: request.opponent_name,
-          match_type: request.match_type,
-          match_date: request.match_date,
-          match_time: request.match_time,
-          location: request.location,
-          venue_type: request.venue_type,
-          referee_name: request.referee_name,
-          status: "scheduled" as const,
-          match_status: "scheduled",
-          organizer_notes: request.organizer_notes,
-          match_notes: null,
-          our_score: null,
-          opponent_score: null,
-          groups: request.selected_group_id
-            ? [
-                {
-                  id: request.selected_group_id,
-                  name: request.selected_group_name ?? "Selected group",
-                },
-              ]
-            : [],
-          birth_years: request.selected_birth_year_id
-            ? [
-                {
-                  id: request.selected_birth_year_id,
-                  label:
-                    request.selected_birth_year_name ?? "Selected birthday",
-                  fromYear: 0,
-                  toYear: 9999,
-                },
-              ]
-            : [],
-        })),
+        .map((request) => {
+          const closed =
+            matchAutoFinishTimestamp({
+              match_date: request.match_date,
+              match_time: request.match_time,
+            }) <= nowMs;
+          return {
+            id: request.created_match_id!,
+            event_id: null,
+            team_id: request.selected_group_id,
+            age_group_id: null,
+            opponent_name: request.opponent_name,
+            match_type: request.match_type,
+            match_date: request.match_date,
+            match_time: request.match_time,
+            location: request.location,
+            venue_type: request.venue_type,
+            referee_name: request.referee_name,
+            status: closed ? ("completed" as const) : ("scheduled" as const),
+            match_status: closed ? "finished" : "scheduled",
+            organizer_notes: request.organizer_notes,
+            match_notes: null,
+            our_score: null,
+            opponent_score: null,
+            groups: request.selected_group_id
+              ? [
+                  {
+                    id: request.selected_group_id,
+                    name: request.selected_group_name ?? "Selected group",
+                  },
+                ]
+              : [],
+            birth_years: request.selected_birth_year_id
+              ? [
+                  {
+                    id: request.selected_birth_year_id,
+                    label:
+                      request.selected_birth_year_name ?? "Selected birthday",
+                    fromYear: 0,
+                    toYear: 9999,
+                  },
+                ]
+              : [],
+          };
+        }),
       ...(friendlyRequestsRes?.data ?? [])
         .filter(
           (request) =>
             request.status === "approved" && request.converted_match_id,
         )
-        .map((request) => ({
-          id: request.converted_match_id!,
-          event_id: null,
-          team_id: request.team_id,
-          age_group_id: null,
-          opponent_name: request.suggested_opponent_name || "Friendly match",
-          match_type: "friendly" as const,
-          match_date: request.preferred_date,
-          match_time: request.preferred_time,
-          location: null,
-          venue_type: "neutral" as const,
-          referee_name: null,
-          status: "scheduled" as const,
-          match_status: "scheduled",
-          organizer_notes: request.reason,
-          match_notes: request.notes,
-          our_score: null,
-          opponent_score: null,
-          groups: request.team_id
-            ? [
-                {
-                  id: request.team_id,
-                  name: request.team_name ?? "Selected group",
-                },
-              ]
-            : [],
-          birth_years: request.birth_year_id
-            ? [
-                {
-                  id: request.birth_year_id,
-                  label: request.birth_year_name ?? "Selected birthday",
-                  fromYear: 0,
-                  toYear: 9999,
-                },
-              ]
-            : [],
-        })),
+        .map((request) => {
+          const closed =
+            matchAutoFinishTimestamp({
+              match_date: request.preferred_date,
+              match_time: request.preferred_time,
+            }) <= nowMs;
+          return {
+            id: request.converted_match_id!,
+            event_id: null,
+            team_id: request.team_id,
+            age_group_id: null,
+            opponent_name: request.suggested_opponent_name || "Friendly match",
+            match_type: "friendly" as const,
+            match_date: request.preferred_date,
+            match_time: request.preferred_time,
+            location: null,
+            venue_type: "neutral" as const,
+            referee_name: null,
+            status: closed ? ("completed" as const) : ("scheduled" as const),
+            match_status: closed ? "finished" : "scheduled",
+            organizer_notes: request.reason,
+            match_notes: request.notes,
+            our_score: null,
+            opponent_score: null,
+            groups: request.team_id
+              ? [
+                  {
+                    id: request.team_id,
+                    name: request.team_name ?? "Selected group",
+                  },
+                ]
+              : [],
+            birth_years: request.birth_year_id
+              ? [
+                  {
+                    id: request.birth_year_id,
+                    label: request.birth_year_name ?? "Selected birthday",
+                    fromYear: 0,
+                    toYear: 9999,
+                  },
+                ]
+              : [],
+          };
+        }),
     ],
-    [adminRequestsRes?.data, friendlyRequestsRes?.data],
+    [adminRequestsRes?.data, friendlyRequestsRes?.data, nowMs],
   );
   const matchOptions = useMemo(
-    () => [
-      ...matches,
-      ...acceptedRequestMatches.filter(
-        (item) => !matches.some((match) => match.id === item.id),
-      ),
-    ],
-    [acceptedRequestMatches, matches],
+    () =>
+      [
+        ...matches,
+        ...acceptedRequestMatches.filter(
+          (item) => !matches.some((match) => match.id === item.id),
+        ),
+      ].filter((match) => isConfigurableMatch(match, nowMs)),
+    [acceptedRequestMatches, matches, nowMs],
   );
   const players = playersRes?.data ?? [];
   const [matchId, setMatchId] = useState(() =>
@@ -325,6 +435,9 @@ export default function CoachMatchConfigurationPage() {
     });
   })();
   const targetPlayerIds = new Set(targetPlayers.map((player) => player.id));
+  const selectedReserveIds = new Set(
+    activeReserveIds.filter((playerId) => targetPlayerIds.has(playerId)),
+  );
   const previewPlayerNames = Object.fromEntries(
     slots.map((slot) => [
       slot.id,
@@ -348,6 +461,18 @@ export default function CoachMatchConfigurationPage() {
         },
       };
     });
+    if (patch.playerId) {
+      setReserveIds((prev) => {
+        const base = prev ?? activeReserveIds;
+        return base.filter((playerId) => playerId !== patch.playerId);
+      });
+      setReserveInstructions((prev) => {
+        const base = prev ?? activeReserveInstructions;
+        const next = { ...base };
+        delete next[patch.playerId!];
+        return next;
+      });
+    }
   };
 
   const toggleReserve = (playerId: string) => {
@@ -443,10 +568,16 @@ export default function CoachMatchConfigurationPage() {
                 Loading matches...
               </p>
             )}
+            {!loadingMatches && !matchOptions.length && (
+              <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                No configurable matches are available.
+              </p>
+            )}
             <div className="space-y-2">
               <Label>Match</Label>
               <Select
                 value={selectedMatch?.id ?? ""}
+                disabled={!matchOptions.length}
                 onValueChange={(value) => {
                   const nextMatch = matchOptions.find(
                     (match) => match.id === value,
@@ -490,6 +621,7 @@ export default function CoachMatchConfigurationPage() {
               <Label>Target Type</Label>
               <Select
                 value={effectiveTargetMode}
+                disabled={!selectedMatch}
                 onValueChange={(value) => {
                   setTargetMode(value as TargetMode);
                   setTargetId("");
@@ -513,6 +645,7 @@ export default function CoachMatchConfigurationPage() {
               </Label>
               <Select
                 value={effectiveTargetId}
+                disabled={!selectedMatch}
                 onValueChange={(value) => {
                   setTargetId(value);
                   setSlotState({});
@@ -545,6 +678,7 @@ export default function CoachMatchConfigurationPage() {
               <Label>Formation</Label>
               <Select
                 value={activeFormation}
+                disabled={!selectedMatch}
                 onValueChange={(value) => {
                   setFormation(value);
                   setSlotState({});
@@ -576,6 +710,7 @@ export default function CoachMatchConfigurationPage() {
                 value={activeTacticalNotes}
                 onChange={(event) => setTacticalNotes(event.target.value)}
                 placeholder="Pressing plan, build-up notes, set-piece reminders..."
+                disabled={!selectedMatch}
               />
             </div>
             {status && (
@@ -630,7 +765,9 @@ export default function CoachMatchConfigurationPage() {
                 const available = targetPlayers.filter(
                   (player) =>
                     player.id === current?.playerId ||
-                    !selectedStarterIds.has(player.id),
+                    (slotAllowsPlayer(slot.label, player) &&
+                      !selectedStarterIds.has(player.id) &&
+                      !selectedReserveIds.has(player.id)),
                 );
                 return (
                   <div
@@ -653,7 +790,8 @@ export default function CoachMatchConfigurationPage() {
                       <SelectContent>
                         {available.map((player) => (
                           <SelectItem key={player.id} value={player.id}>
-                            {player.full_name}
+                            {player.full_name} -{" "}
+                            {playerMainPosition(player) || "No main position"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -696,7 +834,7 @@ export default function CoachMatchConfigurationPage() {
                             {player.full_name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {player.position || "Unassigned"} · {player.level}
+                            {playerMainPosition(player) || "Unassigned"} - {player.level}
                           </p>
                         </div>
                         <Button

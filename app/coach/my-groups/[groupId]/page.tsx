@@ -192,10 +192,10 @@ export default function CoachGroupDetailPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Link href="/coach/attendance/mark">
+            <Link href="/coach/training">
               <Button size="sm">
                 <ClipboardCheck className="mr-1 h-4 w-4" />
-                Mark Attendance
+                Training Attendance
               </Button>
             </Link>
             <Link href="/coach/evaluations/new">
