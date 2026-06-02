@@ -17,6 +17,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 const topStats = [
   { icon: CalendarDays, value: "85%", label: "Attendance" },
@@ -49,7 +50,7 @@ const wellness = [
 ];
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+  return <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
 }
 
 function Ring({ value, label, color = "lime" }: { value: number; label?: string; color?: string }) {
@@ -87,14 +88,14 @@ function Heatmap() {
 
 export default function ParentHomePage() {
   return (
-    <div className="rounded-[34px] border border-[#2b4661] bg-[#05101f]/95 p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.42)] md:p-7">
+    <DashboardFrame role="parent">
       <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
         <div><h1 className="font-display text-5xl font-bold leading-none md:text-6xl">Welcome back, Parent</h1><p className="mt-2 text-lg text-slate-300">Here&apos;s your child&apos;s journey at a glance <span className="text-lime-300">♡</span></p></div>
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">{topStats.map((s) => <div key={s.label} className="flex items-center gap-3"><span className="grid h-12 w-12 place-items-center rounded-full border border-lime-300/30 bg-lime-300/5 text-lime-300"><s.icon size={22} /></span><div><strong className="text-2xl">{s.value}</strong><p className="text-xs text-slate-400">{s.label}</p></div></div>)}</div>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[0.8fr_1.98fr_0.72fr]">
-        <Panel className="overflow-hidden xl:row-span-2">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden xl:row-span-2">
           <div className="relative min-h-[340px] p-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(182,255,0,0.28),transparent_28%)]" />
             <div className="absolute right-7 top-10 font-display text-[190px] font-black leading-none text-lime-300/20">X</div>
@@ -136,6 +137,6 @@ export default function ParentHomePage() {
         <Panel className="p-5"><h2 className="font-semibold">Payments & Subscription</h2><p className="mt-5 text-slate-400">Current Plan</p><p className="text-lg font-semibold">GOALIX Elite Annual <span className="float-right rounded-lg bg-lime-300/15 px-3 py-1 text-sm text-lime-300">Active</span></p><div className="mt-5 rounded-xl border border-[#2a4460] p-4"><p className="text-slate-400">Next Payment</p><strong>30 Nov 2025</strong><p>£299.00 <span className="float-right">Auto-pay ON ✓</span></p></div></Panel>
         <Panel className="p-5"><h2 className="font-semibold">Family Access</h2>{["Sarah Williams|Mother • Primary Contact|Full Access","Mark Williams|Father|View Access"].map((f)=><div key={f} className="mt-4 flex items-center gap-3"><User className="text-slate-300"/><span className="flex-1">{f.split("|")[0]}<br/><small className="text-slate-400">{f.split("|")[1]}</small></span><span className="rounded-lg border border-lime-300/35 px-3 py-1 text-xs text-lime-300">{f.split("|")[2]}</span></div>)}<button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#2a4460] py-3"><Users size={18}/> Invite Family Member</button></Panel>
       </div>
-    </div>
+    </DashboardFrame>
   );
 }

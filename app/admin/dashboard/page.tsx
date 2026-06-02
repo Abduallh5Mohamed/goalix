@@ -19,6 +19,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 const readiness = [
   { label: "Match Readiness", value: "82%", sub: "82", accent: "lime" },
@@ -147,7 +148,7 @@ function Heatmap() {
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.25)] backdrop-blur-xl ${className}`}>
+    <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.25)] backdrop-blur-xl ${className}`}>
       {children}
     </section>
   );
@@ -155,9 +156,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 
 export default function AdminDashboardPage() {
   return (
-    <div className="relative rounded-[34px] border border-[#2b4661] bg-[#05101f]/92 p-5 text-white shadow-[0_0_0_1px_rgba(182,255,0,0.05),0_30px_90px_rgba(0,0,0,0.42)] md:p-7">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_72%_20%,rgba(0,216,255,0.18),transparent_34%),radial-gradient(circle_at_28%_22%,rgba(182,255,0,0.08),transparent_26%)]" />
-
+    <DashboardFrame role="admin">
       <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal text-white md:text-6xl">Welcome back, Admin</h1>
@@ -188,7 +187,7 @@ export default function AdminDashboardPage() {
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_1.3fr_0.56fr_0.56fr_0.56fr]">
-        <Panel className="overflow-hidden">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden">
           <div className="relative min-h-[340px] p-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(182,255,0,0.28),transparent_26%),linear-gradient(135deg,rgba(47,140,255,0.18),transparent_58%)]" />
             <div className="absolute right-8 top-12 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
@@ -329,6 +328,6 @@ export default function AdminDashboardPage() {
           </Panel>
         ))}
       </div>
-    </div>
+    </DashboardFrame>
   );
 }

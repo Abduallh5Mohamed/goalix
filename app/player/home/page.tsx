@@ -17,6 +17,7 @@ import {
   User,
   Zap,
 } from "lucide-react";
+import { DashboardFrame } from "@/components/layout/DashboardFrame";
 
 const metrics = [
   { label: "Match Rating", value: "7.6", sub: "Last Match", trend: "+ 0.8" },
@@ -91,12 +92,12 @@ function Heatmap() {
 }
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+  return <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
 }
 
 export default function PlayerHomePage() {
   return (
-    <div className="rounded-[34px] border border-[#2b4661] bg-[#05101f]/95 p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.42)] md:p-7">
+    <DashboardFrame role="player">
       <div className="mb-5 grid gap-5 xl:grid-cols-[1fr_0.82fr_160px]">
         <div>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Player</h1>
@@ -110,7 +111,7 @@ export default function PlayerHomePage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_2.8fr]">
-        <Panel className="overflow-hidden xl:row-span-2">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden xl:row-span-2">
           <div className="relative min-h-[405px] p-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(182,255,0,0.28),transparent_28%)]" />
             <div className="absolute right-7 top-10 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
@@ -164,6 +165,6 @@ export default function PlayerHomePage() {
         <Panel className="p-5"><h2 className="mb-5 text-xl font-semibold">Achievements</h2><div className="grid grid-cols-3 gap-4 text-center">{["Player of the Match|3x","Top Performer|5x","Consistency Streak|7 Matches"].map((a) => { const [t,v]=a.split("|"); return <div key={t}><Medal className="mx-auto h-14 w-14 text-yellow-400" /><p className="mt-2 text-sm">{t}</p><strong className="text-lime-300">{v}</strong></div>; })}</div></Panel>
         <Panel className="p-5 text-center"><h2 className="mb-5 text-left text-xl font-semibold">Next Milestone</h2><Ring value={80} color="teal" /><p className="mt-3 font-semibold">Goal Contribution</p><p className="text-sm text-slate-400">2 more to unlock</p></Panel>
       </div>
-    </div>
+    </DashboardFrame>
   );
 }

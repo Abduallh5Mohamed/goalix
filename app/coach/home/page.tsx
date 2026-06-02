@@ -20,6 +20,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { DashboardFrame } from "@/components/layout/DashboardFrame";
 import { mockEvaluations, mockGroups, mockPlayers, mockSessions } from "@/lib/mock-data";
 
 const readiness = [
@@ -141,7 +142,7 @@ function Heatmap() {
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] backdrop-blur-xl ${className}`}>
+    <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] backdrop-blur-xl ${className}`}>
       {children}
     </section>
   );
@@ -161,7 +162,7 @@ export default function CoachHomePage() {
   ];
 
   return (
-    <div className="rounded-[34px] border border-[#2b4661] bg-[#05101f]/95 p-5 text-white shadow-[0_30px_90px_rgba(0,0,0,0.42)] md:p-7">
+    <DashboardFrame role="coach">
       <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">Coach performance hub</p>
@@ -199,7 +200,7 @@ export default function CoachHomePage() {
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.25fr_0.62fr_0.62fr_0.62fr]">
-        <Panel className="overflow-hidden">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden">
           <div className="relative min-h-[350px] p-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(182,255,0,0.28),transparent_26%),linear-gradient(135deg,rgba(47,140,255,0.18),transparent_58%)]" />
             <div className="absolute right-8 top-12 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
@@ -382,6 +383,6 @@ export default function CoachHomePage() {
           </div>
         </Panel>
       </div>
-    </div>
+    </DashboardFrame>
   );
 }

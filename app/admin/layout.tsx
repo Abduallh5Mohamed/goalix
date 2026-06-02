@@ -2,13 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AdminSidebar } from "@/components/layout/AdminSidebar";
-import { AdminHeader } from "@/components/layout/AdminHeader";
-import { useAppSelector } from "@/lib/store/hooks";
 import { useCurrentUser } from "@/lib/auth/auth-context";
-import { cn } from "@/lib/utils";
 import { ROLE_ROUTES } from "@/lib/constants";
-import { PortalTopNav } from "@/components/layout/PortalTopNav";
 
 export default function AdminLayout({
   children,
@@ -17,7 +12,6 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const { isAuthenticated, role } = useCurrentUser();
-  const { sidebarCollapsed } = useAppSelector((s) => s.ui);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -32,12 +26,11 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#020711] text-slate-100">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_76%_2%,rgba(163,230,53,0.12),transparent_28%),linear-gradient(135deg,#020711_0%,#06111f_48%,#020711_100%)]" />
-      <div className="pointer-events-none fixed inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px]" />
+    <div className="min-h-screen bg-[#dfe4e7] text-[#111c17]">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(0,216,255,0.12),transparent_34%),radial-gradient(circle_at_78%_4%,rgba(182,255,0,0.16),transparent_30%),linear-gradient(135deg,#e8ecef_0%,#f5f6f1_52%,#dfe4e7_100%)]" />
+      <div className="pointer-events-none fixed inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(14,42,27,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(14,42,27,0.055)_1px,transparent_1px)] [background-size:72px_72px]" />
       <div className="relative min-h-screen">
-        <PortalTopNav role="admin" />
-        <main className="mx-auto max-w-[1880px] p-4 lg:p-8">{children}</main>
+        <main className="min-h-screen w-full p-2 sm:p-3 lg:p-4">{children}</main>
       </div>
     </div>
   );
