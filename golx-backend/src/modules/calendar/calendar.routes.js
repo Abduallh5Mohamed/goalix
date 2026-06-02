@@ -34,6 +34,12 @@ function adminCalendarRoutes(controller) {
     controller.adminUpdateCalendarEvent,
   );
   router.delete(
+    "/calendar-events/:id/hard-delete-training",
+    rbac("manage_schedules"),
+    validate({ params: schema.idParam }),
+    controller.adminHardDeleteTrainingEvent,
+  );
+  router.delete(
     "/calendar-events/:id",
     rbac("manage_schedules"),
     validate({ params: schema.idParam }),
@@ -61,6 +67,29 @@ function adminCalendarRoutes(controller) {
     rbac("manage_schedules"),
     validate({ body: schema.adminCoachMatchRequestSchema }),
     controller.adminCreateCoachMatchRequest,
+  );
+  router.get(
+    "/evaluation-edit-requests",
+    validate({ query: schema.evaluationEditRequestsQuery }),
+    controller.adminListEvaluationEditRequests,
+  );
+  router.patch(
+    "/evaluation-edit-requests/:id/approve",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.evaluationEditRequestReviewSchema,
+    }),
+    controller.adminApproveEvaluationEditRequest,
+  );
+  router.patch(
+    "/evaluation-edit-requests/:id/reject",
+    rbac("manage_schedules"),
+    validate({
+      params: schema.idParam,
+      body: schema.evaluationEditRequestReviewSchema,
+    }),
+    controller.adminRejectEvaluationEditRequest,
   );
   router.get(
     "/matches/:id",
@@ -339,6 +368,14 @@ function coachCalendarRoutes(controller) {
     "/matches/:matchId",
     validate({ params: schema.matchParam }),
     controller.coachGetMatch,
+  );
+  router.post(
+    "/matches/:matchId/evaluation-edit-requests",
+    validate({
+      params: schema.matchParam,
+      body: schema.evaluationEditRequestSchema,
+    }),
+    controller.coachRequestMatchEvaluationEdit,
   );
   router.post(
     "/matches/:matchId/squad",

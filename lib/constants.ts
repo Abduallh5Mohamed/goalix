@@ -57,6 +57,7 @@ export const NAV_ITEMS = {
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
     { label: "Chats", href: "/admin/chat", icon: "MessageSquare" },
+    { label: "Requests", href: "/admin/requests", icon: "Inbox" },
     {
       label: "Academy",
       icon: "GraduationCap",

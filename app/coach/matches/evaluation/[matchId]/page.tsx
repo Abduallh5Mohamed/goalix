@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle2, Loader2, LockKeyhole, Save } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, LockKeyhole, Save, Send } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   useGetCoachMatchQuery,
+  useRequestMatchEvaluationEditMutation,
   useUpsertMatchStatsMutation,
 } from "@/lib/store/api/calendarApi";
 import type {
@@ -39,6 +40,10 @@ type OptionField = {
   key: string;
   label: string;
   options: RatingOption[];
+};
+
+type EvaluationPlayer = MatchEvaluationCandidate & {
+  effective_position?: string | null;
 };
 
 const rating10Options: RatingOption[] = [
@@ -176,11 +181,14 @@ export default function MatchEvaluationPage() {
   const matchId = params.matchId;
   const { data: match, isLoading } = useGetCoachMatchQuery(matchId);
   const [saveStats, { isLoading: saving }] = useUpsertMatchStatsMutation();
+  const [requestEdit, { isLoading: requestingEdit }] =
+    useRequestMatchEvaluationEditMutation();
   const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>(
     {},
   );
   const [pageError, setPageError] = useState("");
   const [lockedAfterSave, setLockedAfterSave] = useState(false);
+  const [nowMs, setNowMs] = useState(0);
   const allOptionFields = useMemo(
     () =>
       [...optionFields, ...goalkeeperOptionFields].filter(
@@ -190,29 +198,74 @@ export default function MatchEvaluationPage() {
     [],
   );
 
+  useEffect(() => {
+    const updateClock = () => setNowMs(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const statsByPlayer = useMemo(
     () => new Map((match?.stats ?? []).map((stat) => [stat.player_id, stat])),
     [match?.stats],
   );
-  const evaluationPlayers = useMemo(() => {
+  const evaluationPlayers = useMemo<EvaluationPlayer[]>(() => {
     const candidates: MatchEvaluationCandidate[] =
       match?.squad?.length
         ? match.squad
         : (match?.evaluation_candidates ?? []);
     const hasAttendanceRecords = Boolean(match?.attendance?.length);
-
-    if (!hasAttendanceRecords) return candidates;
-
     const attendance = new Map(
       (match?.attendance ?? []).map((record) => [record.player_id, record]),
     );
-    return candidates.filter((player) => {
-      const status = attendance.get(player.player_id)?.status;
-      const stats = statsByPlayer.get(player.player_id);
-      return (
-        ["present", "late"].includes(status ?? "") ||
-        Number(stats?.minutes_played || 0) > 0
+
+    const visibleCandidates = !hasAttendanceRecords
+      ? candidates
+      : candidates.filter((player) => {
+          const status = attendance.get(player.player_id)?.status;
+          const stats = statsByPlayer.get(player.player_id);
+          return (
+            ["present", "late"].includes(status ?? "") ||
+            Number(stats?.minutes_played || 0) > 0
+          );
+        });
+
+    if (!match?.squad?.length) return visibleCandidates;
+
+    const squadByPlayer = new Map(
+      match.squad.map((player) => [player.player_id, player]),
+    );
+    const activePositionByPlayer = new Map<string, string | null>();
+    match.squad.forEach((player) => {
+      activePositionByPlayer.set(
+        player.player_id,
+        player.squad_role === "starter" ? player.position ?? null : null,
       );
+    });
+
+    [...(match.substitutions ?? [])]
+      .sort(
+        (a, b) =>
+          Number(a.minute || 0) - Number(b.minute || 0) ||
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .forEach((substitution) => {
+        const outPlayer = squadByPlayer.get(substitution.out_player_id);
+        const inheritedPosition =
+          activePositionByPlayer.get(substitution.out_player_id) ??
+          (outPlayer?.squad_role === "starter" ? outPlayer.position ?? null : null);
+        activePositionByPlayer.delete(substitution.out_player_id);
+        activePositionByPlayer.set(substitution.in_player_id, inheritedPosition);
+      });
+
+    return visibleCandidates.map((player) => {
+      const squadPlayer = squadByPlayer.get(player.player_id);
+      return {
+        ...player,
+        effective_position:
+          activePositionByPlayer.get(player.player_id) ??
+          (squadPlayer?.squad_role === "starter" ? squadPlayer.position ?? null : null),
+      };
     });
   }, [match, statsByPlayer]);
 
@@ -222,8 +275,14 @@ export default function MatchEvaluationPage() {
         match.status === "completed" ||
         match.status === "finished"),
   );
+  const editRequest = match?.evaluation_edit_request;
+  const editWindowActive = Boolean(
+    match?.evaluation_edit_unlocked_until &&
+      (!nowMs ||
+        new Date(match.evaluation_edit_unlocked_until).getTime() > nowMs),
+  );
   const evaluationsLocked = Boolean(
-    match?.evaluations_finalized_at || lockedAfterSave,
+    lockedAfterSave || (match?.evaluations_finalized_at && !editWindowActive),
   );
 
   const updateDraft = (playerId: string, key: string, value: string) => {
@@ -243,6 +302,10 @@ export default function MatchEvaluationPage() {
         records: evaluationPlayers.map((player) => {
           const stat = statsByPlayer.get(player.player_id);
           const draft = drafts[player.player_id] ?? {};
+          const isGoalkeeper = isGoalkeeperPosition(player.effective_position);
+          const payloadOptionFields = isGoalkeeper
+            ? allOptionFields
+            : allOptionFields.filter((field) => field.key !== "saves");
           return {
             playerId: player.player_id,
             minutesPlayed: stat?.minutes_played ?? 0,
@@ -254,12 +317,12 @@ export default function MatchEvaluationPage() {
             passesCompleted: stat?.passes_completed ?? 0,
             shotsTotal: stat?.shots_total ?? 0,
             duelsLost: stat?.duels_lost ?? 0,
-            saves: stat?.saves ?? 0,
+            saves: isGoalkeeper ? (stat?.saves ?? 0) : 0,
             performanceRating: toNumber(
               rawStatValue(stat, "performanceRating", draft),
             ),
             ...Object.fromEntries(
-              allOptionFields.map((field) => [
+              payloadOptionFields.map((field) => [
                 field.key,
                 toNumber(optionStatValue(stat, field, draft)),
               ]),
@@ -277,6 +340,16 @@ export default function MatchEvaluationPage() {
       setDrafts({});
     } catch {
       setPageError("Could not save match evaluations.");
+    }
+  };
+
+  const handleRequestEdit = async () => {
+    if (!match || requestingEdit) return;
+    setPageError("");
+    try {
+      await requestEdit({ matchId }).unwrap();
+    } catch {
+      setPageError("Could not send evaluation edit request.");
     }
   };
 
@@ -318,8 +391,20 @@ export default function MatchEvaluationPage() {
                 >
                   {match.match_status}
                 </Badge>
-                <Badge variant={evaluationsLocked ? "success" : "secondary"}>
-                  {evaluationsLocked ? "locked" : "editable"}
+                <Badge
+                  variant={
+                    evaluationsLocked
+                      ? "success"
+                      : editWindowActive
+                        ? "warning"
+                        : "secondary"
+                  }
+                >
+                  {evaluationsLocked
+                    ? "locked"
+                    : editWindowActive
+                      ? "reopened"
+                      : "editable"}
                 </Badge>
               </div>
             </CardContent>
@@ -335,6 +420,21 @@ export default function MatchEvaluationPage() {
             <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
               <CheckCircle2 className="h-4 w-4" />
               Match evaluations are saved and locked.
+            </div>
+          )}
+
+          {editRequest?.status === "pending" && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+              <Clock className="h-4 w-4" />
+              Edit request sent. Waiting for admin approval.
+            </div>
+          )}
+
+          {editWindowActive && match.evaluation_edit_unlocked_until && (
+            <div className="flex items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+              <Clock className="h-4 w-4" />
+              Evaluations are open until{" "}
+              {new Date(match.evaluation_edit_unlocked_until).toLocaleString()}.
             </div>
           )}
 
@@ -356,8 +456,8 @@ export default function MatchEvaluationPage() {
             {evaluationPlayers.map((player) => {
               const stat = statsByPlayer.get(player.player_id);
               const draft = drafts[player.player_id] ?? {};
-              const playerPosition = player.position ?? "No position";
-              const activeOptionFields = isGoalkeeperPosition(player.position)
+              const playerPosition = player.effective_position ?? "No position";
+              const activeOptionFields = isGoalkeeperPosition(player.effective_position)
                 ? goalkeeperOptionFields
                 : optionFields;
 
@@ -465,9 +565,27 @@ export default function MatchEvaluationPage() {
 
           <div className="flex justify-end">
             {evaluationsLocked ? (
-              <Button type="button" variant="outline" className="gap-2" disabled>
-                <LockKeyhole className="h-4 w-4" />
-                Evaluations Locked
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={
+                  requestingEdit ||
+                  editRequest?.status === "pending" ||
+                  !match.evaluations_finalized_at
+                }
+                onClick={handleRequestEdit}
+              >
+                {requestingEdit ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : editRequest?.status === "pending" ? (
+                  <Clock className="h-4 w-4" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {editRequest?.status === "pending"
+                  ? "Request Pending"
+                  : "Request Edit Access"}
               </Button>
             ) : (
               <Button

@@ -127,6 +127,12 @@ const nowTime = () => {
 const toNumberOrUndefined = (value: string) =>
   value === "" ? undefined : Number(value);
 
+const evaluationVisibility = (player: TrainingParticipant) =>
+  player.evaluation?.visibility ?? "private";
+
+const visibilityLabel = (visibility: string | null | undefined) =>
+  visibility === "player_and_parent" ? "Published" : "Not published";
+
 const isGoalkeeperPosition = (position?: string | null) => {
   const normalized = String(position ?? "").trim().toLowerCase();
   return normalized === "gk" || normalized.includes("goalkeeper");
@@ -330,6 +336,10 @@ export default function CoachTrainingEventPage() {
               draft.developmentNotes ??
               player.evaluation?.development_notes ??
               "",
+            visibility:
+              draft.visibility ??
+              player.evaluation?.visibility ??
+              "private",
           };
         }),
       }).unwrap();
@@ -372,6 +382,10 @@ export default function CoachTrainingEventPage() {
               draft.improvementPlan ?? player.evaluation?.improvement_plan ?? "",
             developmentNotes:
               draft.developmentNotes ?? player.evaluation?.development_notes ?? "",
+            visibility:
+              draft.visibility ??
+              player.evaluation?.visibility ??
+              "private",
           },
         ],
       }).unwrap();
@@ -685,6 +699,21 @@ export default function CoachTrainingEventPage() {
                       <Badge variant="outline">
                         {player.totals.matches.minutes_played} match min
                       </Badge>
+                      <Badge
+                        variant={
+                          (
+                            drafts[player.id]?.visibility ??
+                            evaluationVisibility(player)
+                          ) === "player_and_parent"
+                            ? "success"
+                            : "secondary"
+                        }
+                      >
+                        {visibilityLabel(
+                          drafts[player.id]?.visibility ??
+                            evaluationVisibility(player),
+                        )}
+                      </Badge>
                       <Badge variant="destructive">
                         {player.totals.injuries} injuries
                       </Badge>
@@ -839,15 +868,46 @@ export default function CoachTrainingEventPage() {
                         </Badge>
                       ))}
                     </div>
-                    <Button
-                      type="button"
-                      className="gap-2"
-                      disabled={savingEvaluation || !trainingOpen}
-                      onClick={() => saveEvaluation(player)}
-                    >
-                      <Save className="h-4 w-4" />
-                      Save Evaluation
-                    </Button>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="w-44 space-y-1">
+                        <Label>Player visibility</Label>
+                        <Select
+                          disabled={!trainingOpen}
+                          value={
+                            drafts[player.id]?.visibility ??
+                            evaluationVisibility(player)
+                          }
+                          onValueChange={(value) =>
+                            setDrafts((prev) => ({
+                              ...prev,
+                              [player.id]: {
+                                ...(prev[player.id] ?? {}),
+                                visibility: value,
+                              },
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="private">Not published</SelectItem>
+                            <SelectItem value="player_and_parent">
+                              Publish
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        className="gap-2"
+                        disabled={savingEvaluation || !trainingOpen}
+                        onClick={() => saveEvaluation(player)}
+                      >
+                        <Save className="h-4 w-4" />
+                        Save Evaluation
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

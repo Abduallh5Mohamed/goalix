@@ -655,6 +655,7 @@ export const adminApi = createApi({
     "BirthYears",
     "Groups",
     "CurrentUser",
+    "Academy",
   ],
   endpoints: (builder) => ({
     // ── Players ──────────────────────────────────────────────────────────
@@ -1159,11 +1160,13 @@ export const adminApi = createApi({
     getAcademy: builder.query<AcademyInfo, void>({
       query: () => "/academy",
       transformResponse: (res: { data: AcademyInfo }) => res.data,
+      providesTags: ["Academy"],
     }),
 
     updateAcademy: builder.mutation<AcademyInfo, Partial<AcademyInfo>>({
       query: (body) => ({ url: "/academy", method: "PUT", body }),
       transformResponse: (res: { data: AcademyInfo }) => res.data,
+      invalidatesTags: ["Academy"],
     }),
 
     getCurrentUser: builder.query<AuthUser, void>({

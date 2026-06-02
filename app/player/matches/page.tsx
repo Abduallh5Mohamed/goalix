@@ -46,6 +46,11 @@ const formatNumber = (value: unknown) => {
   return numeric === null ? "0" : String(Math.round(numeric));
 };
 
+const isGoalkeeperPosition = (position?: string | null) => {
+  const normalized = String(position ?? "").trim().toLowerCase();
+  return normalized === "gk" || normalized.includes("goalkeeper");
+};
+
 const titleCase = (value: string | null | undefined) =>
   (value || "Not set")
     .replace(/_/g, " ")
@@ -97,11 +102,18 @@ function StatBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MatchEvaluation({ stats }: { stats?: MatchPlayerStats }) {
+function MatchEvaluation({
+  stats,
+  position,
+}: {
+  stats?: MatchPlayerStats;
+  position?: string | null;
+}) {
   if (!stats) {
     return <EmptyState text="No match evaluation has been published for you yet." />;
   }
 
+  const showSaves = isGoalkeeperPosition(position);
   const visibleRatings = statFields.filter(
     (field) => stats[field.key] !== null && stats[field.key] !== undefined,
   );
@@ -112,7 +124,7 @@ function MatchEvaluation({ stats }: { stats?: MatchPlayerStats }) {
         <StatBox label="Minutes" value={formatNumber(stats.minutes_played)} />
         <StatBox label="Goals" value={formatNumber(stats.goals)} />
         <StatBox label="Assists" value={formatNumber(stats.assists)} />
-        <StatBox label="Saves" value={formatNumber(stats.saves)} />
+        {showSaves && <StatBox label="Saves" value={formatNumber(stats.saves)} />}
         <StatBox label="Yellow" value={formatNumber(stats.yellow_cards)} />
         <StatBox label="Red" value={formatNumber(stats.red_cards)} />
       </div>
@@ -308,7 +320,7 @@ function MatchCard({ match }: { match: Match }) {
             <Star className="h-4 w-4 text-amber-300" />
             <h4 className="font-semibold text-white">Match Evaluation</h4>
           </div>
-          <MatchEvaluation stats={myStats} />
+          <MatchEvaluation stats={myStats} position={mySquad?.position} />
         </div>
       </CardContent>
     </Card>
@@ -316,7 +328,11 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 export default function PlayerMatchesPage() {
-  const { data, isLoading } = useGetPlayerMatchesQuery();
+  const { data, isLoading, isFetching } = useGetPlayerMatchesQuery(undefined, {
+    pollingInterval: 15000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
   const matches = (data?.data ?? [])
     .slice()
     .sort((a, b) => matchTimestamp(a) - matchTimestamp(b));
@@ -339,7 +355,7 @@ export default function PlayerMatchesPage() {
         ]}
       />
 
-      {isLoading ? (
+      {isLoading || isFetching ? (
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />

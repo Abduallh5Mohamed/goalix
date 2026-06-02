@@ -202,7 +202,11 @@ function MatchReminder({ match }: { match: Match }) {
 
 export default function PlayerCalendarPage() {
   const eventsQuery = useGetPlayerCalendarEventsQuery();
-  const matchesQuery = useGetPlayerMatchesQuery();
+  const matchesQuery = useGetPlayerMatchesQuery(undefined, {
+    pollingInterval: 15000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
   const events = (eventsQuery.data?.data ?? [])
     .slice()
     .sort((a, b) => eventTimestamp(a) - eventTimestamp(b));

@@ -92,7 +92,11 @@ export default function CoachMatchesPage() {
     isLoading,
     isError: matchesError,
     refetch: refetchMatches,
-  } = useGetCoachMatchesQuery();
+  } = useGetCoachMatchesQuery(undefined, {
+    pollingInterval: 15000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
   const { data: requestsRes } = useGetCoachFriendlyRequestsQuery();
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
   const nowMs = useSyncExternalStore(
