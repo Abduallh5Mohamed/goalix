@@ -8,6 +8,7 @@ const {
 const needsOptions = new Set(['single_select', 'multi_select']);
 const numericTypes = new Set(['number', 'rating', 'percentage']);
 const protectedSystemFieldKeys = new Set(['main_position']);
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function toSnakeLikeKey(label) {
     return String(label || '')
@@ -419,6 +420,58 @@ class CustomDataService {
         return null;
     }
 
+    async _displayValueForStoredValue(trx, value) {
+        if (value.value_option_id) {
+            const option = await trx('custom_field_options')
+                .where({ id: value.value_option_id })
+                .first('label');
+            return option?.label || null;
+        }
+        const labelsForOptionIds = async (optionIds) => {
+            const ids = [...new Set((optionIds || []).filter((item) => typeof item === 'string' && uuidPattern.test(item)))];
+            if (!ids.length) return null;
+            const rows = await trx('custom_field_options')
+                .whereIn('id', ids)
+                .select('id', 'label');
+            const labelsById = new Map(rows.map((row) => [row.id, row.label]));
+            return ids.map((id) => labelsById.get(id) || id).join(', ');
+        };
+        if (value.value_text) {
+            if (uuidPattern.test(value.value_text)) {
+                const option = await trx('custom_field_options')
+                    .where({ id: value.value_text })
+                    .first('label');
+                return option?.label || value.value_text;
+            }
+            return value.value_text;
+        }
+        if (value.value_long_text) return value.value_long_text;
+        if (value.value_decimal !== null && value.value_decimal !== undefined) return String(value.value_decimal);
+        if (value.value_number !== null && value.value_number !== undefined) return String(value.value_number);
+        if (value.value_date) return String(value.value_date);
+        if (value.value_boolean !== null && value.value_boolean !== undefined) return String(value.value_boolean);
+        if (value.value_json !== null && value.value_json !== undefined) {
+            if (Array.isArray(value.value_json)) {
+                return await labelsForOptionIds(value.value_json) || value.value_json.join(', ');
+            }
+            if (typeof value.value_json === 'string') {
+                try {
+                    const parsed = JSON.parse(value.value_json);
+                    if (Array.isArray(parsed)) {
+                        return await labelsForOptionIds(parsed) || parsed.join(', ');
+                    }
+                    if (typeof parsed === 'string' && uuidPattern.test(parsed)) {
+                        return await labelsForOptionIds([parsed]) || parsed;
+                    }
+                } catch {
+                    // Fall back to the raw text below.
+                }
+            }
+            return String(value.value_json);
+        }
+        return null;
+    }
+
     async getPlayerProfile(user, playerId) {
         const coach = await this._coachForUser(user);
         await this._assertPlayerAccess(user, coach, playerId);
@@ -459,12 +512,16 @@ class CustomDataService {
         const submittedFieldIds = new Set();
 
         await this.repo.db.transaction(async (trx) => {
+            let mainPositionValue;
             for (const item of values) {
                 const field = fieldById.get(item.fieldId);
                 if (!field || !field.is_active) throw new ForbiddenError('Cannot write to this custom field');
                 if (submittedFieldIds.has(item.fieldId)) throw new ConflictError('Duplicate custom field value in request');
                 submittedFieldIds.add(item.fieldId);
                 const serialized = await this._serializeValue(field, item.value);
+                if (toSnakeLikeKey(field.key || field.label) === 'main_position') {
+                    mainPositionValue = await this._displayValueForStoredValue(trx, serialized);
+                }
                 await trx('player_custom_values')
                     .insert({
                         academy_id: user.academyId,
@@ -478,6 +535,15 @@ class CustomDataService {
                     .merge({
                         ...serialized,
                         updated_by_id: user.userId,
+                        updated_at: new Date(),
+                    });
+            }
+
+            if (mainPositionValue !== undefined) {
+                await trx('player_profiles')
+                    .where({ id: playerId, academy_id: user.academyId })
+                    .update({
+                        position: mainPositionValue,
                         updated_at: new Date(),
                     });
             }

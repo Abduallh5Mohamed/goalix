@@ -87,7 +87,12 @@ const getApiMessage = (error: unknown, fallback: string) => {
 };
 
 export default function CoachMatchesPage() {
-  const { data: matchesRes, isLoading } = useGetCoachMatchesQuery();
+  const {
+    data: matchesRes,
+    isLoading,
+    isError: matchesError,
+    refetch: refetchMatches,
+  } = useGetCoachMatchesQuery();
   const { data: requestsRes } = useGetCoachFriendlyRequestsQuery();
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
   const nowMs = useSyncExternalStore(
@@ -318,6 +323,11 @@ export default function CoachMatchesPage() {
           { label: "Home", href: "/coach/home" },
           { label: "Matches" },
         ]}
+        actions={
+          <Button variant="outline" onClick={() => refetchMatches()}>
+            Refresh
+          </Button>
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -325,7 +335,12 @@ export default function CoachMatchesPage() {
           <CardHeader>
             <CardTitle className="text-base">Upcoming Matches</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+            <CardContent className="space-y-2">
+            {matchesError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                Could not load backend matches. Make sure the backend is running and your coach session is valid.
+              </div>
+            )}
             {isLoading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -350,7 +365,7 @@ export default function CoachMatchesPage() {
             ))}
             {!activeMatches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No matches assigned.
+                No backend matches are assigned to this coach yet. Admin-created matches must target one of this coach&apos;s assigned groups or birth years.
               </p>
             )}
           </CardContent>

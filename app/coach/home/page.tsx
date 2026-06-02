@@ -1,144 +1,63 @@
-﻿"use client";
+"use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { useMemo } from "react";
 import {
-  Activity,
-  CalendarDays,
-  Check,
-  ChevronDown,
+  ChevronRight,
   ClipboardCheck,
   Dumbbell,
-  FilePlay,
-  Goal,
-  Medal,
+  Loader2,
+  MapPin,
   ShieldCheck,
   Star,
   Target,
   Trophy,
   UserCheck,
   Users,
-  Zap,
 } from "lucide-react";
-import { DashboardFrame } from "@/components/layout/DashboardFrame";
-import { mockEvaluations, mockGroups, mockPlayers, mockSessions } from "@/lib/mock-data";
+import { Badge } from "@/components/ui/badge";
+import {
+  type CalendarEvent,
+  type CoachGroup,
+  type CoachPlayer,
+  type Match,
+  useGetCoachCalendarEventsQuery,
+  useGetCoachGroupsScopedQuery,
+  useGetCoachMatchesQuery,
+  useGetCoachPlayersScopedQuery,
+} from "@/lib/store/api/calendarApi";
+import { formatDate, formatTime12, getInitials, localDateTimeTimestamp } from "@/lib/utils";
 
-const readiness = [
-  { label: "Match Readiness", value: "82%", sub: "Squad prepared", accent: "lime" },
-  { label: "Team Form", value: "W-W-D-W-W", sub: "Last 5 matches", accent: "lime" },
-  { label: "Possession", value: "56%", sub: "Training target", accent: "cyan" },
-  { label: "xG (For)", value: "2.14", sub: "Per 90", accent: "white" },
-  { label: "Sprint Load", value: "High", sub: "+12% vs last week", accent: "lime" },
-];
+type IconType = React.ComponentType<{ className?: string }>;
 
-const actions = [
-  { icon: ClipboardCheck, title: "Training Attendance", subtitle: "Open active sessions", href: "/coach/training", done: true },
-  { icon: Star, title: "New Evaluation", subtitle: "U13 Elite Group", href: "/coach/evaluations/new", done: true },
-  { icon: FilePlay, title: "Video Analysis", subtitle: "Review last match", href: "/coach/evaluations/history", done: false },
-  { icon: ShieldCheck, title: "Opposition Report", subtitle: "vs FC United", href: "/coach/schedule", done: false },
-];
+const closedStatuses = new Set(["completed", "finished", "cancelled"]);
 
-const schedule = [
-  { day: "Mon", date: "19 May", icon: Activity, title: "Recovery", time: "10:00", done: true },
-  { day: "Tue", date: "20 May", icon: Target, title: "Tactical", time: "10:00", done: true },
-  { day: "Wed", date: "21 May", icon: Dumbbell, title: "Intensity", time: "10:00", done: true },
-  { day: "Thu", date: "22 May", icon: Zap, title: "Set Pieces", time: "10:00", done: true },
-  { day: "Fri", date: "23 May", icon: Goal, title: "Match Prep", time: "10:00", done: false },
-  { day: "Sat", date: "24 May", icon: Trophy, title: "Matchday", time: "18:00", done: false, active: true },
-];
+const titleCase = (value: string | null | undefined) =>
+  (value || "Not set")
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
-const roster = [
-  { name: "Noah Williams", position: "RW", rating: 87, status: "Ready" },
-  { name: "Liam Carter", position: "CM", rating: 83, status: "Monitor" },
-  { name: "Ethan Brooks", position: "ST", rating: 81, status: "Ready" },
-  { name: "Mason Lee", position: "GK", rating: 79, status: "Recovery" },
-];
+const eventTimestamp = (event: CalendarEvent) => {
+  const timestamp = Date.parse(event.start_datetime ?? "");
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
-const impactMetrics = [
-  { value: "91%", label: "Attendance", Icon: Trophy },
-  { value: "14", label: "New Reports", Icon: Medal },
-  { value: "7.8", label: "Avg Rating", Icon: Star },
-];
+const matchTimestamp = (match: Match) => {
+  const timestamp = localDateTimeTimestamp(match.match_date, match.match_time);
+  if (timestamp) return timestamp;
+  return Date.parse(`${match.match_date}T00:00:00`) || 0;
+};
 
-function Ring({ value, label, color = "lime" }: { value: number; label: string; color?: "lime" | "cyan" | "teal" }) {
-  const stroke = color === "lime" ? "#b6ff00" : color === "cyan" ? "#00d8ff" : "#2ee8c9";
-
-  return (
-    <div className="relative mx-auto grid h-28 w-28 place-items-center">
-      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
-        <circle
-          cx="50"
-          cy="50"
-          r="40"
-          fill="none"
-          stroke={stroke}
-          strokeDasharray={`${value * 2.51} 251`}
-          strokeLinecap="round"
-          strokeWidth="8"
-        />
-      </svg>
-      <div className="text-center">
-        <div className="font-display text-3xl font-bold text-white">{value}%</div>
-        <div className="text-xs font-semibold text-slate-300">{label}</div>
-      </div>
-    </div>
-  );
-}
-
-function TrendChart() {
-  return (
-    <svg viewBox="0 0 520 230" className="h-full w-full">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <line key={i} x1="34" x2="500" y1={34 + i * 39} y2={34 + i * 39} stroke="rgba(255,255,255,0.08)" />
-      ))}
-      {["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"].map((m, i) => (
-        <text key={m} x={45 + i * 61} y="215" fill="#91a0b5" fontSize="13">
-          {m}
-        </text>
-      ))}
-      <polyline points="45,150 110,126 175,136 240,101 305,141 370,112 435,130 485,116" fill="none" stroke="#b6ff00" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-      <polyline points="45,188 110,164 175,177 240,151 305,169 370,157 435,174 485,163" fill="none" stroke="#00d8ff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-      <rect x="458" y="98" width="39" height="26" rx="7" fill="#b6ff00" />
-      <text x="468" y="116" fill="#06111f" fontSize="14" fontWeight="800">
-        7.8
-      </text>
-      <rect x="458" y="150" width="39" height="26" rx="7" fill="#00d8ff" />
-      <text x="468" y="168" fill="#06111f" fontSize="14" fontWeight="800">
-        2.1
-      </text>
-    </svg>
-  );
-}
-
-function Heatmap() {
-  return (
-    <svg viewBox="0 0 360 230" className="h-full w-full rounded-xl">
-      <rect width="360" height="230" fill="#071524" />
-      <rect x="12" y="12" width="336" height="206" fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="2" />
-      <line x1="180" x2="180" y1="12" y2="218" stroke="rgba(255,255,255,0.55)" />
-      <circle cx="180" cy="115" r="36" fill="none" stroke="rgba(255,255,255,0.55)" />
-      <rect x="12" y="64" width="54" height="102" fill="none" stroke="rgba(255,255,255,0.55)" />
-      <rect x="294" y="64" width="54" height="102" fill="none" stroke="rgba(255,255,255,0.55)" />
-      <filter id="coachHeatBlur">
-        <feGaussianBlur stdDeviation="13" />
-      </filter>
-      <g filter="url(#coachHeatBlur)" opacity="0.92">
-        {[
-          [126, 68, "#b6ff00"],
-          [158, 91, "#ffef37"],
-          [181, 121, "#ff2d2d"],
-          [228, 104, "#7bea28"],
-          [245, 151, "#00d8ff"],
-          [130, 156, "#00d8ff"],
-          [194, 167, "#b6ff00"],
-        ].map(([x, y, color], index) => (
-          <circle key={index} cx={Number(x)} cy={Number(y)} r="30" fill={String(color)} />
-        ))}
-      </g>
-    </svg>
-  );
-}
+const statusVariant = (status: string) => {
+  if (["completed", "finished", "present", "starter"].includes(status)) return "success" as const;
+  if (["scheduled", "substitute", "reserve"].includes(status)) return "info" as const;
+  if (["postponed", "late"].includes(status)) return "warning" as const;
+  if (["cancelled", "absent", "injured"].includes(status)) return "destructive" as const;
+  return "secondary" as const;
+};
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -148,241 +67,416 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
-export default function CoachHomePage() {
-  const myGroups = mockGroups.filter((group) => ["g1", "g3"].includes(group.id));
-  const myPlayers = mockPlayers.filter((player) => ["g1", "g3"].includes(player.groupId));
-  const todaySessions = mockSessions.filter((session) => session.coachId === "c1").slice(0, 3);
-  const completedEvaluations = mockEvaluations.filter((evaluation) => evaluation.coachId === "c1").length;
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-5 text-center text-sm text-slate-400">
+      {text}
+    </div>
+  );
+}
 
-  const heroStats = [
-    { icon: Users, value: myPlayers.length, label: "Active Players" },
-    { icon: CalendarDays, value: todaySessions.length + 2, label: "Upcoming Sessions" },
-    { icon: UserCheck, value: myGroups.length, label: "Training Groups" },
-    { icon: Star, value: completedEvaluations, label: "Evaluations" },
-  ];
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  tone = "cyan",
+}: {
+  icon: IconType;
+  value: string | number;
+  label: string;
+  tone?: "cyan" | "lime" | "amber" | "teal";
+}) {
+  const colors = {
+    cyan: "text-cyan-300 bg-cyan-400/10",
+    lime: "text-lime-300 bg-lime-400/10",
+    amber: "text-amber-300 bg-amber-400/10",
+    teal: "text-teal-300 bg-teal-400/10",
+  };
 
   return (
-    <DashboardFrame role="coach">
-      <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
+    <div className="flex items-center gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4">
+      <span className={`grid h-11 w-11 place-items-center rounded-xl ${colors[tone]}`}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <span>
+        <span className="block font-display text-3xl font-bold leading-none text-white">{value}</span>
+        <span className="mt-1 block text-sm text-slate-300">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+function TrainingRow({ event }: { event: CalendarEvent }) {
+  return (
+    <Link
+      href={`/coach/training/${event.id}`}
+      className="flex flex-col gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4 transition hover:border-lime-300/40 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-lime-400/10 text-lime-300">
+          <Dumbbell className="h-5 w-5" />
+        </span>
         <div>
-          <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">Coach performance hub</p>
-          <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Coach</h1>
-          <p className="mt-2 text-lg text-slate-300">Here is your team performance overview for today.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-white">{event.title}</p>
+            <Badge variant={statusVariant(event.status)}>{titleCase(event.status)}</Badge>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">
+            {formatDate(event.start_datetime)} - {formatTime12(event.start_datetime)}
+            {event.location ? ` - ${event.location}` : ""}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {event.groups?.map((group) => group.name).join(", ") || "No target groups"}
+          </p>
         </div>
-        <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          {heroStats.map((stat) => (
-            <div key={stat.label} className="flex items-center gap-3">
-              <stat.icon className="h-8 w-8 text-white" />
-              <div>
-                <div className="font-display text-4xl font-bold leading-none">{stat.value}</div>
-                <div className="mt-1 text-sm text-slate-300">{stat.label}</div>
-              </div>
-            </div>
-          ))}
+      </div>
+      <ChevronRight className="h-5 w-5 text-slate-500" />
+    </Link>
+  );
+}
+
+function MatchRow({ match }: { match: Match }) {
+  return (
+    <Link
+      href={`/coach/matches/match-day/${match.id}`}
+      className="flex flex-col gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4 transition hover:border-cyan-300/40 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-400/10 text-cyan-300">
+          <Trophy className="h-5 w-5" />
+        </span>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-white">vs {match.opponent_name}</p>
+            <Badge variant={statusVariant(match.status)}>{titleCase(match.status)}</Badge>
+            <Badge variant="outline">{titleCase(match.match_type)}</Badge>
+          </div>
+          <p className="mt-1 text-sm text-slate-400">
+            {formatDate(match.match_date)} - {formatTime12(match.match_time)}
+            {match.location ? ` - ${match.location}` : ""}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {match.groups?.map((group) => group.name).join(", ") || "No target groups"}
+          </p>
+        </div>
+      </div>
+      <ChevronRight className="h-5 w-5 text-slate-500" />
+    </Link>
+  );
+}
+
+function PlayerRow({ player }: { player: CoachPlayer }) {
+  return (
+    <Link
+      href={`/coach/players/${player.id}`}
+      className="flex items-center gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-3 transition hover:border-lime-300/40"
+    >
+      <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-lime-300 to-cyan-300 font-black text-[#06111f]">
+        {getInitials(player.full_name)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-white">{player.full_name}</p>
+        <p className="text-xs text-slate-400">
+          {player.position || "No position"} - {titleCase(player.profile_status)}
+        </p>
+      </div>
+      <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>
+        {titleCase(player.profile_status)}
+      </Badge>
+    </Link>
+  );
+}
+
+function GroupCard({ group }: { group: CoachGroup }) {
+  return (
+    <Link
+      href={`/coach/my-groups/${group.group_id}`}
+      className="rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4 transition hover:border-lime-300/40"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-semibold text-white">{group.group_name}</h3>
+        <Badge variant={group.can_create_training ? "success" : "secondary"}>
+          {group.role}
+        </Badge>
+      </div>
+      <p className="mt-2 text-sm text-slate-400">{group.branch_name}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {group.can_create_training && <Badge variant="outline">Training</Badge>}
+        {group.can_take_attendance && <Badge variant="outline">Attendance</Badge>}
+        {group.can_evaluate_players && <Badge variant="outline">Evaluation</Badge>}
+      </div>
+    </Link>
+  );
+}
+
+export default function CoachHomePage() {
+  const groupsQuery = useGetCoachGroupsScopedQuery();
+  const playersQuery = useGetCoachPlayersScopedQuery({ limit: 200 });
+  const eventsQuery = useGetCoachCalendarEventsQuery();
+  const matchesQuery = useGetCoachMatchesQuery();
+
+  const groups = groupsQuery.data ?? [];
+  const players = playersQuery.data?.data ?? [];
+  const events = useMemo(() => eventsQuery.data?.data ?? [], [eventsQuery.data?.data]);
+  const matches = useMemo(() => matchesQuery.data?.data ?? [], [matchesQuery.data?.data]);
+
+  const trainings = useMemo(
+    () =>
+      events
+        .filter((event) => event.event_type === "training")
+        .sort((a, b) => eventTimestamp(a) - eventTimestamp(b)),
+    [events],
+  );
+  const upcomingTrainings = trainings.filter((event) => !closedStatuses.has(event.status));
+  const completedTrainings = trainings.filter((event) =>
+    ["completed", "finished"].includes(event.status),
+  );
+  const upcomingMatches = matches
+    .filter((match) => !closedStatuses.has(match.status))
+    .slice()
+    .sort((a, b) => matchTimestamp(a) - matchTimestamp(b));
+  const completedMatches = matches.filter((match) =>
+    ["completed", "finished"].includes(match.status),
+  );
+  const scheduledTrainings = trainings.filter((event) => event.status === "scheduled");
+  const focusPlayers = players.slice(0, 5);
+  const agenda = [
+    ...upcomingTrainings.slice(0, 4).map((event) => ({
+      id: event.id,
+      type: "training" as const,
+      title: event.title,
+      date: event.start_datetime,
+      time: event.start_datetime,
+      location: event.location,
+      href: `/coach/training/${event.id}`,
+      Icon: Dumbbell,
+    })),
+    ...upcomingMatches.slice(0, 4).map((match) => ({
+      id: match.id,
+      type: "match" as const,
+      title: `vs ${match.opponent_name}`,
+      date: match.match_date,
+      time: match.match_time,
+      location: match.location,
+      href: `/coach/matches/match-day/${match.id}`,
+      Icon: Trophy,
+    })),
+  ]
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .slice(0, 6);
+
+  const isLoading =
+    groupsQuery.isLoading ||
+    playersQuery.isLoading ||
+    eventsQuery.isLoading ||
+    matchesQuery.isLoading;
+  const hasError =
+    groupsQuery.isError ||
+    playersQuery.isError ||
+    eventsQuery.isError ||
+    matchesQuery.isError;
+
+  return (
+    <div className="space-y-5">
+      <section className="grid gap-5 xl:grid-cols-[1fr_auto]">
+        <div>
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">
+            Coach performance hub
+          </p>
+          <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">
+            Welcome back, Coach
+          </h1>
+          <p className="mt-2 text-lg text-slate-300">
+            Live training, matches, groups, and player data from the backend.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatCard icon={Users} value={players.length} label="Active Players" tone="cyan" />
+          <StatCard icon={Dumbbell} value={upcomingTrainings.length} label="Training Sessions" tone="lime" />
+          <StatCard icon={Trophy} value={upcomingMatches.length} label="Upcoming Matches" tone="amber" />
+          <StatCard icon={UserCheck} value={groups.length} label="Assigned Groups" tone="teal" />
         </div>
       </section>
 
-      <Panel className="mb-5 grid gap-0 overflow-hidden md:grid-cols-5">
-        {readiness.map((item, index) => (
-          <div key={item.label} className="border-b border-[#2a4460] p-5 md:border-b-0 md:border-r last:md:border-r-0">
-            <div className="text-sm font-semibold text-white">{item.label}</div>
-            <div className={`mt-3 font-display text-3xl font-bold ${item.accent === "cyan" ? "text-cyan-300" : item.accent === "lime" ? "text-lime-300" : "text-white"}`}>
-              {item.value}
-            </div>
-            <div className="mt-1 text-sm text-slate-300">{item.sub}</div>
-            {index === 2 && (
-              <div className="mt-3 h-2 rounded-full bg-white/10">
-                <div className="h-full w-[56%] rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(0,216,255,0.55)]" />
-              </div>
-            )}
-          </div>
-        ))}
-      </Panel>
+      {hasError && (
+        <Panel className="border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Some coach dashboard data could not load. Check backend login/session and API availability.
+        </Panel>
+      )}
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.25fr_0.62fr_0.62fr_0.62fr]">
-        <Panel className="goalix-dashboard-photo-card overflow-hidden">
-          <div className="relative min-h-[350px] p-5">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(182,255,0,0.28),transparent_26%),linear-gradient(135deg,rgba(47,140,255,0.18),transparent_58%)]" />
-            <div className="absolute right-8 top-12 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
-            <Image src="/Player.png" alt="Goalix player placeholder" fill sizes="(min-width: 1280px) 360px, 100vw" className="object-cover object-center opacity-80 mix-blend-screen" priority />
-            <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172a] to-transparent" />
-            <div className="absolute bottom-5 left-5 right-5">
-              <h2 className="text-2xl font-semibold">Noah Williams</h2>
-              <p className="mt-1 text-sm">
-                <span className="font-bold text-lime-300">RW</span> <span className="text-slate-300">- Winger</span>
+      {isLoading ? (
+        <Panel className="flex items-center gap-3 p-5 text-sm text-slate-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading coach dashboard from backend...
+        </Panel>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <Panel className="p-5">
+              <p className="text-sm font-semibold text-white">Open Trainings</p>
+              <p className="mt-3 font-display text-3xl font-bold text-lime-300">
+                {scheduledTrainings.length}
               </p>
-              <div className="mt-5 grid grid-cols-4 gap-3 border-t border-[#2a4460] pt-4 text-sm">
-                {["Age|24", "Height|178 cm", "Weight|72 kg", "Foot|Left"].map((item) => {
-                  const [label, value] = item.split("|");
-                  return (
-                    <div key={label}>
-                      <div className="text-slate-400">{label}</div>
-                      <div className="font-semibold text-white">{value}</div>
-                    </div>
-                  );
-                })}
+              <p className="mt-1 text-sm text-slate-300">Scheduled sessions</p>
+            </Panel>
+            <Panel className="p-5">
+              <p className="text-sm font-semibold text-white">Completed Trainings</p>
+              <p className="mt-3 font-display text-3xl font-bold text-cyan-300">
+                {completedTrainings.length}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Recorded sessions</p>
+            </Panel>
+            <Panel className="p-5">
+              <p className="text-sm font-semibold text-white">Completed Matches</p>
+              <p className="mt-3 font-display text-3xl font-bold text-lime-300">
+                {completedMatches.length}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">With match history</p>
+            </Panel>
+            <Panel className="p-5">
+              <p className="text-sm font-semibold text-white">Squad Ready</p>
+              <p className="mt-3 font-display text-3xl font-bold text-white">
+                {players.filter((player) => player.profile_status === "complete").length}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Completed profiles</p>
+            </Panel>
+            <Panel className="p-5">
+              <p className="text-sm font-semibold text-white">Permissions</p>
+              <p className="mt-3 font-display text-3xl font-bold text-teal-300">
+                {groups.filter((group) => group.can_evaluate_players).length}
+              </p>
+              <p className="mt-1 text-sm text-slate-300">Evaluation groups</p>
+            </Panel>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+            <Panel className="p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold">Upcoming Training</h2>
+                <Link href="/coach/training" className="text-sm text-cyan-300">
+                  View all
+                </Link>
               </div>
-            </div>
-            <div className="absolute bottom-32 right-5 rounded-2xl border border-lime-300/35 bg-[#07111f]/85 px-4 py-3 text-center">
-              <div className="text-xs text-slate-300">OVR</div>
-              <div className="font-display text-4xl font-bold text-lime-300">87</div>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel className="p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Performance Trend</h2>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-[#2a4460] bg-white/[0.03] px-4 py-2 text-sm text-slate-300">
-              Last 8 Matches <ChevronDown size={16} />
-            </button>
-          </div>
-          <div className="h-[260px]">
-            <TrendChart />
-          </div>
-        </Panel>
-
-        <Panel className="p-5 text-center">
-          <h2 className="text-left text-xl font-semibold">Physical Load</h2>
-          <Ring value={78} label="Optimal" />
-          <p className="mt-4 text-left text-sm text-lime-300">+8% <span className="text-slate-400">vs last week</span></p>
-        </Panel>
-
-        <Panel className="p-5 text-center">
-          <h2 className="text-left text-xl font-semibold">Stamina</h2>
-          <Ring value={91} label="High" color="cyan" />
-          <p className="mt-4 text-left text-sm text-cyan-300">+15% <span className="text-slate-400">vs last week</span></p>
-        </Panel>
-
-        <Panel className="p-5 text-center">
-          <h2 className="text-left text-xl font-semibold">Recovery</h2>
-          <Ring value={85} label="Good" color="teal" />
-          <p className="mt-4 text-left text-sm text-teal-300">+6% <span className="text-slate-400">vs last week</span></p>
-        </Panel>
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-[0.78fr_0.7fr_1.45fr_0.78fr]">
-        <Panel className="p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Coach Actions</h2>
-            <Link href="/coach/schedule" className="text-sm text-cyan-300">
-              View plan
-            </Link>
-          </div>
-          <div className="space-y-1">
-            {actions.map((action) => (
-              <Link key={action.title} href={action.href} className="flex items-center gap-3 border-b border-[#2a4460] py-3 last:border-b-0">
-                <span className="grid h-10 w-10 place-items-center rounded-xl border border-[#2a4460] bg-white/[0.03] text-white">
-                  <action.icon size={20} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-white">{action.title}</span>
-                  <span className="text-sm text-slate-400">{action.subtitle}</span>
-                </span>
-                <span className={`grid h-6 w-6 place-items-center rounded-full ${action.done ? "bg-lime-300 text-[#06111f]" : "border border-[#2a4460] text-slate-500"}`}>
-                  {action.done && <Check size={15} />}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel className="p-5">
-          <h2 className="mb-4 text-xl font-semibold">Heatmap <span className="text-sm text-slate-400">(Last Match)</span></h2>
-          <div className="h-[235px]">
-            <Heatmap />
-          </div>
-        </Panel>
-
-        <Panel className="p-5">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Training Schedule</h2>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-[#2a4460] bg-white/[0.03] px-4 py-2 text-sm text-slate-300">
-              This Week <ChevronDown size={16} />
-            </button>
-          </div>
-          <div className="grid gap-2 md:grid-cols-6">
-            {schedule.map((item) => (
-              <div key={item.day} className={`min-h-[178px] border-r border-[#2a4460] p-3 last:border-r-0 ${item.active ? "rounded-2xl bg-cyan-300/5" : ""}`}>
-                <div className="text-sm font-semibold">{item.day}</div>
-                <div className="text-xs text-slate-400">{item.date}</div>
-                <item.icon className={`mt-5 h-8 w-8 ${item.active ? "text-cyan-300" : "text-lime-300"}`} />
-                <p className="mt-4 text-sm font-semibold text-white">{item.title}</p>
-                <p className="mt-1 text-xs text-slate-400">{item.time}</p>
-                <span className={`mt-4 grid h-6 w-6 place-items-center rounded-full ${item.done ? "bg-lime-300/80 text-[#06111f]" : "border border-cyan-300 text-cyan-300"}`}>
-                  {item.done ? <Check size={14} /> : ""}
-                </span>
+              <div className="space-y-3">
+                {upcomingTrainings.slice(0, 5).map((event) => (
+                  <TrainingRow key={event.id} event={event} />
+                ))}
+                {!upcomingTrainings.length && (
+                  <EmptyState text="No backend training sessions are assigned to you yet." />
+                )}
               </div>
-            ))}
-          </div>
-        </Panel>
+            </Panel>
 
-        <Panel className="p-5">
-          <h2 className="mb-5 text-xl font-semibold">Focus Players</h2>
-          <div className="space-y-4">
-            {roster.map((player) => (
-              <div key={player.name} className="flex items-center gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-3">
-                <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-lime-300 to-cyan-300 font-black text-[#06111f]">
-                  {player.position}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-white">{player.name}</p>
-                  <p className="text-xs text-slate-400">{player.status}</p>
-                </div>
-                <strong className="font-display text-2xl text-lime-300">{player.rating}</strong>
+            <Panel className="p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold">Upcoming Matches</h2>
+                <Link href="/coach/matches" className="text-sm text-cyan-300">
+                  View all
+                </Link>
               </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
-        <Panel className="p-5">
-          <h2 className="mb-4 text-xl font-semibold">Group Overview</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {myGroups.map((group) => (
-              <Link key={group.id} href={`/coach/my-groups/${group.id}`} className="rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4 transition hover:border-lime-300/40">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-white">{group.name}</h3>
-                  <span className="rounded-full bg-lime-300/10 px-3 py-1 text-xs font-bold text-lime-300">
-                    {group.playerCount}/{group.maxPlayers}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-slate-400">{group.schedule}</p>
-              </Link>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel className="p-5">
-          <h2 className="mb-4 text-xl font-semibold">Upcoming Sessions</h2>
-          <div className="space-y-3">
-            {todaySessions.map((session) => (
-              <div key={session.id} className="flex items-center gap-4 rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4">
-                <CalendarDays className="h-9 w-9 text-cyan-300" />
-                <div className="flex-1">
-                  <p className="font-semibold text-white">{session.groupName}</p>
-                  <p className="text-sm text-slate-400">{session.startTime} - {session.endTime}</p>
-                </div>
-                <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-bold capitalize text-cyan-300">{session.type}</span>
+              <div className="space-y-3">
+                {upcomingMatches.slice(0, 5).map((match) => (
+                  <MatchRow key={match.id} match={match} />
+                ))}
+                {!upcomingMatches.length && (
+                  <EmptyState text="No backend matches are assigned to you yet." />
+                )}
               </div>
-            ))}
+            </Panel>
           </div>
-        </Panel>
 
-        <Panel className="p-5">
-          <h2 className="mb-4 text-xl font-semibold">Coach Impact</h2>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {impactMetrics.map(({ value, label, Icon }) => (
-              <div key={label} className="rounded-2xl border border-[#2a4460] bg-white/[0.025] p-4">
-                <Icon className="mx-auto mb-3 h-8 w-8 text-lime-300" />
-                <strong className="font-display text-3xl text-white">{value}</strong>
-                <p className="mt-1 text-xs text-slate-400">{label}</p>
+          <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+            <Panel className="p-5">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Next Agenda</h2>
+                <Link href="/coach/calendar" className="text-sm text-cyan-300">
+                  Calendar
+                </Link>
               </div>
-            ))}
+              <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+                {agenda.map((item) => (
+                  <Link
+                    key={`${item.type}-${item.id}`}
+                    href={item.href}
+                    className="min-h-[178px] rounded-2xl border border-[#2a4460] bg-white/[0.025] p-3 transition hover:border-cyan-300/40"
+                  >
+                    <div className="text-sm font-semibold">{formatDate(item.date).split(",")[0]}</div>
+                    <div className="text-xs text-slate-400">{formatTime12(item.time)}</div>
+                    <item.Icon className={item.type === "match" ? "mt-5 h-8 w-8 text-cyan-300" : "mt-5 h-8 w-8 text-lime-300"} />
+                    <p className="mt-4 line-clamp-2 text-sm font-semibold text-white">{item.title}</p>
+                    {item.location && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                        <MapPin className="h-3 w-3" />
+                        {item.location}
+                      </p>
+                    )}
+                  </Link>
+                ))}
+                {!agenda.length && (
+                  <div className="md:col-span-3 xl:col-span-6">
+                    <EmptyState text="No upcoming training or match agenda from backend yet." />
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            <Panel className="p-5">
+              <h2 className="mb-5 text-xl font-semibold">Focus Players</h2>
+              <div className="space-y-3">
+                {focusPlayers.map((player) => (
+                  <PlayerRow key={player.id} player={player} />
+                ))}
+                {!focusPlayers.length && (
+                  <EmptyState text="No backend players are assigned to you yet." />
+                )}
+              </div>
+            </Panel>
           </div>
-        </Panel>
-      </div>
-    </DashboardFrame>
+
+          <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+            <Panel className="p-5 xl:col-span-2">
+              <h2 className="mb-4 text-xl font-semibold">Assigned Groups</h2>
+              <div className="grid gap-3 md:grid-cols-2">
+                {groups.map((group) => (
+                  <GroupCard key={group.group_id} group={group} />
+                ))}
+                {!groups.length && (
+                  <div className="md:col-span-2">
+                    <EmptyState text="No backend groups are assigned to your coach account yet." />
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            <Panel className="p-5">
+              <h2 className="mb-4 text-xl font-semibold">Coach Actions</h2>
+              <div className="space-y-1">
+                {[
+                  { icon: ClipboardCheck, title: "Training Attendance", subtitle: `${scheduledTrainings.length} scheduled sessions`, href: "/coach/training" },
+                  { icon: Star, title: "New Evaluation", subtitle: "Evaluate assigned players", href: "/coach/evaluations/new" },
+                  { icon: Target, title: "Match Configuration", subtitle: `${upcomingMatches.length} upcoming matches`, href: "/coach/matches/configuration" },
+                  { icon: ShieldCheck, title: "Injury Risk AI", subtitle: `${players.length} assigned players`, href: "/coach/injury-risk-ai" },
+                ].map((action) => (
+                  <Link
+                    key={action.title}
+                    href={action.href}
+                    className="flex items-center gap-3 border-b border-[#2a4460] py-3 last:border-b-0"
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-xl border border-[#2a4460] bg-white/[0.03] text-white">
+                      <action.icon size={20} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-white">{action.title}</span>
+                      <span className="text-sm text-slate-400">{action.subtitle}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                  </Link>
+                ))}
+              </div>
+            </Panel>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -9,14 +9,14 @@ class NotificationsController {
     getNotifications = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
-            const result = await this.service.getUserNotifications(req.user.userId, { ...req.query, page, limit });
+            const result = await this.service.getUserNotifications(req.user, { ...req.query, page, limit });
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };
 
     getUnreadCount = async (req, res, next) => {
         try {
-            const count = await this.service.getUnreadCount(req.user.userId);
+            const count = await this.service.getUnreadCount(req.user);
             res.json(ApiResponse.success({ unread: count }));
         } catch (err) { next(err); }
     };

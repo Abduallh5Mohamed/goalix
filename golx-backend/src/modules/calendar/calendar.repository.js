@@ -902,12 +902,36 @@ class CalendarRepository {
       .select(
         "m.id",
         "m.event_id",
+        "m.status",
+        "m.match_status",
         "m.match_date",
         "m.match_time",
         "m.finished_at",
         "m.team_id",
         "m.age_group_id",
+        this.db.raw(
+          "EXISTS (SELECT 1 FROM match_tactics mt WHERE mt.match_id = m.id) as has_tactics",
+        ),
+        this.db.raw(
+          "(SELECT COUNT(*) FROM match_squads ms WHERE ms.match_id = m.id)::int as squad_count",
+        ),
       );
+  }
+
+  async findAutoFinishCandidateAcademyIds() {
+    return this.db("matches as m")
+      .join("calendar_events as ce", "m.event_id", "ce.id")
+      .whereNull("m.deleted_at")
+      .whereNull("ce.deleted_at")
+      .whereIn("m.status", ["scheduled", "postponed"])
+      .whereIn("m.match_status", [
+        "scheduled",
+        "first_half",
+        "second_half",
+        "finished",
+      ])
+      .whereRaw("m.match_date <= CURRENT_DATE")
+      .distinct("ce.academy_id");
   }
 
   async findMatchForHardDelete(matchId, academyId) {

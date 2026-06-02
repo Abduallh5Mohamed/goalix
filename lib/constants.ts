@@ -143,8 +143,10 @@ export const NAV_ITEMS = {
   coach: [
     { label: "Home", href: "/coach/home", icon: "Home" },
     { label: "Chats", href: "/coach/chat", icon: "MessageSquare" },
+    { label: "Notifications", href: "/coach/notifications", icon: "Bell" },
     { label: "Players", href: "/coach/players", icon: "Users" },
     { label: "Birthdays", href: "/coach/birthdays", icon: "Cake" },
+    { label: "Calendar", href: "/coach/calendar", icon: "Calendar" },
     { label: "My Groups", href: "/coach/my-groups", icon: "Users" },
     {
       label: "Evaluations",
@@ -169,8 +171,7 @@ export const NAV_ITEMS = {
       label: "Schedule",
       icon: "Calendar",
       children: [
-        { label: "My Calendar", href: "/coach/calendar" },
-        { label: "Calendar", href: "/coach/schedule" },
+        { label: "Sessions", href: "/coach/schedule" },
         { label: "Session Detail", href: "/coach/schedule/session" },
       ],
     },
@@ -190,6 +191,7 @@ export const NAV_ITEMS = {
   player: [
     { label: "Home", href: "/player/home", icon: "Home" },
     { label: "Chats", href: "/player/chat", icon: "MessageSquare" },
+    { label: "Notifications", href: "/player/notifications", icon: "Bell" },
     { label: "Calendar", href: "/player/calendar", icon: "Calendar" },
     { label: "Matches", href: "/player/matches", icon: "Trophy" },
     {
