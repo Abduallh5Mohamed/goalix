@@ -40,3 +40,24 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env
+
+# local Goalix backend restore artifacts
+/.dev-logs/
+/db-dumps/
+/golx_main_data_*.sql
+/golx_main_data_*.zip
+/uploads/
+/migrations/
+/golx-backend/uploads/
+/golx-backend/migrations/052_chat_and_match_request_cleanup.js
+/golx-backend/migrations/053_chat_message_edit_metadata.js
+/golx-backend/migrations/054_chat_message_read_receipts.js
+/golx-backend/migrations/055_injury_risk_position_categories.js
+/golx-backend/migrations/056_injury_risk_fatigue_and_recent_injuries.js
+/golx-backend/migrations/057_injury_risk_monthly_attendance.js
+/golx-backend/migrations/058_injury_risk_weekly_inputs_and_three_month_injuries.js
+/golx-backend/migrations/059_injury_risk_weekly_pain_discomfort.js
+/golx-backend/migrations/060_injury_risk_combined_fatigue.js
+/golx-backend/migrations/061_injury_risk_rolling_match_minutes.js
+/golx-backend/migrations/062_injury_risk_latest_activity_fatigue.js
+/golx-backend/migrations/063_injury_risk_custom_main_position.js

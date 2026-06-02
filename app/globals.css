@@ -122,6 +122,12 @@ body {
   box-shadow: 0 34px 90px rgba(19, 27, 23, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
+.goalix-reference-frame,
+.goalix-reference-frame .font-display {
+  font-family: "Inter", "Segoe UI", Tahoma, Arial, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
 .goalix-reference-admin {
   --dash-accent: #0f7a45;
   --dash-accent-2: #00a4c7;
@@ -135,7 +141,7 @@ body {
 }
 
 .goalix-reference-player {
-  --dash-accent: #2563eb;
+  --dash-accent: #087f83;
   --dash-accent-2: #00d8ff;
   --dash-accent-3: #b6ff00;
 }
@@ -445,6 +451,37 @@ body {
   gap: 10px;
 }
 
+.goalix-reference-switches {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goalix-reference-pill-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgba(15, 34, 25, 0.08);
+  border-radius: 999px;
+  color: #121a16;
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(19, 27, 23, 0.06);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.goalix-reference-pill-control:hover {
+  border-color: color-mix(in srgb, var(--dash-accent-2) 38%, rgba(15, 34, 25, 0.08));
+  color: #06111f;
+  background: linear-gradient(135deg, var(--dash-accent-3), var(--dash-accent-2));
+}
+
 .goalix-reference-top-actions > button {
   display: grid;
   width: 44px;
@@ -506,6 +543,60 @@ body {
   color: #121a16 !important;
 }
 
+.goalix-reference-content {
+  min-width: 0;
+}
+
+.goalix-dashboard-viewport,
+.goalix-dashboard-ambient,
+.goalix-dashboard-grid {
+  transition: background-color 220ms ease, color 220ms ease, opacity 220ms ease;
+}
+
+.goalix-dashboard-viewport {
+  color: #111c17;
+  background-color: #dfe4e7;
+}
+
+html[data-goalix-dashboard-theme="dark"] .goalix-dashboard-viewport,
+.goalix-dashboard-viewport[data-dashboard-theme="dark"] {
+  color: #edf7ff !important;
+  background-color: #071b2c !important;
+}
+
+html[data-goalix-dashboard-theme="dark"] .goalix-dashboard-ambient,
+.goalix-dashboard-viewport[data-dashboard-theme="dark"] .goalix-dashboard-ambient {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(45, 154, 213, 0.18), transparent 34%),
+    radial-gradient(circle at 78% 4%, rgba(178, 210, 59, 0.13), transparent 30%),
+    linear-gradient(135deg, #071b2c 0%, #06111f 58%, #071b2c 100%) !important;
+}
+
+html[data-goalix-dashboard-theme="dark"] .goalix-dashboard-grid,
+.goalix-dashboard-viewport[data-dashboard-theme="dark"] .goalix-dashboard-grid {
+  opacity: 0.18 !important;
+  background-image:
+    linear-gradient(rgba(45, 154, 213, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 154, 213, 0.07) 1px, transparent 1px) !important;
+}
+
+.goalix-reference-frame[data-dashboard-language="ar"] h1 {
+  max-width: 100%;
+  line-height: 1.04 !important;
+  letter-spacing: 0 !important;
+  overflow-wrap: anywhere;
+}
+
+.goalix-reference-frame[data-dashboard-language="ar"] .goalix-reference-search input {
+  direction: rtl;
+  text-align: right;
+}
+
+.goalix-reference-frame[data-dashboard-language="ar"] .goalix-reference-nav-item,
+.goalix-reference-frame[data-dashboard-language="ar"] .goalix-reference-subnav-link {
+  text-align: right;
+}
+
 .goalix-reference-frame .text-white,
 .goalix-reference-frame .text-slate-100,
 .goalix-reference-frame .text-slate-200 {
@@ -522,6 +613,66 @@ body {
 .goalix-reference-frame .text-cyan-300,
 .goalix-reference-frame .text-teal-300 {
   color: color-mix(in srgb, var(--dash-accent) 76%, #063c28) !important;
+}
+
+.goalix-reference-frame .text-card-foreground,
+.goalix-reference-frame .bg-card {
+  color: var(--dash-ink) !important;
+}
+
+.goalix-reference-frame .bg-card {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.goalix-reference-frame .bg-background {
+  background-color: transparent !important;
+}
+
+.goalix-reference-frame .bg-muted,
+.goalix-reference-frame .bg-muted\/10,
+.goalix-reference-frame .bg-muted\/20,
+.goalix-reference-frame .bg-muted\/30,
+.goalix-reference-frame .bg-muted\/50 {
+  background-color: rgba(15, 122, 69, 0.07) !important;
+}
+
+.goalix-reference-frame .border-border,
+.goalix-reference-frame .border-border\/30,
+.goalix-reference-frame .border-border\/40,
+.goalix-reference-frame .border-border\/50 {
+  border-color: rgba(15, 34, 25, 0.09) !important;
+}
+
+.goalix-reference-frame .text-foreground {
+  color: var(--dash-ink) !important;
+}
+
+.goalix-reference-frame .text-muted-foreground {
+  color: #536358 !important;
+}
+
+.goalix-reference-frame .bg-card .text-muted-foreground,
+.goalix-reference-frame .bg-card .text-slate-300,
+.goalix-reference-frame .bg-card .text-slate-400,
+.goalix-reference-frame .bg-card .text-slate-500 {
+  color: #536358 !important;
+}
+
+.goalix-reference-frame .bg-card h1,
+.goalix-reference-frame .bg-card h2,
+.goalix-reference-frame .bg-card h3,
+.goalix-reference-frame .bg-card h4,
+.goalix-reference-frame .bg-card strong {
+  color: var(--dash-ink) !important;
+}
+
+.goalix-reference-frame .text-primary {
+  color: color-mix(in srgb, var(--dash-accent) 78%, #063c28) !important;
+}
+
+.goalix-reference-frame .bg-primary,
+.goalix-reference-frame .bg-primary\/10 {
+  background-color: color-mix(in srgb, var(--dash-accent-3) 22%, transparent) !important;
 }
 
 .goalix-reference-frame .border-\[\#2a4460\] {
@@ -554,7 +705,9 @@ body {
 }
 
 .goalix-reference-frame > .goalix-reference-main > section:first-of-type,
-.goalix-reference-frame > .goalix-reference-main > div:first-of-type {
+.goalix-reference-frame > .goalix-reference-main > div:first-of-type,
+.goalix-reference-frame .goalix-reference-content > section:first-of-type,
+.goalix-reference-frame .goalix-reference-content > div:first-of-type {
   padding: 4px 4px 0;
 }
 
@@ -576,6 +729,180 @@ body {
 
 .goalix-reference-frame svg text {
   font-family: var(--font-sans);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] {
+  --dash-accent: #51b848;
+  --dash-accent-2: #2d9ad5;
+  --dash-accent-3: #b2d23b;
+  --dash-ink: #edf7ff;
+  --dash-muted: #9fb2c5;
+  --dash-soft: #0b2439;
+  --ref-surface: #071b2c;
+  --ref-soft: #0b2439;
+  border-color: rgba(45, 154, 213, 0.22);
+  color: var(--dash-ink);
+  background:
+    radial-gradient(circle at 92% 6%, rgba(178, 210, 59, 0.12), transparent 24rem),
+    radial-gradient(circle at 56% 4%, rgba(45, 154, 213, 0.13), transparent 28rem),
+    linear-gradient(135deg, #071b2c 0%, #06111f 58%, #071b2c 100%);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-sidebar,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-topbar {
+  border-color: rgba(45, 154, 213, 0.18);
+  background: rgba(7, 27, 44, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.18);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-brand,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-search,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-top-actions > button,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-user,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-pill-control {
+  border-color: rgba(45, 154, 213, 0.18);
+  color: #edf7ff;
+  background: rgba(255, 255, 255, 0.065);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-pill-control:hover {
+  border-color: rgba(178, 210, 59, 0.48);
+  color: #071b2c;
+  background: linear-gradient(135deg, #b2d23b, #51b848);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-search input,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-user strong,
+.goalix-reference-frame[data-dashboard-theme="dark"] h1,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-white,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-slate-100,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-slate-200 {
+  color: #edf7ff !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-brand small,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-menu-label,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-user small,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-search input::placeholder,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-slate-300,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-slate-400,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-slate-500 {
+  color: #9fb2c5 !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-nav-item {
+  color: #b8c9d9;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-subnav-link {
+  color: #9fb2c5;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-nav-item:hover,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-subnav-link:hover,
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-subnav-link.is-active {
+  color: #b2d23b;
+  background: rgba(178, 210, 59, 0.1);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-nav-item.is-active {
+  color: #071b2c;
+  background: linear-gradient(135deg, #b2d23b, #51b848);
+  box-shadow: 0 14px 24px rgba(81, 184, 72, 0.22);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(45, 154, 213, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(7, 27, 44, 0.94), rgba(6, 17, 31, 0.88)) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-background {
+  background-color: transparent !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-muted,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-muted\/10,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-muted\/20,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-muted\/30,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-muted\/50,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-primary\/10 {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-border,
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-border\/30,
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-border\/40,
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-border\/50 {
+  border-color: rgba(45, 154, 213, 0.18) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-foreground {
+  color: #edf7ff !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-card-foreground,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card {
+  color: #edf7ff !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-muted-foreground {
+  color: #9fb2c5 !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card .text-muted-foreground,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card .text-slate-300,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card .text-slate-400,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card .text-slate-500 {
+  color: #9fb2c5 !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card h1,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card h2,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card h3,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card h4,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-card strong {
+  color: #edf7ff !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-primary {
+  color: #b2d23b !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-dashboard-panel {
+  color: #edf7ff;
+  border-color: rgba(45, 154, 213, 0.18) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(45, 154, 213, 0.1), transparent 13rem),
+    linear-gradient(145deg, rgba(7, 27, 44, 0.96), rgba(6, 17, 31, 0.9)) !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-\[\#2a4460\] {
+  border-color: rgba(45, 154, 213, 0.18) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-white\/\[0\.03\],
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-white\/\[0\.025\],
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-\[\#07172a\]\/78,
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-\[\#07111f\]\/85 {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-lime-300,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-cyan-300,
+.goalix-reference-frame[data-dashboard-theme="dark"] .text-teal-300 {
+  color: #b2d23b !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] svg:not(.lucide) text {
+  fill: #9fb2c5;
 }
 
 @media (max-width: 1180px) {
@@ -627,7 +954,16 @@ body {
   }
 
   .goalix-reference-top-actions {
+    flex-wrap: wrap;
     justify-content: space-between;
+  }
+
+  .goalix-reference-switches {
+    width: 100%;
+  }
+
+  .goalix-reference-pill-control {
+    flex: 1;
   }
 
   .goalix-reference-user {
@@ -642,6 +978,176 @@ body {
 
   .goalix-reference-frame h1 {
     font-size: clamp(2.5rem, 13vw, 4rem) !important;
+  }
+
+  .goalix-reference-frame[data-dashboard-language="ar"] h1 {
+    line-height: 1.04 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .goalix-reference-content {
+    display: grid;
+    gap: 14px;
+  }
+
+  .goalix-reference-content > *,
+  .goalix-reference-frame .goalix-dashboard-panel,
+  .goalix-reference-frame .goalix-dashboard-panel > * {
+    min-width: 0;
+  }
+
+  .goalix-reference-frame h1,
+  .goalix-reference-frame .text-5xl,
+  .goalix-reference-frame .text-6xl,
+  .goalix-reference-frame .md\:text-6xl {
+    font-size: clamp(2rem, 11vw, 3rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .goalix-reference-frame h2 {
+    font-size: clamp(1rem, 5vw, 1.35rem) !important;
+    line-height: 1.18 !important;
+  }
+
+  .goalix-reference-frame .text-4xl {
+    font-size: clamp(1.75rem, 8vw, 2.25rem) !important;
+  }
+
+  .goalix-reference-frame .text-3xl {
+    font-size: clamp(1.35rem, 6vw, 1.8rem) !important;
+  }
+
+  .goalix-reference-frame .p-5 {
+    padding: 16px !important;
+  }
+
+  .goalix-reference-frame .p-4 {
+    padding: 14px !important;
+  }
+
+  .goalix-reference-frame .gap-4,
+  .goalix-reference-frame .gap-5,
+  .goalix-reference-frame .gap-6 {
+    gap: 12px !important;
+  }
+
+  .goalix-reference-frame [class*="grid-cols-"],
+  .goalix-reference-frame [class*="md:grid-cols-"],
+  .goalix-reference-frame [class*="xl:grid-cols-"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .goalix-reference-frame .goalix-dashboard-photo-card [class*="min-h-"] {
+    min-height: 340px !important;
+  }
+
+  .goalix-reference-frame .goalix-dashboard-photo-card [class*="text-[190px]"],
+  .goalix-reference-frame .goalix-dashboard-photo-card [class*="text-[210px]"] {
+    font-size: 9rem !important;
+  }
+
+  .goalix-reference-frame .h-\[210px\],
+  .goalix-reference-frame .h-\[235px\],
+  .goalix-reference-frame .h-\[245px\],
+  .goalix-reference-frame .h-\[260px\] {
+    height: 220px !important;
+  }
+
+  .goalix-reference-frame .h-24,
+  .goalix-reference-frame .w-24,
+  .goalix-reference-frame .h-28,
+  .goalix-reference-frame .w-28,
+  .goalix-reference-frame .h-32,
+  .goalix-reference-frame .w-32 {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .goalix-reference-frame .border-r,
+  .goalix-reference-frame .md\:border-r,
+  .goalix-reference-frame .last\:border-r-0 {
+    border-right-width: 0 !important;
+  }
+
+  .goalix-reference-frame .float-right {
+    float: none !important;
+    display: block;
+    margin-top: 8px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .goalix-reference-content {
+    display: grid;
+    gap: 16px;
+  }
+
+  .goalix-reference-content > *,
+  .goalix-reference-frame .goalix-dashboard-panel,
+  .goalix-reference-frame .goalix-dashboard-panel > * {
+    min-width: 0;
+  }
+
+  .goalix-reference-frame h1,
+  .goalix-reference-frame .text-5xl,
+  .goalix-reference-frame .text-6xl,
+  .goalix-reference-frame .md\:text-6xl {
+    font-size: clamp(2.6rem, 6vw, 4rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .goalix-reference-frame .text-4xl {
+    font-size: clamp(2rem, 4vw, 2.6rem) !important;
+  }
+
+  .goalix-reference-frame [class*="xl:grid-cols-"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .goalix-reference-frame .xl\:row-span-2 {
+    grid-row: auto !important;
+  }
+
+  .goalix-reference-frame .goalix-dashboard-photo-card {
+    grid-column: span 1 !important;
+  }
+
+  .goalix-reference-frame .goalix-dashboard-photo-card [class*="min-h-"] {
+    min-height: 360px !important;
+  }
+
+  .goalix-reference-frame .h-\[210px\],
+  .goalix-reference-frame .h-\[235px\],
+  .goalix-reference-frame .h-\[245px\],
+  .goalix-reference-frame .h-\[260px\] {
+    height: 240px !important;
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1480px) {
+  .goalix-reference-frame {
+    grid-template-columns: 245px minmax(0, 1fr);
+  }
+
+  .goalix-reference-main,
+  .goalix-reference-content,
+  .goalix-reference-content > * {
+    min-width: 0;
+  }
+
+  .goalix-reference-frame h1,
+  .goalix-reference-frame .text-5xl,
+  .goalix-reference-frame .text-6xl,
+  .goalix-reference-frame .md\:text-6xl {
+    font-size: clamp(2.5rem, 3.4vw, 3.8rem) !important;
+  }
+
+  .goalix-reference-frame [class*="xl:grid-cols-[1.05fr_1.3fr_0.56fr_0.56fr_0.56fr]"],
+  .goalix-reference-frame [class*="xl:grid-cols-[0.95fr_1.25fr_0.62fr_0.62fr_0.62fr]"],
+  .goalix-reference-frame [class*="xl:grid-cols-[1.4fr_0.45fr_0.45fr_1fr_0.65fr]"],
+  .goalix-reference-frame [class*="xl:grid-cols-[1.55fr_repeat(5,0.72fr)]"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
