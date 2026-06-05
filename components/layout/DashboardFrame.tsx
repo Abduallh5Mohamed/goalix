@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Baby,
   BarChart3,
@@ -102,6 +102,7 @@ const arCopy: Record<string, string> = {
   "Daily insights for performance, attendance and match readiness.": "رؤى يومية للأداء والحضور وجاهزية المباريات.",
   "Open Insights": "فتح الرؤى",
   Arabic: "العربية",
+  English: "الإنجليزية",
   "Dark theme": "الوضع الداكن",
   "Light theme": "الوضع الفاتح",
   Dashboard: "الرئيسية",
@@ -350,6 +351,13 @@ const arCopy: Record<string, string> = {
   "Equipment Reminder": "تذكير بالمعدات",
   "Match day": "يوم المباراة",
   "unread alerts": "تنبيهات غير مقروءة",
+  unread: "غير مقروء",
+  "Read all": "تحديد الكل كمقروء",
+  "Refresh notifications": "تحديث الإشعارات",
+  "Loading notifications...": "جاري تحميل الإشعارات...",
+  "Could not load notifications.": "تعذر تحميل الإشعارات.",
+  "No notifications yet.": "لا توجد إشعارات بعد.",
+  "View all notifications": "عرض كل الإشعارات",
   "Skill Development": "تطوير المهارات",
   Finishing: "إنهاء الهجمة",
   Passing: "التمرير",
@@ -379,7 +387,6 @@ const arCopy: Record<string, string> = {
   "Academic Progress": "التقدم الدراسي",
   Maths: "الرياضيات",
   Science: "العلوم",
-  English: "الإنجليزية",
   PE: "التربية الرياضية",
   "Overall Average": "المتوسط العام",
   Communication: "التواصل",
@@ -710,7 +717,6 @@ const fallbackArTerms: Record<string, string> = {
   "Start Meeting": "بدء الاجتماع",
   "Time Tracker": "متتبع الوقت",
   "Onboarding": "التهيئة",
-  "Progress": "التقدم",
   "Output": "المخرجات",
   "Employee": "الموظف",
   "Hirings": "التعيينات",
@@ -760,7 +766,6 @@ const fallbackArTerms: Record<string, string> = {
   "Win": "فوز",
   "Loss": "خسارة",
   "Draw": "تعادل",
-  "Attendance": "الحضور",
   "Participation": "المشاركة",
   "Overall Progress": "التقدم العام",
   "On Track": "على المسار",
@@ -849,10 +854,7 @@ const fallbackArTerms: Record<string, string> = {
   "Win Rate": "نسبة الفوز",
   "Team High": "أعلى رقم في الفريق",
   "Team Avg": "متوسط الفريق",
-  "Squad Fit": "جاهزية الفريق",
-  "Blue City": "بلو سيتي",
   "City Rovers": "سيتي روفرز",
-  "FC United": "إف سي يونايتد",
   "Away Match": "مباراة خارج الأرض",
   "Home Match": "مباراة على الأرض",
   "Winger": "جناح",
@@ -871,6 +873,126 @@ const fallbackArTerms: Record<string, string> = {
   "Fri": "الجمعة",
   "Sat": "السبت",
   "Sun": "الأحد",
+  "Welcome, Player": "أهلا، اللاعب",
+  "Welcome, Coach": "أهلا، المدرب",
+  "Welcome, Parent": "أهلا، ولي الأمر",
+  "Welcome, Admin": "أهلا، المدير",
+  "Live training, matches, groups, and player data from the backend.": "بيانات مباشرة للتدريبات والمباريات والمجموعات واللاعبين من الباك اند.",
+  "Some coach dashboard data could not load. Check backend login/session and API availability.": "تعذر تحميل بعض بيانات لوحة المدرب. تأكد من تسجيل الدخول وتوفر الـ API.",
+  "Loading coach dashboard from backend...": "جاري تحميل لوحة المدرب من الباك اند...",
+  "Some player data could not load. Anything available from the backend is still shown below.": "تعذر تحميل بعض بيانات اللاعب. سيتم عرض أي بيانات متاحة من الباك اند بالأسفل.",
+  "Loading your player dashboard...": "جاري تحميل لوحة اللاعب...",
+  "Loading your training data...": "جاري تحميل بيانات التدريب...",
+  "Your live academy data, upcoming schedule, match plan, and coach feedback.": "بياناتك المباشرة في الأكاديمية، جدولك القادم، خطة المباريات، وملاحظات المدرب.",
+  "Your upcoming sessions, training plans, attendance, and coach evaluations.": "حصصك القادمة، خطط التدريب، الحضور، وتقييمات المدرب.",
+  "Open Trainings": "تدريبات مفتوحة",
+  "Scheduled sessions": "حصص مجدولة",
+  "Completed Trainings": "تدريبات مكتملة",
+  "Recorded sessions": "حصص مسجلة",
+  "Completed Matches": "مباريات مكتملة",
+  "With match history": "مع سجل المباريات",
+  "Squad Ready": "الفريق جاهز",
+  "Completed profiles": "ملفات مكتملة",
+  "Permissions": "الصلاحيات",
+  "Evaluation groups": "مجموعات التقييم",
+  "Upcoming Training": "التدريب القادم",
+  "Next Agenda": "الأجندة القادمة",
+  "Assigned Groups": "المجموعات المعينة",
+  "Training Attendance": "حضور التدريب",
+  "Evaluate assigned players": "تقييم اللاعبين المعينين",
+  "Match Configuration": "إعدادات المباراة",
+  "No backend training sessions are assigned to you yet.": "لا توجد حصص تدريب من الباك اند معينة لك حتى الآن.",
+  "No backend matches are assigned to you yet.": "لا توجد مباريات من الباك اند معينة لك حتى الآن.",
+  "No upcoming training or match agenda from backend yet.": "لا توجد أجندة تدريب أو مباريات قادمة من الباك اند حتى الآن.",
+  "No backend players are assigned to you yet.": "لا يوجد لاعبون من الباك اند معينون لك حتى الآن.",
+  "No backend groups are assigned to your coach account yet.": "لا توجد مجموعات من الباك اند معينة لحساب المدرب حتى الآن.",
+  "No target groups": "لا توجد مجموعات مستهدفة",
+  "No position": "لا يوجد مركز",
+  "No groups assigned yet.": "لا توجد مجموعات معينة حتى الآن.",
+  "Player Measurements": "قياسات اللاعبين",
+  "Record physical measurements for your players": "سجل القياسات البدنية للاعبيك",
+  "Could not load your groups.": "تعذر تحميل مجموعاتك.",
+  "Select group": "اختر مجموعة",
+  "Loading players...": "جاري تحميل اللاعبين...",
+  "Latest": "الأحدث",
+  "Optional": "اختياري",
+  "Could not save measurements. Please check the values.": "تعذر حفظ القياسات. تأكد من القيم.",
+  "Saved": "تم الحفظ",
+  "Save Measurements": "حفظ القياسات",
+  "Matches Played": "المباريات الملعوبة",
+  "Weekly Minutes": "دقائق الأسبوع",
+  "Goals / Assists": "الأهداف / التمريرات الحاسمة",
+  "Player Snapshot": "لمحة اللاعب",
+  "Latest Coach Feedback": "آخر ملاحظات المدرب",
+  "Latest training evaluation": "آخر تقييم تدريبي",
+  "Ball work and execution": "العمل بالكرة والتنفيذ",
+  "Fitness and intensity": "اللياقة والشدة",
+  "Strengths": "نقاط القوة",
+  "Weaknesses": "نقاط الضعف",
+  "Improvement Plan": "خطة التحسين",
+  "Coach notes": "ملاحظات المدرب",
+  "No coach evaluation is available yet.": "لا يوجد تقييم من المدرب حتى الآن.",
+  "No upcoming match has been scheduled for your group yet.": "لم يتم جدولة مباراة قادمة لمجموعتك حتى الآن.",
+  "No upcoming training or calendar events are listed yet.": "لا توجد تدريبات أو أحداث قادمة في التقويم حتى الآن.",
+  "No completed matches with your data yet.": "لا توجد مباريات مكتملة ببياناتك حتى الآن.",
+  "Position": "المركز",
+  "Rating": "التقييم",
+  "Minutes": "الدقائق",
+  "Latest Overall": "آخر تقييم عام",
+  "Latest Status": "آخر حالة",
+  "No attendance yet": "لا يوجد حضور حتى الآن",
+  "Upcoming Training Plans": "خطط التدريب القادمة",
+  "Focus": "التركيز",
+  "Objectives": "الأهداف",
+  "Session Plan": "خطة الحصة",
+  "Equipment": "المعدات",
+  "Latest Training Evaluation": "آخر تقييم تدريبي",
+  "No player-visible training evaluation has been published yet.": "لم يتم نشر تقييم تدريبي ظاهر للاعب حتى الآن.",
+  "Recent Training History": "سجل التدريب الأخير",
+  "All Published Evaluations": "كل التقييمات المنشورة",
+  "No upcoming training is visible for you yet.": "لا يوجد تدريب قادم ظاهر لك حتى الآن.",
+  "No completed training sessions yet.": "لا توجد حصص تدريب مكتملة حتى الآن.",
+  "No evaluations have been published yet.": "لم يتم نشر أي تقييمات حتى الآن.",
+  "Training evaluation": "تقييم تدريبي",
+  "Coach Evaluation": "تقييم المدرب",
+  "Mentality": "العقلية",
+  "Discipline": "الانضباط",
+  "Teamwork": "العمل الجماعي",
+  "Impact": "التأثير",
+  "Ball Control": "التحكم بالكرة",
+  "Passing Accuracy": "دقة التمرير",
+  "Shooting": "التسديد",
+  "Receiving Under Pressure": "الاستلام تحت الضغط",
+  "Speed": "السرعة",
+  "Endurance": "التحمل",
+  "Strength": "القوة",
+  "Agility": "الرشاقة",
+  "trainings attended": "تدريبات تم حضورها",
+  "attended records": "سجلات حضور",
+  "match entries this week": "مشاركات مباريات هذا الأسبوع",
+  "From recorded match stats": "من إحصائيات المباريات المسجلة",
+  "assigned players": "لاعبين معينين",
+  "upcoming matches": "مباريات قادمة",
+  "scheduled sessions": "حصص مجدولة",
+  "Administrator": "المدير",
+  "Not set": "غير محدد",
+  "TBD": "لم يحدد بعد",
+  "N/A": "غير متاح",
+  "present": "حاضر",
+  "completed": "مكتمل",
+  "finished": "منتهي",
+  "starter": "أساسي",
+  "scheduled": "مجدول",
+  "substitute": "بديل",
+  "reserve": "احتياطي",
+  "postponed": "مؤجل",
+  "late": "متأخر",
+  "excused": "بعذر",
+  "cancelled": "ملغي",
+  "absent": "غائب",
+  "injured": "مصاب",
+  "complete": "مكتمل",
+  "incomplete": "غير مكتمل",
 };
 
 type NavItem = {
@@ -898,8 +1020,11 @@ function shouldSkipDomTranslation(value: string) {
   return false;
 }
 
-function translateDynamicLabel(label: string, language: DashboardLanguage) {
+function translateDynamicLabel(label: string, language: DashboardLanguage): string | null {
   if (language !== "ar") return null;
+
+  const welcomeMatch = label.match(/^Welcome,\s*(.+)$/i);
+  if (welcomeMatch) return `أهلا، ${translate(welcomeMatch[1], language)}`;
 
   const doneMatch = label.match(/^(.+)\sDone$/i);
   if (doneMatch) return `${translate(doneMatch[1], language)} ${arCopy.Done}`;
@@ -909,6 +1034,15 @@ function translateDynamicLabel(label: string, language: DashboardLanguage) {
 
   const sessionCountMatch = label.match(/^(\d+)\s+sessions?$/i);
   if (sessionCountMatch) return `${sessionCountMatch[1]} ${Number(sessionCountMatch[1]) === 1 ? "حصة" : "حصص"}`;
+
+  const attendedSessionsMatch = label.match(/^(\d+)\s*\/\s*(\d+)\s+sessions?\s+attended$/i);
+  if (attendedSessionsMatch) return `${attendedSessionsMatch[1]}/${attendedSessionsMatch[2]} حصص تم حضورها`;
+
+  const countedPhraseMatch = label.match(/^(\d+)\s+(.+)$/i);
+  if (countedPhraseMatch) return `${countedPhraseMatch[1]} ${translate(countedPhraseMatch[2], language)}`;
+
+  const ratingBadgeMatch = label.match(/^(Overall|Fatigue)\s+(.+)$/i);
+  if (ratingBadgeMatch) return `${translate(ratingBadgeMatch[1], language)} ${ratingBadgeMatch[2]}`;
 
   const upcomingSessionsMatch = label.match(/^Upcoming sessions for\s+(.+)$/i);
   if (upcomingSessionsMatch) return `الحصص القادمة لـ ${translate(upcomingSessionsMatch[1], language)}`;
@@ -947,7 +1081,7 @@ function translateDynamicLabel(label: string, language: DashboardLanguage) {
   return null;
 }
 
-function translate(label: string, language: DashboardLanguage) {
+function translate(label: string, language: DashboardLanguage): string {
   if (language !== "ar") return label;
   const normalizedLabel = label.replace(/\u00a0/g, " ").replace(/[’]/g, "'").trim();
   if (arCopy[normalizedLabel]) return arCopy[normalizedLabel];
@@ -988,6 +1122,7 @@ export function DashboardFrame({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useCurrentUser();
   const { logout } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -996,6 +1131,7 @@ export function DashboardFrame({
   const [language, setLanguage] = useState<DashboardLanguage>("en");
   const [theme, setTheme] = useState<DashboardTheme>("light");
   const [settingsReady, setSettingsReady] = useState(false);
+  const [compactNav, setCompactNav] = useState(false);
 
   const t = useMemo(() => (label: string) => translate(label, language), [language]);
 
@@ -1016,6 +1152,16 @@ export function DashboardFrame({
     }, 0);
 
     return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1180px)");
+    const syncCompactNav = () => setCompactNav(query.matches);
+
+    syncCompactNav();
+    query.addEventListener("change", syncCompactNav);
+
+    return () => query.removeEventListener("change", syncCompactNav);
   }, []);
 
   useEffect(() => {
@@ -1050,7 +1196,13 @@ export function DashboardFrame({
         if (shouldSkipDomTranslation(trimmed)) continue;
 
         const textNode = node as Text & { goalixOriginalText?: string };
-        const original = textNode.goalixOriginalText ?? trimmed;
+        const savedOriginal = textNode.goalixOriginalText;
+        const savedTranslation = savedOriginal ? translate(savedOriginal, language).trim() : "";
+        const currentLooksTranslated = /[\u0600-\u06FF]/.test(trimmed);
+        const original =
+          !savedOriginal || (trimmed !== savedOriginal && trimmed !== savedTranslation && !currentLooksTranslated)
+            ? trimmed
+            : savedOriginal;
         textNode.goalixOriginalText = original;
 
         const nextText = translate(original, language);
@@ -1147,7 +1299,16 @@ export function DashboardFrame({
                     type="button"
                     className={cn("goalix-reference-nav-item is-section", active && "is-active")}
                     aria-expanded={isOpen}
-                    onClick={() => setOpenSections((current) => ({ ...current, [item.label]: !isOpen }))}
+                    aria-label={t(item.label)}
+                    title={t(item.label)}
+                    onClick={() => {
+                      if (compactNav) {
+                        router.push(firstHref(item));
+                        return;
+                      }
+
+                      setOpenSections((current) => ({ ...current, [item.label]: !isOpen }));
+                    }}
                   >
                     <Icon size={17} />
                     <span>{t(item.label)}</span>
@@ -1174,6 +1335,8 @@ export function DashboardFrame({
                 key={item.label}
                 href={item.href ?? firstHref(item)}
                 className={cn("goalix-reference-nav-item", active && "is-active")}
+                aria-label={t(item.label)}
+                title={t(item.label)}
               >
                 <Icon size={17} />
                 <span>{t(item.label)}</span>
@@ -1234,7 +1397,7 @@ export function DashboardFrame({
                 <span>{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
               </button>
             </div>
-            <button type="button" aria-label={t("Messages")}>
+            <button type="button" className="goalix-reference-message-trigger" aria-label={t("Messages")}>
               <Mail size={18} />
             </button>
             <div className="goalix-reference-notifications">
