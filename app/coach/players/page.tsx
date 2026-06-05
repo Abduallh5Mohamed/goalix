@@ -96,6 +96,47 @@ function calculateAge(birthDate: string) {
   return age >= 0 ? String(age) : "";
 }
 
+const normalizeKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+const textValue = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const joined = value.map(textValue).filter(Boolean).join(", ");
+    return joined || null;
+  }
+  return null;
+};
+
+const customProfileValue = (
+  player: { customProfile?: Array<{ key: string; label: string; value: unknown }> },
+  keys: string[],
+) => {
+  const normalizedKeys = new Set(keys.map(normalizeKey));
+  for (const field of player.customProfile ?? []) {
+    if (
+      normalizedKeys.has(normalizeKey(field.key)) ||
+      normalizedKeys.has(normalizeKey(field.label))
+    ) {
+      const value = textValue(field.value);
+      if (value) return value;
+    }
+  }
+  return null;
+};
+
+const mainPositionForPlayer = (
+  player: {
+    position?: string | null;
+    customProfile?: Array<{ key: string; label: string; value: unknown }>;
+  },
+) =>
+  customProfileValue(player, ["main_position", "main position"]) ||
+  player.position ||
+  null;
+
 function CoachPlayersFallback() {
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
@@ -303,9 +344,10 @@ function CoachPlayersContent() {
       if (filter.status !== "all" && player.profile_status !== filter.status)
         return false;
       if (!search) return true;
+      const mainPosition = mainPositionForPlayer(player);
       const haystack = [
         player.full_name,
-        player.position,
+        mainPosition,
         player.guardian_name,
         player.guardian_phone,
       ]
@@ -1012,74 +1054,77 @@ function CoachPlayersContent() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {players.map((player) => (
-            <Card
-              key={player.id}
-              role="button"
-              tabIndex={0}
-              className="cursor-pointer border-border/50 bg-card transition hover:border-primary/50 hover:bg-muted/30"
-              onClick={() => router.push(`/coach/players/${player.id}`)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  router.push(`/coach/players/${player.id}`);
-                }
-              }}
-            >
-              <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-primary/20 text-primary">
-                      {getInitials(player.full_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{player.full_name}</p>
-                      <Badge
-                        variant={
-                          player.profile_status === "complete"
-                            ? "success"
-                            : "warning"
-                        }
-                      >
-                        {player.profile_status === "complete"
-                          ? "Complete"
-                          : "Incomplete"}
-                      </Badge>
+          {players.map((player) => {
+            const mainPosition = mainPositionForPlayer(player);
+            return (
+              <Card
+                key={player.id}
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer border-border/50 bg-card transition hover:border-primary/50 hover:bg-muted/30"
+                onClick={() => router.push(`/coach/players/${player.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(`/coach/players/${player.id}`);
+                  }
+                }}
+              >
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {getInitials(player.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{player.full_name}</p>
+                        <Badge
+                          variant={
+                            player.profile_status === "complete"
+                              ? "success"
+                              : "warning"
+                          }
+                        >
+                          {player.profile_status === "complete"
+                            ? "Complete"
+                            : "Incomplete"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {mainPosition || "Main position not set"} -{" "}
+                        {player.guardian_phone || "No guardian phone"}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {player.position || "No position"} -{" "}
-                      {player.guardian_phone || "No guardian phone"}
-                    </p>
                   </div>
-                </div>
-                {player.profile_status !== "complete" ? (
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setCustomValues({});
-                      setCompleteError("");
-                      setCompleteId(player.id);
-                    }}
-                  >
-                    <ShieldAlert className="h-4 w-4" />
-                    Complete profile
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm text-emerald-400">
-                      <UserCheck className="h-4 w-4" />
-                      Ready for operations
+                  {player.profile_status !== "complete" ? (
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setCustomValues({});
+                        setCompleteError("");
+                        setCompleteId(player.id);
+                      }}
+                    >
+                      <ShieldAlert className="h-4 w-4" />
+                      Complete profile
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 text-sm text-emerald-400">
+                        <UserCheck className="h-4 w-4" />
+                        Ready for operations
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
           {!players.length && (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">

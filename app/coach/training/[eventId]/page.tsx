@@ -33,6 +33,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useExtendCoachTrainingEventMutation,
@@ -65,9 +72,50 @@ const ratingFields = [
   ["receivingUnderPressureRating", "Receiving Under Pressure"],
   ["speedRating", "Speed"],
   ["enduranceRating", "Endurance"],
+  ["fatigueRating", "Fatigue"],
   ["strengthRating", "Strength"],
   ["agilityRating", "Agility"],
 ] as const;
+
+const goalkeeperRatingFields = [
+  ["ballControlRating", "Handling"],
+  ["passingAccuracyRating", "Distribution"],
+  ["shootingRating", "Shot Stopping"],
+  ["dribblingRating", "1v1 / Sweeper"],
+  ["receivingUnderPressureRating", "Crosses / High Balls"],
+  ["speedRating", "Reactions"],
+  ["enduranceRating", "Concentration"],
+  ["fatigueRating", "Fatigue"],
+  ["strengthRating", "Command of Area"],
+  ["agilityRating", "Footwork / Agility"],
+] as const;
+
+type RatingOption = {
+  label: "Poor" | "Good" | "Very Good" | "Excellent";
+  range: string;
+  value: number;
+  min: number;
+  max: number;
+};
+
+const rating10Options: RatingOption[] = [
+  { label: "Poor", range: "0-3.9", value: 2, min: 0, max: 3.9 },
+  { label: "Good", range: "4-6.4", value: 5, min: 4, max: 6.4 },
+  { label: "Very Good", range: "6.5-8.4", value: 7.5, min: 6.5, max: 8.4 },
+  { label: "Excellent", range: "8.5-10", value: 9.5, min: 8.5, max: 10 },
+];
+
+const optionValue = (value: string) => {
+  if (value === "") return "";
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return "";
+  const exact = rating10Options.find((option) => option.value === numeric);
+  if (exact) return String(exact.value);
+  const ranged = rating10Options.find(
+    (option) => numeric >= option.min && numeric <= option.max,
+  );
+  return ranged ? String(ranged.value) : "";
+};
 
 const nowTime = () => {
   const now = new Date();
@@ -78,6 +126,35 @@ const nowTime = () => {
 
 const toNumberOrUndefined = (value: string) =>
   value === "" ? undefined : Number(value);
+
+const evaluationVisibility = (player: TrainingParticipant) =>
+  player.evaluation?.visibility ?? "private";
+
+const visibilityLabel = (visibility: string | null | undefined) =>
+  visibility === "player_and_parent" ? "Published" : "Not published";
+
+const isGoalkeeperPosition = (position?: string | null) => {
+  const normalized = String(position ?? "").trim().toLowerCase();
+  return normalized === "gk" || normalized.includes("goalkeeper");
+};
+
+const customProfileValue = (
+  player: Pick<TrainingParticipant, "customProfile">,
+  key: string,
+  label: string,
+) => {
+  const field = player.customProfile.find(
+    (item) =>
+      item.key.toLowerCase() === key.toLowerCase() ||
+      item.label.toLowerCase() === label.toLowerCase(),
+  );
+  const value = field?.value;
+  return value === null || value === undefined ? "" : String(value);
+};
+
+const playerMainPosition = (
+  player: Pick<TrainingParticipant, "position" | "customProfile">,
+) => customProfileValue(player, "main_position", "Main Position") || player.position || "";
 
 const WARNING_BEFORE_END_MS = 5 * 60 * 1000;
 const FINAL_AUTOSAVE_BEFORE_END_MS = 10 * 1000;
@@ -154,7 +231,7 @@ export default function CoachTrainingEventPage() {
     const query = evaluationSearch.trim().toLowerCase();
     if (!query) return attendedPlayers;
     return attendedPlayers.filter((player) =>
-      `${player.full_name} ${player.position ?? ""} ${player.group_name ?? ""}`
+      `${player.full_name} ${playerMainPosition(player)} ${player.position ?? ""} ${player.group_name ?? ""}`
         .toLowerCase()
         .includes(query),
     );
@@ -259,6 +336,10 @@ export default function CoachTrainingEventPage() {
               draft.developmentNotes ??
               player.evaluation?.development_notes ??
               "",
+            visibility:
+              draft.visibility ??
+              player.evaluation?.visibility ??
+              "private",
           };
         }),
       }).unwrap();
@@ -301,6 +382,10 @@ export default function CoachTrainingEventPage() {
               draft.improvementPlan ?? player.evaluation?.improvement_plan ?? "",
             developmentNotes:
               draft.developmentNotes ?? player.evaluation?.development_notes ?? "",
+            visibility:
+              draft.visibility ??
+              player.evaluation?.visibility ??
+              "private",
           },
         ],
       }).unwrap();
@@ -586,11 +671,22 @@ export default function CoachTrainingEventPage() {
           </Card>
 
           <div className="space-y-4">
-            {visibleEvaluationPlayers.map((player) => (
+            {visibleEvaluationPlayers.map((player) => {
+              const mainPosition = playerMainPosition(player);
+              const activeRatingFields = isGoalkeeperPosition(mainPosition)
+                ? goalkeeperRatingFields
+                : ratingFields.slice(1);
+
+              return (
               <Card key={player.id} className="border-border/50 bg-card">
                 <CardHeader>
                   <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
-                    <span>{player.full_name}</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      {player.full_name}
+                      {isGoalkeeperPosition(mainPosition) && (
+                        <Badge variant="secondary">GK</Badge>
+                      )}
+                    </span>
                     <span className="flex flex-wrap gap-2">
                       <Badge variant="info">
                         {player.totals.attendance.present +
@@ -602,6 +698,21 @@ export default function CoachTrainingEventPage() {
                       </Badge>
                       <Badge variant="outline">
                         {player.totals.matches.minutes_played} match min
+                      </Badge>
+                      <Badge
+                        variant={
+                          (
+                            drafts[player.id]?.visibility ??
+                            evaluationVisibility(player)
+                          ) === "player_and_parent"
+                            ? "success"
+                            : "secondary"
+                        }
+                      >
+                        {visibilityLabel(
+                          drafts[player.id]?.visibility ??
+                            evaluationVisibility(player),
+                        )}
                       </Badge>
                       <Badge variant="destructive">
                         {player.totals.injuries} injuries
@@ -650,26 +761,60 @@ export default function CoachTrainingEventPage() {
                   )}
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    {ratingFields.map(([key, label]) => (
+                    <div className="space-y-1">
+                      <Label>Overall /10</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10}
+                        step={0.5}
+                        disabled={!trainingOpen}
+                        value={fieldValue(player, "overallRating")}
+                        onChange={(event) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [player.id]: {
+                              ...(prev[player.id] ?? {}),
+                              overallRating: event.target.value,
+                            },
+                          }))
+                        }
+                        />
+                      </div>
+                    {activeRatingFields.map(([key, label]) => (
                       <div key={key} className="space-y-1">
-                        <Label>{label}</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={10}
-                          step={0.5}
+                        <Label>{label} /10</Label>
+                        <Select
                           disabled={!trainingOpen}
-                          value={fieldValue(player, key)}
-                          onChange={(event) =>
+                          value={
+                            drafts[player.id]?.[key] !== undefined
+                              ? drafts[player.id][key]
+                              : optionValue(fieldValue(player, key))
+                          }
+                          onValueChange={(value) =>
                             setDrafts((prev) => ({
                               ...prev,
                               [player.id]: {
                                 ...(prev[player.id] ?? {}),
-                                [key]: event.target.value,
+                                [key]: value,
                               },
                             }))
                           }
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select rating" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rating10Options.map((option) => (
+                              <SelectItem
+                                key={`${key}-${option.label}`}
+                                value={String(option.value)}
+                              >
+                                {option.label} ({option.range})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     ))}
                   </div>
@@ -723,19 +868,51 @@ export default function CoachTrainingEventPage() {
                         </Badge>
                       ))}
                     </div>
-                    <Button
-                      type="button"
-                      className="gap-2"
-                      disabled={savingEvaluation || !trainingOpen}
-                      onClick={() => saveEvaluation(player)}
-                    >
-                      <Save className="h-4 w-4" />
-                      Save Evaluation
-                    </Button>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="w-44 space-y-1">
+                        <Label>Player visibility</Label>
+                        <Select
+                          disabled={!trainingOpen}
+                          value={
+                            drafts[player.id]?.visibility ??
+                            evaluationVisibility(player)
+                          }
+                          onValueChange={(value) =>
+                            setDrafts((prev) => ({
+                              ...prev,
+                              [player.id]: {
+                                ...(prev[player.id] ?? {}),
+                                visibility: value,
+                              },
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="private">Not published</SelectItem>
+                            <SelectItem value="player_and_parent">
+                              Publish
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        className="gap-2"
+                        disabled={savingEvaluation || !trainingOpen}
+                        onClick={() => saveEvaluation(player)}
+                      >
+                        <Save className="h-4 w-4" />
+                        Save Evaluation
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

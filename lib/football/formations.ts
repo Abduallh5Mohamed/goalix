@@ -31,7 +31,7 @@ const xsByCount: Record<number, number[]> = {
 
 const backFour = (y = 0.28): RowSpec => ({ labels: ["LB", "LCB", "RCB", "RB"], y, xs: [0.12, 0.37, 0.63, 0.88] });
 const backThree = (y = 0.29): RowSpec => ({ labels: ["LCB", "CB", "RCB"], y, xs: [0.3, 0.5, 0.7] });
-const backFive = (y = 0.29): RowSpec => ({ labels: ["LWB", "LCB", "CB", "RCB", "RWB"], y, xs: [0.08, 0.3, 0.5, 0.7, 0.92] });
+const backFive = (y = 0.29): RowSpec => ({ labels: ["LB", "LCB", "CB", "RCB", "RB"], y, xs: [0.08, 0.3, 0.5, 0.7, 0.92] });
 const twoStrikers = (y = 0.84): RowSpec => ({ labels: ["LS", "RS"], y, xs: [0.38, 0.62] });
 const loneStriker = (y = 0.84): RowSpec => ({ labels: ["ST"], y });
 const wideFrontThree = (y = 0.82): RowSpec => ({ labels: ["LW", "ST", "RW"], y, xs: [0.14, 0.5, 0.86] });
@@ -59,8 +59,13 @@ function fc26PositionLabel(label: string) {
     RCM: "CM",
     LDM: "CDM",
     RDM: "CDM",
+    CAM: "CAM",
     LAM: "CAM",
     RAM: "CAM",
+    LWB: "LB",
+    RWB: "RB",
+    LF: "LW",
+    RF: "RW",
     LS: "ST",
     RS: "ST",
   };

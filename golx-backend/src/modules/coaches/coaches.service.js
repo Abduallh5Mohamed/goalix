@@ -120,6 +120,7 @@ class CoachesService {
     }
 
     _shapePlayer(player, index = 0) {
+        const mainPosition = player.main_position || player.position || 'Unassigned';
         return {
             id: player.id,
             userId: player.user_id,
@@ -127,7 +128,9 @@ class CoachesService {
             dateOfBirth: player.date_of_birth,
             age: Number(player.age || 0),
             level: player.level || 'beginner',
-            position: player.position || 'Unassigned',
+            position: mainPosition,
+            mainPosition,
+            rawPosition: player.position || null,
             preferredFoot: player.preferred_foot || null,
             avatarUrl: player.photo_url || '',
             branchId: player.branch_id,

@@ -133,6 +133,45 @@ class CoachesRepository extends BaseRepository {
                 'pp.date_of_birth',
                 'pp.level',
                 'pp.position',
+                this.db.raw(`
+                    (
+                        SELECT COALESCE(
+                            cfo.label,
+                            cfo_text.label,
+                            pcv.value_text,
+                            pcv.value_long_text,
+                            pcv.value_number::text,
+                            pcv.value_decimal::text,
+                            pcv.value_date::text,
+                            pcv.value_boolean::text,
+                            json_options.labels,
+                            pcv.value_json #>> '{}'
+                        )
+                        FROM player_custom_values pcv
+                        JOIN custom_fields cf ON pcv.field_id = cf.id
+                        LEFT JOIN custom_field_options cfo ON cfo.id = pcv.value_option_id
+                        LEFT JOIN custom_field_options cfo_text
+                            ON cfo_text.field_id = cf.id
+                            AND cfo_text.id::text = pcv.value_text
+                        LEFT JOIN LATERAL (
+                            SELECT string_agg(COALESCE(cfo_json.label, option_id), ', ' ORDER BY option_id) as labels
+                            FROM jsonb_array_elements_text(
+                                CASE
+                                    WHEN jsonb_typeof(pcv.value_json) = 'array' THEN pcv.value_json
+                                    WHEN jsonb_typeof(pcv.value_json) = 'string' THEN jsonb_build_array(pcv.value_json #>> '{}')
+                                    ELSE '[]'::jsonb
+                                END
+                            ) as option_values(option_id)
+                            LEFT JOIN custom_field_options cfo_json
+                                ON cfo_json.field_id = cf.id
+                                AND cfo_json.id::text = option_values.option_id
+                        ) json_options ON true
+                        WHERE pcv.player_id = pp.id
+                          AND regexp_replace(lower(cf.key), '[^a-z0-9]+', '_', 'g') = 'main_position'
+                        ORDER BY pcv.updated_at DESC NULLS LAST
+                        LIMIT 1
+                    ) as main_position
+                `),
                 'pp.preferred_foot',
                 'pp.photo_url',
                 'pp.guardian_name',

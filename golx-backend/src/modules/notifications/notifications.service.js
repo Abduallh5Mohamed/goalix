@@ -8,12 +8,12 @@ class NotificationsService {
         this.queue = notificationsQueue;
     }
 
-    async getUserNotifications(userId, filters) {
-        return this.repo.findByUser(userId, filters);
+    async getUserNotifications(user, filters) {
+        return this.repo.findByUser(user.userId, filters, user);
     }
 
-    async getUnreadCount(userId) {
-        return this.repo.getUnreadCount(userId);
+    async getUnreadCount(user) {
+        return this.repo.getUnreadCount(user.userId, user);
     }
 
     async sendNotification(data) {

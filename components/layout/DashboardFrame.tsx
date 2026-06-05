@@ -7,8 +7,10 @@ import {
   Baby,
   BarChart3,
   Bell,
+  BrainCircuit,
   Cake,
   Calendar,
+  CheckCheck,
   ChevronDown,
   ClipboardCheck,
   CreditCard,
@@ -16,10 +18,13 @@ import {
   GraduationCap,
   HelpCircle,
   Home,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Mail,
   Moon,
+  MessageSquare,
+  RefreshCw,
   Ruler,
   Search,
   Settings,
@@ -33,14 +38,22 @@ import {
   Users,
 } from "lucide-react";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
+import { getNotificationHref } from "@/lib/notifications";
+import {
+  useGetNotificationsQuery,
+  useGetUnreadNotificationsCountQuery,
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+} from "@/lib/store/api/calendarApi";
 import type { UserRole } from "@/lib/types";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
-import { cn, getInitials } from "@/lib/utils";
+import { cn, formatDateTime, getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
   Baby,
   BarChart3,
   Bell,
+  BrainCircuit,
   Cake,
   Calendar,
   ClipboardCheck,
@@ -48,7 +61,9 @@ const iconMap: Record<string, React.ElementType> = {
   Dumbbell,
   GraduationCap,
   Home,
+  Inbox,
   LayoutDashboard,
+  MessageSquare,
   Ruler,
   Settings,
   Star,
@@ -977,7 +992,6 @@ export function DashboardFrame({
   const { logout } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
   const nav = NAV_ITEMS[role] as NavItem[];
-  const primaryNav = nav.slice(0, role === "admin" ? 9 : 8);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [language, setLanguage] = useState<DashboardLanguage>("en");
   const [theme, setTheme] = useState<DashboardTheme>("light");
@@ -1085,6 +1099,22 @@ export function DashboardFrame({
 
     return () => observer.disconnect();
   }, [language, pathname]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const {
+    data: notificationsData,
+    isLoading: notificationsLoading,
+    isError: notificationsError,
+    refetch: refetchNotifications,
+  } = useGetNotificationsQuery(undefined, { pollingInterval: 60000 });
+  const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
+    pollingInterval: 60000,
+  });
+  const [markNotificationRead] = useMarkNotificationReadMutation();
+  const [markAllNotificationsRead, markAllNotificationsReadState] = useMarkAllNotificationsReadMutation();
+  const notifications = notificationsData?.data ?? [];
+  const unreadCount = typeof unreadCountFromApi === "number"
+    ? unreadCountFromApi
+    : notifications.filter((item) => !item.is_read).length;
 
   return (
     <div
@@ -1105,8 +1135,8 @@ export function DashboardFrame({
 
         <div className="goalix-reference-menu-label">{t("Menu")}</div>
         <nav className="goalix-reference-nav">
-          {primaryNav.map((item) => {
-            const Icon = item.icon ? iconMap[item.icon] : LayoutDashboard;
+          {nav.map((item) => {
+            const Icon = (item.icon && iconMap[item.icon]) || LayoutDashboard;
             const active = isActive(pathname, item);
             const isOpen = openSections[item.label] ?? active;
 
@@ -1207,9 +1237,93 @@ export function DashboardFrame({
             <button type="button" aria-label={t("Messages")}>
               <Mail size={18} />
             </button>
-            <button type="button" aria-label={t("Notifications")}>
-              <Bell size={18} />
-            </button>
+            <div className="goalix-reference-notifications">
+              <button
+                type="button"
+                className="goalix-reference-notification-trigger"
+                aria-label={t("Notifications")}
+                aria-expanded={notificationsOpen}
+                onClick={() => setNotificationsOpen((current) => !current)}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="goalix-reference-notification-badge">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notificationsOpen && (
+                <div className="goalix-reference-notification-panel" role="dialog" aria-label={t("Notifications")}>
+                  <div className="goalix-reference-notification-head">
+                    <div>
+                      <strong>{t("Notifications")}</strong>
+                      <small>{unreadCount} {t("unread")}</small>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        aria-label={t("Refresh notifications")}
+                        onClick={() => refetchNotifications()}
+                      >
+                        <RefreshCw size={14} />
+                      </button>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          disabled={markAllNotificationsReadState.isLoading}
+                          onClick={() => markAllNotificationsRead()}
+                        >
+                          <CheckCheck size={14} />
+                          <span>{t("Read all")}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="goalix-reference-notification-list">
+                    {notificationsLoading ? (
+                      <div className="goalix-reference-notification-empty">{t("Loading notifications...")}</div>
+                    ) : notificationsError ? (
+                      <div className="goalix-reference-notification-empty">{t("Could not load notifications.")}</div>
+                    ) : notifications.length ? (
+                      notifications.slice(0, 8).map((notification) => (
+                        <Link
+                          key={notification.id}
+                          href={getNotificationHref(role, notification.type, notification.data)}
+                          className={cn(
+                            "goalix-reference-notification-row",
+                            !notification.is_read && "is-unread",
+                          )}
+                          onClick={() => {
+                            setNotificationsOpen(false);
+                            if (!notification.is_read) {
+                              markNotificationRead(notification.id);
+                            }
+                          }}
+                        >
+                          <span />
+                          <div>
+                            <strong>{notification.title}</strong>
+                            <p>{notification.body}</p>
+                            <small>{formatDateTime(notification.created_at)}</small>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="goalix-reference-notification-empty">{t("No notifications yet.")}</div>
+                    )}
+                  </div>
+
+                  <Link
+                    className="goalix-reference-notification-all"
+                    href={`/${role}/notifications`}
+                    onClick={() => setNotificationsOpen(false)}
+                  >
+                    {t("View all notifications")}
+                  </Link>
+                </div>
+              )}
+            </div>
             <div className="goalix-reference-user">
               <span>{getInitials(user?.fullName || role)}</span>
               <div>

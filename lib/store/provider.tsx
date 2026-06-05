@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { store } from "./store";
 import { loginSuccess, logout } from "./slices/authSlice";
 import type { UserRole } from "@/lib/types";
+import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -37,6 +38,11 @@ function SessionRefresher() {
     if (ran.current) return;
     ran.current = true;
 
+    if (!hasAuthSessionMarker()) {
+      store.dispatch(logout());
+      return;
+    }
+
     fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
@@ -45,14 +51,17 @@ function SessionRefresher() {
       .then((json) => {
         const apiUser = json?.data?.user as Record<string, unknown> | undefined;
         if (!apiUser) {
+          forgetAuthSession();
           store.dispatch(logout());
           return;
         }
 
         const user = mapApiUser(apiUser);
+        rememberAuthSession();
         store.dispatch(loginSuccess({ user, role: user.role }));
       })
       .catch(() => {
+        forgetAuthSession();
         store.dispatch(logout());
       });
   }, []);

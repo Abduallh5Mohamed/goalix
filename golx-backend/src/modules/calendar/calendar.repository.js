@@ -560,6 +560,7 @@ class CalendarRepository {
   matchListQuery(academyId, filters = {}) {
     return this.db("matches as m")
       .leftJoin("calendar_events as ce", "m.event_id", "ce.id")
+      .leftJoin("academy_academies as aa", "ce.academy_id", "aa.id")
       .leftJoin("calendar_event_groups as ceg", "ceg.event_id", "ce.id")
       .leftJoin("academy_groups as ag", "ceg.group_id", "ag.id")
       .leftJoin("calendar_event_birth_years as ceby", "ceby.event_id", "ce.id")
@@ -617,9 +618,11 @@ class CalendarRepository {
         if (filters.dateFrom) q.where("m.match_date", ">=", filters.dateFrom);
         if (filters.dateTo) q.where("m.match_date", "<=", filters.dateTo);
       })
-      .groupBy("m.id", "ce.id", "team.id")
+      .groupBy("m.id", "ce.id", "team.id", "aa.id")
       .select(
         "m.*",
+        "ce.academy_id",
+        "aa.settings as academy_settings",
         "ce.title as event_title",
         "ce.start_datetime",
         "ce.end_datetime",
@@ -851,6 +854,7 @@ class CalendarRepository {
   async findDueMatchDayCandidates() {
     return this.db("matches as m")
       .join("calendar_events as ce", "m.event_id", "ce.id")
+      .leftJoin("academy_academies as aa", "ce.academy_id", "aa.id")
       .whereNull("m.deleted_at")
       .whereIn("m.status", ["scheduled", "postponed"])
       .where("m.match_status", "scheduled")
@@ -864,6 +868,7 @@ class CalendarRepository {
         "m.match_date",
         "m.match_time",
         "ce.academy_id",
+        "aa.settings as academy_settings",
       );
   }
 
@@ -902,12 +907,40 @@ class CalendarRepository {
       .select(
         "m.id",
         "m.event_id",
+        "m.status",
+        "m.match_status",
         "m.match_date",
         "m.match_time",
+        "m.started_at",
         "m.finished_at",
         "m.team_id",
         "m.age_group_id",
+        this.db.raw(
+          "EXISTS (SELECT 1 FROM match_tactics mt WHERE mt.match_id = m.id) as has_tactics",
+        ),
+        this.db.raw(
+          "(SELECT COUNT(*) FROM match_squads ms WHERE ms.match_id = m.id)::int as squad_count",
+        ),
+        this.db.raw(
+          "(SELECT COUNT(*) FROM match_attendance ma WHERE ma.match_id = m.id)::int as attendance_count",
+        ),
       );
+  }
+
+  async findAutoFinishCandidateAcademyIds() {
+    return this.db("matches as m")
+      .join("calendar_events as ce", "m.event_id", "ce.id")
+      .whereNull("m.deleted_at")
+      .whereNull("ce.deleted_at")
+      .whereIn("m.status", ["scheduled", "postponed"])
+      .whereIn("m.match_status", [
+        "scheduled",
+        "first_half",
+        "second_half",
+        "finished",
+      ])
+      .whereRaw("m.match_date <= CURRENT_DATE")
+      .distinct("ce.academy_id");
   }
 
   async findMatchForHardDelete(matchId, academyId) {
@@ -987,7 +1020,15 @@ class CalendarRepository {
     return this.db("friendly_match_requests as fmr")
       .join("coach_profiles as cp", "fmr.coach_id", "cp.id")
       .leftJoin("academy_groups as ag", "fmr.team_id", "ag.id")
+      .leftJoin("matches as converted_match", "fmr.converted_match_id", "converted_match.id")
       .where("cp.academy_id", academyId)
+      .where((linked) => {
+        linked.whereNull("fmr.converted_match_id").orWhere((activeMatch) => {
+          activeMatch
+            .whereNotNull("converted_match.id")
+            .whereNull("converted_match.deleted_at");
+        });
+      })
       .modify((q) => {
         if (filters.coachId) q.where("fmr.coach_id", filters.coachId);
         if (filters.status) q.where("fmr.status", filters.status);
@@ -1090,12 +1131,21 @@ class CalendarRepository {
     return this.db("admin_match_coach_requests as amcr")
       .join("coach_profiles as cp", "amcr.coach_id", "cp.id")
       .leftJoin("academy_groups as ag", "amcr.selected_group_id", "ag.id")
+      .leftJoin("matches as accepted_match", "amcr.created_match_id", "accepted_match.id")
       .leftJoin(
         "academy_birth_years as aby",
         "amcr.selected_birth_year_id",
         "aby.id",
       )
       .where("amcr.academy_id", academyId)
+      .where((linked) => {
+        linked.where("amcr.status", "<>", "accepted").orWhere((activeMatch) => {
+          activeMatch
+            .whereNotNull("amcr.created_match_id")
+            .whereNotNull("accepted_match.id")
+            .whereNull("accepted_match.deleted_at");
+        });
+      })
       .modify((q) => {
         if (filters.coachId) q.where("amcr.coach_id", filters.coachId);
         if (filters.status) q.where("amcr.status", filters.status);
@@ -1112,9 +1162,96 @@ class CalendarRepository {
       .orderBy("amcr.created_at", "desc");
   }
 
+  async deleteStaleMatchRequests(academyId) {
+    await this.db.raw(
+      `
+        DELETE FROM friendly_match_requests fmr
+        USING coach_profiles cp
+        WHERE fmr.coach_id = cp.id
+          AND cp.academy_id = ?
+          AND fmr.converted_match_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM matches m
+            WHERE m.id = fmr.converted_match_id
+              AND m.deleted_at IS NULL
+          )
+      `,
+      [academyId],
+    );
+
+    await this.db.raw(
+      `
+        DELETE FROM admin_match_coach_requests amcr
+        WHERE amcr.academy_id = ?
+          AND amcr.status = 'accepted'
+          AND (
+            amcr.created_match_id IS NULL
+            OR NOT EXISTS (
+              SELECT 1
+              FROM matches m
+              WHERE m.id = amcr.created_match_id
+                AND m.deleted_at IS NULL
+            )
+          )
+      `,
+      [academyId],
+    );
+  }
+
   findAdminMatchCoachRequestById(requestId, academyId) {
     return this.adminMatchCoachRequestsQuery(academyId, {})
       .where("amcr.id", requestId)
+      .first();
+  }
+
+  evaluationEditRequestsQuery(academyId, filters = {}) {
+    return this.db("match_evaluation_edit_requests as meer")
+      .join("matches as m", "meer.match_id", "m.id")
+      .join("coach_profiles as cp", "meer.coach_id", "cp.id")
+      .where("meer.academy_id", academyId)
+      .whereNull("m.deleted_at")
+      .modify((q) => {
+        if (filters.status) q.where("meer.status", filters.status);
+        if (filters.coachId) q.where("meer.coach_id", filters.coachId);
+        if (filters.matchId) q.where("meer.match_id", filters.matchId);
+      })
+      .select(
+        "meer.*",
+        "cp.full_name as coach_name",
+        "cp.user_id as coach_user_id",
+        "m.opponent_name",
+        "m.match_date",
+        "m.match_time",
+        "m.evaluations_finalized_at",
+      )
+      .orderBy("meer.created_at", "desc");
+  }
+
+  findEvaluationEditRequestById(requestId, academyId) {
+    return this.evaluationEditRequestsQuery(academyId, {})
+      .where("meer.id", requestId)
+      .first();
+  }
+
+  latestEvaluationEditRequest(matchId, coachId) {
+    return this.db("match_evaluation_edit_requests as meer")
+      .where("meer.match_id", matchId)
+      .where("meer.coach_id", coachId)
+      .orderBy("meer.created_at", "desc")
+      .first();
+  }
+
+  activeEvaluationEditRequest(matchId, coachId, trx = this.db) {
+    return trx("match_evaluation_edit_requests")
+      .where({
+        match_id: matchId,
+        coach_id: coachId,
+        status: "approved",
+      })
+      .whereNull("consumed_at")
+      .where("expires_at", ">", trx.fn.now())
+      .orderBy("approved_at", "desc")
       .first();
   }
 

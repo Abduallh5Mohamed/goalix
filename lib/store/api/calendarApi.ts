@@ -94,6 +94,7 @@ export interface CalendarEvent {
 export interface Match {
   id: string;
   event_id: string | null;
+  academy_settings?: Record<string, unknown> | null;
   team_id: string | null;
   age_group_id: string | null;
   team_name?: string | null;
@@ -115,6 +116,8 @@ export interface Match {
   finished_at?: string | null;
   evaluations_finalized_at?: string | null;
   evaluations_finalized_by_coach_id?: string | null;
+  evaluation_edit_request?: MatchEvaluationEditRequest | null;
+  evaluation_edit_unlocked_until?: string | null;
   organizer_notes: string | null;
   match_notes: string | null;
   our_score: number | null;
@@ -127,6 +130,7 @@ export interface Match {
     toYear: number;
   }>;
   squad?: MatchSquad[];
+  evaluation_candidates?: MatchEvaluationCandidate[];
   tactics?: MatchTactics | null;
   attendance?: MatchAttendance[];
   stats?: MatchPlayerStats[];
@@ -146,6 +150,33 @@ export interface MatchSquad {
   shirt_number: number | null;
   player_instruction?: string | null;
   profile_status?: "incomplete" | "complete";
+}
+
+export type MatchEvaluationCandidate = MatchSquad & {
+  is_target_fallback?: boolean;
+};
+
+export interface MatchEvaluationEditRequest {
+  id: string;
+  academy_id: string;
+  match_id: string;
+  coach_id: string;
+  requested_by_user_id: string | null;
+  reviewed_by_admin_id: string | null;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+  admin_response: string | null;
+  approved_at: string | null;
+  expires_at: string | null;
+  consumed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  coach_name?: string | null;
+  coach_user_id?: string | null;
+  opponent_name?: string | null;
+  match_date?: string | null;
+  match_time?: string | null;
+  evaluations_finalized_at?: string | null;
 }
 
 export interface MatchTactics {
@@ -196,6 +227,7 @@ export interface MatchPlayerStats {
   technical_rating?: string | number | null;
   tactical_rating?: string | number | null;
   physical_rating?: string | number | null;
+  fatigue_rating?: string | number | null;
   mentality_rating?: string | number | null;
   decision_making_rating?: string | number | null;
   work_rate_rating?: string | number | null;
@@ -325,6 +357,144 @@ export interface CoachPlayer {
   group_id: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
+  customProfile?: Array<{
+    label: string;
+    key: string;
+    fieldType: string;
+    value: unknown;
+  }>;
+}
+
+export type PlayerProfile = CoachPlayer &
+  Record<string, unknown> & {
+    player_code?: string | null;
+    photo_url?: string | null;
+    branch_name?: string | null;
+    group_name?: string | null;
+    account_phone?: string | null;
+    profile_completed_at?: string | null;
+    date_joined?: string | null;
+    created_at?: string | null;
+    latestMeasurement?: Record<string, unknown> | null;
+    height_cm?: string | number | null;
+    weight_kg?: string | number | null;
+  };
+
+export interface PlayerProgress {
+  playerId: string;
+  playerName: string;
+  attendancePercentage: number;
+  trainingAttendancePercentage?: number;
+  matchAttendancePercentage?: number;
+  trainingsAttended: number;
+  trainingsRecorded?: number;
+  matchesPlayed: number;
+  matchesAttended?: number;
+  matchesRecorded?: number;
+  averageTrainingRating: number;
+  averageMatchRating: number;
+  goals: number;
+  assists: number;
+  weeklyMinutesPlayed: number;
+  weeklyMatchesPlayed: number;
+  weekStart: string | null;
+  weekEnd: string | null;
+  disciplineRecord: {
+    yellowCards: number;
+    redCards: number;
+  };
+  attendanceTotals?: {
+    total: number;
+    attended: number;
+    trainingTotal: number;
+    trainingAttended: number;
+    matchTotal: number;
+    matchAttended: number;
+  };
+  monthlyProgressSummary: string;
+}
+
+export interface PlayerAttendanceRecord {
+  id: string;
+  record_type?: "training" | "match";
+  source_id?: string;
+  event_id?: string | null;
+  match_id?: string | null;
+  player_id: string;
+  player_name?: string;
+  status: TrainingAttendance["status"] | MatchAttendance["status"];
+  arrival_time?: string | null;
+  reason?: string | null;
+  notes: string | null;
+  title?: string;
+  event_type?: CalendarEventType;
+  start_datetime?: string;
+  opponent_name?: string | null;
+  match_date?: string | null;
+  match_time?: string | null;
+  location?: string | null;
+}
+
+export type PlayerEvaluationRecord = TrainingEvaluation & {
+  title?: string;
+  event_type?: CalendarEventType;
+  start_datetime?: string;
+};
+
+export interface NotificationRow {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  data?: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface InjuryRiskPainDiscomfortRecord {
+  id: string | null;
+  player_id: string;
+  player_name: string;
+  position: string | null;
+  group_id: string | null;
+  week_start: string;
+  week_end: string;
+  pain_or_discomfort: 0 | 1 | null;
+  recorded_by_coach_id: string | null;
+  updated_at: string | null;
+}
+
+export interface InjuryRiskModelInput {
+  player_id: string;
+  player_name: string;
+  age: number | null;
+  position: string;
+  attendance_rate: number;
+  training_sessions_per_week: number;
+  match_minutes_last_week: number;
+  fatigue_rating: number;
+  previous_injury: number;
+  pain_or_discomfort: number;
+}
+
+export interface InjuryRiskPrediction {
+  risk_percentage: number;
+  risk_level: "Low" | "Medium" | "High" | string;
+  alert_flag: boolean;
+  recommendation: string;
+}
+
+export interface InjuryRiskPredictionRecord {
+  player_id: string;
+  player_name: string;
+  position: string | null;
+  group_id: string | null;
+  analysis_id: string | null;
+  input: InjuryRiskModelInput | null;
+  prediction: InjuryRiskPrediction | null;
+  model_version: string | null;
+  created_at: string | null;
+  error?: string | null;
 }
 
 export interface CoachPlayerDetail {
@@ -399,6 +569,7 @@ export interface TrainingEvaluation {
   technical_rating: string | number | null;
   tactical_rating: string | number | null;
   physical_rating: string | number | null;
+  fatigue_rating?: string | number | null;
   mentality_rating: string | number | null;
   discipline_rating: string | number | null;
   teamwork_rating: string | number | null;
@@ -417,6 +588,7 @@ export interface TrainingEvaluation {
   coach_notes: string | null;
   improvement_plan: string | null;
   development_notes?: string | null;
+  visibility: "private" | "player_and_parent" | "admin_only";
 }
 
 export interface TrainingParticipant extends CoachPlayer {
@@ -561,6 +733,9 @@ export const calendarApi = createApi({
     "CustomData",
     "PlayerCustomProfile",
     "Reports",
+    "InjuryRiskInputs",
+    "Notifications",
+    "EvaluationEditRequests",
   ],
   endpoints: (builder) => ({
     getAdminCalendarEvents: builder.query<
@@ -593,6 +768,25 @@ export const calendarApi = createApi({
       }),
       transformResponse: (res: { data: CalendarEvent }) => res.data,
       invalidatesTags: ["CalendarEvents"],
+    }),
+    hardDeleteAdminTrainingEvent: builder.mutation<
+      { message: string; affectedPlayers: number },
+      string
+    >({
+      query: (id) => ({
+        url: `/admin/calendar-events/${id}/hard-delete-training`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: {
+        data: { message: string; affectedPlayers: number };
+      }) => res.data,
+      invalidatesTags: [
+        "CalendarEvents",
+        "CoachPlayers",
+        "Reports",
+        "InjuryRiskInputs",
+        "Notifications",
+      ],
     }),
     getAdminMatches: builder.query<
       PaginatedResponse<Match>,
@@ -642,6 +836,46 @@ export const calendarApi = createApi({
       }),
       transformResponse: (res: { data: AdminCoachMatchRequest }) => res.data,
       invalidatesTags: ["FriendlyRequests"],
+    }),
+    getAdminEvaluationEditRequests: builder.query<
+      PaginatedResponse<MatchEvaluationEditRequest>,
+      { status?: MatchEvaluationEditRequest["status"]; page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.status) params.set("status", args.status);
+        return `/admin/evaluation-edit-requests?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<MatchEvaluationEditRequest>) =>
+        toPaginated(res),
+      providesTags: ["EvaluationEditRequests"],
+    }),
+    approveEvaluationEditRequest: builder.mutation<
+      MatchEvaluationEditRequest,
+      { id: string; adminResponse?: string }
+    >({
+      query: ({ id, adminResponse }) => ({
+        url: `/admin/evaluation-edit-requests/${id}/approve`,
+        method: "PATCH",
+        body: { adminResponse },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["EvaluationEditRequests", "Matches", "Notifications"],
+    }),
+    rejectEvaluationEditRequest: builder.mutation<
+      MatchEvaluationEditRequest,
+      { id: string; adminResponse?: string }
+    >({
+      query: ({ id, adminResponse }) => ({
+        url: `/admin/evaluation-edit-requests/${id}/reject`,
+        method: "PATCH",
+        body: { adminResponse },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["EvaluationEditRequests", "Notifications"],
     }),
     updateAdminMatch: builder.mutation<
       Match,
@@ -788,6 +1022,49 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: CoachPlayerDetail }) => res.data,
       providesTags: ["CoachPlayers", "Matches", "CalendarEvents"],
     }),
+    getInjuryRiskPainDiscomfort: builder.query<
+      InjuryRiskPainDiscomfortRecord[],
+      void
+    >({
+      query: () => "/coach/injury-risk/pain-discomfort",
+      transformResponse: (res: { data: InjuryRiskPainDiscomfortRecord[] }) =>
+        res.data,
+      providesTags: ["InjuryRiskInputs"],
+    }),
+    upsertInjuryRiskPainDiscomfort: builder.mutation<
+      InjuryRiskPainDiscomfortRecord[],
+      { records: Array<{ playerId: string; painOrDiscomfort: 0 | 1 }> }
+    >({
+      query: (body) => ({
+        url: "/coach/injury-risk/pain-discomfort",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: InjuryRiskPainDiscomfortRecord[] }) =>
+        res.data,
+      invalidatesTags: ["InjuryRiskInputs"],
+    }),
+    getInjuryRiskPredictions: builder.query<
+      InjuryRiskPredictionRecord[],
+      void
+    >({
+      query: () => "/coach/injury-risk/predictions",
+      transformResponse: (res: { data: InjuryRiskPredictionRecord[] }) =>
+        res.data,
+      providesTags: ["InjuryRiskInputs"],
+    }),
+    runInjuryRiskPredictions: builder.mutation<
+      InjuryRiskPredictionRecord[],
+      void
+    >({
+      query: () => ({
+        url: "/coach/injury-risk/predictions/run",
+        method: "POST",
+      }),
+      transformResponse: (res: { data: InjuryRiskPredictionRecord[] }) =>
+        res.data,
+      invalidatesTags: ["InjuryRiskInputs"],
+    }),
     createCoachBasicPlayer: builder.mutation<
       CoachPlayer,
       Record<string, unknown>
@@ -893,6 +1170,18 @@ export const calendarApi = createApi({
       query: (id) => `/coach/matches/${id}`,
       transformResponse: (res: { data: Match }) => res.data,
       providesTags: ["Matches"],
+    }),
+    requestMatchEvaluationEdit: builder.mutation<
+      MatchEvaluationEditRequest,
+      { matchId: string; reason?: string }
+    >({
+      query: ({ matchId, reason }) => ({
+        url: `/coach/matches/${matchId}/evaluation-edit-requests`,
+        method: "POST",
+        body: { reason },
+      }),
+      transformResponse: (res: { data: MatchEvaluationEditRequest }) => res.data,
+      invalidatesTags: ["Matches", "EvaluationEditRequests", "Notifications"],
     }),
     upsertMatchSquad: builder.mutation<
       MatchSquad[],
@@ -1300,6 +1589,68 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: PlayerCustomProfile }) => res.data,
       invalidatesTags: ["PlayerCustomProfile", "CoachPlayers"],
     }),
+    getPlayerProfile: builder.query<PlayerProfile, void>({
+      query: () => "/player/profile",
+      transformResponse: (res: { data: PlayerProfile }) => res.data,
+      providesTags: ["CoachPlayers"],
+    }),
+    getPlayerProgress: builder.query<PlayerProgress, void>({
+      query: () => "/player/progress",
+      transformResponse: (res: { data: PlayerProgress }) => res.data,
+      providesTags: ["CalendarEvents", "Matches"],
+    }),
+    getPlayerAttendance: builder.query<
+      PaginatedResponse<PlayerAttendanceRecord>,
+      void
+    >({
+      query: () => "/player/attendance?limit=100",
+      transformResponse: (res: ApiListResponse<PlayerAttendanceRecord>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents"],
+    }),
+    getPlayerEvaluations: builder.query<
+      PaginatedResponse<PlayerEvaluationRecord>,
+      void
+    >({
+      query: () => "/player/evaluations?limit=100",
+      transformResponse: (res: ApiListResponse<PlayerEvaluationRecord>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents"],
+    }),
+    getPlayerTrainings: builder.query<
+      PaginatedResponse<CalendarEvent>,
+      void
+    >({
+      query: () => "/player/trainings?limit=100",
+      transformResponse: (res: ApiListResponse<CalendarEvent>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents"],
+    }),
+    getNotifications: builder.query<PaginatedResponse<NotificationRow>, void>({
+      query: () => "/notifications?limit=20",
+      transformResponse: (res: ApiListResponse<NotificationRow>) =>
+        toPaginated(res),
+      providesTags: ["Notifications"],
+    }),
+    getUnreadNotificationsCount: builder.query<number, void>({
+      query: () => "/notifications/unread-count",
+      transformResponse: (res: { data: { unread: number } }) =>
+        res.data.unread,
+      providesTags: ["Notifications"],
+    }),
+    markNotificationRead: builder.mutation<NotificationRow, string>({
+      query: (id) => ({ url: `/notifications/${id}/read`, method: "PATCH" }),
+      transformResponse: (res: { data: NotificationRow }) => res.data,
+      invalidatesTags: ["Notifications"],
+    }),
+    markAllNotificationsRead: builder.mutation<
+      { markedRead: number },
+      void
+    >({
+      query: () => ({ url: "/notifications/read-all", method: "PATCH" }),
+      transformResponse: (res: { data: { markedRead: number } }) => res.data,
+      invalidatesTags: ["Notifications"],
+    }),
     getPlayerMatches: builder.query<PaginatedResponse<Match>, void>({
       query: () => "/player/matches?limit=100",
       transformResponse: (res: ApiListResponse<Match>) => toPaginated(res),
@@ -1335,11 +1686,15 @@ export const calendarApi = createApi({
 export const {
   useGetAdminCalendarEventsQuery,
   useCreateAdminCalendarEventMutation,
+  useHardDeleteAdminTrainingEventMutation,
   useGetAdminMatchesQuery,
   useGetAdminMatchQuery,
   useCreateAdminMatchMutation,
   useGetAdminCoachMatchRequestsQuery,
   useCreateAdminCoachMatchRequestMutation,
+  useGetAdminEvaluationEditRequestsQuery,
+  useApproveEvaluationEditRequestMutation,
+  useRejectEvaluationEditRequestMutation,
   useUpdateAdminMatchMutation,
   useUpdateAdminMatchStatusMutation,
   usePostponeAdminMatchMutation,
@@ -1353,6 +1708,10 @@ export const {
   useGetCoachGroupsScopedQuery,
   useGetCoachPlayersScopedQuery,
   useGetCoachPlayerDetailQuery,
+  useGetInjuryRiskPainDiscomfortQuery,
+  useUpsertInjuryRiskPainDiscomfortMutation,
+  useGetInjuryRiskPredictionsQuery,
+  useRunInjuryRiskPredictionsMutation,
   useCreateCoachBasicPlayerMutation,
   useUploadCoachPlayerImageMutation,
   useCompleteCoachPlayerProfileMutation,
@@ -1364,6 +1723,7 @@ export const {
   useUpsertTrainingEvaluationsMutation,
   useGetCoachMatchesQuery,
   useGetCoachMatchQuery,
+  useRequestMatchEvaluationEditMutation,
   useUpsertMatchSquadMutation,
   useUpdateMatchSquadPlayerMutation,
   useDeleteMatchSquadPlayerMutation,
@@ -1396,6 +1756,15 @@ export const {
   useDeleteCustomCategoryMutation,
   useGetCoachPlayerCustomProfileQuery,
   useSaveCoachPlayerCustomProfileMutation,
+  useGetPlayerProfileQuery,
+  useGetPlayerProgressQuery,
+  useGetPlayerAttendanceQuery,
+  useGetPlayerEvaluationsQuery,
+  useGetPlayerTrainingsQuery,
+  useGetNotificationsQuery,
+  useGetUnreadNotificationsCountQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
   useGetPlayerMatchesQuery,
   useGetPlayerCalendarEventsQuery,
   useGetParentChildMatchesQuery,

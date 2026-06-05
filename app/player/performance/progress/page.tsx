@@ -1,53 +1,89 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart } from "@/components/charts/LineChart";
 import { BarChart } from "@/components/charts/BarChart";
-import { mockEvaluations, mockMeasurements, mockPlayers } from "@/lib/mock-data";
+import {
+  useGetPlayerEvaluationsQuery,
+  useGetPlayerProgressQuery,
+} from "@/lib/store/api/calendarApi";
+import type { PlayerEvaluationRecord } from "@/lib/store/api/calendarApi";
 import { formatDate } from "@/lib/utils";
 
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const ratingPercent = (value: unknown) => {
+  const rating = numberValue(value);
+  return rating === null ? 0 : Math.max(0, Math.min(100, rating * 10));
+};
+
+const formatRating = (value: unknown) => {
+  const rating = numberValue(value);
+  if (rating === null) return "N/A";
+  return Number.isInteger(rating) ? String(rating) : rating.toFixed(1);
+};
+
+const evaluationTimestamp = (evaluation: PlayerEvaluationRecord) => {
+  const timestamp = Date.parse(evaluation.start_datetime ?? "");
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const chartPoint = (
+  evaluation: PlayerEvaluationRecord,
+  key: keyof PlayerEvaluationRecord,
+) => ({
+  label: formatDate(evaluation.start_datetime ?? "").split(",")[0],
+  value: ratingPercent(evaluation[key]),
+});
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
+      {text}
+    </div>
+  );
+}
+
 export default function PlayerProgressPage() {
-  const player = mockPlayers.find((p) => p.id === "p1")!;
-  const evaluations = mockEvaluations
-    .filter((e) => e.playerId === "p1")
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const measurements = mockMeasurements
-    .filter((m) => m.playerId === "p1")
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const overallData = evaluations.map((e) => ({
-    label: formatDate(e.date).split(",")[0],
-    value: e.overallScore * 10,
-  }));
-
-  const technicalData = evaluations.map((e) => ({
-    label: formatDate(e.date).split(",")[0],
-    value: e.technicalScore * 10,
-  }));
-
-  const tacticalData = evaluations.map((e) => ({
-    label: formatDate(e.date).split(",")[0],
-    value: e.tacticalScore * 10,
-  }));
-
-  const physicalData = evaluations.map((e) => ({
-    label: formatDate(e.date).split(",")[0],
-    value: e.physicalScore * 10,
-  }));
-
-  const mentalData = evaluations.map((e) => ({
-    label: formatDate(e.date).split(",")[0],
-    value: e.mentalScore * 10,
-  }));
-
+  const evaluationsQuery = useGetPlayerEvaluationsQuery();
+  const progressQuery = useGetPlayerProgressQuery();
+  const evaluations = (evaluationsQuery.data?.data ?? [])
+    .slice()
+    .sort((a, b) => evaluationTimestamp(a) - evaluationTimestamp(b));
   const latestEval = evaluations[evaluations.length - 1];
-  const radarData = latestEval
+  const isLoading = evaluationsQuery.isLoading || progressQuery.isLoading;
+
+  const overallData = evaluations.map((evaluation) =>
+    chartPoint(evaluation, "overall_rating"),
+  );
+  const technicalData = evaluations.map((evaluation) =>
+    chartPoint(evaluation, "technical_rating"),
+  );
+  const tacticalData = evaluations.map((evaluation) =>
+    chartPoint(evaluation, "tactical_rating"),
+  );
+  const physicalData = evaluations.map((evaluation) =>
+    chartPoint(evaluation, "physical_rating"),
+  );
+  const mentalData = evaluations.map((evaluation) =>
+    chartPoint(evaluation, "mentality_rating"),
+  );
+  const breakdownData = latestEval
     ? [
-        { label: "Technical", value: latestEval.technicalScore * 10 },
-        { label: "Tactical", value: latestEval.tacticalScore * 10 },
-        { label: "Physical", value: latestEval.physicalScore * 10 },
-        { label: "Mental", value: latestEval.mentalScore * 10 },
+        { label: "Technical", value: ratingPercent(latestEval.technical_rating) },
+        { label: "Tactical", value: ratingPercent(latestEval.tactical_rating) },
+        { label: "Physical", value: ratingPercent(latestEval.physical_rating) },
+        { label: "Mentality", value: ratingPercent(latestEval.mentality_rating) },
+        { label: "Teamwork", value: ratingPercent(latestEval.teamwork_rating) },
       ]
     : [];
 
@@ -55,7 +91,7 @@ export default function PlayerProgressPage() {
     <div className="space-y-6">
       <PageHeader
         title="Progress Chart"
-        description="Track your performance over time"
+        description="Track your backend training evaluations over time."
         breadcrumbs={[
           { label: "Home", href: "/player/home" },
           { label: "Performance" },
@@ -63,136 +99,189 @@ export default function PlayerProgressPage() {
         ]}
       />
 
-      {/* Overall Score Trend */}
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">
-            Overall Score Trend
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LineChart
-            labels={overallData.map((d) => d.label)}
-            datasets={[{ label: "Overall Score", data: overallData.map((d) => d.value), color: "#22d3ee" }]}
-            height={300}
-          />
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <Card className="border-white/10 bg-white/[0.045] shadow-none">
+          <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading progress...
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">
+                  Training Attendance
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-lime-100">
+                  {Math.round(progressQuery.data?.trainingAttendancePercentage ?? 0)}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">
+                  Avg Training
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-cyan-100">
+                  {formatRating(progressQuery.data?.averageTrainingRating)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">
+                  Avg Match
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-amber-100">
+                  {formatRating(progressQuery.data?.averageMatchRating)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold uppercase text-slate-500">
+                  Goals / Assists
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-white">
+                  {progressQuery.data?.goals ?? 0}/{progressQuery.data?.assists ?? 0}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Skill Breakdown */}
-      {latestEval && (
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Latest Skill Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart
-              labels={radarData.map((d) => d.label)}
-              datasets={[{ label: "Score", data: radarData.map((d) => d.value), color: "#3ddc84" }]}
-              height={250}
-            />
-          </CardContent>
-        </Card>
-      )}
+          {evaluations.length ? (
+            <>
+              <Card className="border-white/10 bg-white/[0.045] shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    Overall Score Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LineChart
+                    labels={overallData.map((item) => item.label)}
+                    datasets={[
+                      {
+                        label: "Overall Score",
+                        data: overallData.map((item) => item.value),
+                        color: "#22d3ee",
+                      },
+                    ]}
+                    height={300}
+                  />
+                </CardContent>
+              </Card>
 
-      {/* Category Trends */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              ⚽ Technical
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart
-              labels={technicalData.map((d) => d.label)}
-              datasets={[{ label: "Technical", data: technicalData.map((d) => d.value), color: "#22d3ee" }]}
-              height={200}
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              🧠 Tactical
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart
-              labels={tacticalData.map((d) => d.label)}
-              datasets={[{ label: "Tactical", data: tacticalData.map((d) => d.value), color: "#3ddc84" }]}
-              height={200}
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              💪 Physical
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart
-              labels={physicalData.map((d) => d.label)}
-              datasets={[{ label: "Physical", data: physicalData.map((d) => d.value), color: "#f59e0b" }]}
-              height={200}
-            />
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              🎯 Mental
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart
-              labels={mentalData.map((d) => d.label)}
-              datasets={[{ label: "Mental", data: mentalData.map((d) => d.value), color: "#a855f7" }]}
-              height={200}
-            />
-          </CardContent>
-        </Card>
-      </div>
+              {latestEval && (
+                <Card className="border-white/10 bg-white/[0.045] shadow-none">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">
+                      Latest Skill Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BarChart
+                      labels={breakdownData.map((item) => item.label)}
+                      datasets={[
+                        {
+                          label: "Score",
+                          data: breakdownData.map((item) => item.value),
+                          color: "#3ddc84",
+                        },
+                      ]}
+                      height={250}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
-      {/* Coach Feedback History */}
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">
-            Coach Feedback
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {evaluations
-            .slice()
-            .reverse()
-            .map((ev) => (
-              <div
-                key={ev.id}
-                className="rounded-lg border border-border/30 bg-muted/20 p-4"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{ev.coachName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(ev.date)}
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-primary">
-                    {ev.overallScore}
-                  </p>
-                </div>
-                {ev.notes && (
-                  <p className="text-sm text-muted-foreground italic">
-                    &quot;{ev.notes}&quot;
-                  </p>
-                )}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {[
+                  ["Technical", technicalData, "#22d3ee"],
+                  ["Tactical", tacticalData, "#3ddc84"],
+                  ["Physical", physicalData, "#f59e0b"],
+                  ["Mentality", mentalData, "#a855f7"],
+                ].map(([label, data, color]) => {
+                  const points = data as typeof technicalData;
+                  return (
+                    <Card
+                      key={label as string}
+                      className="border-white/10 bg-white/[0.045] shadow-none"
+                    >
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold">
+                          {label as string}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <LineChart
+                          labels={points.map((item) => item.label)}
+                          datasets={[
+                            {
+                              label: label as string,
+                              data: points.map((item) => item.value),
+                              color: color as string,
+                            },
+                          ]}
+                          height={200}
+                        />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-            ))}
-        </CardContent>
-      </Card>
+
+              <Card className="border-white/10 bg-white/[0.045] shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    Coach Feedback
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {evaluations
+                    .slice()
+                    .reverse()
+                    .map((evaluation) => (
+                      <div
+                        key={evaluation.id}
+                        className="rounded-lg border border-white/10 bg-white/[0.035] p-4"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {evaluation.title || "Training evaluation"}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {formatDate(evaluation.start_datetime ?? "")}
+                            </p>
+                          </div>
+                          <p className="text-xl font-bold text-cyan-200">
+                            {formatRating(evaluation.overall_rating)}
+                          </p>
+                        </div>
+                        {(evaluation.coach_notes ||
+                          evaluation.development_notes ||
+                          evaluation.improvement_plan) && (
+                          <p className="text-sm italic text-slate-300">
+                            &quot;
+                            {evaluation.coach_notes ||
+                              evaluation.development_notes ||
+                              evaluation.improvement_plan}
+                            &quot;
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <EmptyState text="No backend evaluations have been published for you yet." />
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ const AiRepository = require('./modules/ai/ai.repository');
 const AdminRepository = require('./modules/admin/admin.repository');
 const CalendarRepository = require('./modules/calendar/calendar.repository');
 const CustomDataRepository = require('./modules/custom-data/custom-data.repository');
+const ChatRepository = require('./modules/chat/chat.repository');
 
 // ─── Services ─────────────────────────────────────────────────────────
 const AuthService = require('./modules/auth/auth.service');
@@ -46,6 +47,7 @@ const AiService = require('./modules/ai/ai.service');
 const AdminService = require('./modules/admin/admin.service');
 const CalendarService = require('./modules/calendar/calendar.service');
 const CustomDataService = require('./modules/custom-data/custom-data.service');
+const ChatService = require('./modules/chat/chat.service');
 
 // ─── Controllers ──────────────────────────────────────────────────────
 const AuthController = require('./modules/auth/auth.controller');
@@ -60,6 +62,7 @@ const AiController = require('./modules/ai/ai.controller');
 const AdminController = require('./modules/admin/admin.controller');
 const CalendarController = require('./modules/calendar/calendar.controller');
 const CustomDataController = require('./modules/custom-data/custom-data.controller');
+const ChatController = require('./modules/chat/chat.controller');
 
 // ─── Routes ───────────────────────────────────────────────────────────
 const authRoutes = require('./modules/auth/auth.routes');
@@ -73,6 +76,7 @@ const notificationsRoutes = require('./modules/notifications/notifications.route
 const aiRoutes = require('./modules/ai/ai.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const customDataRoutes = require('./modules/custom-data/custom-data.routes');
+const chatRoutes = require('./modules/chat/chat.routes');
 const {
     adminCalendarRoutes,
     coachCalendarRoutes,
@@ -93,6 +97,7 @@ const aiRepo = new AiRepository(db);
 const adminRepo = new AdminRepository(db);
 const calendarRepo = new CalendarRepository(db);
 const customDataRepo = new CustomDataRepository(db);
+const chatRepo = new ChatRepository(db);
 
 // ─── DI: wire services ───────────────────────────────────────────────
 const authService = new AuthService(authRepo, redis);
@@ -108,6 +113,7 @@ const aiService = new AiService(aiRepo, aiQueue);
 const adminService = new AdminService(adminRepo);
 const customDataService = new CustomDataService(customDataRepo);
 const calendarService = new CalendarService(calendarRepo, playersService, customDataService);
+const chatService = new ChatService(chatRepo);
 
 // ─── DI: wire controllers ────────────────────────────────────────────
 const authController = new AuthController(authService, totpService);
@@ -122,11 +128,13 @@ const aiController = new AiController(aiService);
 const adminController = new AdminController(adminService);
 const calendarController = new CalendarController(calendarService);
 const customDataController = new CustomDataController(customDataService);
+const chatController = new ChatController(chatService);
 
 // ═══════════════════════════════════════════════════════════════════════
 //  Express App
 // ═══════════════════════════════════════════════════════════════════════
 const app = express();
+app.locals.services = { chatService };
 
 if (process.env.NODE_ENV !== 'test') {
     const matchDayInterval = setInterval(() => {
@@ -135,6 +143,29 @@ if (process.env.NODE_ENV !== 'test') {
             .catch((err) => logger.error({ err }, 'Match day notification scan failed'));
     }, 60 * 1000);
     matchDayInterval.unref?.();
+
+    const runWeeklyInjuryRisk = () => {
+        calendarService
+            .runWeeklyInjuryRiskAutomation()
+            .then((summary) => {
+                if (summary.skipped) {
+                    logger.debug({ summary }, 'Weekly injury risk automation skipped');
+                    return;
+                }
+                logger.info({ summary }, 'Weekly injury risk automation completed');
+            })
+            .catch((err) => logger.error({ err }, 'Weekly injury risk automation failed'));
+    };
+    const injuryRiskInitialDelay = Number(
+        process.env.INJURY_RISK_WEEKLY_INITIAL_DELAY_MS || 30 * 1000,
+    );
+    const injuryRiskInterval = Number(
+        process.env.INJURY_RISK_WEEKLY_SCAN_INTERVAL_MS || 60 * 60 * 1000,
+    );
+    const injuryRiskTimeout = setTimeout(runWeeklyInjuryRisk, injuryRiskInitialDelay);
+    const injuryRiskWeeklyInterval = setInterval(runWeeklyInjuryRisk, injuryRiskInterval);
+    injuryRiskTimeout.unref?.();
+    injuryRiskWeeklyInterval.unref?.();
 }
 
 // Trust first proxy so req.ip reflects the real client IP (needed for
@@ -185,6 +216,7 @@ const sensitiveAuditTargets = [
     { prefix: '/api/v1/coaches', entityType: 'coach' },
     { prefix: '/api/v1/payments', entityType: 'payment' },
     { prefix: '/api/v1/academy', entityType: 'academy_settings' },
+    { prefix: '/api/v1/chat', entityType: 'chat' },
 ];
 
 app.use((req, res, next) => {
@@ -225,21 +257,37 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/uploads/*', authMiddleware, (req, res, next) => {
-    const uploadsRoot = path.resolve(__dirname, '../uploads');
-    const requestedPath = path.resolve(uploadsRoot, req.params[0] || '');
+app.get('/uploads/*', authMiddleware, async (req, res, next) => {
+    try {
+        const uploadsRoot = path.resolve(__dirname, '../uploads');
+        const relativePath = req.params[0] || '';
+        const requestedPath = path.resolve(uploadsRoot, relativePath);
 
-    if (!requestedPath.startsWith(`${uploadsRoot}${path.sep}`)) {
-        return res.status(400).json({
-            success: false,
-            error: { code: 'INVALID_FILE_PATH', message: 'Invalid file path' },
+        if (!requestedPath.startsWith(`${uploadsRoot}${path.sep}`)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'INVALID_FILE_PATH', message: 'Invalid file path' },
+            });
+        }
+
+        if (relativePath.replace(/\\/g, '/').startsWith('chat/')) {
+            const attachmentUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+            const allowed = await chatService.canUserAccessAttachment(req.user, attachmentUrl);
+            if (!allowed) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: 'File not found' },
+                });
+            }
+        }
+
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        return res.sendFile(requestedPath, (err) => {
+            if (err) next(err);
         });
+    } catch (err) {
+        return next(err);
     }
-
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.sendFile(requestedPath, (err) => {
-        if (err) next(err);
-    });
 });
 
 // ─── API v1 Routes ────────────────────────────────────────────────────
@@ -252,6 +300,7 @@ app.use('/api/v1/rankings', rankingsRoutes(rankingsController));
 app.use('/api/v1/payments', paymentsRoutes(paymentsController));
 app.use('/api/v1/notifications', notificationsRoutes(notificationsController));
 app.use('/api/v1/ai', aiRoutes(aiController));
+app.use('/api/v1/chat', chatRoutes(chatController));
 app.use('/api/v1/admin', adminCalendarRoutes(calendarController));
 app.use('/api/v1/admin', customDataRoutes(customDataController, 'admin'));
 app.use('/api/v1/coach', coachCalendarRoutes(calendarController));
