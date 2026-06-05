@@ -78,9 +78,16 @@ const matchFriendlyLabel = (matchType: Match["match_type"]) =>
   matchType === "friendly" ? "Friendly" : "Not friendly";
 
 export default function AdminMatchesPage() {
-  const { data: matchesRes, isLoading } = useGetAdminMatchesQuery({
-    limit: 100,
-  });
+  const { data: matchesRes, isLoading } = useGetAdminMatchesQuery(
+    {
+      limit: 100,
+    },
+    {
+      pollingInterval: 15000,
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const { data: requestsRes } = useGetAdminFriendlyRequestsQuery();
   const { data: coachRequestsRes } = useGetAdminCoachMatchRequestsQuery();
   const { data: coachesRes } = useGetCoachesQuery({ limit: 100 });

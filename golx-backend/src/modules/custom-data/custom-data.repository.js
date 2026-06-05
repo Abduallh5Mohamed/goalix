@@ -122,7 +122,12 @@ class CustomDataRepository {
             .whereNull('cfo.deleted_at')
             .whereNull('cf.deleted_at')
             .whereNull('cc.deleted_at')
-            .select('cfo.*', 'cc.academy_id')
+            .select(
+                'cfo.*',
+                'cf.key as field_key',
+                'cf.label as field_label',
+                'cc.academy_id',
+            )
             .first();
     }
 

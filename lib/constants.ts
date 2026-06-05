@@ -56,6 +56,8 @@ export const RANKING_WEIGHTS = {
 export const NAV_ITEMS = {
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
+    { label: "Chats", href: "/admin/chat", icon: "MessageSquare" },
+    { label: "Requests", href: "/admin/requests", icon: "Inbox" },
     {
       label: "Academy",
       icon: "GraduationCap",
@@ -141,17 +143,12 @@ export const NAV_ITEMS = {
   ],
   coach: [
     { label: "Home", href: "/coach/home", icon: "Home" },
+    { label: "Chats", href: "/coach/chat", icon: "MessageSquare" },
+    { label: "Notifications", href: "/coach/notifications", icon: "Bell" },
     { label: "Players", href: "/coach/players", icon: "Users" },
     { label: "Birthdays", href: "/coach/birthdays", icon: "Cake" },
+    { label: "Calendar", href: "/coach/calendar", icon: "Calendar" },
     { label: "My Groups", href: "/coach/my-groups", icon: "Users" },
-    {
-      label: "Attendance",
-      icon: "ClipboardCheck",
-      children: [
-        { label: "Mark Attendance", href: "/coach/attendance/mark" },
-        { label: "History", href: "/coach/attendance/history" },
-      ],
-    },
     {
       label: "Evaluations",
       icon: "Star",
@@ -161,6 +158,7 @@ export const NAV_ITEMS = {
       ],
     },
     { label: "Measurements", href: "/coach/measurements", icon: "Ruler" },
+    { label: "Injury Risk AI", href: "/coach/injury-risk-ai", icon: "BrainCircuit" },
     { label: "Assignments", href: "/coach/assignments", icon: "ClipboardCheck" },
     {
       label: "Training",
@@ -174,8 +172,7 @@ export const NAV_ITEMS = {
       label: "Schedule",
       icon: "Calendar",
       children: [
-        { label: "My Calendar", href: "/coach/calendar" },
-        { label: "Calendar", href: "/coach/schedule" },
+        { label: "Sessions", href: "/coach/schedule" },
         { label: "Session Detail", href: "/coach/schedule/session" },
       ],
     },
@@ -194,6 +191,8 @@ export const NAV_ITEMS = {
   ],
   player: [
     { label: "Home", href: "/player/home", icon: "Home" },
+    { label: "Chats", href: "/player/chat", icon: "MessageSquare" },
+    { label: "Notifications", href: "/player/notifications", icon: "Bell" },
     { label: "Calendar", href: "/player/calendar", icon: "Calendar" },
     { label: "Matches", href: "/player/matches", icon: "Trophy" },
     {

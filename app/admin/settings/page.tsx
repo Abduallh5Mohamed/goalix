@@ -25,6 +25,7 @@ type AcademyDraft = {
   email?: string;
   phone?: string;
   address?: string;
+  matchDayOpenMinutesBeforeKickoff?: string;
 };
 
 function getApiErrorMessage(err: unknown, fallback: string) {
@@ -66,6 +67,10 @@ export default function AcademyProfilePage() {
   const email = academyDraft.email ?? academy?.email ?? "";
   const phone = academyDraft.phone ?? academy?.phone ?? "";
   const address = academyDraft.address ?? academy?.address ?? "";
+  const settings = academy?.settings ?? {};
+  const matchDayOpenMinutesBeforeKickoff =
+    academyDraft.matchDayOpenMinutesBeforeKickoff ??
+    String(settings.matchDayOpenMinutesBeforeKickoff ?? 5);
   const totpEnabled = Boolean(currentUser?.totpEnabled);
 
   const updateDraft = (field: keyof AcademyDraft, value: string) => {
@@ -74,7 +79,24 @@ export default function AcademyProfilePage() {
 
   const handleSave = async () => {
     try {
-      await updateAcademy({ name, email, phone, address }).unwrap();
+      const parsedMatchDayOpenMinutes = Number(
+        matchDayOpenMinutesBeforeKickoff,
+      );
+      const safeMatchDayOpenMinutes = Number.isFinite(
+        parsedMatchDayOpenMinutes,
+      )
+        ? Math.max(0, Math.min(240, Math.round(parsedMatchDayOpenMinutes)))
+        : 5;
+      await updateAcademy({
+        name,
+        email,
+        phone,
+        address,
+        settings: {
+          ...settings,
+          matchDayOpenMinutesBeforeKickoff: safeMatchDayOpenMinutes,
+        },
+      }).unwrap();
       setAcademyDraft({});
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
@@ -167,6 +189,25 @@ export default function AcademyProfilePage() {
               <div className="space-y-2">
                 <Label>Address</Label>
                 <Input value={address} onChange={(event) => updateDraft("address", event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="match-day-open-minutes">
+                  Match Day opens before kick-off
+                </Label>
+                <Input
+                  id="match-day-open-minutes"
+                  type="number"
+                  min={0}
+                  max={240}
+                  step={1}
+                  value={matchDayOpenMinutesBeforeKickoff}
+                  onChange={(event) =>
+                    updateDraft(
+                      "matchDayOpenMinutesBeforeKickoff",
+                      event.target.value,
+                    )
+                  }
+                />
               </div>
               <div className="flex items-center gap-3">
                 <Button className="gap-1.5" onClick={handleSave} disabled={saving}>

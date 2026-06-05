@@ -52,6 +52,32 @@ const trendIcons: Record<string, React.ElementType> = {
   declining: TrendingDown,
 };
 
+function customProfileValue(
+  player: { customProfile?: Array<{ key?: string; label?: string; value?: unknown }>; position?: string | null },
+  keys: string[],
+) {
+  const wanted = keys.map((key) => key.toLowerCase());
+  const field = player.customProfile?.find((item) => {
+    const key = String(item.key || "").toLowerCase();
+    const label = String(item.label || "").toLowerCase();
+    return wanted.includes(key) || wanted.includes(label);
+  });
+  return typeof field?.value === "string" && field.value.trim()
+    ? field.value.trim()
+    : "";
+}
+
+function scopedPlayerMainPosition(player: {
+  customProfile?: Array<{ key?: string; label?: string; value?: unknown }>;
+  position?: string | null;
+}) {
+  return (
+    customProfileValue(player, ["main_position", "main position"]) ||
+    player.position ||
+    "No main position"
+  );
+}
+
 export default function CoachGroupDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -192,10 +218,10 @@ export default function CoachGroupDetailPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Link href="/coach/attendance/mark">
+            <Link href="/coach/training">
               <Button size="sm">
                 <ClipboardCheck className="mr-1 h-4 w-4" />
-                Mark Attendance
+                Training Attendance
               </Button>
             </Link>
             <Link href="/coach/evaluations/new">
@@ -298,7 +324,7 @@ export default function CoachGroupDetailPage() {
                       <span>{player.full_name}</span>
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {player.position ?? "No position"}
+                      {scopedPlayerMainPosition(player)}
                     </span>
                   </label>
                 ))}
@@ -407,6 +433,7 @@ export default function CoachGroupDetailPage() {
             {players.map((player) => {
               const TrendIcon = trendIcons[player.trend] || Minus;
               const trendConfig = TREND_CONFIG[player.trend];
+              const mainPosition = player.mainPosition || player.position;
 
               return (
                 <div
@@ -425,7 +452,7 @@ export default function CoachGroupDetailPage() {
                     <div>
                       <p className="font-medium">{player.fullName}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{player.position}</span>
+                        <span>{mainPosition}</span>
                         <span>-</span>
                         <span>Age {player.age}</span>
                       </div>

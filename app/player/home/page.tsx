@@ -1,169 +1,538 @@
-﻿"use client";
+"use client";
 
-import Image from "next/image";
+import Link from "next/link";
+import { useMemo } from "react";
 import {
-  Activity,
-  Bed,
-  ChevronDown,
-  Cloud,
+  CalendarClock,
+  ChevronRight,
+  Clock,
   Dumbbell,
   Goal,
-  HeartPulse,
-  Medal,
-  Moon,
+  Loader2,
+  MapPin,
+  ShieldCheck,
   Star,
-  Target,
   Trophy,
   User,
-  Zap,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  useGetPlayerCalendarEventsQuery,
+  useGetPlayerEvaluationsQuery,
+  useGetPlayerMatchesQuery,
+  useGetPlayerProfileQuery,
+  useGetPlayerProgressQuery,
+  useGetPlayerTrainingsQuery,
+} from "@/lib/store/api/calendarApi";
+import type {
+  CalendarEvent,
+  Match,
+  MatchPlayerStats,
+  PlayerEvaluationRecord,
+  PlayerProfile,
+} from "@/lib/store/api/calendarApi";
+import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
-const metrics = [
-  { label: "Match Rating", value: "7.6", sub: "Last Match", trend: "+ 0.8" },
-  { label: "Training Readiness", value: "82%", sub: "Optimal", ring: true, color: "lime" },
-  { label: "Sprint Speed", value: "33.6", sub: "km/h", trend: "+ 1.2" },
-  { label: "Distance Covered", value: "10.8", sub: "km", trend: "+ 1.5" },
-  { label: "Recovery Score", value: "85%", sub: "Good", ring: true, color: "teal" },
-  { label: "Stamina", value: "91%", sub: "High", ring: true, color: "cyan" },
-];
+type BadgeVariant =
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "outline"
+  | "success"
+  | "warning"
+  | "info";
 
-const keyStats = [
-  ["Goals", "9"], ["Assists", "6"], ["Minutes Played", "1,173"], ["Shots on Target", "24"], ["Pass Completion", "82%"], ["Key Passes", "23"],
-];
+const closedStatuses = new Set(["completed", "finished", "cancelled"]);
 
-const wellness = [
-  { icon: Moon, label: "Sleep", value: "7.1 h", sub: "Good" },
-  { icon: HeartPulse, label: "HRV", value: "62 ms", sub: "Good" },
-  { icon: User, label: "Fatigue", value: "Low", sub: "Optimal" },
-];
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
 
-const schedule = [
-  { day: "Mon", date: "19 May", icon: Zap, title: "Recovery Session", done: true },
-  { day: "Tue", date: "20 May", icon: Target, title: "Speed Training", done: true },
-  { day: "Wed", date: "21 May", icon: Goal, title: "Technical Drills", done: true },
-  { day: "Thu", date: "22 May", icon: Dumbbell, title: "Strength Training", done: true },
-  { day: "Fri", date: "23 May", icon: Activity, title: "Tactical Session", done: true },
-  { day: "Sat", date: "24 May", icon: Trophy, title: "Match Preparation", done: false },
-  { day: "Sun", date: "25 May", icon: Bed, title: "Rest Day", done: false },
-];
+const formatNumber = (value: unknown) => {
+  const numeric = numberValue(value);
+  return numeric === null ? "0" : String(Math.round(numeric));
+};
 
-function Ring({ value, color = "lime" }: { value: number; color?: string }) {
-  const stroke = color === "cyan" ? "#00d8ff" : color === "teal" ? "#2ee8c9" : "#b6ff00";
+const formatRating = (value: unknown) => {
+  const numeric = numberValue(value);
+  if (numeric === null) return "N/A";
+  return `${Number.isInteger(numeric) ? numeric : numeric.toFixed(1)}/10`;
+};
+
+const percent = (value: unknown) => {
+  const numeric = numberValue(value);
+  return Math.max(0, Math.min(100, numeric ?? 0));
+};
+
+const ratingPercent = (value: unknown) => percent((numberValue(value) ?? 0) * 10);
+
+const titleCase = (value: string | null | undefined) =>
+  (value || "Not set")
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const textValue = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const values = value.map(textValue).filter(Boolean);
+    return values.length ? values.join(", ") : null;
+  }
+  return null;
+};
+
+const normalizeKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+const profileValue = (
+  profile: PlayerProfile | undefined,
+  keys: string[],
+): string | null => {
+  if (!profile) return null;
+  const normalizedKeys = new Set(keys.map(normalizeKey));
+
+  for (const [key, value] of Object.entries(profile as Record<string, unknown>)) {
+    if (normalizedKeys.has(normalizeKey(key))) {
+      const text = textValue(value);
+      if (text) return text;
+    }
+  }
+
+  for (const item of profile.customProfile ?? []) {
+    if (
+      normalizedKeys.has(normalizeKey(item.key)) ||
+      normalizedKeys.has(normalizeKey(item.label))
+    ) {
+      const text = textValue(item.value);
+      if (text) return text;
+    }
+  }
+
+  return null;
+};
+
+const matchTimestamp = (match: Match) => {
+  const timestamp = localDateTimeTimestamp(match.match_date, match.match_time);
+  if (timestamp) return timestamp;
+  return Date.parse(`${match.match_date}T00:00:00`) || 0;
+};
+
+const eventTimestamp = (event: CalendarEvent) =>
+  Date.parse(String(event.start_datetime || "")) || 0;
+
+const statusVariant = (status: string): BadgeVariant => {
+  if (["completed", "finished", "starter", "present"].includes(status)) return "success";
+  if (["scheduled", "substitute", "reserve"].includes(status)) return "info";
+  if (["postponed", "late"].includes(status)) return "warning";
+  if (["cancelled", "absent", "injured"].includes(status)) return "destructive";
+  return "secondary";
+};
+
+function EmptyState({ text }: { text: string }) {
   return (
-    <div className="relative mx-auto grid h-24 w-24 place-items-center">
-      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
-        <circle cx="50" cy="50" r="39" fill="none" stroke={stroke} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${value * 2.45} 245`} />
-      </svg>
-      <span className="font-display text-2xl font-bold text-white">{value}%</span>
+    <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
+      {text}
     </div>
   );
 }
 
-function Trend() {
+function KpiCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  progress,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ComponentType<{ className?: string }>;
+  progress?: number;
+}) {
   return (
-    <svg viewBox="0 0 520 230" className="h-full w-full">
-      {[0, 1, 2, 3, 4].map((i) => <line key={i} x1="34" x2="500" y1={34 + i * 39} y2={34 + i * 39} stroke="rgba(255,255,255,0.08)" />)}
-      {["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"].map((m, i) => <text key={m} x={45 + i * 61} y="215" fill="#91a0b5" fontSize="13">{m}</text>)}
-      <polyline points="45,148 110,126 175,138 240,103 305,142 370,110 435,132 485,119" fill="none" stroke="#b6ff00" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points="45,190 110,166 175,178 240,154 305,174 370,158 435,177 485,166" fill="none" stroke="#00d8ff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="458" y="100" width="39" height="26" rx="7" fill="#b6ff00" /><text x="468" y="118" fill="#06111f" fontSize="14" fontWeight="800">7.6</text>
-      <rect x="458" y="153" width="39" height="26" rx="7" fill="#00d8ff" /><text x="468" y="171" fill="#06111f" fontSize="14" fontWeight="800">1.8</text>
-    </svg>
+    <Card className="border-white/10 bg-white/[0.045] shadow-none">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-400">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+          </div>
+          <span className="rounded-lg bg-cyan-400/10 p-2 text-cyan-200">
+            <Icon className="h-5 w-5" />
+          </span>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">{detail}</p>
+        {progress !== undefined && <Progress className="mt-4" value={progress} />}
+      </CardContent>
+    </Card>
   );
 }
 
-function Heatmap() {
+function MatchCard({ match }: { match: Match }) {
+  const squad = match.squad?.[0];
+  const stats = match.stats?.[0] as MatchPlayerStats | undefined;
+
   return (
-    <svg viewBox="0 0 360 230" className="h-full w-full rounded-xl">
-      <rect width="360" height="230" fill="#071524" />
-      <rect x="12" y="12" width="336" height="206" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
-      <line x1="180" y1="12" x2="180" y2="218" stroke="rgba(255,255,255,0.55)" />
-      <circle cx="180" cy="115" r="36" fill="none" stroke="rgba(255,255,255,0.55)" />
-      <filter id="playerHeatBlur"><feGaussianBlur stdDeviation="13" /></filter>
-      <g filter="url(#playerHeatBlur)" opacity="0.92">
-        {[[155, 85, "#b6ff00"], [180, 108, "#ffef37"], [198, 130, "#ff2d2d"], [140, 140, "#00d8ff"], [235, 105, "#7bea28"], [120, 70, "#00d8ff"], [188, 170, "#b6ff00"]].map(([x, y, c], i) => (
-          <circle key={i} cx={Number(x)} cy={Number(y)} r="30" fill={String(c)} />
-        ))}
-      </g>
-    </svg>
+    <Card className="border-white/10 bg-white/[0.045] shadow-none">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm text-slate-400">Next Match</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">
+              {match.opponent_name}
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-300">
+              <span className="inline-flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-cyan-300" />
+                {formatDate(match.match_date)}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Clock className="h-4 w-4 text-cyan-300" />
+                {formatTime12(match.match_time)}
+              </span>
+              {match.location && (
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-cyan-300" />
+                  {match.location}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={statusVariant(match.status)}>{titleCase(match.status)}</Badge>
+            {squad?.squad_role && (
+              <Badge variant={statusVariant(squad.squad_role)}>
+                {titleCase(squad.squad_role)}
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg bg-white/[0.035] p-3">
+            <p className="text-xs text-slate-400">Position</p>
+            <p className="mt-1 font-semibold text-white">{squad?.position || "TBD"}</p>
+          </div>
+          <div className="rounded-lg bg-white/[0.035] p-3">
+            <p className="text-xs text-slate-400">Rating</p>
+            <p className="mt-1 font-semibold text-white">
+              {formatRating(stats?.performance_rating)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-white/[0.035] p-3">
+            <p className="text-xs text-slate-400">Minutes</p>
+            <p className="mt-1 font-semibold text-white">
+              {formatNumber(stats?.minutes_played)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+function EventRow({ event }: { event: CalendarEvent }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4">
+      <div>
+        <p className="font-medium text-white">{event.title}</p>
+        <p className="mt-1 text-sm text-slate-400">
+          {formatDate(event.start_datetime)} | {formatTime12(event.start_datetime)}
+        </p>
+      </div>
+      <Badge variant={statusVariant(event.status)}>{titleCase(event.status)}</Badge>
+    </div>
+  );
+}
+
+function LatestEvaluation({ evaluation }: { evaluation?: PlayerEvaluationRecord }) {
+  if (!evaluation) {
+    return <EmptyState text="No coach evaluation is available yet." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <KpiCard
+          label="Overall"
+          value={formatRating(evaluation.overall_rating)}
+          detail="Latest training evaluation"
+          icon={Star}
+          progress={ratingPercent(evaluation.overall_rating)}
+        />
+        <KpiCard
+          label="Technical"
+          value={formatRating(evaluation.technical_rating)}
+          detail="Ball work and execution"
+          icon={Goal}
+          progress={ratingPercent(evaluation.technical_rating)}
+        />
+        <KpiCard
+          label="Physical"
+          value={formatRating(evaluation.physical_rating)}
+          detail="Fitness and intensity"
+          icon={ShieldCheck}
+          progress={ratingPercent(evaluation.physical_rating)}
+        />
+      </div>
+      {(evaluation.strengths || evaluation.coach_notes) && (
+        <div className="rounded-lg bg-white/[0.035] p-4 text-sm text-slate-300">
+          {evaluation.strengths && (
+            <p>
+              <span className="font-medium text-white">Strengths:</span>{" "}
+              {evaluation.strengths}
+            </p>
+          )}
+          {evaluation.coach_notes && (
+            <p className="mt-2">
+              <span className="font-medium text-white">Coach notes:</span>{" "}
+              {evaluation.coach_notes}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function PlayerHomePage() {
+  const profileQuery = useGetPlayerProfileQuery();
+  const progressQuery = useGetPlayerProgressQuery();
+  const matchesQuery = useGetPlayerMatchesQuery(undefined, {
+    pollingInterval: 15000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
+  const calendarQuery = useGetPlayerCalendarEventsQuery();
+  const trainingsQuery = useGetPlayerTrainingsQuery();
+  const evaluationsQuery = useGetPlayerEvaluationsQuery();
+
+  const profile = profileQuery.data;
+  const progress = progressQuery.data;
+  const matches = useMemo(() => matchesQuery.data?.data ?? [], [matchesQuery.data]);
+  const events = useMemo(() => calendarQuery.data?.data ?? [], [calendarQuery.data]);
+  const trainings = useMemo(
+    () => trainingsQuery.data?.data ?? [],
+    [trainingsQuery.data],
+  );
+  const evaluations = useMemo(
+    () => evaluationsQuery.data?.data ?? [],
+    [evaluationsQuery.data],
+  );
+
+  const playerName = profile?.full_name || progress?.playerName || "Player";
+  const position =
+    profileValue(profile, ["main_position", "main position"]) ||
+    profile?.position ||
+    "Not set";
+
+  const nextMatch = matches
+    .filter((match) => !closedStatuses.has(match.status))
+    .sort((a, b) => matchTimestamp(a) - matchTimestamp(b))[0];
+  const latestMatch = matches
+    .filter((match) => closedStatuses.has(match.status))
+    .sort((a, b) => matchTimestamp(b) - matchTimestamp(a))[0];
+  const upcomingEvents = [...events, ...trainings]
+    .filter((event) => !closedStatuses.has(event.status))
+    .sort((a, b) => eventTimestamp(a) - eventTimestamp(b))
+    .slice(0, 4);
+  const latestEvaluation = evaluations
+    .slice()
+    .sort(
+      (a, b) =>
+        Date.parse(String(b.start_datetime || "")) -
+        Date.parse(String(a.start_datetime || "")),
+    )[0];
+
+  const isLoading =
+    profileQuery.isLoading ||
+    progressQuery.isLoading ||
+    matchesQuery.isLoading ||
+    calendarQuery.isLoading;
+  const hasError =
+    profileQuery.isError ||
+    progressQuery.isError ||
+    matchesQuery.isError ||
+    calendarQuery.isError ||
+    trainingsQuery.isError ||
+    evaluationsQuery.isError;
+
   return (
-    <>
-      <div className="mb-5 grid gap-5 xl:grid-cols-[1fr_0.82fr_160px]">
-        <div>
-          <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">Welcome back, Player</h1>
-          <p className="mt-2 text-lg text-slate-300">Here&apos;s your personal performance overview</p>
-        </div>
-        <blockquote className="border-l border-[#263f59] pl-7 text-slate-200">
-          <span className="text-4xl font-black text-lime-300">“</span> Focus on the process, the results will follow.
-          <p className="mt-2 text-sm text-slate-400">- Coach</p>
-        </blockquote>
-        <Ring value={82} />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_2.8fr]">
-        <Panel className="goalix-dashboard-photo-card overflow-hidden xl:row-span-2">
-          <div className="relative min-h-[405px] p-5">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(182,255,0,0.28),transparent_28%)]" />
-            <div className="absolute right-7 top-10 font-display text-[210px] font-black leading-none text-lime-300/20">X</div>
-            <Image src="/Player.png" alt="Goalix player placeholder" fill sizes="360px" className="object-cover object-center opacity-80 mix-blend-screen" priority />
-            <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172a] to-transparent" />
-            <div className="absolute bottom-6 left-5 right-5">
-              <h2 className="text-3xl font-semibold">Noah Williams</h2>
-              <p className="mt-1 text-lg"><span className="font-bold text-lime-300">RW</span> <span className="text-slate-300">• Winger</span></p>
-              <div className="mt-5 grid grid-cols-4 gap-3 border-t border-[#2a4460] pt-4 text-sm">
-                {["Age|24", "Height|178 cm", "Weight|72 kg", "Foot|Left"].map((item) => {
-                  const [label, value] = item.split("|");
-                  return <div key={label}><div className="text-slate-400">{label}</div><div className="font-semibold">{value}</div></div>;
-                })}
-              </div>
-            </div>
-            <div className="absolute bottom-32 right-5 rounded-2xl border border-lime-300/35 bg-[#07111f]/85 px-4 py-3 text-center">
-              <div className="text-xs text-slate-300">OVR</div><div className="font-display text-4xl font-bold text-lime-300">87</div>
-            </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={`Welcome, ${playerName}`}
+        description="Your live academy data, upcoming schedule, match plan, and coach feedback."
+        breadcrumbs={[{ label: "Home" }]}
+        actions={
+          <div className="hidden gap-2 sm:flex">
+            <Link
+              href="/player/matches"
+              className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]"
+            >
+              Matches
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/player/calendar"
+              className="inline-flex items-center gap-2 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+            >
+              Calendar
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
-        </Panel>
+        }
+      />
 
-        <Panel className="grid gap-0 overflow-hidden md:grid-cols-6">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="border-b border-[#2a4460] p-5 text-center md:border-b-0 md:border-r last:md:border-r-0">
-              <p className="font-semibold">{metric.label}</p>
-              {metric.ring ? <Ring value={Number(metric.value.replace("%", ""))} color={metric.color} /> : <div className="mt-5 font-display text-4xl font-bold">{metric.value}</div>}
-              <p className="text-sm text-slate-300">{metric.sub}</p>
-              {metric.trend && <p className="mt-2 text-sm text-lime-300">↑ {metric.trend}</p>}
-            </div>
-          ))}
-        </Panel>
+      {hasError && (
+        <Card className="border-amber-400/30 bg-amber-500/10 shadow-none">
+          <CardContent className="p-4 text-sm text-amber-100">
+            Some player data could not load. Anything available from the backend
+            is still shown below.
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="grid gap-4 xl:grid-cols-[1.05fr_0.75fr_0.55fr_0.65fr]">
-          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="text-xl font-semibold">Performance Trend</h2><button className="inline-flex items-center gap-2 rounded-xl border border-[#2a4460] px-3 py-1 text-sm text-slate-300">Last 8 Matches <ChevronDown size={14} /></button></div><div className="h-[245px]"><Trend /></div></Panel>
-          <Panel className="p-5"><h2 className="mb-4 text-xl font-semibold">Heatmap <span className="text-sm text-slate-400">(Last Match)</span></h2><div className="h-[245px]"><Heatmap /></div></Panel>
-          <Panel className="p-5"><h2 className="mb-4 text-xl font-semibold">Key Stats</h2><div className="space-y-4">{keyStats.map(([l, v]) => <div key={l} className="flex justify-between text-sm"><span className="text-slate-300">{l}</span><strong>{v}</strong></div>)}</div></Panel>
-          <Panel className="p-5"><h2 className="text-xl font-semibold">Coach Feedback</h2><p className="mt-5 rounded-xl bg-white/[0.03] p-4 text-sm leading-6 text-slate-300"><span className="text-2xl text-lime-300">“</span> Great intensity and movement. Your decision making in the final third is improving.</p><div className="mt-5 flex items-center gap-1 text-yellow-400">★★★★★ <span className="ml-auto text-lime-300">4.5</span></div></Panel>
-        </div>
-      </div>
+      {isLoading ? (
+        <Card className="border-white/10 bg-white/[0.045] shadow-none">
+          <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading your player dashboard...
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <KpiCard
+              label="Attendance"
+              value={`${formatNumber(progress?.attendancePercentage)}%`}
+              detail={`${formatNumber(progress?.trainingsAttended)} trainings attended`}
+              icon={ShieldCheck}
+              progress={percent(progress?.attendancePercentage)}
+            />
+            <KpiCard
+              label="Matches Played"
+              value={formatNumber(progress?.matchesPlayed)}
+              detail={`${formatNumber(progress?.matchesAttended)} attended records`}
+              icon={Trophy}
+            />
+            <KpiCard
+              label="Weekly Minutes"
+              value={formatNumber(progress?.weeklyMinutesPlayed)}
+              detail={`${formatNumber(progress?.weeklyMatchesPlayed)} match entries this week`}
+              icon={Clock}
+              progress={percent(Number(progress?.weeklyMinutesPlayed ?? 0) / 0.9)}
+            />
+            <KpiCard
+              label="Goals / Assists"
+              value={`${formatNumber(progress?.goals)} / ${formatNumber(progress?.assists)}`}
+              detail="From recorded match stats"
+              icon={Goal}
+            />
+          </section>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[0.75fr_1.65fr_1.05fr]">
-        <Panel className="p-4"><h2 className="mb-4 text-xl font-semibold">Wellness</h2>{wellness.map((w) => <div key={w.label} className="flex items-center gap-4 border-b border-[#2a4460] py-4 last:border-b-0"><w.icon className="text-cyan-300" /><span className="flex-1">{w.label}</span><span className="text-right"><strong>{w.value}</strong><p className="text-xs text-lime-300">{w.sub}</p></span></div>)}</Panel>
-        <Panel className="p-5"><div className="mb-5 flex justify-between"><h2 className="text-xl font-semibold">Weekly Training Schedule</h2><button className="rounded-xl border border-[#2a4460] px-3 py-1 text-sm text-slate-300">This Week</button></div><div className="grid gap-2 md:grid-cols-7">{schedule.map((s) => <div key={s.day} className="border-r border-[#2a4460] p-3 text-center last:border-r-0"><p className="font-semibold">{s.day}</p><p className="text-xs text-slate-400">{s.date}</p><s.icon className="mx-auto mt-5 h-8 w-8 text-lime-300" /><p className="mt-4 text-sm font-semibold">{s.title}</p><p className="mt-1 text-xs text-slate-400">10:00</p><span className={`mx-auto mt-4 grid h-6 w-6 place-items-center rounded-full ${s.done ? "bg-lime-300 text-[#06111f]" : "border border-cyan-300"}`}>{s.done ? "✓" : ""}</span></div>)}</div></Panel>
-        <Panel className="p-5"><div className="flex items-start justify-between"><div><h2 className="text-xl font-semibold">Upcoming Match</h2><p className="mt-7 text-lg font-semibold">vs City Rovers</p><p className="mt-2 text-sm text-slate-300">Saturday, 31 May • 20:00</p><p className="text-sm text-slate-400">Riverside Stadium</p></div><span className="rounded-full border border-cyan-300/40 px-4 py-2 text-cyan-300">Away Match</span></div><div className="mt-8 grid grid-cols-2 gap-4 rounded-2xl border border-[#2a4460] p-4"><div className="flex gap-3"><Cloud className="text-cyan-300" /><span>Weather<br /><strong>18°C</strong></span></div><div className="flex gap-3"><Target className="text-lime-300" /><span>Focus Area<br /><strong>Final Third</strong></span></div></div></Panel>
-      </div>
+          <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <User className="h-4 w-4 text-cyan-300" />
+                  Player Snapshot
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg bg-white/[0.035] p-4">
+                  <p className="text-xs text-slate-400">Position</p>
+                  <p className="mt-1 font-semibold text-white">{position}</p>
+                </div>
+                <div className="rounded-lg bg-white/[0.035] p-4">
+                  <p className="text-xs text-slate-400">Group</p>
+                  <p className="mt-1 font-semibold text-white">
+                    {profile?.group_name || "Not set"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/[0.035] p-4">
+                  <p className="text-xs text-slate-400">Branch</p>
+                  <p className="mt-1 font-semibold text-white">
+                    {profile?.branch_name || "Not set"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/[0.035] p-4">
+                  <p className="text-xs text-slate-400">Profile</p>
+                  <p className="mt-1 font-semibold text-white">
+                    {titleCase(profile?.profile_status)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.45fr_0.45fr_1fr_0.65fr]">
-        <Panel className="grid grid-cols-5 gap-0 p-5 text-center"><h2 className="col-span-5 mb-5 text-left text-xl font-semibold">Season Highlights</h2>{[["9","Goals"],["6","Assists"],["23","Key Passes"],["24","Shots on Target"],["8.2","Avg Rating"]].map(([v,l]) => <div key={l} className="border-r border-[#2a4460] last:border-r-0"><Star className="mx-auto mb-3 text-lime-300" /><strong className="font-display text-3xl">{v}</strong><p className="text-sm text-slate-400">{l}</p></div>)}</Panel>
-        <Panel className="p-5 text-center"><h2 className="text-left text-lg font-semibold">Top Speed</h2><Ring value={84} color="cyan" /><strong className="font-display text-4xl">33.6</strong><p className="text-sm text-slate-400">km/h</p></Panel>
-        <Panel className="p-5 text-center"><h2 className="text-left text-lg font-semibold">Distance</h2><Ring value={72} color="cyan" /><strong className="font-display text-4xl">11.2</strong><p className="text-sm text-slate-400">km</p></Panel>
-        <Panel className="p-5"><h2 className="mb-5 text-xl font-semibold">Achievements</h2><div className="grid grid-cols-3 gap-4 text-center">{["Player of the Match|3x","Top Performer|5x","Consistency Streak|7 Matches"].map((a) => { const [t,v]=a.split("|"); return <div key={t}><Medal className="mx-auto h-14 w-14 text-yellow-400" /><p className="mt-2 text-sm">{t}</p><strong className="text-lime-300">{v}</strong></div>; })}</div></Panel>
-        <Panel className="p-5 text-center"><h2 className="mb-5 text-left text-xl font-semibold">Next Milestone</h2><Ring value={80} color="teal" /><p className="mt-3 font-semibold">Goal Contribution</p><p className="text-sm text-slate-400">2 more to unlock</p></Panel>
-      </div>
-    </>
+            {nextMatch ? (
+              <MatchCard match={nextMatch} />
+            ) : (
+              <Card className="border-white/10 bg-white/[0.045] shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">Next Match</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EmptyState text="No upcoming match has been scheduled for your group yet." />
+                </CardContent>
+              </Card>
+            )}
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Dumbbell className="h-4 w-4 text-cyan-300" />
+                  Upcoming Schedule
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {upcomingEvents.length ? (
+                  upcomingEvents.map((event) => <EventRow key={event.id} event={event} />)
+                ) : (
+                  <EmptyState text="No upcoming training or calendar events are listed yet." />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Star className="h-4 w-4 text-cyan-300" />
+                  Latest Coach Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LatestEvaluation evaluation={latestEvaluation} />
+              </CardContent>
+            </Card>
+          </section>
+
+          <Card className="border-white/10 bg-white/[0.045] shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Recent Match</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {latestMatch ? (
+                <MatchCard match={latestMatch} />
+              ) : (
+                <EmptyState text="No completed matches with your data yet." />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
   );
 }

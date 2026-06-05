@@ -16,6 +16,21 @@ const getBirthYear = (value: string | null) => {
   return Number.isInteger(year) ? year : null;
 };
 
+function playerMainPosition(player: {
+  position?: string | null;
+  customProfile?: Array<{ key?: string; label?: string; value?: unknown }>;
+}) {
+  const field = player.customProfile?.find((item) => {
+    const key = String(item.key || "").toLowerCase();
+    const label = String(item.label || "").toLowerCase();
+    return key === "main_position" || label === "main position";
+  });
+  if (typeof field?.value === "string" && field.value.trim()) {
+    return field.value.trim();
+  }
+  return player.position || "No main position";
+}
+
 export default function CoachBirthdaysPage() {
   const { data: birthdays = [], isLoading: loadingBirthdays } = useGetCoachBirthdaysQuery();
   const { data: playersRes, isLoading: loadingPlayers } = useGetCoachPlayersScopedQuery({ limit: 500 });
@@ -84,7 +99,7 @@ export default function CoachBirthdaysPage() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{player.full_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {player.date_of_birth ? formatDate(player.date_of_birth) : "No birth date"} - {player.position || "No position"}
+                          {player.date_of_birth ? formatDate(player.date_of_birth) : "No birth date"} - {playerMainPosition(player)}
                         </p>
                       </div>
                     </div>

@@ -94,6 +94,21 @@ class CalendarController {
     }
   };
 
+  adminHardDeleteTrainingEvent = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.adminHardDeleteTrainingEvent(
+            req.user.academyId,
+            req.params.id,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   adminListMatches = async (req, res, next) => {
     try {
       const { page, limit } = this._pagination(req);
@@ -142,6 +157,53 @@ class CalendarController {
         req.body,
       );
       res.status(201).json(ApiResponse.success(data));
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminListEvaluationEditRequests = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.adminListEvaluationEditRequests(
+        req.user.academyId,
+        { ...req.query, page, limit },
+      );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminApproveEvaluationEditRequest = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.adminApproveEvaluationEditRequest(
+            req.user.academyId,
+            req.user.userId,
+            req.params.id,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminRejectEvaluationEditRequest = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.adminRejectEvaluationEditRequest(
+            req.user.academyId,
+            req.user.userId,
+            req.params.id,
+            req.body,
+          ),
+        ),
+      );
     } catch (err) {
       next(err);
     }
@@ -438,6 +500,67 @@ class CalendarController {
     }
   };
 
+  coachListInjuryRiskPainDiscomfort = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachListInjuryRiskPainDiscomfort(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachUpsertInjuryRiskPainDiscomfort = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachUpsertInjuryRiskPainDiscomfort(
+            req.user.userId,
+            req.user.academyId,
+            req.body.records,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachListInjuryRiskPredictions = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachListInjuryRiskPredictions(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachRunInjuryRiskModel = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachRunInjuryRiskModel(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachGetPlayerDetail = async (req, res, next) => {
     try {
       res.json(
@@ -700,6 +823,25 @@ class CalendarController {
           ),
         ),
       );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachRequestMatchEvaluationEdit = async (req, res, next) => {
+    try {
+      res
+        .status(201)
+        .json(
+          ApiResponse.success(
+            await this.service.coachRequestMatchEvaluationEdit(
+              req.user.userId,
+              req.user.academyId,
+              req.params.matchId,
+              req.body,
+            ),
+          ),
+        );
     } catch (err) {
       next(err);
     }
@@ -1083,6 +1225,21 @@ class CalendarController {
         { ...req.query, page, limit },
       );
       this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerGetProfile = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.playerGetProfile(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
     } catch (err) {
       next(err);
     }

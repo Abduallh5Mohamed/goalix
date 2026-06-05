@@ -16,11 +16,15 @@ import {
 import { Bell, LogOut, User, Settings } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
+import { useGetUnreadNotificationsCountQuery } from "@/lib/store/api/calendarApi";
 
 export function AdminHeader() {
   const { user } = useCurrentUser();
   const { logout } = useAuth();
   const displayIdentifier = user?.email || user?.username || "";
+  const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(undefined, {
+    pollingInterval: 60000,
+  });
 
   return (
     <header className="sticky top-0 z-30 px-4 py-4 backdrop-blur-md lg:px-8">
@@ -38,9 +42,11 @@ export function AdminHeader() {
         <Link href="/admin/notifications">
           <Button variant="ghost" size="icon-sm" className="relative rounded-full text-slate-300 hover:bg-white/10 hover:text-lime-300">
             <Bell className="h-4.5 w-4.5" />
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Button>
         </Link>
 

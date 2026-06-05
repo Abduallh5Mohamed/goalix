@@ -19,6 +19,7 @@ import { useAppDispatch } from "@/lib/store/hooks";
 import { loginFailure, loginStart, loginSuccess } from "@/lib/store/slices/authSlice";
 import { ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
+import { rememberAuthSession } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +79,7 @@ export default function AdminLoginPage() {
 
     const completeLogin = (apiUser: ApiUser) => {
         const user = mapApiUser(apiUser, identifier.trim());
+        rememberAuthSession();
         dispatch(loginSuccess({ user, role: user.role }));
         router.push(ROLE_ROUTES[user.role]);
     };

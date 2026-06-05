@@ -7,6 +7,8 @@ const {
 
 const needsOptions = new Set(['single_select', 'multi_select']);
 const numericTypes = new Set(['number', 'rating', 'percentage']);
+const protectedSystemFieldKeys = new Set(['main_position']);
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function toSnakeLikeKey(label) {
     return String(label || '')
@@ -15,6 +17,10 @@ function toSnakeLikeKey(label) {
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .slice(0, 140);
+}
+
+function isProtectedSystemFieldKey(key) {
+    return protectedSystemFieldKeys.has(toSnakeLikeKey(key));
 }
 
 function optionValue(label, value) {
@@ -80,6 +86,12 @@ class CustomDataService {
         if (user.role === 'admin') return;
         if (row.created_by_role !== 'coach' || row.created_by_coach_id !== coach.id) {
             throw new ForbiddenError(`Coach can only edit ${label} created by himself`);
+        }
+    }
+
+    _assertNotProtectedSystemField(row, action = 'modify') {
+        if (isProtectedSystemFieldKey(row?.key || row?.field_key)) {
+            throw new ForbiddenError(`Main Position is a protected system field and cannot be ${action}`);
         }
     }
 
@@ -158,6 +170,14 @@ class CustomDataService {
         const category = await this.repo.findCategoryById(categoryId, user.academyId);
         if (!category) throw new NotFoundError('Custom category', categoryId);
         this._assertCanManageOwned(user, coach, category, 'categories');
+        const protectedField = await this.repo.db('custom_fields')
+            .where({ category_id: categoryId })
+            .whereNull('deleted_at')
+            .whereIn('key', [...protectedSystemFieldKeys])
+            .first();
+        if (protectedField) {
+            throw new ForbiddenError('This category contains Main Position, which is protected by the system');
+        }
         await this.repo.db('custom_categories').where({ id: categoryId }).update({
             deleted_at: new Date(),
             is_active: false,
@@ -171,6 +191,9 @@ class CustomDataService {
         if (!category) throw new NotFoundError('Custom category', categoryId);
         this._assertCanSeeCategory(user, coach, category);
         this._assertCanManageOwned(user, coach, category, 'fields inside admin-owned categories');
+        if (isProtectedSystemFieldKey(data.key || data.label)) {
+            throw new ForbiddenError('Main Position is a protected system field and cannot be recreated');
+        }
         if (needsOptions.has(data.fieldType) && data.isRequired === false) {
             // Select fields can be optional, but they still need options before being useful.
         }
@@ -201,6 +224,10 @@ class CustomDataService {
         const field = await this.repo.findFieldById(fieldId);
         if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
         this._assertCanManageOwned(user, coach, field, 'fields');
+        this._assertNotProtectedSystemField(field, 'edited');
+        if (data.key !== undefined && isProtectedSystemFieldKey(data.key)) {
+            throw new ForbiddenError('Main Position is a protected system field and cannot be edited');
+        }
         const [row] = await this.repo.db('custom_fields')
             .where({ id: fieldId })
             .update({
@@ -228,6 +255,7 @@ class CustomDataService {
         const field = await this.repo.findFieldById(fieldId);
         if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
         this._assertCanManageOwned(user, coach, field, 'fields');
+        this._assertNotProtectedSystemField(field, 'deleted');
         await this.repo.db.transaction(async (trx) => {
             await trx('player_custom_values').where({ field_id: fieldId }).del();
             await trx('custom_field_options').where({ field_id: fieldId }).update({
@@ -249,6 +277,7 @@ class CustomDataService {
         const field = await this.repo.findFieldById(fieldId);
         if (!field || field.academy_id !== user.academyId) throw new NotFoundError('Custom field', fieldId);
         this._assertCanManageOwned(user, coach, field, 'options');
+        this._assertNotProtectedSystemField(field, 'edited');
         const [row] = await this.repo.db('custom_field_options').insert({
             field_id: fieldId,
             label: data.label,
@@ -268,6 +297,7 @@ class CustomDataService {
         const option = await this.repo.findOptionById(optionId);
         if (!option || option.academy_id !== user.academyId) throw new NotFoundError('Custom option', optionId);
         this._assertCanManageOwned(user, coach, option, 'options');
+        this._assertNotProtectedSystemField(option, 'edited');
         const [row] = await this.repo.db('custom_field_options')
             .where({ id: optionId })
             .update({
@@ -287,6 +317,7 @@ class CustomDataService {
         const option = await this.repo.findOptionById(optionId);
         if (!option || option.academy_id !== user.academyId) throw new NotFoundError('Custom option', optionId);
         this._assertCanManageOwned(user, coach, option, 'options');
+        this._assertNotProtectedSystemField(option, 'deleted');
         await this.repo.db('custom_field_options').where({ id: optionId }).update({
             deleted_at: new Date(),
             is_active: false,
@@ -389,6 +420,58 @@ class CustomDataService {
         return null;
     }
 
+    async _displayValueForStoredValue(trx, value) {
+        if (value.value_option_id) {
+            const option = await trx('custom_field_options')
+                .where({ id: value.value_option_id })
+                .first('label');
+            return option?.label || null;
+        }
+        const labelsForOptionIds = async (optionIds) => {
+            const ids = [...new Set((optionIds || []).filter((item) => typeof item === 'string' && uuidPattern.test(item)))];
+            if (!ids.length) return null;
+            const rows = await trx('custom_field_options')
+                .whereIn('id', ids)
+                .select('id', 'label');
+            const labelsById = new Map(rows.map((row) => [row.id, row.label]));
+            return ids.map((id) => labelsById.get(id) || id).join(', ');
+        };
+        if (value.value_text) {
+            if (uuidPattern.test(value.value_text)) {
+                const option = await trx('custom_field_options')
+                    .where({ id: value.value_text })
+                    .first('label');
+                return option?.label || value.value_text;
+            }
+            return value.value_text;
+        }
+        if (value.value_long_text) return value.value_long_text;
+        if (value.value_decimal !== null && value.value_decimal !== undefined) return String(value.value_decimal);
+        if (value.value_number !== null && value.value_number !== undefined) return String(value.value_number);
+        if (value.value_date) return String(value.value_date);
+        if (value.value_boolean !== null && value.value_boolean !== undefined) return String(value.value_boolean);
+        if (value.value_json !== null && value.value_json !== undefined) {
+            if (Array.isArray(value.value_json)) {
+                return await labelsForOptionIds(value.value_json) || value.value_json.join(', ');
+            }
+            if (typeof value.value_json === 'string') {
+                try {
+                    const parsed = JSON.parse(value.value_json);
+                    if (Array.isArray(parsed)) {
+                        return await labelsForOptionIds(parsed) || parsed.join(', ');
+                    }
+                    if (typeof parsed === 'string' && uuidPattern.test(parsed)) {
+                        return await labelsForOptionIds([parsed]) || parsed;
+                    }
+                } catch {
+                    // Fall back to the raw text below.
+                }
+            }
+            return String(value.value_json);
+        }
+        return null;
+    }
+
     async getPlayerProfile(user, playerId) {
         const coach = await this._coachForUser(user);
         await this._assertPlayerAccess(user, coach, playerId);
@@ -429,12 +512,16 @@ class CustomDataService {
         const submittedFieldIds = new Set();
 
         await this.repo.db.transaction(async (trx) => {
+            let mainPositionValue;
             for (const item of values) {
                 const field = fieldById.get(item.fieldId);
                 if (!field || !field.is_active) throw new ForbiddenError('Cannot write to this custom field');
                 if (submittedFieldIds.has(item.fieldId)) throw new ConflictError('Duplicate custom field value in request');
                 submittedFieldIds.add(item.fieldId);
                 const serialized = await this._serializeValue(field, item.value);
+                if (toSnakeLikeKey(field.key || field.label) === 'main_position') {
+                    mainPositionValue = await this._displayValueForStoredValue(trx, serialized);
+                }
                 await trx('player_custom_values')
                     .insert({
                         academy_id: user.academyId,
@@ -448,6 +535,15 @@ class CustomDataService {
                     .merge({
                         ...serialized,
                         updated_by_id: user.userId,
+                        updated_at: new Date(),
+                    });
+            }
+
+            if (mainPositionValue !== undefined) {
+                await trx('player_profiles')
+                    .where({ id: playerId, academy_id: user.academyId })
+                    .update({
+                        position: mainPositionValue,
                         updated_at: new Date(),
                     });
             }

@@ -6,7 +6,10 @@ const dateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date format: YYYY-MM-DD");
 const timeSchema = z
   .string()
-  .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Time format: HH:mm");
+  .regex(
+    /^(\d{2}:\d{2}(:\d{2})?|\d{1,2}:\d{2}\s*(AM|PM))$/i,
+    "Time format: HH:mm or h:mm AM/PM",
+  );
 const dateTimeSchema = z
   .string()
   .datetime({ offset: true })
@@ -129,6 +132,24 @@ const coachGroupAssignmentParam = z.object({ id: uuid });
 const paginationQuery = z.object({
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(500).optional(),
+});
+
+const evaluationEditRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+const evaluationEditRequestsQuery = paginationQuery.extend({
+  status: evaluationEditRequestStatusSchema.optional(),
+});
+
+const evaluationEditRequestSchema = z.object({
+  reason: z.string().max(2000).optional(),
+});
+
+const evaluationEditRequestReviewSchema = z.object({
+  adminResponse: z.string().max(3000).optional(),
 });
 
 const coachPlayersQuery = paginationQuery.extend({
@@ -339,6 +360,18 @@ const updateEventAttendanceSchema = z.object({
   notes: z.string().max(500).nullable().optional(),
 });
 
+const injuryRiskPainDiscomfortSchema = z.object({
+  records: z
+    .array(
+      z.object({
+        playerId: uuid,
+        painOrDiscomfort: z.coerce.number().int().min(0).max(1),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+
 const evaluationRecordsSchema = z.object({
   records: z
     .array(
@@ -348,6 +381,7 @@ const evaluationRecordsSchema = z.object({
         technicalRating: z.number().min(0).max(10).optional(),
         tacticalRating: z.number().min(0).max(10).optional(),
         physicalRating: z.number().min(0).max(10).optional(),
+        fatigueRating: z.number().min(0).max(10).optional(),
         mentalityRating: z.number().min(0).max(10).optional(),
         disciplineRating: z.number().min(0).max(10).optional(),
         teamworkRating: z.number().min(0).max(10).optional(),
@@ -366,7 +400,7 @@ const evaluationRecordsSchema = z.object({
         coachNotes: z.string().max(3000).optional(),
         improvementPlan: z.string().max(3000).optional(),
         developmentNotes: z.string().max(3000).optional(),
-        visibility: evaluationVisibilitySchema.default("player_and_parent"),
+        visibility: evaluationVisibilitySchema.default("private"),
       }),
     )
     .min(1)
@@ -378,6 +412,7 @@ const updateEvaluationSchema = z.object({
   technicalRating: z.number().min(0).max(10).optional(),
   tacticalRating: z.number().min(0).max(10).optional(),
   physicalRating: z.number().min(0).max(10).optional(),
+  fatigueRating: z.number().min(0).max(10).optional(),
   mentalityRating: z.number().min(0).max(10).optional(),
   disciplineRating: z.number().min(0).max(10).optional(),
   teamworkRating: z.number().min(0).max(10).optional(),
@@ -554,6 +589,7 @@ const statEntrySchema = z.object({
   technicalRating: z.number().min(0).max(10).optional(),
   tacticalRating: z.number().min(0).max(10).optional(),
   physicalRating: z.number().min(0).max(10).optional(),
+  fatigueRating: z.number().min(0).max(10).optional(),
   mentalityRating: z.number().min(0).max(10).optional(),
   decisionMakingRating: z.number().min(0).max(10).optional(),
   workRateRating: z.number().min(0).max(10).optional(),
@@ -683,6 +719,9 @@ module.exports = {
   evaluationParam,
   coachGroupAssignmentParam,
   paginationQuery,
+  evaluationEditRequestsQuery,
+  evaluationEditRequestSchema,
+  evaluationEditRequestReviewSchema,
   coachPlayersQuery,
   calendarFiltersQuery,
   adminMatchFiltersQuery,
@@ -700,6 +739,7 @@ module.exports = {
   trainingExtendSchema,
   attendanceRecordsSchema,
   updateEventAttendanceSchema,
+  injuryRiskPainDiscomfortSchema,
   evaluationRecordsSchema,
   updateEvaluationSchema,
   squadSchema,

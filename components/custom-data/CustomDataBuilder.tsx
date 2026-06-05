@@ -72,6 +72,9 @@ const toKey = (label: string) =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
+const isProtectedSystemField = (field: Pick<CustomField, "key">) =>
+  toKey(field.key) === "main_position";
+
 export function CustomDataBuilder({ role, coaches = [] }: { role: Role; coaches?: CoachChoice[] }) {
   const { data: categories = [], isLoading } = useGetCustomCategoriesQuery({ role, targetModule: "player_profile" });
   const [createCategory, { isLoading: creatingCategory }] = useCreateCustomCategoryMutation();
@@ -146,7 +149,13 @@ export function CustomDataBuilder({ role, coaches = [] }: { role: Role; coaches?
   };
 
   const ownCanDelete = (createdByRole: "admin" | "coach") => role === "admin" || createdByRole === "coach";
-  const optionFields = categories.flatMap((category) => category.fields).filter((field) => needsOptions.has(field.field_type));
+  const canManageField = (field: CustomField) =>
+    ownCanDelete(field.created_by_role) && !isProtectedSystemField(field);
+  const categoryHasProtectedField = (category: { fields: CustomField[] }) =>
+    category.fields.some(isProtectedSystemField);
+  const optionFields = categories
+    .flatMap((category) => category.fields)
+    .filter((field) => needsOptions.has(field.field_type) && !isProtectedSystemField(field));
 
   return (
     <div className="space-y-6">
@@ -337,7 +346,7 @@ export function CustomDataBuilder({ role, coaches = [] }: { role: Role; coaches?
                     </div>
                     {category.description && <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>}
                   </div>
-                  {ownCanDelete(category.created_by_role) && (
+                  {ownCanDelete(category.created_by_role) && !categoryHasProtectedField(category) && (
                     <Button variant="outline" size="icon" onClick={() => deleteCategory({ role, id: category.id })}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -353,7 +362,8 @@ export function CustomDataBuilder({ role, coaches = [] }: { role: Role; coaches?
                         </div>
                         <div className="flex items-center gap-2">
                           {field.is_required && <Badge variant="warning">Required</Badge>}
-                          {ownCanDelete(field.created_by_role) && (
+                          {isProtectedSystemField(field) && <Badge variant="info">System</Badge>}
+                          {canManageField(field) && (
                             <Button
                               type="button"
                               variant="ghost"

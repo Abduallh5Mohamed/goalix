@@ -12,7 +12,7 @@ import { useGetCoachCalendarEventsQuery } from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 export default function CoachCalendarPage() {
-  const { data, isLoading } = useGetCoachCalendarEventsQuery();
+  const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const calendarItems = useMemo(
     () =>
@@ -36,6 +36,11 @@ export default function CoachCalendarPage() {
           { label: "Home", href: "/coach/home" },
           { label: "Calendar" },
         ]}
+        actions={
+          <Button variant="outline" onClick={() => refetch()}>
+            Refresh
+          </Button>
+        }
       />
 
       {isLoading ? (
@@ -47,6 +52,13 @@ export default function CoachCalendarPage() {
         </Card>
       ) : (
         <div className="space-y-3">
+          {isError && (
+            <Card className="border-destructive/30 bg-destructive/10">
+              <CardContent className="p-4 text-sm text-destructive">
+                Could not load backend calendar data. Make sure the backend is running and your coach session is valid.
+              </CardContent>
+            </Card>
+          )}
           <MonthCalendar title="My Calendar" items={calendarItems} />
           {events.map((event) => (
             <Card key={event.id} className="border-border/50 bg-card">
@@ -92,7 +104,7 @@ export default function CoachCalendarPage() {
           {!events.length && (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                No calendar events yet.
+                No backend calendar events are visible for this coach yet. Events must target one of this coach&apos;s assigned groups, birth years, or players.
               </CardContent>
             </Card>
           )}

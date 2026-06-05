@@ -56,6 +56,8 @@ export interface CoachPlayer {
   age: number;
   level: string;
   position: string;
+  mainPosition?: string;
+  rawPosition?: string | null;
   preferredFoot: string | null;
   avatarUrl: string;
   branchId: string;

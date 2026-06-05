@@ -6,6 +6,7 @@ import {
   Baby,
   BarChart3,
   Bell,
+  BrainCircuit,
   Calendar,
   ChevronDown,
   ClipboardCheck,
@@ -16,6 +17,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Ruler,
   Settings,
   Star,
@@ -41,12 +43,19 @@ import { DashboardBrand } from "@/components/layout/DashboardBrand";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
-import { cn, getInitials } from "@/lib/utils";
+import {
+  useGetNotificationsQuery,
+  useGetUnreadNotificationsCountQuery,
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+} from "@/lib/store/api/calendarApi";
+import { cn, formatDateTime, getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
   Baby,
   BarChart3,
   Bell,
+  BrainCircuit,
   Calendar,
   ClipboardCheck,
   CreditCard,
@@ -54,6 +63,7 @@ const iconMap: Record<string, React.ElementType> = {
   GraduationCap,
   Home,
   LayoutDashboard,
+  MessageSquare,
   Ruler,
   Settings,
   Star,
@@ -198,11 +208,41 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
   );
 }
 
+function notificationHref(role: UserRole, type: string, data?: Record<string, unknown> | null) {
+  const matchData = data?.match as { id?: string } | undefined;
+  const eventId = data?.eventId as string | undefined;
+
+  if (type === "match" || matchData?.id) {
+    if (role === "admin") return "/admin/matches";
+    if (role === "coach") return matchData?.id ? `/coach/matches/evaluation/${matchData.id}` : "/coach/matches";
+    if (role === "parent") return "/parent/matches";
+    return "/player/matches";
+  }
+
+  if (type === "training" || eventId) {
+    if (role === "coach" && eventId) return `/coach/training/${eventId}`;
+    if (role === "parent") return "/parent/calendar";
+    return role === "player" ? "/player/training" : "/admin/calendar";
+  }
+
+  return ROLE_ROUTES[role];
+}
+
 export function PortalTopNav({ role }: { role: UserRole }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useCurrentUser();
   const { logout } = useAuth();
   const nav = NAV_ITEMS[role] as NavItem[];
+  const { data: notificationsData } = useGetNotificationsQuery(undefined, {
+    pollingInterval: 60000,
+  });
+  const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(
+    undefined,
+    { pollingInterval: 60000 },
+  );
+  const [markNotificationRead] = useMarkNotificationReadMutation();
+  const [markAllNotificationsRead] = useMarkAllNotificationsReadMutation();
+  const notifications = notificationsData?.data ?? [];
 
   return (
     <header className="goalix-portal-nav sticky top-0 z-40 border-b border-[#1c344e]/80 bg-[#030812]/86 px-4 py-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl">
@@ -216,12 +256,81 @@ export function PortalTopNav({ role }: { role: UserRole }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <button className="relative hidden h-11 w-11 place-items-center rounded-full border border-[#2b4661] bg-white/[0.03] text-slate-100 transition hover:border-cyan-300/45 hover:text-cyan-200 sm:grid">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-lime-300 text-[11px] font-black text-[#06111f]">
-              3
-            </span>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative hidden h-11 w-11 place-items-center rounded-full border border-[#2b4661] bg-white/[0.03] text-slate-100 transition hover:border-cyan-300/45 hover:text-cyan-200 sm:grid">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-lime-300 px-1 text-[11px] font-black text-[#06111f]">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-96 max-w-[calc(100vw-2rem)] border-[#284762] bg-[#07172a]/95 p-2 text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            >
+              <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+                <DropdownMenuLabel className="p-0 text-sm">
+                  Notifications
+                </DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllNotificationsRead()}
+                    className="text-xs font-medium text-cyan-200 hover:text-cyan-100"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <DropdownMenuSeparator className="bg-[#284762]" />
+              <div className="max-h-96 overflow-y-auto py-1">
+                {notifications.length ? (
+                  notifications.slice(0, 8).map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      asChild
+                      className="cursor-pointer rounded-lg p-0 focus:bg-white/[0.04]"
+                    >
+                      <Link
+                        href={notificationHref(role, notification.type, notification.data)}
+                        onClick={() => {
+                          if (!notification.is_read) {
+                            markNotificationRead(notification.id);
+                          }
+                        }}
+                        className={cn(
+                          "block rounded-lg px-3 py-2.5",
+                          notification.is_read ? "text-slate-300" : "bg-cyan-300/10 text-white",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-semibold">
+                            {notification.title}
+                          </p>
+                          {!notification.is_read && (
+                            <span className="mt-1 h-2 w-2 rounded-full bg-lime-300" />
+                          )}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
+                          {notification.body}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {formatDateTime(notification.created_at)}
+                        </p>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="px-3 py-6 text-center text-sm text-slate-400">
+                    No notifications yet.
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
