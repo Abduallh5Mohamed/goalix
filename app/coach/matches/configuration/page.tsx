@@ -20,7 +20,6 @@ import {
   type CoachPlayer,
   type Match,
   useGetCoachAdminMatchRequestsQuery,
-  useGetCoachFriendlyRequestsQuery,
   useGetCoachGroupsScopedQuery,
   useGetCoachMatchQuery,
   useGetCoachMatchesQuery,
@@ -150,7 +149,6 @@ export default function CoachMatchConfigurationPage() {
       refetchOnMountOrArgChange: true,
     });
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
-  const { data: friendlyRequestsRes } = useGetCoachFriendlyRequestsQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
   const { data: groups = [] } = useGetCoachGroupsScopedQuery();
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
@@ -234,57 +232,8 @@ export default function CoachMatchConfigurationPage() {
               : [],
           };
         }),
-      ...(friendlyRequestsRes?.data ?? [])
-        .filter(
-          (request) =>
-            request.status === "approved" && request.converted_match_id,
-        )
-        .map((request) => {
-          const closed =
-            matchAutoFinishTimestamp({
-              match_date: request.preferred_date,
-              match_time: request.preferred_time,
-            }) <= nowMs;
-          return {
-            id: request.converted_match_id!,
-            event_id: null,
-            team_id: request.team_id,
-            age_group_id: null,
-            opponent_name: request.suggested_opponent_name || "Friendly match",
-            match_type: "friendly" as const,
-            match_date: request.preferred_date,
-            match_time: request.preferred_time,
-            location: null,
-            venue_type: "neutral" as const,
-            referee_name: null,
-            status: closed ? ("completed" as const) : ("scheduled" as const),
-            match_status: closed ? "finished" : "scheduled",
-            organizer_notes: request.reason,
-            match_notes: request.notes,
-            our_score: null,
-            opponent_score: null,
-            groups: request.team_id
-              ? [
-                  {
-                    id: request.team_id,
-                    name: request.team_name ?? "Selected group",
-                  },
-                ]
-              : [],
-            birth_years: request.birth_year_id
-              ? [
-                  {
-                    id: request.birth_year_id,
-                    label: request.birth_year_name ?? "Selected birthday",
-                    fromYear: 0,
-                    toYear: 9999,
-                  },
-                ]
-              : [],
-          };
-        }),
     ],
-    [adminRequestsRes?.data, friendlyRequestsRes?.data, nowMs],
+    [adminRequestsRes?.data, nowMs],
   );
   const matchOptions = useMemo(
     () =>

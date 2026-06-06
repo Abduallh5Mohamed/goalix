@@ -1110,17 +1110,13 @@ class CalendarController {
     }
   };
 
-  coachCreateFriendlyRequest = async (req, res, next) => {
-    try {
-      const data = await this.service.coachCreateFriendlyRequest(
-        req.user.userId,
-        req.user.academyId,
-        req.body,
-      );
-      res.status(201).json(ApiResponse.success(data));
-    } catch (err) {
-      next(err);
-    }
+  coachCreateFriendlyRequest = async (req, res, _next) => {
+    res.status(410).json(
+      ApiResponse.error(
+        "FRIENDLY_MATCH_REQUESTS_DISABLED",
+        "Friendly match requests are disabled. Admins create matches directly.",
+      ),
+    );
   };
 
   coachListFriendlyRequests = async (req, res, next) => {

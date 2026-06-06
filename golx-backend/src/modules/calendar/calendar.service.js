@@ -5852,6 +5852,7 @@ class CalendarService {
         .join("matches as m", "ma.match_id", "m.id")
         .join("calendar_events as ce", "ce.id", "m.event_id")
         .where("ma.player_id", playerId)
+        .where("ce.academy_id", academyId)
         .whereNull("m.deleted_at")
         .whereNull("ce.deleted_at")
         .whereNot("m.status", "cancelled")

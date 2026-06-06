@@ -478,7 +478,6 @@ function coachCalendarRoutes(controller) {
 
   router.post(
     "/friendly-match-requests",
-    validate({ body: schema.friendlyRequestSchema }),
     controller.coachCreateFriendlyRequest,
   );
   router.get(
