@@ -1601,9 +1601,15 @@ export const calendarApi = createApi({
     }),
     getPlayerAttendance: builder.query<
       PaginatedResponse<PlayerAttendanceRecord>,
-      void
+      { page?: number; limit?: number } | void
     >({
-      query: () => "/player/attendance?limit=100",
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        return `/player/attendance?${params}`;
+      },
       transformResponse: (res: ApiListResponse<PlayerAttendanceRecord>) =>
         toPaginated(res),
       providesTags: ["CalendarEvents"],
