@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function securityHeaders(nonce: string) {
+function securityHeaders() {
   const isDev = process.env.NODE_ENV === "development";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
   let apiHttpOrigin = "http://localhost:3000";
@@ -30,10 +30,10 @@ function securityHeaders(nonce: string) {
   ];
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     `img-src 'self' blob: data: ${apiHttpOrigin} http://localhost:3000 http://127.0.0.1:3000`,
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src 'self' ${[...new Set([...httpConnectSources, ...wsConnectSources])].join(" ")}`,
     "object-src 'none'",
     "base-uri 'self'",
@@ -58,11 +58,9 @@ function securityHeaders(nonce: string) {
 }
 
 export async function proxy(request: NextRequest) {
-  const nonce = btoa(crypto.randomUUID());
-  const headers = securityHeaders(nonce);
+  const headers = securityHeaders();
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
