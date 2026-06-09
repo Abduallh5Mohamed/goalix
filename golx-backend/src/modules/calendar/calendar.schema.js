@@ -702,6 +702,29 @@ const coachBasicPlayerSchema = z
 
 const coachCompletePlayerProfileSchema = z.record(z.any());
 
+const playerAssignmentParam = z.object({
+  id: uuid,
+});
+
+const playerAssignmentFileSchema = z.object({
+  fileType: z.enum(["pdf", "word", "image"]),
+  fileName: z.string().min(1).max(255),
+  fileUrl: z.string().min(1).max(2000),
+  mimeType: z.string().max(120).optional(),
+  sizeBytes: z.number().int().positive().max(25 * 1024 * 1024).optional(),
+});
+
+const playerAssignmentSubmitSchema = z.object({
+  notes: z.string().max(2000).optional(),
+  files: z.array(playerAssignmentFileSchema).min(1).max(8),
+});
+
+const dailyAiInputSchema = z.object({
+  sleepHours: z.number().int().min(0).max(12),
+  trainedToday: z.union([z.literal(0), z.literal(1)]),
+  mealsCount: z.number().int().min(0).max(8),
+});
+
 module.exports = {
   idParam,
   matchParam,
@@ -764,4 +787,7 @@ module.exports = {
   updateCoachGroupAssignmentSchema,
   coachBasicPlayerSchema,
   coachCompletePlayerProfileSchema,
+  playerAssignmentParam,
+  playerAssignmentSubmitSchema,
+  dailyAiInputSchema,
 };

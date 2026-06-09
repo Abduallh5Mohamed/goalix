@@ -15,6 +15,8 @@ const normalizeAssignmentRole = (role) => legacyAssignmentRoleMap[role] || role 
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
+    'application/msword': { fileType: 'word', extension: '.doc' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { fileType: 'word', extension: '.docx' },
     'image/png': { fileType: 'image', extension: '.png' },
     'image/jpeg': { fileType: 'image', extension: '.jpg' },
     'image/jpg': { fileType: 'image', extension: '.jpg' },
@@ -402,7 +404,7 @@ class CoachesService {
             description: assignment.description || '',
             dueDate: assignment.due_date,
             status: assignment.status,
-            acceptedFileTypes: assignment.accepted_file_types || ['pdf', 'image'],
+            acceptedFileTypes: assignment.accepted_file_types || ['pdf', 'word', 'image'],
             createdBy: assignment.created_by,
             assignedAt: assignment.assigned_at,
             submittedAt: assignment.submitted_at,
@@ -412,6 +414,52 @@ class CoachesService {
             files,
             attachments: files.filter((file) => file.fileRole === 'brief'),
             submissions: files.filter((file) => file.fileRole === 'submission'),
+        };
+    }
+
+    _shapePlayerAssignmentFile(file) {
+        return {
+            id: file.id,
+            submissionId: file.submission_id,
+            fileType: file.file_type,
+            fileName: file.file_name,
+            fileUrl: file.file_url,
+            mimeType: file.mime_type,
+            sizeBytes: toNumber(file.size_bytes),
+            uploadedBy: file.uploaded_by,
+            createdAt: file.created_at,
+        };
+    }
+
+    _shapePlayerAssignmentSubmission(submission) {
+        return {
+            id: submission.id,
+            assignmentId: submission.assignment_id,
+            playerId: submission.player_id,
+            playerName: submission.player_name || null,
+            notes: submission.notes || '',
+            submittedAt: submission.submitted_at,
+            files: (submission.files || []).map((file) => this._shapePlayerAssignmentFile(file)),
+        };
+    }
+
+    _shapePlayerAssignment(assignment) {
+        return {
+            id: assignment.id,
+            academyId: assignment.academy_id,
+            createdByCoachId: assignment.created_by_coach_id,
+            coachName: assignment.coach_name || null,
+            title: assignment.title,
+            description: assignment.description || '',
+            openAt: assignment.open_at,
+            dueAt: assignment.due_at,
+            status: assignment.status,
+            acceptedFileTypes: assignment.accepted_file_types || ['pdf', 'word', 'image'],
+            createdAt: assignment.created_at,
+            updatedAt: assignment.updated_at,
+            groups: assignment.groups || [],
+            submissionCount: Number(assignment.submission_count || 0),
+            submissions: (assignment.submissions || []).map((submission) => this._shapePlayerAssignmentSubmission(submission)),
         };
     }
 
@@ -477,7 +525,7 @@ class CoachesService {
         const normalizedMimeType = String(mimeType || '').split(';')[0].trim().toLowerCase();
         const typeInfo = ASSIGNMENT_UPLOAD_MIME[normalizedMimeType];
         if (!typeInfo) {
-            throw new BadRequestError('Only PDF, PNG, JPG, JPEG, and WEBP assignment files are accepted.');
+            throw new BadRequestError('Only PDF, Word, PNG, JPG, JPEG, and WEBP assignment files are accepted.');
         }
         if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
             throw new BadRequestError('Uploaded file is empty.');
@@ -591,6 +639,140 @@ class CoachesService {
             branch_name: assignment.branch_name,
             group_name: assignment.group_name,
         });
+    }
+
+    async _assertPlayerAssignmentGroups(coachId, academyId, groupIds = []) {
+        const requested = [...new Set(groupIds.filter(Boolean))];
+        if (!requested.length) {
+            throw new BadRequestError('Select at least one target group.');
+        }
+        const groups = await this.repo.findCoachGroupsDetailed(coachId, academyId);
+        const allowed = new Set(groups.map((group) => group.id));
+        const invalid = requested.find((groupId) => !allowed.has(groupId));
+        if (invalid) throw new NotFoundError('Group', invalid);
+        return requested;
+    }
+
+    _assignmentDate(value) {
+        if (!value) return null;
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            throw new BadRequestError('Assignment date is invalid.');
+        }
+        return date;
+    }
+
+    async getMyPlayerAssignments(userId, academyId, filters) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const result = await this.repo.findCoachPlayerAssignments(coach.id, academyId, filters);
+        return {
+            ...result,
+            data: result.data.map((assignment) => this._shapePlayerAssignment(assignment)),
+        };
+    }
+
+    async createMyPlayerAssignment(userId, academyId, data) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const groupIds = await this._assertPlayerAssignmentGroups(coach.id, academyId, data.groupIds);
+        const openAt = this._assignmentDate(data.openAt);
+        const dueAt = this._assignmentDate(data.dueAt);
+        if (openAt && dueAt && dueAt < openAt) {
+            throw new BadRequestError('Due date must be after open date.');
+        }
+
+        const assignment = await this.repo.createPlayerAssignment({
+            academy_id: academyId,
+            created_by_coach_id: coach.id,
+            created_by_user_id: userId,
+            title: data.title,
+            description: data.description || null,
+            open_at: openAt,
+            due_at: dueAt,
+            status: 'active',
+        }, groupIds);
+
+        return this._shapePlayerAssignment({
+            ...assignment,
+            coach_name: coach.full_name,
+            groups: (await this.repo.findPlayerAssignmentGroups([assignment.id])).map((group) => ({ id: group.id, name: group.name })),
+            submission_count: 0,
+        });
+    }
+
+    async updateMyPlayerAssignment(userId, academyId, assignmentId, data) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const existing = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
+        if (!existing) throw new NotFoundError('Player assignment', assignmentId);
+        const groupIds = data.groupIds ? await this._assertPlayerAssignmentGroups(coach.id, academyId, data.groupIds) : null;
+        const openAt = data.openAt === undefined ? undefined : this._assignmentDate(data.openAt);
+        const dueAt = data.dueAt === undefined ? undefined : this._assignmentDate(data.dueAt);
+        const nextOpen = openAt === undefined ? existing.open_at : openAt;
+        const nextDue = dueAt === undefined ? existing.due_at : dueAt;
+        if (nextOpen && nextDue && new Date(nextDue) < new Date(nextOpen)) {
+            throw new BadRequestError('Due date must be after open date.');
+        }
+
+        await this.repo.updatePlayerAssignment(assignmentId, {
+            ...(data.title !== undefined ? { title: data.title } : {}),
+            ...(data.description !== undefined ? { description: data.description || null } : {}),
+            ...(openAt !== undefined ? { open_at: openAt } : {}),
+            ...(dueAt !== undefined ? { due_at: dueAt } : {}),
+            ...(data.status !== undefined ? { status: data.status } : {}),
+        }, groupIds);
+
+        const updated = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
+        return this._shapePlayerAssignment(updated);
+    }
+
+    async getMyPlayerAssignmentSubmissions(userId, academyId, assignmentId) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const assignment = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
+        if (!assignment) throw new NotFoundError('Player assignment', assignmentId);
+        const submissions = await this.repo.findPlayerAssignmentSubmissions(assignmentId);
+        return submissions.map((submission) => this._shapePlayerAssignmentSubmission(submission));
+    }
+
+    async getMyDailyAiInputs(userId, academyId) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const players = await this.repo.findCoachPlayers(coach.id, academyId);
+        const playerIds = players.map((player) => player.id);
+        const { rows } = await this.repo.db.raw(`
+            SELECT
+              date_trunc('week', current_date)::date::text AS week_start,
+              (date_trunc('week', current_date)::date + 6)::text AS week_end
+        `);
+        const weekStart = rows[0]?.week_start;
+        const weekEnd = rows[0]?.week_end;
+        if (!playerIds.length) return { weekStart, weekEnd, data: [] };
+
+        const inputRows = await this.repo.db('player_daily_ai_inputs as pdai')
+            .join('player_profiles as pp', 'pdai.player_id', 'pp.id')
+            .whereIn('pdai.player_id', playerIds)
+            .where('pdai.academy_id', academyId)
+            .where('pdai.input_date', '>=', weekStart)
+            .where('pdai.input_date', '<=', weekEnd)
+            .select(
+                'pdai.*',
+                'pp.full_name as player_name',
+            )
+            .orderBy('pdai.input_date', 'desc')
+            .orderBy('pp.full_name', 'asc');
+
+        return {
+            weekStart,
+            weekEnd,
+            data: inputRows.map((row) => ({
+                id: row.id,
+                playerId: row.player_id,
+                playerName: row.player_name,
+                inputDate: row.input_date,
+                sleepHours: Number(row.sleep_hours),
+                trainedToday: Number(row.trained_today),
+                mealsCount: Number(row.meals_count),
+                dailyAiScore: Number(row.daily_ai_score),
+                submittedAt: row.submitted_at,
+            })),
+        };
     }
 
     async createCoach(academyId, data) {

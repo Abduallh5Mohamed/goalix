@@ -575,7 +575,7 @@ export interface CoachAssignmentFile {
   id: string;
   assignmentId: string;
   fileRole: "brief" | "submission";
-  fileType: "pdf" | "image";
+  fileType: "pdf" | "word" | "image";
   fileName: string;
   fileUrl: string;
   mimeType: string | null;
@@ -608,7 +608,7 @@ export interface CoachAssignment {
 }
 
 export interface AssignmentFileInput {
-  fileType: "pdf" | "image";
+  fileType: "pdf" | "word" | "image";
   fileName: string;
   fileUrl: string;
   mimeType?: string;

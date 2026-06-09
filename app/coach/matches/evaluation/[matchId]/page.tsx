@@ -47,17 +47,17 @@ type EvaluationPlayer = MatchEvaluationCandidate & {
 };
 
 const rating10Options: RatingOption[] = [
-  { label: "Poor", range: "0-3.9", value: 2, min: 0, max: 3.9 },
-  { label: "Good", range: "4-6.4", value: 5, min: 4, max: 6.4 },
-  { label: "Very Good", range: "6.5-8.4", value: 7.5, min: 6.5, max: 8.4 },
-  { label: "Excellent", range: "8.5-10", value: 9.5, min: 8.5, max: 10 },
+  { label: "Poor", range: "0-3.9", value: 1.95, min: 0, max: 3.9 },
+  { label: "Good", range: "4-6.4", value: 5.2, min: 4, max: 6.4 },
+  { label: "Very Good", range: "6.5-8.4", value: 7.45, min: 6.5, max: 8.4 },
+  { label: "Excellent", range: "8.5-10", value: 9.25, min: 8.5, max: 10 },
 ];
 
 const percentageOptions: RatingOption[] = [
-  { label: "Poor", range: "0-49", value: 25, min: 0, max: 49 },
-  { label: "Good", range: "50-69", value: 60, min: 50, max: 69 },
+  { label: "Poor", range: "0-49", value: 24.5, min: 0, max: 49 },
+  { label: "Good", range: "50-69", value: 59.5, min: 50, max: 69 },
   { label: "Very Good", range: "70-84", value: 77, min: 70, max: 84 },
-  { label: "Excellent", range: "85-100", value: 92, min: 85, max: 100 },
+  { label: "Excellent", range: "85-100", value: 92.5, min: 85, max: 100 },
 ];
 
 const chanceOptions: RatingOption[] = [
