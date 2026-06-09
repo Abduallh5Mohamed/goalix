@@ -198,7 +198,7 @@ const createCoachBirthYearSchema = z
 
 const assignmentFileSchema = z
   .object({
-    fileType: z.enum(["pdf", "image"]),
+    fileType: z.enum(["pdf", "word", "image"]),
     fileName: z.string().min(1).max(255),
     fileUrl: z.string().min(1).max(2000),
     mimeType: z.string().max(100).optional(),
@@ -232,6 +232,19 @@ const assignmentFileSchema = z
         });
       }
     }
+    if (file.fileType === "word") {
+      const wordName = /\.(docx?|DOCX?)$/i.test(name);
+      const wordMime =
+        mime === "application/msword" ||
+        mime ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      if (!wordName && !wordMime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Word assignment files must be DOC or DOCX documents.",
+        });
+      }
+    }
   });
 
 const assignmentQuerySchema = z.object({
@@ -241,6 +254,12 @@ const assignmentQuerySchema = z.object({
   status: z
     .enum(["assigned", "in_progress", "submitted", "reviewed", "cancelled"])
     .optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
+const playerAssignmentQuerySchema = z.object({
+  status: z.enum(["active", "closed", "cancelled"]).optional(),
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 });
@@ -264,6 +283,20 @@ const submitCoachAssignmentSchema = z.object({
   files: z.array(assignmentFileSchema).min(1).max(8),
 });
 
+const playerAssignmentSchema = z.object({
+  title: z.string().min(2).max(255),
+  description: z.string().max(3000).optional(),
+  openAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)).optional(),
+  dueAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)).optional(),
+  groupIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
+const updatePlayerAssignmentSchema = playerAssignmentSchema
+  .partial()
+  .extend({
+    status: z.enum(["active", "closed", "cancelled"]).optional(),
+  });
+
 module.exports = {
   uuidParam,
   groupParam,
@@ -284,6 +317,9 @@ module.exports = {
   createCoachBirthYearSchema,
   coachRoleSchema,
   assignmentQuerySchema,
+  playerAssignmentQuerySchema,
   createCoachAssignmentSchema,
   submitCoachAssignmentSchema,
+  playerAssignmentSchema,
+  updatePlayerAssignmentSchema,
 };

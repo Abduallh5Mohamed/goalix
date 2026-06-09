@@ -17,6 +17,7 @@ import {
   LockKeyhole,
   Save,
   Search,
+  Send,
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -99,10 +100,10 @@ type RatingOption = {
 };
 
 const rating10Options: RatingOption[] = [
-  { label: "Poor", range: "0-3.9", value: 2, min: 0, max: 3.9 },
-  { label: "Good", range: "4-6.4", value: 5, min: 4, max: 6.4 },
-  { label: "Very Good", range: "6.5-8.4", value: 7.5, min: 6.5, max: 8.4 },
-  { label: "Excellent", range: "8.5-10", value: 9.5, min: 8.5, max: 10 },
+  { label: "Poor", range: "0-3.9", value: 1.95, min: 0, max: 3.9 },
+  { label: "Good", range: "4-6.4", value: 5.2, min: 4, max: 6.4 },
+  { label: "Very Good", range: "6.5-8.4", value: 7.45, min: 6.5, max: 8.4 },
+  { label: "Excellent", range: "8.5-10", value: 9.25, min: 8.5, max: 10 },
 ];
 
 const optionValue = (value: string) => {
@@ -215,6 +216,12 @@ export default function CoachTrainingEventPage() {
   const showClosingWarning = Boolean(
     warningWindowOpen && warningDismissedEndKey !== trainingEndKey,
   );
+  const evaluationEditable = Boolean(
+    event &&
+      event.status !== "cancelled" &&
+      event.status !== "postponed" &&
+      nowMs >= trainingStartMs,
+  );
 
   const participants = useMemo(
     () => event?.participants ?? [],
@@ -242,6 +249,14 @@ export default function CoachTrainingEventPage() {
       : selectedPlayerId
         ? attendedPlayers.filter((player) => player.id === selectedPlayerId)
         : [];
+  const publishedEvaluationCount = attendedPlayers.filter(
+    (player) =>
+      (drafts[player.id]?.visibility ?? evaluationVisibility(player)) ===
+      "player_and_parent",
+  ).length;
+  const allEvaluationsPublished = Boolean(
+    attendedPlayers.length && publishedEvaluationCount === attendedPlayers.length,
+  );
 
   const saveAttendance = async (
     player: TrainingParticipant,
@@ -281,11 +296,15 @@ export default function CoachTrainingEventPage() {
     );
   };
 
-  const saveDraftedTrainingData = useCallback(async () => {
+  const saveDraftedTrainingData = useCallback(async (
+    options: { includeAttendance?: boolean; publishAll?: boolean } = {},
+  ) => {
+    const includeAttendance = options.includeAttendance ?? trainingOpen;
     const attendanceRecords = participants
       .filter((player) => {
         const status = player.attendance?.status;
         return (
+          includeAttendance &&
           (status === "present" || status === "late") &&
           Boolean(arrivalTimes[player.id])
         );
@@ -336,10 +355,9 @@ export default function CoachTrainingEventPage() {
               draft.developmentNotes ??
               player.evaluation?.development_notes ??
               "",
-            visibility:
-              draft.visibility ??
-              player.evaluation?.visibility ??
-              "private",
+            visibility: options.publishAll
+              ? "player_and_parent"
+              : draft.visibility ?? player.evaluation?.visibility ?? "private",
           };
         }),
       }).unwrap();
@@ -350,13 +368,14 @@ export default function CoachTrainingEventPage() {
     drafts,
     eventId,
     participants,
+    trainingOpen,
     upsertAttendance,
     upsertEvaluations,
   ]);
 
   const saveEvaluation = async (player: TrainingParticipant) => {
-    if (!trainingOpen) {
-      setPageError("Training is only open during its scheduled time.");
+    if (!evaluationEditable) {
+      setPageError("Evaluations can be saved after the training starts.");
       return;
     }
     const draft = drafts[player.id] ?? {};
@@ -392,6 +411,52 @@ export default function CoachTrainingEventPage() {
       setDrafts((prev) => ({ ...prev, [player.id]: {} }));
     } catch {
       setPageError("Could not save evaluation.");
+    }
+  };
+
+  const saveAllEvaluations = async () => {
+    if (!evaluationEditable) {
+      setPageError("Evaluations can be saved after the training starts.");
+      return;
+    }
+    if (!attendedPlayers.length) {
+      setPageError("No attended players are available for evaluation.");
+      return;
+    }
+    setPageError("");
+    try {
+      await saveDraftedTrainingData({ includeAttendance: trainingOpen });
+      setDrafts({});
+    } catch {
+      setPageError("Could not save evaluations.");
+    }
+  };
+
+  const publishAllEvaluations = async () => {
+    if (!evaluationEditable) {
+      setPageError("Evaluations can be published after the training starts.");
+      return;
+    }
+    if (!attendedPlayers.length) {
+      setPageError("No attended players are available for publishing.");
+      return;
+    }
+    setPageError("");
+    try {
+      await saveDraftedTrainingData({
+        includeAttendance: trainingOpen,
+        publishAll: true,
+      });
+      setDrafts(
+        Object.fromEntries(
+          attendedPlayers.map((player) => [
+            player.id,
+            { visibility: "player_and_parent" },
+          ]),
+        ),
+      );
+    } catch {
+      setPageError("Could not publish evaluations.");
     }
   };
 
@@ -505,8 +570,9 @@ export default function CoachTrainingEventPage() {
                   {trainingClosed ? "Training is closed" : "Training is not open yet"}
                 </p>
                 <p className="mt-1">
-                  Open window: {formatTime12(event.start_datetime)} -{" "}
-                  {formatTime12(event.end_datetime)}
+                  {trainingClosed
+                    ? "Attendance is locked. Evaluations can still be saved and published."
+                    : `Open window: ${formatTime12(event.start_datetime)} - ${formatTime12(event.end_datetime)}`}
                 </p>
               </div>
             </div>
@@ -602,7 +668,49 @@ export default function CoachTrainingEventPage() {
                     {attendedPlayers.length === 1 ? "" : "s"} ready for review.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant={allEvaluationsPublished ? "success" : "secondary"}
+                  >
+                    {publishedEvaluationCount}/{attendedPlayers.length} published
+                  </Badge>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={
+                      savingEvaluation ||
+                      !evaluationEditable ||
+                      !attendedPlayers.length
+                    }
+                    onClick={saveAllEvaluations}
+                  >
+                    {savingEvaluation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Save All
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-2"
+                    disabled={
+                      savingEvaluation ||
+                      !evaluationEditable ||
+                      !attendedPlayers.length
+                    }
+                    onClick={publishAllEvaluations}
+                  >
+                    {savingEvaluation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Publish All
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -768,7 +876,7 @@ export default function CoachTrainingEventPage() {
                         min={0}
                         max={10}
                         step={0.5}
-                        disabled={!trainingOpen}
+                        disabled={!evaluationEditable}
                         value={fieldValue(player, "overallRating")}
                         onChange={(event) =>
                           setDrafts((prev) => ({
@@ -785,7 +893,7 @@ export default function CoachTrainingEventPage() {
                       <div key={key} className="space-y-1">
                         <Label>{label} /10</Label>
                         <Select
-                          disabled={!trainingOpen}
+                          disabled={!evaluationEditable}
                           value={
                             drafts[player.id]?.[key] !== undefined
                               ? drafts[player.id][key]
@@ -829,7 +937,7 @@ export default function CoachTrainingEventPage() {
                       <div key={key} className="space-y-1">
                         <Label>{label}</Label>
                         <Textarea
-                          disabled={!trainingOpen}
+                          disabled={!evaluationEditable}
                           value={
                             drafts[player.id]?.[key] ??
                             String(
@@ -869,39 +977,10 @@ export default function CoachTrainingEventPage() {
                       ))}
                     </div>
                     <div className="flex flex-wrap items-end gap-2">
-                      <div className="w-44 space-y-1">
-                        <Label>Player visibility</Label>
-                        <Select
-                          disabled={!trainingOpen}
-                          value={
-                            drafts[player.id]?.visibility ??
-                            evaluationVisibility(player)
-                          }
-                          onValueChange={(value) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [player.id]: {
-                                ...(prev[player.id] ?? {}),
-                                visibility: value,
-                              },
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="private">Not published</SelectItem>
-                            <SelectItem value="player_and_parent">
-                              Publish
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <Button
                         type="button"
                         className="gap-2"
-                        disabled={savingEvaluation || !trainingOpen}
+                        disabled={savingEvaluation || !evaluationEditable}
                         onClick={() => saveEvaluation(player)}
                       >
                         <Save className="h-4 w-4" />

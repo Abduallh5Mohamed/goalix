@@ -24,14 +24,25 @@ const {
     coachAccessBranchParam,
     coachAccessSchema,
     assignmentQuerySchema,
+    playerAssignmentQuerySchema,
     createCoachAssignmentSchema,
     submitCoachAssignmentSchema,
+    playerAssignmentSchema,
+    updatePlayerAssignmentSchema,
 } = require('./coaches.schema');
 
 function coachesRoutes(controller) {
     const router = Router();
     const assignmentUpload = express.raw({
-        type: ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
+        type: [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/png',
+            'image/jpeg',
+            'image/jpg',
+            'image/webp',
+        ],
         limit: '25mb',
     });
     const coachImageUpload = multer({
@@ -76,6 +87,11 @@ function coachesRoutes(controller) {
     router.post('/me/evaluations', restrictTo('coach'), validate({ body: coachEvaluationSchema }), controller.createMeEvaluation);
     router.get('/me/assignments', restrictTo('coach'), validate({ query: assignmentQuerySchema }), controller.getMeAssignments);
     router.post('/me/assignments/:assignmentId/submit', restrictTo('coach'), validate({ params: assignmentParam, body: submitCoachAssignmentSchema }), controller.submitMeAssignment);
+    router.get('/me/player-assignments', restrictTo('coach'), validate({ query: playerAssignmentQuerySchema }), controller.getMePlayerAssignments);
+    router.post('/me/player-assignments', restrictTo('coach'), validate({ body: playerAssignmentSchema }), controller.createMePlayerAssignment);
+    router.patch('/me/player-assignments/:assignmentId', restrictTo('coach'), validate({ params: assignmentParam, body: updatePlayerAssignmentSchema }), controller.updateMePlayerAssignment);
+    router.get('/me/player-assignments/:assignmentId/submissions', restrictTo('coach'), validate({ params: assignmentParam }), controller.getMePlayerAssignmentSubmissions);
+    router.get('/me/daily-ai-inputs', restrictTo('coach'), controller.getMeDailyAiInputs);
 
     router.get('/assignments', rbac('manage_coaches'), validate({ query: assignmentQuerySchema }), controller.listAssignments);
     router.post('/assignments/upload', rbacAny('manage_coaches', 'access_coach_dashboard'), assignmentUpload, controller.uploadAssignmentFile);

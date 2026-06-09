@@ -149,14 +149,7 @@ export const NAV_ITEMS = {
     { label: "Birthdays", href: "/coach/birthdays", icon: "Cake" },
     { label: "Calendar", href: "/coach/calendar", icon: "Calendar" },
     { label: "My Groups", href: "/coach/my-groups", icon: "Users" },
-    {
-      label: "Evaluations",
-      icon: "Star",
-      children: [
-        { label: "New Evaluation", href: "/coach/evaluations/new" },
-        { label: "History", href: "/coach/evaluations/history" },
-      ],
-    },
+    { label: "Ranking System", href: "/coach/ranking-system", icon: "Star" },
     { label: "Measurements", href: "/coach/measurements", icon: "Ruler" },
     { label: "Injury Risk AI", href: "/coach/injury-risk-ai", icon: "BrainCircuit" },
     { label: "Assignments", href: "/coach/assignments", icon: "ClipboardCheck" },
@@ -195,6 +188,7 @@ export const NAV_ITEMS = {
     { label: "Notifications", href: "/player/notifications", icon: "Bell" },
     { label: "Calendar", href: "/player/calendar", icon: "Calendar" },
     { label: "Matches", href: "/player/matches", icon: "Trophy" },
+    { label: "Assignments", href: "/player/assignments", icon: "ClipboardCheck" },
     {
       label: "Profile",
       icon: "User",

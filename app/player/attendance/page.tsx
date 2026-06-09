@@ -1,18 +1,29 @@
 "use client";
 
-import { Calendar, CalendarCheck, Clock, Loader2 } from "lucide-react";
+import { useMemo } from "react";
+import {
+  Activity,
+  Calendar,
+  CalendarCheck,
+  Clock,
+  Dumbbell,
+  Loader2,
+  MapPin,
+  Trophy,
+} from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DoughnutChart } from "@/components/charts/DoughnutChart";
 import {
   useGetPlayerAttendanceQuery,
-  useGetPlayerProgressQuery,
+  type PlayerAttendanceRecord,
 } from "@/lib/store/api/calendarApi";
-import type { PlayerAttendanceRecord } from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
-const attendanceLabels: Record<PlayerAttendanceRecord["status"], string> = {
+type AttendanceStatus = PlayerAttendanceRecord["status"];
+
+const attendanceLabels: Record<AttendanceStatus, string> = {
   present: "Present",
   absent: "Absent",
   late: "Late",
@@ -20,158 +31,289 @@ const attendanceLabels: Record<PlayerAttendanceRecord["status"], string> = {
   injured: "Injured",
 };
 
-const countAttendance = (records: PlayerAttendanceRecord[]) =>
-  records.reduce(
-    (counts, record) => ({
-      ...counts,
-      [record.status]: counts[record.status] + 1,
-    }),
-    {
-      present: 0,
-      absent: 0,
-      late: 0,
-      excused: 0,
-      injured: 0,
-    },
+const statusOrder: AttendanceStatus[] = [
+  "present",
+  "late",
+  "absent",
+  "excused",
+  "injured",
+];
+
+const attendedStatuses = new Set<AttendanceStatus>(["present", "late"]);
+
+const emptyCounts = () =>
+  statusOrder.reduce(
+    (counts, status) => ({ ...counts, [status]: 0 }),
+    {} as Record<AttendanceStatus, number>,
   );
 
-const statusVariant = (status: PlayerAttendanceRecord["status"]) => {
-  if (["present"].includes(status)) return "success" as const;
-  if (["late", "excused"].includes(status)) return "warning" as const;
-  if (["absent", "injured"].includes(status)) return "destructive" as const;
+const countAttendance = (records: PlayerAttendanceRecord[]) =>
+  records.reduce((counts, record) => {
+    counts[record.status] = (counts[record.status] ?? 0) + 1;
+    return counts;
+  }, emptyCounts());
+
+const attendanceRate = (records: PlayerAttendanceRecord[]) => {
+  if (!records.length) return 0;
+  const attended = records.filter((record) =>
+    attendedStatuses.has(record.status),
+  ).length;
+  return Math.round((attended / records.length) * 100);
+};
+
+const titleCase = (value: string | null | undefined) =>
+  (value || "Not set")
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const statusVariant = (status: AttendanceStatus) => {
+  if (status === "present") return "success" as const;
+  if (status === "late" || status === "excused") return "warning" as const;
+  if (status === "absent" || status === "injured") return "destructive" as const;
   return "secondary" as const;
 };
 
+const recordDateTime = (record: PlayerAttendanceRecord) =>
+  record.start_datetime ||
+  (record.match_date
+    ? `${record.match_date}T${String(record.match_time || "00:00:00").slice(0, 8)}`
+    : "");
+
+const recordTitle = (record: PlayerAttendanceRecord) =>
+  record.title ||
+  (record.record_type === "match" && record.opponent_name
+    ? `Match vs ${record.opponent_name}`
+    : "Training session");
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="border-white/10 bg-white/[0.045] shadow-none">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-400">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+          </div>
+          <span className="rounded-lg bg-cyan-400/10 p-2 text-cyan-200">
+            <Icon className="h-5 w-5" />
+          </span>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">{detail}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-8 text-center text-sm text-slate-400">
+      {text}
+    </div>
+  );
+}
+
+function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
+  const dateTime = recordDateTime(record);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-200">
+          {record.record_type === "match" ? (
+            <Trophy className="h-5 w-5" />
+          ) : (
+            <Dumbbell className="h-5 w-5" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium text-white">{recordTitle(record)}</p>
+            <Badge variant="outline">
+              {record.record_type === "match" ? "Match" : "Training"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+            {dateTime && (
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {formatDate(dateTime)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTime12(dateTime)}
+                </span>
+              </>
+            )}
+            {record.location && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                {record.location}
+              </span>
+            )}
+            {record.arrival_time && (
+              <span>Arrival {formatTime12(record.arrival_time)}</span>
+            )}
+          </div>
+          {(record.notes || record.reason) && (
+            <p className="mt-2 text-xs text-slate-400">
+              {record.notes || record.reason}
+            </p>
+          )}
+        </div>
+      </div>
+      <Badge variant={statusVariant(record.status)}>
+        {attendanceLabels[record.status] || titleCase(record.status)}
+      </Badge>
+    </div>
+  );
+}
+
 export default function PlayerAttendancePage() {
-  const attendanceQuery = useGetPlayerAttendanceQuery();
-  const progressQuery = useGetPlayerProgressQuery();
-  const records = attendanceQuery.data?.data ?? [];
-  const statusCounts = countAttendance(records);
-  const chartData = Object.entries(attendanceLabels).map(([key, label]) => ({
-    label,
-    value: statusCounts[key as PlayerAttendanceRecord["status"]] || 0,
+  const attendanceQuery = useGetPlayerAttendanceQuery({
+    limit: 500,
+  });
+
+  const records = useMemo(
+    () => attendanceQuery.data?.data ?? [],
+    [attendanceQuery.data],
+  );
+  const trainingRecords = useMemo(
+    () => records.filter((record) => record.record_type !== "match"),
+    [records],
+  );
+  const matchRecords = useMemo(
+    () => records.filter((record) => record.record_type === "match"),
+    [records],
+  );
+  const statusCounts = useMemo(() => countAttendance(records), [records]);
+  const totalAttended = records.filter((record) =>
+    attendedStatuses.has(record.status),
+  ).length;
+  const latestRecord = records[0];
+  const totalRows = attendanceQuery.data?.pagination.total ?? records.length;
+
+  const chartData = statusOrder.map((status) => ({
+    label: attendanceLabels[status],
+    value: statusCounts[status] || 0,
   }));
-  const attended = statusCounts.present + statusCounts.late;
-  const attendanceRate =
-    progressQuery.data?.attendancePercentage ??
-    (records.length ? Math.round((attended / records.length) * 100) : 0);
-  const isLoading = attendanceQuery.isLoading || progressQuery.isLoading;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Attendance"
-        description="Your live attendance record from training sessions and matches."
+        description="Your recorded training and match attendance from the academy database."
         breadcrumbs={[
           { label: "Home", href: "/player/home" },
           { label: "Attendance" },
         ]}
       />
 
-      {isLoading ? (
+      {attendanceQuery.isError && (
+        <Card className="border-amber-400/30 bg-amber-500/10 shadow-none">
+          <CardContent className="p-4 text-sm text-amber-100">
+            Attendance data could not load from the backend. Please refresh when
+            the server is available.
+          </CardContent>
+        </Card>
+      )}
+
+      {attendanceQuery.isLoading ? (
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading attendance...
+            Loading attendance from the database...
           </CardContent>
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Card className="border-white/10 bg-white/[0.045] shadow-none">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-cyan-200">
-                  {Math.round(attendanceRate)}%
-                </p>
-                <p className="text-xs text-slate-400">Attendance Rate</p>
-              </CardContent>
-            </Card>
-            {Object.entries(attendanceLabels).map(([key, label]) => (
-              <Card
-                key={key}
-                className="border-white/10 bg-white/[0.045] shadow-none"
-              >
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-white">
-                    {statusCounts[key as PlayerAttendanceRecord["status"]]}
-                  </p>
-                  <p className="text-xs text-slate-400">{label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Attendance Rate"
+              value={`${attendanceRate(records)}%`}
+              detail={`${totalAttended}/${records.length} recorded sessions attended`}
+              icon={Activity}
+            />
+            <MetricCard
+              label="Training"
+              value={`${attendanceRate(trainingRecords)}%`}
+              detail={`${trainingRecords.length} training records`}
+              icon={Dumbbell}
+            />
+            <MetricCard
+              label="Matches"
+              value={`${attendanceRate(matchRecords)}%`}
+              detail={`${matchRecords.length} match records`}
+              icon={Trophy}
+            />
+            <MetricCard
+              label="Latest Status"
+              value={
+                latestRecord
+                  ? attendanceLabels[latestRecord.status] || titleCase(latestRecord.status)
+                  : "No records"
+              }
+              detail={latestRecord ? recordTitle(latestRecord) : "Nothing recorded yet"}
+              icon={CalendarCheck}
+            />
+          </section>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">
-                  Breakdown
+                  Status Breakdown
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <DoughnutChart
-                  labels={chartData.map((item) => item.label)}
-                  data={chartData.map((item) => item.value)}
-                  height={250}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="border-white/10 bg-white/[0.045] shadow-none lg:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">
-                  Recent Records
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {records.map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-200">
-                        <CalendarCheck className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {record.title || "Session"}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                          <Badge variant="outline">
-                            {record.record_type === "match" ? "Match" : "Training"}
-                          </Badge>
-                          <Calendar className="h-3 w-3" />
-                          {record.start_datetime
-                            ? formatDate(record.start_datetime)
-                            : "Not set"}
-                          {record.start_datetime && (
-                            <>
-                              <Clock className="ml-1 h-3 w-3" />
-                              {formatTime12(record.start_datetime)}
-                            </>
-                          )}
-                        </div>
-                        {(record.notes || record.reason) && (
-                          <p className="mt-0.5 text-xs text-slate-400">
-                            {record.notes || record.reason}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Badge variant={statusVariant(record.status)}>
-                      {attendanceLabels[record.status] || record.status}
-                    </Badge>
-                  </div>
-                ))}
-                {!records.length && (
-                  <p className="py-8 text-center text-slate-400">
-                    No attendance records yet.
-                  </p>
+                {records.length ? (
+                  <DoughnutChart
+                    labels={chartData.map((item) => item.label)}
+                    data={chartData.map((item) => item.value)}
+                    height={260}
+                    centerLabel="Records"
+                    centerValue={records.length}
+                  />
+                ) : (
+                  <EmptyState text="No attendance statuses have been recorded yet." />
                 )}
               </CardContent>
             </Card>
-          </div>
+
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="text-base font-semibold">
+                    Attendance Records
+                  </CardTitle>
+                  <p className="text-xs text-slate-400">
+                    Showing {records.length} of {totalRows} database records
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {records.map((record) => (
+                  <AttendanceRow key={record.id} record={record} />
+                ))}
+                {!records.length && (
+                  <EmptyState text="No training or match attendance has been recorded for you yet." />
+                )}
+              </CardContent>
+            </Card>
+          </section>
         </>
       )}
     </div>

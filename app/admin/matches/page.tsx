@@ -5,12 +5,10 @@ import type { FormEvent } from "react";
 import {
   AlertTriangle,
   CalendarClock,
-  Check,
   Eye,
   Loader2,
   Plus,
   Trash2,
-  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { MonthCalendar } from "@/components/shared/MonthCalendar";
@@ -37,16 +35,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useGetCoachesQuery } from "@/lib/store/api/adminApi";
 import {
-  useApproveFriendlyRequestMutation,
-  useConvertFriendlyRequestMutation,
   useCreateAdminMatchMutation,
   useGetAdminMatchQuery,
-  useGetAdminCoachMatchRequestsQuery,
-  useGetAdminFriendlyRequestsQuery,
   useGetAdminMatchesQuery,
   useHardDeleteAdminMatchMutation,
   usePostponeAdminMatchMutation,
-  useRejectFriendlyRequestMutation,
   useUpdateAdminMatchStatusMutation,
   type Match,
 } from "@/lib/store/api/calendarApi";
@@ -88,8 +81,6 @@ export default function AdminMatchesPage() {
       refetchOnMountOrArgChange: true,
     },
   );
-  const { data: requestsRes } = useGetAdminFriendlyRequestsQuery();
-  const { data: coachRequestsRes } = useGetAdminCoachMatchRequestsQuery();
   const { data: coachesRes } = useGetCoachesQuery({ limit: 100 });
   const [open, setOpen] = useState(false);
   const [deleteMatchRow, setDeleteMatchRow] = useState<Match | null>(null);
@@ -122,10 +113,6 @@ export default function AdminMatchesPage() {
     usePostponeAdminMatchMutation();
   const [hardDeleteMatch, { isLoading: deletingMatch }] =
     useHardDeleteAdminMatchMutation();
-  const [approve] = useApproveFriendlyRequestMutation();
-  const [reject] = useRejectFriendlyRequestMutation();
-  const [convert] = useConvertFriendlyRequestMutation();
-
   const submitMatch = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError("");
@@ -248,8 +235,6 @@ export default function AdminMatchesPage() {
     useGetAdminMatchQuery(activeFinishedMatchId, {
       skip: !activeFinishedMatchId,
     });
-  const requests = requestsRes?.data ?? [];
-  const coachRequests = coachRequestsRes?.data ?? [];
   const coaches = coachesRes?.data ?? [];
   const calendarItems = useMemo(
     () =>
@@ -1016,7 +1001,7 @@ export default function AdminMatchesPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+      <div className="space-y-6">
         <Card className="border-border/50 bg-card">
           <CardHeader>
             <CardTitle className="text-base">All Matches</CardTitle>
@@ -1127,128 +1112,6 @@ export default function AdminMatchesPage() {
             {!matches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No matches scheduled.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">Friendly Match Requests</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {coachRequests.map((request) => (
-              <div
-                key={request.id}
-                className="rounded-md border border-border/50 p-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{request.opponent_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {request.coach_name} · expires{" "}
-                      {formatDate(request.expires_at)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      request.status === "accepted"
-                        ? "success"
-                        : request.status === "expired"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                  >
-                    {request.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-            {requests.map((request) => (
-              <div
-                key={request.id}
-                className="rounded-md border border-border/50 p-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">
-                      {request.suggested_opponent_name ||
-                        `${request.opponent_level} opponent`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {request.coach_name} ·{" "}
-                      {formatDate(request.preferred_date)}{" "}
-                      {formatTime12(request.preferred_time)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      request.status === "approved"
-                        ? "success"
-                        : request.status === "rejected"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                  >
-                    {request.status}
-                  </Badge>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {request.reason}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {request.status === "pending" && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="gap-1"
-                        onClick={() =>
-                          approve({ id: request.id, adminResponse: "Approved" })
-                        }
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        onClick={() =>
-                          reject({
-                            id: request.id,
-                            adminResponse: "Rejected by admin",
-                          })
-                        }
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {request.status === "approved" &&
-                    !request.converted_match_id && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          convert({
-                            id: request.id,
-                            body: {
-                              location: "To be confirmed",
-                              venueType: "neutral",
-                            },
-                          })
-                        }
-                      >
-                        Convert to Match
-                      </Button>
-                    )}
-                </div>
-              </div>
-            ))}
-            {!requests.length && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No friendly requests.
               </p>
             )}
           </CardContent>
