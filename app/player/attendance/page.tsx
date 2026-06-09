@@ -204,7 +204,7 @@ export default function PlayerAttendancePage() {
     attendedStatuses.has(record.status),
   ).length;
   const latestRecord = records[0];
-  const totalRows = attendanceQuery.data?.total ?? records.length;
+  const totalRows = attendanceQuery.data?.pagination.total ?? records.length;
 
   const chartData = statusOrder.map((status) => ({
     label: attendanceLabels[status],

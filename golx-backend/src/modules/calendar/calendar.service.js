@@ -4,10 +4,17 @@ const {
   ForbiddenError,
   NotFoundError,
 } = require("../../shared/errors");
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 const {
   MODEL_VERSION: INJURY_RISK_MODEL_VERSION,
   runInjuryRiskPredictions,
 } = require("../ai/injury-risk-model");
+const {
+  MODEL_VERSION: RANKING_MODEL_VERSION,
+  runRankingPredictions,
+} = require("../ai/ranking-model");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -22,6 +29,21 @@ const timePart = (value) =>
   value instanceof Date
     ? `${pad2(value.getHours())}:${pad2(value.getMinutes())}`
     : normalizeTime24(value);
+const sanitizeFileName = (value = "assignment-file") => {
+  let decoded = String(value || "assignment-file");
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    // Keep the original header value if it is not URI encoded.
+  }
+  return (
+    decoded
+      .replace(/[/\\?%*:|"<>]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 160) || "assignment-file"
+  );
+};
 const timeZoneOffsetMs = (date, timeZone = DEFAULT_TIME_ZONE) => {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -70,6 +92,18 @@ const matchKickoffAt = (match) =>
   new Date(`${datePart(match.match_date)}T${timePart(match.match_time)}:00`);
 const MATCH_AUTO_FINISH_HOURS = 3;
 const MATCH_EVALUATION_REOPEN_HOURS = 24;
+const PLAYER_ASSIGNMENT_UPLOAD_MIME = {
+  "application/pdf": { fileType: "pdf", extension: ".pdf" },
+  "application/msword": { fileType: "word", extension: ".doc" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    fileType: "word",
+    extension: ".docx",
+  },
+  "image/png": { fileType: "image", extension: ".png" },
+  "image/jpeg": { fileType: "image", extension: ".jpg" },
+  "image/jpg": { fileType: "image", extension: ".jpg" },
+  "image/webp": { fileType: "image", extension: ".webp" },
+};
 const matchAutoFinishAt = (match) => {
   const finishAt = matchKickoffAt(match);
   finishAt.setHours(finishAt.getHours() + MATCH_AUTO_FINISH_HOURS);
@@ -774,6 +808,55 @@ class CalendarService {
     );
   }
 
+  async _notifyCoachWeeklyRankingReady(coach, rows) {
+    if (!coach?.user_id || !rows?.length) return;
+
+    const latestWeekStart = rows[0]?.week_start;
+    if (!latestWeekStart) return;
+
+    const latestRows = rows.filter(
+      (row) => String(row.week_start) === String(latestWeekStart),
+    );
+    if (!latestRows.length) return;
+
+    const topPlayer = latestRows
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(a.rank || Number.POSITIVE_INFINITY) -
+          Number(b.rank || Number.POSITIVE_INFINITY),
+      )[0];
+
+    const existing = await this.repo
+      .db("notification_inbox")
+      .where({ user_id: coach.user_id, type: "ranking" })
+      .whereRaw("data->>'source' = ?", ["ranking_system_weekly"])
+      .whereRaw("data->>'coachId' = ?", [String(coach.id)])
+      .whereRaw("data->>'weekStart' = ?", [String(latestWeekStart)])
+      .first("id");
+
+    if (existing) return;
+
+    await this._notifyUsers(
+      [coach.user_id],
+      "Weekly rankings are ready",
+      topPlayer?.player_name
+        ? `New Ranking System output is available. Overall #1: ${topPlayer.player_name}.`
+        : "New Ranking System output is available.",
+      "ranking",
+      {
+        source: "ranking_system_weekly",
+        coachId: coach.id,
+        weekStart: latestWeekStart,
+        weekEnd: topPlayer?.week_end || latestRows[0]?.week_end || null,
+        topPlayerId: topPlayer?.player_id || null,
+        topPlayerName: topPlayer?.player_name || null,
+        modelVersion: RANKING_MODEL_VERSION,
+        href: "/coach/rankings",
+      },
+    );
+  }
+
   _evaluationEditWindow(row) {
     if (!row || row.status !== "approved" || row.consumed_at || !row.expires_at) {
       return { active: false };
@@ -1019,8 +1102,9 @@ class CalendarService {
       );
     }
     if (!this._matchDayWindowOpen(match)) {
+      const minutes = academyMatchDayUnlockMinutes(match.academy_settings);
       throw new ForbiddenError(
-        "Match Day Operations open 5 minutes before kick-off",
+        `Match Day Operations open ${minutes} minutes before kick-off`,
       );
     }
   }
@@ -1267,6 +1351,15 @@ class CalendarService {
       trainingEndsAt(event) <= new Date()
     )
       throw new BadRequestError("Training session is closed");
+    if (trainingStartsAt(event) > new Date())
+      throw new BadRequestError("Training session has not started yet");
+  }
+
+  _ensureTrainingEventCanReceiveEvaluation(event) {
+    if (event.status === "cancelled")
+      throw new BadRequestError("Cancelled events cannot be evaluated");
+    if (event.status === "postponed")
+      throw new BadRequestError("Postponed events cannot be evaluated");
     if (trainingStartsAt(event) > new Date())
       throw new BadRequestError("Training session has not started yet");
   }
@@ -2818,10 +2911,19 @@ class CalendarService {
         }
 
         const [players, inputRows] = await Promise.all([
-          db("player_profiles")
-            .where({ academy_id: academy.id })
-            .whereNull("deleted_at")
-            .select("id", "full_name", "date_of_birth", "position", "group_id"),
+          db("player_profiles as pp")
+            .leftJoin("player_group_assignments as pga", function joinCurrentGroup() {
+              this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
+            })
+            .where("pp.academy_id", academy.id)
+            .whereNull("pp.deleted_at")
+            .select(
+              "pp.id",
+              "pp.full_name",
+              "pp.date_of_birth",
+              "pp.position",
+              "pga.group_id",
+            ),
           db("injury_risk_player_inputs")
             .where({ academy_id: academy.id })
             .select("*"),
@@ -3878,7 +3980,7 @@ class CalendarService {
       eventId,
       "can_evaluate_players",
     );
-    this._ensureTrainingEventOpen(event);
+    this._ensureTrainingEventCanReceiveEvaluation(event);
     await this._ensurePlayersInEventTargets(
       records.map((record) => record.playerId),
       { groupIds, birthYearIds, directPlayerIds: playerIds },
@@ -4058,6 +4160,877 @@ class CalendarService {
       );
     }
     return result;
+  }
+
+  async coachRankingSystemInputs(userId, academyId, filters) {
+    const coach = await this._getCoach(userId, academyId);
+    const page = Number(filters.page || 1);
+    const limit = Number(filters.limit || 100);
+    const offset = (page - 1) * limit;
+    const numberOrNull = (value) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const addValue = (target, value) => {
+      const numeric = numberOrNull(value);
+      if (numeric !== null) target.push(numeric);
+    };
+    const avg = (values) =>
+      values.length
+        ? Number(
+            (
+              values.reduce((sum, value) => sum + value, 0) / values.length
+            ).toFixed(2),
+          )
+        : null;
+    const clampScore = (value) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return null;
+      return Math.max(0, Math.min(100, Number(numeric.toFixed(2))));
+    };
+    const scoreOrZero = (value) => {
+      const score = clampScore(value);
+      return score === null ? 0 : score;
+    };
+    const ratingToScore = (value) => {
+      const numeric = numberOrNull(value);
+      if (numeric === null) return null;
+      return clampScore(numeric <= 10 ? numeric * 10 : numeric);
+    };
+    const avgScore = (values) => avg(values.map(ratingToScore).filter((value) => value !== null));
+    const gradeForScore = (score) => {
+      const numeric = scoreOrZero(score);
+      if (numeric >= 90) return "A";
+      if (numeric >= 80) return "B";
+      if (numeric >= 70) return "C";
+      if (numeric >= 60) return "D";
+      return "F";
+    };
+    const weightedWeeklyScore = ({
+      matchScore,
+      coachScore,
+      attendanceScore,
+      weeklyAiScore,
+    }) =>
+      clampScore(
+        scoreOrZero(matchScore) * 0.5 +
+          scoreOrZero(coachScore) * 0.25 +
+          scoreOrZero(attendanceScore) * 0.15 +
+          scoreOrZero(weeklyAiScore) * 0.1,
+      );
+    const optionRanges = {
+      rating10: [
+        { min: 0, max: 3.9, midpoint: 1.95 },
+        { min: 4, max: 6.4, midpoint: 5.2 },
+        { min: 6.5, max: 8.4, midpoint: 7.45 },
+        { min: 8.5, max: 10, midpoint: 9.25 },
+      ],
+      percentage: [
+        { min: 0, max: 49, midpoint: 24.5 },
+        { min: 50, max: 69, midpoint: 59.5 },
+        { min: 70, max: 84, midpoint: 77 },
+        { min: 85, max: 100, midpoint: 92.5 },
+      ],
+      chance: [
+        { min: 0, max: 0, midpoint: 0 },
+        { min: 1, max: 1, midpoint: 1 },
+        { min: 2, max: 2, midpoint: 2 },
+        { min: 3, max: Number.POSITIVE_INFINITY, midpoint: 4 },
+      ],
+      defensiveCount: [
+        { min: 0, max: 1, midpoint: 0.5 },
+        { min: 2, max: 3, midpoint: 2.5 },
+        { min: 4, max: 5, midpoint: 4.5 },
+        { min: 6, max: Number.POSITIVE_INFINITY, midpoint: 7 },
+      ],
+      duels: [
+        { min: 0, max: 39, midpoint: 19.5 },
+        { min: 40, max: 59, midpoint: 49.5 },
+        { min: 60, max: 79, midpoint: 69.5 },
+        { min: 80, max: 100, midpoint: 90 },
+      ],
+      possessionLoss: [
+        { min: 0, max: 3, midpoint: 1.5 },
+        { min: 4, max: 6, midpoint: 5 },
+        { min: 7, max: 10, midpoint: 8.5 },
+        { min: 11, max: Number.POSITIVE_INFINITY, midpoint: 12 },
+      ],
+    };
+    const optionMidpoint = (value, optionType, { zeroMeansMissing = false } = {}) => {
+      const numeric = numberOrNull(value);
+      if (numeric === null) return null;
+      if (zeroMeansMissing && numeric === 0) return null;
+      const ranges = optionRanges[optionType] || [];
+      const range = ranges.find(
+        (item) => numeric >= item.min && numeric <= item.max,
+      );
+      return range ? range.midpoint : Number(numeric.toFixed(2));
+    };
+    const addOptionValue = (target, value, optionType, options) => {
+      const numeric = optionMidpoint(value, optionType, options);
+      if (numeric !== null) target.push(numeric);
+    };
+    const avgOptionValues = (values, optionType, options) =>
+      avg(
+        values
+          .map((value) => optionMidpoint(value, optionType, options))
+          .filter((value) => value !== null),
+      );
+    const normalizePosition = (value) =>
+      String(value || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[-_]+/g, " ")
+        .replace(/\s+/g, " ");
+    const normalizeKey = (value) =>
+      String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    const roleFamily = (position) => {
+      const normalized = normalizePosition(position);
+      if (["GK", "GOALKEEPER", "GOAL KEEPER"].includes(normalized)) {
+        return "goalkeeper";
+      }
+      if (
+        [
+          "ST",
+          "CF",
+          "LW",
+          "RW",
+          "LF",
+          "RF",
+          "FORWARD",
+          "STRIKER",
+          "WINGER",
+          "LEFT WING",
+          "RIGHT WING",
+          "LEFT WINGER",
+          "RIGHT WINGER",
+        ].includes(normalized)
+      ) {
+        return "attack";
+      }
+      if (
+        [
+          "CM",
+          "CAM",
+          "CDM",
+          "LM",
+          "RM",
+          "MIDFIELDER",
+          "MIDFIELD",
+          "ATTACKING MIDFIELDER",
+          "DEFENSIVE MIDFIELDER",
+          "CENTRAL MIDFIELDER",
+        ].includes(normalized)
+      ) {
+        return "midfield";
+      }
+      if (
+        [
+          "CB",
+          "LB",
+          "RB",
+          "LWB",
+          "RWB",
+          "DEFENDER",
+          "DEFENSE",
+          "CENTRE BACK",
+          "CENTER BACK",
+          "LEFT BACK",
+          "RIGHT BACK",
+        ].includes(normalized)
+      ) {
+        return "defense";
+      }
+      return "unknown";
+    };
+    const modelPosition = (family) =>
+      ({
+        attack: "ATTACK",
+        midfield: "MIDFIELD",
+        defense: "DEFENSE",
+        goalkeeper: "GOALKEEPER",
+      })[family] || "UNKNOWN";
+    const matchScoreForRow = (row) => {
+      const baseScore = ratingToScore(row.match_base_rating);
+      const fallback = () => {
+        if (row.role_family === "attack") {
+          return (
+            Number(row.shots_on_target || 0) * 10 +
+            Number(row.key_passes || 0) * 5
+          );
+        }
+        if (row.role_family === "midfield") {
+          return (
+            scoreOrZero(row.pass_accuracy) * 0.45 +
+            Number(row.key_passes || 0) * 4 +
+            Number(row.duels || 0) * 2
+          );
+        }
+        if (row.role_family === "defense") {
+          return (
+            Number(row.defensive_tackles || 0) * 6 +
+            Number(row.interceptions || 0) * 6 +
+            Number(row.duels || 0) * 2 +
+            scoreOrZero(ratingToScore(row.positioning_rating)) * 0.45
+          );
+        }
+        if (row.role_family === "goalkeeper") {
+          return (
+            Number(row.saves || 0) * 8 +
+            scoreOrZero(ratingToScore(row.shot_stopping)) * 0.45 +
+            scoreOrZero(row.distribution_accuracy) * 0.3
+          );
+        }
+        return baseScore;
+      };
+      const base = baseScore ?? fallback() ?? 0;
+      if (row.role_family === "attack") {
+        return clampScore(
+          base + Number(row.goals || 0) * 5 + Number(row.assists || 0) * 4,
+        );
+      }
+      if (row.role_family === "midfield") {
+        return clampScore(
+          base + Number(row.goals || 0) * 6 + Number(row.assists || 0) * 5,
+        );
+      }
+      if (row.role_family === "defense") {
+        return clampScore(
+          base + Number(row.goals || 0) * 8 + Number(row.clean_sheets || 0) * 6,
+        );
+      }
+      if (row.role_family === "goalkeeper") {
+        return clampScore(
+          base +
+            Number(row.clean_sheets || 0) * 8 -
+            Number(row.handling_errors || 0) * 5,
+        );
+      }
+      return clampScore(base);
+    };
+    const customMainPosition = (playerId, customByPlayer) => {
+      const customProfile = customByPlayer.get(playerId) || [];
+      const field = customProfile.find(
+        (item) =>
+          normalizeKey(item.key) === "main_position" ||
+          normalizeKey(item.label) === "main_position",
+      );
+      const value = field?.value;
+      if (value === null || value === undefined) return null;
+      if (Array.isArray(value)) return value.filter(Boolean).join(", ") || null;
+      return String(value).trim() || null;
+    };
+    const groupIds = await this._getCoachVisibleGroupIds(coach.id, academyId);
+    const birthYearIds = (
+      await this.repo.findCoachAccessibleBirthYears(coach.id, academyId)
+    ).map((row) => row.id);
+
+    if (!groupIds.length && !birthYearIds.length) {
+      return { data: [], total: 0, page, totalPages: 1 };
+    }
+
+    const accessibleMatchIds = this.repo
+      .matchListQuery(academyId, { groupIds, birthYearIds })
+      .clearSelect()
+      .clearOrder()
+      .select("m.id");
+
+    const scopedPlayers = await this.repo.findCoachScopedPlayers(
+      coach.id,
+      academyId,
+    );
+    const playerIds = scopedPlayers.map((player) => player.id);
+    if (!playerIds.length) {
+      return { data: [], total: 0, page, totalPages: 1 };
+    }
+    const customByPlayer = await this._playerCustomProfilesByPlayer(playerIds);
+    const playersWithMainPosition = scopedPlayers.map((player) => ({
+      ...player,
+      main_position: customMainPosition(player.id, customByPlayer),
+    }));
+    const playerById = new Map(playersWithMainPosition.map((player) => [player.id, player]));
+
+    const [matchRows, trainingRows, dailyRows, trainingAttendanceRows, matchAttendanceRows] = await Promise.all([
+      this.repo
+        .db("match_player_stats as mps")
+        .join("matches as m", "mps.match_id", "m.id")
+        .leftJoin("match_squads as ms", function joinSquadSnapshot() {
+          this.on("ms.match_id", "=", "mps.match_id").andOn(
+            "ms.player_id",
+            "=",
+            "mps.player_id",
+          );
+        })
+        .join("player_profiles as pp", "mps.player_id", "pp.id")
+        .whereIn("mps.match_id", accessibleMatchIds)
+        .whereIn("mps.player_id", playerIds)
+        .whereNotNull("m.evaluations_finalized_at")
+        .whereNull("m.deleted_at")
+        .select(
+          "mps.*",
+          "m.opponent_name",
+          "m.match_date",
+          "m.match_time",
+          "m.our_score",
+          "m.opponent_score",
+          "ms.position",
+          "ms.squad_role",
+          "pp.position as profile_position",
+          this.repo.db.raw(
+            "COALESCE(ms.player_name_snapshot, pp.full_name) as player_name",
+          ),
+          this.repo.db.raw(
+            "date_trunc('week', m.match_date::timestamp)::date::text as week_start",
+          ),
+          this.repo.db.raw(
+            "(date_trunc('week', m.match_date::timestamp)::date + interval '6 days')::date::text as week_end",
+          ),
+        ),
+      playerIds.length
+        ? this.repo
+            .db("player_event_evaluations as pee")
+            .join("calendar_events as ce", "pee.event_id", "ce.id")
+            .join("player_profiles as pp", "pee.player_id", "pp.id")
+            .whereIn("pee.player_id", playerIds)
+            .where("ce.academy_id", academyId)
+            .where("ce.event_type", "training")
+            .whereNull("ce.deleted_at")
+            .whereNot("ce.status", "cancelled")
+            .select(
+              "pee.id",
+              "pee.event_id",
+              "pee.player_id",
+              "pp.full_name as player_name",
+              "pp.position as profile_position",
+              "pee.technical_rating",
+              "pee.tactical_rating",
+              "pee.physical_rating",
+              "pee.mentality_rating",
+              "pee.ball_control_rating",
+              "pee.passing_accuracy_rating",
+              "pee.shooting_rating",
+              "pee.dribbling_rating",
+              "pee.receiving_under_pressure_rating",
+              "pee.speed_rating",
+              "pee.endurance_rating",
+              "pee.fatigue_rating",
+              "pee.strength_rating",
+              "pee.agility_rating",
+              "ce.title",
+              "ce.start_datetime",
+              this.repo.db.raw(
+                "date_trunc('week', ce.start_datetime)::date::text as week_start",
+              ),
+              this.repo.db.raw(
+                "(date_trunc('week', ce.start_datetime)::date + interval '6 days')::date::text as week_end",
+              ),
+            )
+        : [],
+      playerIds.length
+        ? this.repo
+            .db("player_daily_ai_inputs as pdai")
+            .join("player_profiles as pp", "pdai.player_id", "pp.id")
+            .whereIn("pdai.player_id", playerIds)
+            .where("pdai.academy_id", academyId)
+            .select(
+              "pdai.id",
+              "pdai.player_id",
+              "pp.full_name as player_name",
+              "pdai.input_date",
+              "pdai.sleep_hours",
+              "pdai.trained_today",
+              "pdai.meals_count",
+              "pdai.daily_ai_score",
+              this.repo.db.raw(
+                "date_trunc('week', pdai.input_date::timestamp)::date::text as week_start",
+              ),
+              this.repo.db.raw(
+                "(date_trunc('week', pdai.input_date::timestamp)::date + interval '6 days')::date::text as week_end",
+              ),
+            )
+        : [],
+      playerIds.length
+        ? this.repo
+            .db("event_attendance as ea")
+            .join("calendar_events as ce", "ea.event_id", "ce.id")
+            .whereIn("ea.player_id", playerIds)
+            .where("ce.academy_id", academyId)
+            .where("ce.event_type", "training")
+            .whereNull("ce.deleted_at")
+            .whereNot("ce.status", "cancelled")
+            .select(
+              "ea.player_id",
+              "ea.status",
+              "ce.start_datetime",
+              this.repo.db.raw(
+                "date_trunc('week', ce.start_datetime)::date::text as week_start",
+              ),
+              this.repo.db.raw(
+                "(date_trunc('week', ce.start_datetime)::date + interval '6 days')::date::text as week_end",
+              ),
+            )
+        : [],
+      playerIds.length
+        ? this.repo
+            .db("match_attendance as ma")
+            .join("matches as m", "ma.match_id", "m.id")
+            .join("calendar_events as ce", "m.event_id", "ce.id")
+            .whereIn("ma.player_id", playerIds)
+            .where("ce.academy_id", academyId)
+            .whereNull("m.deleted_at")
+            .whereNull("ce.deleted_at")
+            .whereNot("m.status", "cancelled")
+            .whereNot("m.match_status", "cancelled")
+            .select(
+              "ma.player_id",
+              "ma.status",
+              "m.match_date",
+              this.repo.db.raw(
+                "date_trunc('week', m.match_date::timestamp)::date::text as week_start",
+              ),
+              this.repo.db.raw(
+                "(date_trunc('week', m.match_date::timestamp)::date + interval '6 days')::date::text as week_end",
+              ),
+            )
+        : [],
+    ]);
+
+    const buckets = new Map();
+    const getBucket = ({ playerId, playerName, position, weekStart, weekEnd }) => {
+      const key = `${weekStart}:${playerId}`;
+      if (!buckets.has(key)) {
+        const player = playerById.get(playerId);
+        const fallbackPosition =
+          position || player?.main_position || player?.position || null;
+        buckets.set(key, {
+          id: key,
+          player_id: playerId,
+          player_name: playerName || player?.full_name || "Player",
+          week_start: weekStart,
+          week_end: weekEnd,
+          position: fallbackPosition,
+          role_family: roleFamily(fallbackPosition),
+          latest_match_at: 0,
+          match_ids: new Set(),
+          training_event_ids: new Set(),
+          daily_input_dates: new Set(),
+          clean_sheet_match_ids: new Set(),
+          base_values: {
+            technical: [],
+            tactical: [],
+            physical: [],
+            mentality: [],
+            decision_making: [],
+            work_rate: [],
+            positioning: [],
+          },
+          role_values: {
+            pass_accuracy: [],
+            shot_stopping: [],
+            distribution_accuracy: [],
+          },
+          match_values: {
+            performance_rating: [],
+          },
+          shots_on_target: 0,
+          key_passes: 0,
+          goals: 0,
+          assists: 0,
+          duels: 0,
+          defensive_tackles: 0,
+          interceptions: 0,
+          saves: 0,
+          handling_errors: 0,
+          daily_values: {
+            sleep_hours: [],
+            trained_today: [],
+            meals_count: [],
+            daily_ai_score: [],
+          },
+          attendance_total: 0,
+          attendance_attended: 0,
+        });
+      }
+      return buckets.get(key);
+    };
+
+    matchRows.forEach((row) => {
+      const player = playerById.get(row.player_id);
+      const position =
+        row.position || row.profile_position || player?.main_position || null;
+      const bucket = getBucket({
+        playerId: row.player_id,
+        playerName: row.player_name,
+        position,
+        weekStart: row.week_start,
+        weekEnd: row.week_end,
+      });
+      const matchAt = new Date(
+        `${datePart(row.match_date)}T${timePart(row.match_time) || "00:00"}:00`,
+      ).getTime();
+      if (matchAt >= bucket.latest_match_at && position) {
+        bucket.position = position;
+        bucket.role_family = roleFamily(position);
+        bucket.latest_match_at = matchAt;
+      }
+      bucket.match_ids.add(row.match_id);
+      addOptionValue(bucket.base_values.technical, row.technical_rating, "rating10", {
+        zeroMeansMissing: true,
+      });
+      addOptionValue(bucket.base_values.tactical, row.tactical_rating, "rating10", {
+        zeroMeansMissing: true,
+      });
+      addOptionValue(bucket.base_values.physical, row.physical_rating, "rating10", {
+        zeroMeansMissing: true,
+      });
+      addOptionValue(bucket.base_values.mentality, row.mentality_rating, "rating10", {
+        zeroMeansMissing: true,
+      });
+      addOptionValue(
+        bucket.base_values.decision_making,
+        row.decision_making_rating,
+        "rating10",
+        { zeroMeansMissing: true },
+      );
+      addOptionValue(bucket.base_values.work_rate, row.work_rate_rating, "rating10", {
+        zeroMeansMissing: true,
+      });
+      addOptionValue(
+        bucket.base_values.positioning,
+        row.positioning_rating,
+        "rating10",
+        { zeroMeansMissing: true },
+      );
+      addOptionValue(
+        bucket.role_values.pass_accuracy,
+        row.pass_accuracy_percentage,
+        "percentage",
+      );
+      addValue(bucket.match_values.performance_rating, row.performance_rating);
+      if (roleFamily(position) === "goalkeeper") {
+        addOptionValue(
+          bucket.role_values.shot_stopping,
+          row.technical_rating,
+          "rating10",
+          { zeroMeansMissing: true },
+        );
+        addOptionValue(
+          bucket.role_values.distribution_accuracy,
+          row.pass_accuracy_percentage,
+          "percentage",
+        );
+      }
+      bucket.shots_on_target += optionMidpoint(row.shots_on_target, "chance") || 0;
+      bucket.key_passes += optionMidpoint(row.key_passes, "chance") || 0;
+      bucket.goals += Number(row.goals || 0);
+      bucket.assists += Number(row.assists || 0);
+      bucket.duels += optionMidpoint(row.duels_won, "duels") || 0;
+      bucket.defensive_tackles +=
+        optionMidpoint(row.defensive_tackles, "defensiveCount") || 0;
+      bucket.interceptions +=
+        optionMidpoint(row.interceptions, "defensiveCount") || 0;
+      bucket.saves += optionMidpoint(row.saves, "defensiveCount") || 0;
+      bucket.handling_errors +=
+        optionMidpoint(row.possession_losses, "possessionLoss") || 0;
+      if (row.opponent_score !== null && Number(row.opponent_score) === 0) {
+        bucket.clean_sheet_match_ids.add(row.match_id);
+      }
+    });
+
+    trainingRows.forEach((row) => {
+      const player = playerById.get(row.player_id);
+      const bucket = getBucket({
+        playerId: row.player_id,
+        playerName: row.player_name,
+        position: row.profile_position || player?.main_position || null,
+        weekStart: row.week_start,
+        weekEnd: row.week_end,
+      });
+      bucket.training_event_ids.add(row.event_id);
+      const trainingTechnical =
+        optionMidpoint(row.technical_rating, "rating10", {
+          zeroMeansMissing: true,
+        }) ??
+        avgOptionValues(
+          [
+            row.ball_control_rating,
+            row.passing_accuracy_rating,
+            row.shooting_rating,
+            row.dribbling_rating,
+            row.receiving_under_pressure_rating,
+          ],
+          "rating10",
+          { zeroMeansMissing: true },
+        );
+      const trainingTactical =
+        optionMidpoint(row.tactical_rating, "rating10", {
+          zeroMeansMissing: true,
+        }) ??
+        avgOptionValues(
+          [row.passing_accuracy_rating, row.receiving_under_pressure_rating],
+          "rating10",
+          { zeroMeansMissing: true },
+        );
+      const trainingPhysical =
+        optionMidpoint(row.physical_rating, "rating10", {
+          zeroMeansMissing: true,
+        }) ??
+        avgOptionValues(
+          [
+            row.speed_rating,
+            row.endurance_rating,
+            row.strength_rating,
+            row.agility_rating,
+          ],
+          "rating10",
+          { zeroMeansMissing: true },
+        );
+      const trainingMentality =
+        optionMidpoint(row.mentality_rating, "rating10", {
+          zeroMeansMissing: true,
+        }) ??
+        avgOptionValues(
+          [row.endurance_rating, row.fatigue_rating, row.strength_rating],
+          "rating10",
+          { zeroMeansMissing: true },
+        );
+      const trainingDecisionMaking = avgOptionValues(
+        [row.receiving_under_pressure_rating, row.passing_accuracy_rating],
+        "rating10",
+        { zeroMeansMissing: true },
+      );
+      const trainingWorkRate = avgOptionValues(
+        [row.endurance_rating, row.strength_rating],
+        "rating10",
+        { zeroMeansMissing: true },
+      );
+      const trainingPositioning = avgOptionValues(
+        [row.receiving_under_pressure_rating],
+        "rating10",
+        { zeroMeansMissing: true },
+      );
+      addValue(bucket.base_values.technical, trainingTechnical);
+      addValue(bucket.base_values.tactical, trainingTactical);
+      addValue(bucket.base_values.physical, trainingPhysical);
+      addValue(bucket.base_values.mentality, trainingMentality);
+      addValue(bucket.base_values.decision_making, trainingDecisionMaking);
+      addValue(bucket.base_values.work_rate, trainingWorkRate);
+      addValue(bucket.base_values.positioning, trainingPositioning);
+    });
+
+    dailyRows.forEach((row) => {
+      const player = playerById.get(row.player_id);
+      const bucket = getBucket({
+        playerId: row.player_id,
+        playerName: row.player_name,
+        position: player?.main_position || player?.position || null,
+        weekStart: row.week_start,
+        weekEnd: row.week_end,
+      });
+      bucket.daily_input_dates.add(datePart(row.input_date));
+      addValue(bucket.daily_values.sleep_hours, row.sleep_hours);
+      addValue(bucket.daily_values.trained_today, row.trained_today);
+      addValue(bucket.daily_values.meals_count, row.meals_count);
+      addValue(bucket.daily_values.daily_ai_score, row.daily_ai_score);
+    });
+
+    const addAttendance = (row) => {
+      const player = playerById.get(row.player_id);
+      const bucket = getBucket({
+        playerId: row.player_id,
+        playerName: player?.full_name,
+        position: player?.main_position || player?.position || null,
+        weekStart: row.week_start,
+        weekEnd: row.week_end,
+      });
+      bucket.attendance_total += 1;
+      if (["present", "late"].includes(String(row.status || ""))) {
+        bucket.attendance_attended += 1;
+      }
+    };
+    trainingAttendanceRows.forEach(addAttendance);
+    matchAttendanceRows.forEach(addAttendance);
+
+    const inputRows = [...buckets.values()]
+      .map((bucket) => ({
+        id: bucket.id,
+        player_id: bucket.player_id,
+        player_name: bucket.player_name,
+        week_start: bucket.week_start,
+        week_end: bucket.week_end,
+        position: bucket.position,
+        role_family: bucket.role_family,
+        match_evaluation_count: bucket.match_ids.size,
+        training_evaluation_count: bucket.training_event_ids.size,
+        daily_ai_input_count: bucket.daily_input_dates.size,
+        technical_rating: avg(bucket.base_values.technical),
+        tactical_rating: avg(bucket.base_values.tactical),
+        physical_rating: avg(bucket.base_values.physical),
+        mentality_rating: avg(bucket.base_values.mentality),
+        decision_making_rating: avg(bucket.base_values.decision_making),
+        work_rate_rating: avg(bucket.base_values.work_rate),
+        positioning_rating: avg(bucket.base_values.positioning),
+        shots_on_target: bucket.shots_on_target,
+        key_passes: bucket.key_passes,
+        goals: bucket.goals,
+        assists: bucket.assists,
+        pass_accuracy: avg(bucket.role_values.pass_accuracy),
+        duels: bucket.duels,
+        defensive_tackles: bucket.defensive_tackles,
+        interceptions: bucket.interceptions,
+        saves: bucket.saves,
+        shot_stopping: avg(bucket.role_values.shot_stopping),
+        distribution_accuracy: avg(bucket.role_values.distribution_accuracy),
+        match_base_rating: avg(bucket.match_values.performance_rating),
+        clean_sheets: bucket.clean_sheet_match_ids.size,
+        handling_errors: bucket.handling_errors,
+        attendance_record_count: bucket.attendance_total,
+        attendance_attended_count: bucket.attendance_attended,
+        attendance_score: bucket.attendance_total
+          ? clampScore((bucket.attendance_attended / bucket.attendance_total) * 100)
+          : null,
+        sleep_hours: avg(bucket.daily_values.sleep_hours),
+        trained_today: avg(bucket.daily_values.trained_today),
+        meals_count: avg(bucket.daily_values.meals_count),
+        daily_ai_score: avg(bucket.daily_values.daily_ai_score),
+        output: "match_score",
+      }));
+
+    const scoredRows = inputRows.map((row) => {
+      const coachScore = avgScore([
+        row.technical_rating,
+        row.tactical_rating,
+        row.physical_rating,
+        row.mentality_rating,
+        row.decision_making_rating,
+        row.work_rate_rating,
+        row.positioning_rating,
+      ]);
+      const matchScore = matchScoreForRow(row);
+      const weeklyAiScore = clampScore(row.daily_ai_score);
+      const attendanceScore = clampScore(row.attendance_score);
+      const weeklyScore = weightedWeeklyScore({
+        matchScore,
+        coachScore,
+        attendanceScore,
+        weeklyAiScore,
+      });
+      return {
+        ...row,
+        coach_score: coachScore,
+        match_score: matchScore,
+        weekly_ai_score: weeklyAiScore,
+        attendance_score: attendanceScore,
+        weekly_score: weeklyScore,
+        grade: gradeForScore(weeklyScore),
+        model_version: RANKING_MODEL_VERSION,
+      };
+    });
+
+    const rowsByWeek = scoredRows.reduce((acc, row) => {
+      const weekKey = String(row.week_start);
+      if (!acc.has(weekKey)) acc.set(weekKey, []);
+      acc.get(weekKey).push(row);
+      return acc;
+    }, new Map());
+    const rankedRows = [];
+    const previousByPlayer = new Map();
+    [...rowsByWeek.keys()].sort().forEach((weekKey) => {
+      const weekRows = rowsByWeek
+        .get(weekKey)
+        .sort((a, b) => scoreOrZero(b.weekly_score) - scoreOrZero(a.weekly_score));
+      weekRows.forEach((row, index) => {
+        const rank = index + 1;
+        const previous = previousByPlayer.get(row.player_id);
+        const scoreDelta = previous
+          ? Number((scoreOrZero(row.weekly_score) - scoreOrZero(previous.weekly_score)).toFixed(2))
+          : null;
+        const rankChange = previous ? previous.rank - rank : null;
+        const trend = !previous
+          ? "New"
+          : scoreDelta > 1
+            ? "Improving"
+            : scoreDelta < -1
+              ? "Declining"
+              : "Stable";
+        const rankedRow = {
+          ...row,
+          rank,
+          previous_rank: previous?.rank || null,
+          rank_change: rankChange,
+          trend,
+          score_delta: scoreDelta,
+        };
+        rankedRows.push(rankedRow);
+        previousByPlayer.set(row.player_id, rankedRow);
+      });
+    });
+
+    let modelResults = [];
+    let modelError = null;
+    const modelInputs = rankedRows.map((row) => ({
+      id: row.id,
+      player_id: row.player_id,
+      player_name: row.player_name,
+      match_score: scoreOrZero(row.match_score),
+      coach_score: scoreOrZero(row.coach_score),
+      attendance_score: scoreOrZero(row.attendance_score),
+      weekly_ai_score: scoreOrZero(row.weekly_ai_score),
+      position: modelPosition(row.role_family),
+      trend: row.trend,
+      rank: row.rank,
+    }));
+    try {
+      modelResults = await runRankingPredictions(modelInputs);
+    } catch (error) {
+      modelError = error.message;
+    }
+    const modelResultById = new Map(modelResults.map((result) => [result.id, result]));
+
+    const rows = rankedRows
+      .map((row) => {
+        const modelResult = modelResultById.get(row.id);
+        const weeklyScore = clampScore(modelResult?.weekly_score) ?? row.weekly_score;
+        const grade = modelResult?.grade || row.grade;
+        const predictedNextScore = clampScore(modelResult?.predicted_next_score);
+        const error = modelResult?.error || modelError || null;
+        return {
+          ...row,
+          weekly_score: weeklyScore,
+          grade,
+          predicted_next_score: predictedNextScore,
+          prediction_status: predictedNextScore === null ? "unavailable" : "ready",
+          model_error: error,
+          model_input: modelInputs.find((input) => input.id === row.id) || null,
+          final_api_response: {
+            weekly_score: weeklyScore,
+            grade,
+            trend: row.trend,
+            rank: row.rank,
+            predicted_next_score: predictedNextScore,
+          },
+        };
+      })
+      .sort((a, b) => {
+        const weekSort = String(b.week_start).localeCompare(String(a.week_start));
+        if (weekSort) return weekSort;
+        return Number(a.rank || 0) - Number(b.rank || 0);
+      });
+
+    await this._notifyCoachWeeklyRankingReady(coach, rows);
+
+    const total = rows.length;
+    const data = rows.slice(offset, offset + limit);
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   async coachListAdminMatchRequests(userId, academyId, filters) {
@@ -6140,6 +7113,297 @@ class CalendarService {
       monthlyProgressSummary:
         "Generated from training attendance, match attendance, evaluations, and match stats.",
     };
+  }
+
+  _dailyAiScore({ sleepHours, trainedToday, mealsCount }) {
+    const sleepScore = sleepHours >= 8 ? 40 : sleepHours >= 7 ? 30 : 20;
+    const trainingScore = trainedToday === 1 ? 40 : 0;
+    const mealsScore = mealsCount >= 4 ? 20 : mealsCount === 3 ? 15 : 10;
+    return sleepScore + trainingScore + mealsScore;
+  }
+
+  _shapeDailyAiInput(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      playerId: row.player_id,
+      inputDate: row.input_date,
+      sleepHours: Number(row.sleep_hours),
+      trainedToday: Number(row.trained_today),
+      mealsCount: Number(row.meals_count),
+      dailyAiScore: Number(row.daily_ai_score),
+      submittedAt: row.submitted_at,
+    };
+  }
+
+  _shapePlayerAssignmentFile(file) {
+    return {
+      id: file.id,
+      submissionId: file.submission_id,
+      fileType: file.file_type,
+      fileName: file.file_name,
+      fileUrl: file.file_url,
+      mimeType: file.mime_type,
+      sizeBytes: Number(file.size_bytes || 0),
+      uploadedBy: file.uploaded_by,
+      createdAt: file.created_at,
+    };
+  }
+
+  _shapePlayerAssignmentSubmission(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      assignmentId: row.assignment_id,
+      playerId: row.player_id,
+      notes: row.notes || "",
+      submittedAt: row.submitted_at,
+      files: (row.files || []).map((file) => this._shapePlayerAssignmentFile(file)),
+    };
+  }
+
+  async storePlayerAssignmentUpload(user, { originalName, mimeType, buffer }) {
+    const normalizedMimeType = String(mimeType || "").split(";")[0].trim().toLowerCase();
+    const typeInfo = PLAYER_ASSIGNMENT_UPLOAD_MIME[normalizedMimeType];
+    if (!typeInfo) {
+      throw new BadRequestError("Only PDF, Word, PNG, JPG, JPEG, and WEBP assignment files are accepted.");
+    }
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+      throw new BadRequestError("Uploaded file is empty.");
+    }
+    if (buffer.length > 25 * 1024 * 1024) {
+      throw new BadRequestError("Assignment files must be 25MB or smaller.");
+    }
+
+    const fileName = sanitizeFileName(originalName);
+    const academySegment = String(user.academyId || "shared").replace(/[^a-zA-Z0-9-]/g, "");
+    const storedName = `${Date.now()}-${randomUUID()}${typeInfo.extension}`;
+    const uploadDir = path.resolve(__dirname, "../../../uploads/player-assignments", academySegment);
+    await fs.mkdir(uploadDir, { recursive: true });
+    await fs.writeFile(path.join(uploadDir, storedName), buffer);
+
+    return {
+      fileType: typeInfo.fileType,
+      fileName,
+      fileUrl: `/uploads/player-assignments/${academySegment}/${storedName}`,
+      mimeType: normalizedMimeType,
+      sizeBytes: buffer.length,
+    };
+  }
+
+  async playerListAssignments(userId, academyId, filters = {}) {
+    const player = await this._getPlayer(userId, academyId);
+    const page = Number(filters.page || 1);
+    const limit = Number(filters.limit || 50);
+    const offset = (page - 1) * limit;
+    const db = this.repo.db;
+    const [{ today }] = await db.raw("SELECT current_date::text AS today").then((result) => result.rows);
+    const groupRows = await this.repo.findPlayerGroups(player.id);
+    const groupIds = groupRows.map((row) => row.group_id);
+
+    const [dailyInput, assignmentRows] = await Promise.all([
+      db("player_daily_ai_inputs")
+        .where({ academy_id: academyId, player_id: player.id, input_date: today })
+        .first(),
+      groupIds.length
+        ? db("player_assignments as pa")
+            .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
+            .join("coach_profiles as cp", "pa.created_by_coach_id", "cp.id")
+            .where("pa.academy_id", academyId)
+            .whereIn("pag.group_id", groupIds)
+            .whereNull("pa.deleted_at")
+            .where("pa.status", "active")
+            .where((scope) => {
+              scope.whereNull("pa.open_at").orWhere("pa.open_at", "<=", new Date());
+            })
+            .groupBy("pa.id", "cp.full_name")
+            .select("pa.*", "cp.full_name as coach_name")
+            .orderBy("pa.due_at", "asc")
+            .orderBy("pa.created_at", "desc")
+        : [],
+    ]);
+
+    const assignmentIds = assignmentRows.map((assignment) => assignment.id);
+    const [groups, submissions] = await Promise.all([
+      assignmentIds.length
+        ? db("player_assignment_groups as pag")
+            .join("academy_groups as ag", "pag.group_id", "ag.id")
+            .whereIn("pag.assignment_id", assignmentIds)
+            .select("pag.assignment_id", "ag.id", "ag.name")
+        : [],
+      assignmentIds.length
+        ? db("player_assignment_submissions")
+            .whereIn("assignment_id", assignmentIds)
+            .where("player_id", player.id)
+        : [],
+    ]);
+    const submissionIds = submissions.map((submission) => submission.id);
+    const files = submissionIds.length
+      ? await db("player_assignment_files").whereIn("submission_id", submissionIds)
+      : [];
+    const groupsByAssignment = groups.reduce((acc, group) => {
+      if (!acc[group.assignment_id]) acc[group.assignment_id] = [];
+      acc[group.assignment_id].push({ id: group.id, name: group.name });
+      return acc;
+    }, {});
+    const filesBySubmission = files.reduce((acc, file) => {
+      if (!acc[file.submission_id]) acc[file.submission_id] = [];
+      acc[file.submission_id].push(file);
+      return acc;
+    }, {});
+    const submissionByAssignment = new Map(
+      submissions.map((submission) => [
+        submission.assignment_id,
+        {
+          ...submission,
+          files: filesBySubmission[submission.id] || [],
+        },
+      ]),
+    );
+
+    const dailyAssignment = {
+      id: "daily-ai-score",
+      assignmentType: "daily_ai",
+      title: "Daily AI Score Module",
+      description: "Daily model input: sleep_hours, trained_today, meals_count.",
+      openAt: `${today}T00:00:00`,
+      dueAt: `${today}T23:59:59`,
+      status: "active",
+      isSystemDaily: true,
+      acceptedFileTypes: [],
+      groups: [],
+      submission: this._shapeDailyAiInput(dailyInput),
+      scoringRules: {
+        sleep: ["sleep >= 8h = 40", "sleep >= 7h = 30", "otherwise = 20"],
+        training: ["trained_today 1 = 40", "trained_today 0 = 0"],
+        meals: ["4+ meals = 20", "3 meals = 15", "less than 3 meals = 10"],
+        output: "daily_ai_score",
+      },
+    };
+
+    const normalAssignments = assignmentRows.map((assignment) => ({
+      id: assignment.id,
+      assignmentType: "coach_task",
+      title: assignment.title,
+      description: assignment.description || "",
+      coachName: assignment.coach_name || null,
+      openAt: assignment.open_at,
+      dueAt: assignment.due_at,
+      status: assignment.status,
+      isSystemDaily: false,
+      acceptedFileTypes: assignment.accepted_file_types || ["pdf", "word", "image"],
+      groups: groupsByAssignment[assignment.id] || [],
+      submission: this._shapePlayerAssignmentSubmission(submissionByAssignment.get(assignment.id)),
+    }));
+    const rows = page === 1
+      ? [dailyAssignment, ...normalAssignments].slice(offset, offset + limit)
+      : normalAssignments.slice(offset - 1, offset - 1 + limit);
+    const total = normalAssignments.length + 1;
+
+    return {
+      data: rows,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
+
+  async _getVisiblePlayerAssignment(player, academyId, assignmentId) {
+    const groupRows = await this.repo.findPlayerGroups(player.id);
+    const groupIds = groupRows.map((row) => row.group_id);
+    if (!groupIds.length) return null;
+    return this.repo
+      .db("player_assignments as pa")
+      .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
+      .where("pa.id", assignmentId)
+      .where("pa.academy_id", academyId)
+      .whereIn("pag.group_id", groupIds)
+      .whereNull("pa.deleted_at")
+      .where("pa.status", "active")
+      .select("pa.*")
+      .first();
+  }
+
+  async playerSubmitAssignment(userId, academyId, assignmentId, data) {
+    const player = await this._getPlayer(userId, academyId);
+    const assignment = await this._getVisiblePlayerAssignment(player, academyId, assignmentId);
+    if (!assignment) throw new NotFoundError("Assignment", assignmentId);
+    if (assignment.open_at && new Date(assignment.open_at) > new Date()) {
+      throw new BadRequestError("Assignment is not open yet.");
+    }
+    const files = data.files || [];
+    if (!files.length) throw new BadRequestError("At least one file is required.");
+
+    const submission = await this.repo.db.transaction(async (trx) => {
+      const [row] = await trx("player_assignment_submissions")
+        .insert({
+          assignment_id: assignmentId,
+          player_id: player.id,
+          submitted_by_user_id: userId,
+          notes: data.notes || null,
+          submitted_at: new Date(),
+        })
+        .onConflict(["assignment_id", "player_id"])
+        .merge({
+          submitted_by_user_id: userId,
+          notes: data.notes || null,
+          submitted_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("*");
+      await trx("player_assignment_files").where({ submission_id: row.id }).del();
+      await trx("player_assignment_files").insert(
+        files.map((file) => ({
+          submission_id: row.id,
+          uploaded_by: userId,
+          file_type: file.fileType,
+          file_name: file.fileName,
+          file_url: file.fileUrl,
+          mime_type: file.mimeType || null,
+          size_bytes: file.sizeBytes || null,
+        })),
+      );
+      const savedFiles = await trx("player_assignment_files")
+        .where({ submission_id: row.id })
+        .orderBy("created_at", "asc");
+      return { ...row, files: savedFiles };
+    });
+
+    return this._shapePlayerAssignmentSubmission(submission);
+  }
+
+  async playerSubmitDailyAiInput(userId, academyId, data) {
+    const player = await this._getPlayer(userId, academyId);
+    const [{ today }] = await this.repo.db
+      .raw("SELECT current_date::text AS today")
+      .then((result) => result.rows);
+    const dailyAiScore = this._dailyAiScore(data);
+    const [row] = await this.repo
+      .db("player_daily_ai_inputs")
+      .insert({
+        academy_id: academyId,
+        player_id: player.id,
+        submitted_by_user_id: userId,
+        input_date: today,
+        sleep_hours: data.sleepHours,
+        trained_today: data.trainedToday,
+        meals_count: data.mealsCount,
+        daily_ai_score: dailyAiScore,
+        submitted_at: new Date(),
+      })
+      .onConflict(["player_id", "input_date"])
+      .merge({
+        submitted_by_user_id: userId,
+        sleep_hours: data.sleepHours,
+        trained_today: data.trainedToday,
+        meals_count: data.mealsCount,
+        daily_ai_score: dailyAiScore,
+        submitted_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("*");
+
+    return this._shapeDailyAiInput(row);
   }
 
   async parentListCalendarEvents(parentUserId, academyId, childId, filters) {

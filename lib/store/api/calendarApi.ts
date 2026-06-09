@@ -238,6 +238,81 @@ export interface MatchPlayerStats {
   coach_notes: string | null;
 }
 
+export interface RankingSystemInput {
+  id: string;
+  player_id: string;
+  player_name?: string;
+  week_start: string;
+  week_end: string;
+  position?: string | null;
+  role_family: "attack" | "midfield" | "defense" | "goalkeeper" | "unknown";
+  match_evaluation_count: number;
+  training_evaluation_count: number;
+  daily_ai_input_count: number;
+  technical_rating: string | number | null;
+  tactical_rating: string | number | null;
+  physical_rating: string | number | null;
+  mentality_rating: string | number | null;
+  decision_making_rating: string | number | null;
+  work_rate_rating: string | number | null;
+  positioning_rating: string | number | null;
+  shots_on_target: number;
+  key_passes: number;
+  goals: number;
+  assists: number;
+  pass_accuracy: string | number | null;
+  duels: number;
+  defensive_tackles: number;
+  interceptions: number;
+  saves: number;
+  shot_stopping: string | number | null;
+  distribution_accuracy: string | number | null;
+  clean_sheets: number;
+  handling_errors: number;
+  sleep_hours: string | number | null;
+  trained_today: string | number | null;
+  meals_count: string | number | null;
+  daily_ai_score: string | number | null;
+  match_base_rating?: string | number | null;
+  attendance_record_count: number;
+  attendance_attended_count: number;
+  attendance_score: string | number | null;
+  coach_score: string | number | null;
+  match_score: string | number | null;
+  weekly_ai_score: string | number | null;
+  weekly_score: string | number | null;
+  grade: "A" | "B" | "C" | "D" | "F";
+  trend: "New" | "Improving" | "Declining" | "Stable";
+  rank: number;
+  previous_rank: number | null;
+  rank_change: number | null;
+  score_delta: number | null;
+  predicted_next_score: string | number | null;
+  prediction_status: "ready" | "unavailable";
+  model_version: string;
+  model_error: string | null;
+  model_input: {
+    id: string;
+    player_id: string;
+    player_name?: string;
+    match_score: number;
+    coach_score: number;
+    attendance_score: number;
+    weekly_ai_score: number;
+    position: string;
+    trend: string;
+    rank: number;
+  } | null;
+  final_api_response: {
+    weekly_score: number | null;
+    grade: "A" | "B" | "C" | "D" | "F";
+    trend: "New" | "Improving" | "Declining" | "Stable";
+    rank: number;
+    predicted_next_score: number | null;
+  };
+  output: "match_score";
+}
+
 export interface MatchPlayerIncident {
   id: string;
   match_id: string;
@@ -720,6 +795,62 @@ export interface PlayerImageUploadResponse {
   sizeBytes: number;
 }
 
+export interface PlayerAssignmentUpload {
+  fileType: "pdf" | "word" | "image";
+  fileName: string;
+  fileUrl: string;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+
+export interface PlayerAssignmentFile {
+  id: string;
+  submissionId: string;
+  fileType: "pdf" | "word" | "image";
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface PlayerAssignmentSubmission {
+  id: string;
+  assignmentId?: string;
+  playerId: string;
+  notes?: string;
+  submittedAt: string;
+  files?: PlayerAssignmentFile[];
+  inputDate?: string;
+  sleepHours?: number;
+  trainedToday?: number;
+  mealsCount?: number;
+  dailyAiScore?: number;
+}
+
+export interface PlayerAssignment {
+  id: string;
+  assignmentType: "daily_ai" | "coach_task";
+  title: string;
+  description: string;
+  coachName?: string | null;
+  openAt: string | null;
+  dueAt: string | null;
+  status: "active" | "closed" | "cancelled";
+  isSystemDaily: boolean;
+  acceptedFileTypes: Array<"pdf" | "word" | "image">;
+  groups: Array<{ id: string; name: string }>;
+  submission: PlayerAssignmentSubmission | null;
+  scoringRules?: Record<string, string[] | string>;
+}
+
+export interface DailyAiSubmitInput {
+  sleepHours: number;
+  trainedToday: 0 | 1;
+  mealsCount: number;
+}
+
 export const calendarApi = createApi({
   reducerPath: "calendarApi",
   baseQuery: baseQueryWithReauth,
@@ -736,6 +867,7 @@ export const calendarApi = createApi({
     "InjuryRiskInputs",
     "Notifications",
     "EvaluationEditRequests",
+    "PlayerAssignments",
   ],
   endpoints: (builder) => ({
     getAdminCalendarEvents: builder.query<
@@ -1169,6 +1301,21 @@ export const calendarApi = createApi({
     getCoachMatch: builder.query<Match, string>({
       query: (id) => `/coach/matches/${id}`,
       transformResponse: (res: { data: Match }) => res.data,
+      providesTags: ["Matches"],
+    }),
+    getCoachRankingSystemInputs: builder.query<
+      PaginatedResponse<RankingSystemInput>,
+      { page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        return `/coach/ranking-system-inputs?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<RankingSystemInput>) =>
+        toPaginated(res),
       providesTags: ["Matches"],
     }),
     requestMatchEvaluationEdit: builder.mutation<
@@ -1632,6 +1779,57 @@ export const calendarApi = createApi({
         toPaginated(res),
       providesTags: ["CalendarEvents"],
     }),
+    getPlayerAssignments: builder.query<
+      PaginatedResponse<PlayerAssignment>,
+      { page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        return `/player/assignments?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<PlayerAssignment>) =>
+        toPaginated(res),
+      providesTags: ["PlayerAssignments"],
+    }),
+    uploadPlayerAssignmentFile: builder.mutation<PlayerAssignmentUpload, File>({
+      query: (file) => ({
+        url: "/player/assignments/upload",
+        method: "POST",
+        body: file,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-File-Name": encodeURIComponent(file.name || "assignment-file"),
+        },
+      }),
+      transformResponse: (res: { data: PlayerAssignmentUpload }) => res.data,
+    }),
+    submitPlayerAssignment: builder.mutation<
+      PlayerAssignmentSubmission,
+      { assignmentId: string; notes?: string; files: PlayerAssignmentUpload[] }
+    >({
+      query: ({ assignmentId, ...body }) => ({
+        url: `/player/assignments/${assignmentId}/submit`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: PlayerAssignmentSubmission }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
+    }),
+    submitDailyAiInput: builder.mutation<
+      PlayerAssignmentSubmission,
+      DailyAiSubmitInput
+    >({
+      query: (body) => ({
+        url: "/player/assignments/daily-ai",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: PlayerAssignmentSubmission }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
+    }),
     getNotifications: builder.query<PaginatedResponse<NotificationRow>, void>({
       query: () => "/notifications?limit=20",
       transformResponse: (res: ApiListResponse<NotificationRow>) =>
@@ -1729,6 +1927,7 @@ export const {
   useUpsertTrainingEvaluationsMutation,
   useGetCoachMatchesQuery,
   useGetCoachMatchQuery,
+  useGetCoachRankingSystemInputsQuery,
   useRequestMatchEvaluationEditMutation,
   useUpsertMatchSquadMutation,
   useUpdateMatchSquadPlayerMutation,
@@ -1767,6 +1966,10 @@ export const {
   useGetPlayerAttendanceQuery,
   useGetPlayerEvaluationsQuery,
   useGetPlayerTrainingsQuery,
+  useGetPlayerAssignmentsQuery,
+  useUploadPlayerAssignmentFileMutation,
+  useSubmitPlayerAssignmentMutation,
+  useSubmitDailyAiInputMutation,
   useGetNotificationsQuery,
   useGetUnreadNotificationsCountQuery,
   useMarkNotificationReadMutation,

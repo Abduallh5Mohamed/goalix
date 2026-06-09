@@ -63,6 +63,14 @@ const isClosedMatch = (
   closedMatchStatuses.has(match.match_status) ||
   (match.match_status === "scheduled" && matchAutoFinishTimestamp(match) <= nowMs);
 
+const matchDayOpenMinutes = (match?: Match) => {
+  const raw =
+    match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ??
+    match?.academy_settings?.match_day_open_minutes_before_kickoff;
+  const minutes = Number(raw);
+  return Number.isFinite(minutes) ? Math.max(0, Math.min(240, Math.round(minutes))) : 5;
+};
+
 const getApiMessage = (error: unknown, fallback: string) => {
   const apiError = error as {
     data?: {
@@ -185,10 +193,13 @@ export default function CoachMatchesPage() {
 
   const configurationReady = Boolean(match?.tactics && match.squad?.length);
   const matchStartMs = matchStartTimestamp(match);
-  const matchDayUnlockMs = matchStartMs - 5 * 60 * 1000;
+  const safeMatchDayOpenMinutes = matchDayOpenMinutes(match);
+  const matchDayUnlockMs =
+    matchStartMs - safeMatchDayOpenMinutes * 60 * 1000;
   const matchClosed = match ? isClosedMatch(match, nowMs) : false;
   const matchDayOpen = Boolean(
     match &&
+    matchStartMs > 0 &&
     match.status !== "cancelled" &&
     !matchClosed &&
     configurationReady &&
@@ -395,8 +406,8 @@ export default function CoachMatchesPage() {
                       <div>
                         <p className="font-medium">Match Day Operations</p>
                         <p className="text-xs text-muted-foreground">
-                          Operations open 5 minutes before kick-off after
-                          configuration is saved.
+                          Operations open {safeMatchDayOpenMinutes} minutes before
+                          kick-off after configuration is saved.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">

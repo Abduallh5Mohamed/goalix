@@ -151,6 +151,42 @@ class CoachesController {
         } catch (err) { next(err); }
     };
 
+    getMePlayerAssignments = async (req, res, next) => {
+        try {
+            const { page, limit } = parsePagination(req.query);
+            const result = await this.service.getMyPlayerAssignments(req.user.userId, req.user.academyId, { ...req.query, page, limit });
+            res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
+        } catch (err) { next(err); }
+    };
+
+    createMePlayerAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.createMyPlayerAssignment(req.user.userId, req.user.academyId, req.body);
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    updateMePlayerAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.updateMyPlayerAssignment(req.user.userId, req.user.academyId, req.params.assignmentId, req.body);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMePlayerAssignmentSubmissions = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyPlayerAssignmentSubmissions(req.user.userId, req.user.academyId, req.params.assignmentId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    getMeDailyAiInputs = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyDailyAiInputs(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
     listAssignments = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
