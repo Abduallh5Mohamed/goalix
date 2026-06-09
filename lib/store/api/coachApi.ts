@@ -233,7 +233,7 @@ export interface CoachAssignmentFile {
   id: string;
   assignmentId: string;
   fileRole: "brief" | "submission";
-  fileType: "pdf" | "image";
+  fileType: "pdf" | "word" | "image";
   fileName: string;
   fileUrl: string;
   mimeType: string | null;
@@ -266,7 +266,7 @@ export interface SubmitAssignmentInput {
   assignmentId: string;
   coachNotes?: string;
   files: {
-    fileType: "pdf" | "image";
+    fileType: "pdf" | "word" | "image";
     fileName: string;
     fileUrl: string;
     mimeType?: string;
@@ -275,6 +275,84 @@ export interface SubmitAssignmentInput {
 }
 
 export type UploadedAssignmentFile = SubmitAssignmentInput["files"][number];
+
+export interface PlayerAssignmentGroup {
+  id: string;
+  name: string;
+}
+
+export interface PlayerAssignmentFile {
+  id: string;
+  submissionId: string;
+  fileType: "pdf" | "word" | "image";
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface PlayerAssignmentSubmission {
+  id: string;
+  assignmentId: string;
+  playerId: string;
+  playerName: string | null;
+  notes: string;
+  submittedAt: string;
+  files: PlayerAssignmentFile[];
+}
+
+export interface CoachPlayerAssignment {
+  id: string;
+  academyId: string;
+  createdByCoachId: string;
+  coachName: string | null;
+  title: string;
+  description: string;
+  openAt: string | null;
+  dueAt: string | null;
+  status: "active" | "closed" | "cancelled";
+  acceptedFileTypes: Array<"pdf" | "word" | "image">;
+  createdAt: string;
+  updatedAt: string;
+  groups: PlayerAssignmentGroup[];
+  submissionCount: number;
+  submissions: PlayerAssignmentSubmission[];
+}
+
+export interface PlayerAssignmentInput {
+  title: string;
+  description?: string;
+  openAt?: string;
+  dueAt?: string;
+  groupIds: string[];
+}
+
+export interface UpdatePlayerAssignmentInput {
+  assignmentId: string;
+  body: Partial<PlayerAssignmentInput> & {
+    status?: "active" | "closed" | "cancelled";
+  };
+}
+
+export interface CoachDailyAiInput {
+  id: string;
+  playerId: string;
+  playerName: string;
+  inputDate: string;
+  sleepHours: number;
+  trainedToday: number;
+  mealsCount: number;
+  dailyAiScore: number;
+  submittedAt: string;
+}
+
+export interface CoachDailyAiSummary {
+  weekStart: string;
+  weekEnd: string;
+  data: CoachDailyAiInput[];
+}
 
 export const coachApi = createApi({
   reducerPath: "coachApi",
@@ -289,6 +367,8 @@ export const coachApi = createApi({
     "CoachMeasurements",
     "CoachEvaluations",
     "CoachAssignments",
+    "PlayerAssignments",
+    "DailyAiInputs",
   ],
   endpoints: (builder) => ({
     getCoachAccessStatus: builder.query<CoachAccessStatus, void>({
@@ -481,6 +561,61 @@ export const coachApi = createApi({
       }),
       transformResponse: (res: { data: UploadedAssignmentFile }) => res.data,
     }),
+    getMyPlayerAssignments: builder.query<
+      PaginatedResponse<CoachPlayerAssignment>,
+      { status?: "active" | "closed" | "cancelled"; page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 50),
+        });
+        if (args?.status) params.set("status", args.status);
+        return `/coaches/me/player-assignments?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<CoachPlayerAssignment>) =>
+        toPaginated(res),
+      providesTags: ["PlayerAssignments"],
+    }),
+    createMyPlayerAssignment: builder.mutation<
+      CoachPlayerAssignment,
+      PlayerAssignmentInput
+    >({
+      query: (body) => ({
+        url: "/coaches/me/player-assignments",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: CoachPlayerAssignment }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
+    }),
+    updateMyPlayerAssignment: builder.mutation<
+      CoachPlayerAssignment,
+      UpdatePlayerAssignmentInput
+    >({
+      query: ({ assignmentId, body }) => ({
+        url: `/coaches/me/player-assignments/${assignmentId}`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: { data: CoachPlayerAssignment }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
+    }),
+    getPlayerAssignmentSubmissions: builder.query<
+      PlayerAssignmentSubmission[],
+      string
+    >({
+      query: (assignmentId) =>
+        `/coaches/me/player-assignments/${assignmentId}/submissions`,
+      transformResponse: (res: { data: PlayerAssignmentSubmission[] }) =>
+        res.data,
+      providesTags: ["PlayerAssignments"],
+    }),
+    getCoachDailyAiInputs: builder.query<CoachDailyAiSummary, void>({
+      query: () => "/coaches/me/daily-ai-inputs",
+      transformResponse: (res: { data: CoachDailyAiSummary }) => res.data,
+      providesTags: ["DailyAiInputs"],
+    }),
   }),
 });
 
@@ -504,4 +639,9 @@ export const {
   useGetMyCoachAssignmentsQuery,
   useSubmitCoachAssignmentMutation,
   useUploadCoachAssignmentFileMutation,
+  useGetMyPlayerAssignmentsQuery,
+  useCreateMyPlayerAssignmentMutation,
+  useUpdateMyPlayerAssignmentMutation,
+  useGetPlayerAssignmentSubmissionsQuery,
+  useGetCoachDailyAiInputsQuery,
 } = coachApi;

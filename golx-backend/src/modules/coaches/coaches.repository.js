@@ -906,6 +906,147 @@ class CoachesRepository extends BaseRepository {
             .orderBy('created_at', 'asc');
     }
 
+    async findCoachPlayerAssignments(coachId, academyId, { status, page = 1, limit = 50 } = {}) {
+        const query = this.db('player_assignments as pa')
+            .join('coach_profiles as cp', 'pa.created_by_coach_id', 'cp.id')
+            .where('pa.academy_id', academyId)
+            .where('pa.created_by_coach_id', coachId)
+            .whereNull('pa.deleted_at')
+            .modify((q) => {
+                if (status) q.where('pa.status', status);
+            });
+
+        const [{ count }] = await query.clone().count('pa.id as count');
+        const data = await query
+            .select('pa.*', 'cp.full_name as coach_name')
+            .orderBy('pa.created_at', 'desc')
+            .limit(limit)
+            .offset((page - 1) * limit);
+
+        const assignmentIds = data.map((assignment) => assignment.id);
+        const [groups, submissionCounts] = await Promise.all([
+            this.findPlayerAssignmentGroups(assignmentIds),
+            this.countPlayerAssignmentSubmissions(assignmentIds),
+        ]);
+        const groupsByAssignment = groups.reduce((acc, group) => {
+            if (!acc[group.assignment_id]) acc[group.assignment_id] = [];
+            acc[group.assignment_id].push({ id: group.id, name: group.name });
+            return acc;
+        }, {});
+        const countsByAssignment = new Map(
+            submissionCounts.map((row) => [row.assignment_id, Number(row.count || 0)]),
+        );
+
+        return {
+            data: data.map((assignment) => ({
+                ...assignment,
+                groups: groupsByAssignment[assignment.id] || [],
+                submission_count: countsByAssignment.get(assignment.id) || 0,
+            })),
+            total: +count,
+            page,
+            totalPages: Math.ceil(+count / limit) || 1,
+        };
+    }
+
+    async findPlayerAssignmentGroups(assignmentIds) {
+        if (!assignmentIds.length) return [];
+        return this.db('player_assignment_groups as pag')
+            .join('academy_groups as ag', 'pag.group_id', 'ag.id')
+            .whereIn('pag.assignment_id', assignmentIds)
+            .select('pag.assignment_id', 'ag.id', 'ag.name')
+            .orderBy('ag.name', 'asc');
+    }
+
+    async countPlayerAssignmentSubmissions(assignmentIds) {
+        if (!assignmentIds.length) return [];
+        return this.db('player_assignment_submissions')
+            .whereIn('assignment_id', assignmentIds)
+            .select('assignment_id')
+            .count('id as count')
+            .groupBy('assignment_id');
+    }
+
+    async findCoachPlayerAssignmentById(assignmentId, coachId, academyId) {
+        const assignment = await this.db('player_assignments as pa')
+            .join('coach_profiles as cp', 'pa.created_by_coach_id', 'cp.id')
+            .where('pa.id', assignmentId)
+            .where('pa.academy_id', academyId)
+            .where('pa.created_by_coach_id', coachId)
+            .whereNull('pa.deleted_at')
+            .select('pa.*', 'cp.full_name as coach_name')
+            .first();
+        if (!assignment) return null;
+
+        const [groups, submissionCounts] = await Promise.all([
+            this.findPlayerAssignmentGroups([assignment.id]),
+            this.countPlayerAssignmentSubmissions([assignment.id]),
+        ]);
+        assignment.groups = groups.map((group) => ({ id: group.id, name: group.name }));
+        assignment.submission_count = Number(submissionCounts[0]?.count || 0);
+        return assignment;
+    }
+
+    async createPlayerAssignment(data, groupIds) {
+        return this.db.transaction(async (trx) => {
+            const [assignment] = await trx('player_assignments').insert(data).returning('*');
+            if (groupIds.length) {
+                await trx('player_assignment_groups').insert(
+                    groupIds.map((groupId) => ({
+                        assignment_id: assignment.id,
+                        group_id: groupId,
+                    })),
+                );
+            }
+            return assignment;
+        });
+    }
+
+    async updatePlayerAssignment(assignmentId, data, groupIds) {
+        return this.db.transaction(async (trx) => {
+            const [assignment] = await trx('player_assignments')
+                .where({ id: assignmentId })
+                .whereNull('deleted_at')
+                .update({ ...data, updated_at: new Date() })
+                .returning('*');
+            if (groupIds) {
+                await trx('player_assignment_groups').where({ assignment_id: assignmentId }).del();
+                if (groupIds.length) {
+                    await trx('player_assignment_groups').insert(
+                        groupIds.map((groupId) => ({
+                            assignment_id: assignmentId,
+                            group_id: groupId,
+                        })),
+                    );
+                }
+            }
+            return assignment;
+        });
+    }
+
+    async findPlayerAssignmentSubmissions(assignmentId) {
+        const submissions = await this.db('player_assignment_submissions as pas')
+            .join('player_profiles as pp', 'pas.player_id', 'pp.id')
+            .where('pas.assignment_id', assignmentId)
+            .select('pas.*', 'pp.full_name as player_name')
+            .orderBy('pas.submitted_at', 'desc');
+        const submissionIds = submissions.map((submission) => submission.id);
+        const files = submissionIds.length
+            ? await this.db('player_assignment_files')
+                .whereIn('submission_id', submissionIds)
+                .orderBy('created_at', 'asc')
+            : [];
+        const filesBySubmission = files.reduce((acc, file) => {
+            if (!acc[file.submission_id]) acc[file.submission_id] = [];
+            acc[file.submission_id].push(file);
+            return acc;
+        }, {});
+        return submissions.map((submission) => ({
+            ...submission,
+            files: filesBySubmission[submission.id] || [],
+        }));
+    }
+
     async unassignGroup(coachId, groupId) {
         return this.db('coach_group_assignments')
             .where({ coach_id: coachId, group_id: groupId })

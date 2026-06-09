@@ -1,3 +1,4 @@
+const express = require("express");
 const { Router } = require("express");
 const validate = require("../../middleware/validate.middleware");
 const { authMiddleware } = require("../../middleware/auth.middleware");
@@ -345,6 +346,11 @@ function coachCalendarRoutes(controller) {
     }),
     controller.coachUpdateEvaluation,
   );
+  router.get(
+    "/ranking-system-inputs",
+    validate({ query: schema.paginationQuery }),
+    controller.coachRankingSystemInputs,
+  );
 
   router.get(
     "/matches",
@@ -478,7 +484,6 @@ function coachCalendarRoutes(controller) {
 
   router.post(
     "/friendly-match-requests",
-    validate({ body: schema.friendlyRequestSchema }),
     controller.coachCreateFriendlyRequest,
   );
   router.get(
@@ -519,6 +524,18 @@ function coachCalendarRoutes(controller) {
 
 function playerCalendarRoutes(controller) {
   const router = Router();
+  const assignmentUpload = express.raw({
+    type: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+    ],
+    limit: "25mb",
+  });
   router.use(authMiddleware, restrictTo("player"));
 
   router.get(
@@ -558,6 +575,29 @@ function playerCalendarRoutes(controller) {
     controller.playerEvaluations,
   );
   router.get("/progress", controller.playerProgress);
+  router.get(
+    "/assignments",
+    validate({ query: schema.paginationQuery }),
+    controller.playerListAssignments,
+  );
+  router.post(
+    "/assignments/upload",
+    assignmentUpload,
+    controller.playerUploadAssignmentFile,
+  );
+  router.post(
+    "/assignments/daily-ai",
+    validate({ body: schema.dailyAiInputSchema }),
+    controller.playerSubmitDailyAiInput,
+  );
+  router.post(
+    "/assignments/:id/submit",
+    validate({
+      params: schema.playerAssignmentParam,
+      body: schema.playerAssignmentSubmitSchema,
+    }),
+    controller.playerSubmitAssignment,
+  );
 
   return router;
 }

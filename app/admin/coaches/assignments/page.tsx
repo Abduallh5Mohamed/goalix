@@ -58,7 +58,7 @@ export default function CoachAssignmentsPage() {
     description: "",
     dueDate: "",
     adminNotes: "",
-    fileType: "pdf" as "pdf" | "image",
+    fileType: "pdf" as "pdf" | "word" | "image",
     fileName: "",
     fileUrl: "",
     mimeType: "",
@@ -208,7 +208,7 @@ export default function CoachAssignmentsPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Coach Assignments"
-        description="Send coach tasks and collect only PDF reports or image submissions."
+        description="Send coach tasks and collect PDF, Word, or image submissions."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
           { label: "Coaches", href: "/admin/coaches" },
@@ -266,7 +266,7 @@ export default function CoachAssignmentsPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>New Coach Assignment</DialogTitle>
-            <DialogDescription>Assignments accept PDF reports and image files only.</DialogDescription>
+            <DialogDescription>Assignments accept PDF, Word, and image files.</DialogDescription>
           </DialogHeader>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -351,7 +351,7 @@ export default function CoachAssignmentsPage() {
                 <Input
                   id="assignment-file"
                   type="file"
-                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
                   onChange={(event) => handleAttachmentUpload(event.target.files?.[0])}
                   disabled={isUploading}
                 />
@@ -365,7 +365,7 @@ export default function CoachAssignmentsPage() {
                 )}
                 {uploadError && (
                   <p className="text-xs text-red-400">
-                    Upload failed. Only PDF, PNG, JPG, JPEG, and WEBP files are accepted.
+                    Upload failed. Accepted files: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.
                   </p>
                 )}
               </div>

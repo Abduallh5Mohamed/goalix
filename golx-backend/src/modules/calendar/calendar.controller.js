@@ -784,6 +784,20 @@ class CalendarController {
     }
   };
 
+  coachRankingSystemInputs = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.coachRankingSystemInputs(
+        req.user.userId,
+        req.user.academyId,
+        { ...req.query, page, limit },
+      );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachListAdminMatchRequests = async (req, res, next) => {
     try {
       const { page, limit } = this._pagination(req);
@@ -1110,17 +1124,13 @@ class CalendarController {
     }
   };
 
-  coachCreateFriendlyRequest = async (req, res, next) => {
-    try {
-      const data = await this.service.coachCreateFriendlyRequest(
-        req.user.userId,
-        req.user.academyId,
-        req.body,
-      );
-      res.status(201).json(ApiResponse.success(data));
-    } catch (err) {
-      next(err);
-    }
+  coachCreateFriendlyRequest = async (req, res, _next) => {
+    res.status(410).json(
+      ApiResponse.error(
+        "FRIENDLY_MATCH_REQUESTS_DISABLED",
+        "Friendly match requests are disabled. Admins create matches directly.",
+      ),
+    );
   };
 
   coachListFriendlyRequests = async (req, res, next) => {
@@ -1343,6 +1353,66 @@ class CalendarController {
           ),
         ),
       );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerListAssignments = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.playerListAssignments(
+        req.user.userId,
+        req.user.academyId,
+        { ...req.query, page, limit },
+      );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerSubmitAssignment = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.playerSubmitAssignment(
+            req.user.userId,
+            req.user.academyId,
+            req.params.id,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerSubmitDailyAiInput = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.playerSubmitDailyAiInput(
+            req.user.userId,
+            req.user.academyId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerUploadAssignmentFile = async (req, res, next) => {
+    try {
+      const data = await this.service.storePlayerAssignmentUpload(req.user, {
+        originalName: req.get("x-file-name") || "assignment-file",
+        mimeType: req.get("content-type"),
+        buffer: req.body,
+      });
+      res.status(201).json(ApiResponse.success(data));
     } catch (err) {
       next(err);
     }
