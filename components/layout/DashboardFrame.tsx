@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Menu,
   Moon,
   MessageSquare,
   RefreshCw,
@@ -1132,6 +1133,7 @@ export function DashboardFrame({
   const [theme, setTheme] = useState<DashboardTheme>("light");
   const [settingsReady, setSettingsReady] = useState(false);
   const [compactNav, setCompactNav] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const t = useMemo(() => (label: string) => translate(label, language), [language]);
 
@@ -1163,6 +1165,10 @@ export function DashboardFrame({
 
     return () => query.removeEventListener("change", syncCompactNav);
   }, []);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!settingsReady) return;
@@ -1276,14 +1282,71 @@ export function DashboardFrame({
       dir="ltr"
       lang={language}
     >
-      <aside className="goalix-reference-sidebar">
-        <Link href={ROLE_ROUTES[role]} className="goalix-reference-brand" aria-label="Goalix dashboard home">
+      <header className="goalix-mobile-header">
+        <button
+          type="button"
+          className="goalix-mobile-menu-button"
+          aria-label={t("Menu")}
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((current) => !current)}
+        >
+          <Menu size={18} />
+        </button>
+        <Link href={ROLE_ROUTES[role]} className="goalix-mobile-logo" aria-label="Goalix dashboard home">
+          <span className="goalix-mobile-logo-mark">G</span>
+          <strong>GOALIX</strong>
+        </Link>
+        <div className="goalix-mobile-header-actions">
+          <Link href={`/${role}/notifications`} className="goalix-mobile-notification" aria-label={t("Notifications")}>
+            <Bell size={18} />
+            {unreadCount > 0 && <span />}
+          </Link>
+          <div className="goalix-mobile-avatar" aria-label={user?.fullName || t(roleLabels[role])}>
+            {getInitials(user?.fullName || role)}
+          </div>
+        </div>
+      </header>
+
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="goalix-mobile-nav-backdrop"
+          aria-label={t("Close menu")}
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      <aside className={cn("goalix-reference-sidebar", mobileNavOpen && "is-mobile-open")}>
+        <Link
+          href={ROLE_ROUTES[role]}
+          className="goalix-reference-brand"
+          aria-label="Goalix dashboard home"
+          onClick={() => setMobileNavOpen(false)}
+        >
           <span className="goalix-reference-mark">G</span>
           <span>
             <strong>Goalix</strong>
             <small>{t(roleLabels[role])}</small>
           </span>
         </Link>
+
+        <div className="goalix-mobile-drawer-tools">
+          <button
+            type="button"
+            aria-label={language === "ar" ? t("English") : t("Arabic")}
+            onClick={() => setLanguage((current) => (current === "ar" ? "en" : "ar"))}
+          >
+            {language === "ar" ? "EN" : "AR"}
+          </button>
+          <button
+            type="button"
+            aria-label={theme === "dark" ? t("Light theme") : t("Dark theme")}
+            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            <span>{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
+          </button>
+        </div>
 
         <div className="goalix-reference-menu-label">{t("Menu")}</div>
         <nav className="goalix-reference-nav">
@@ -1303,6 +1366,7 @@ export function DashboardFrame({
                     title={t(item.label)}
                     onClick={() => {
                       if (compactNav) {
+                        setMobileNavOpen(false);
                         router.push(firstHref(item));
                         return;
                       }
@@ -1320,7 +1384,12 @@ export function DashboardFrame({
                       const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
 
                       return (
-                        <Link key={child.href} href={child.href} className={cn("goalix-reference-subnav-link", childActive && "is-active")}>
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn("goalix-reference-subnav-link", childActive && "is-active")}
+                          onClick={() => setMobileNavOpen(false)}
+                        >
                           {t(child.label)}
                         </Link>
                       );
@@ -1337,6 +1406,7 @@ export function DashboardFrame({
                 className={cn("goalix-reference-nav-item", active && "is-active")}
                 aria-label={t(item.label)}
                 title={t(item.label)}
+                onClick={() => setMobileNavOpen(false)}
               >
                 <Icon size={17} />
                 <span>{t(item.label)}</span>
@@ -1347,11 +1417,15 @@ export function DashboardFrame({
 
         <div className="goalix-reference-menu-label">{t("General")}</div>
         <div className="goalix-reference-nav">
-          <Link href={role === "admin" ? "/admin/settings" : ROLE_ROUTES[role]} className="goalix-reference-nav-item">
+          <Link
+            href={role === "admin" ? "/admin/settings" : ROLE_ROUTES[role]}
+            className="goalix-reference-nav-item"
+            onClick={() => setMobileNavOpen(false)}
+          >
             <Settings size={17} />
             <span>{t("Settings")}</span>
           </Link>
-          <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item">
+          <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item" onClick={() => setMobileNavOpen(false)}>
             <HelpCircle size={17} />
             <span>{t("Help")}</span>
           </Link>
