@@ -139,16 +139,27 @@ function normalizeSearch(value: string) {
     .trim();
 }
 
-function conversationAccent(type: ConversationType) {
-  if (type === "admin_player_session") return "border-cyan-300/35 bg-cyan-300/10";
-  if (type === "admin_coach") return "border-lime-300/30 bg-lime-300/10";
-  return "border-white/10 bg-white/[0.03]";
-}
-
 function conversationLabel(conversation: Conversation) {
   if (conversation.type === "admin_player_session") return "Admin session";
   if (conversation.type === "admin_coach") return "Admin";
   return "Coach";
+}
+
+function formatContactSubtitle(subtitle?: string | null) {
+  if (!subtitle) return "";
+
+  const normalized = subtitle.trim().toLowerCase();
+  const labels: Record<string, string> = {
+    admin: "Admin",
+    coach: "Coach",
+    player: "Player",
+    head_coach: "Head coach",
+    assistant_coach: "Assistant coach",
+    goalkeeper_coach: "Goalkeeper coach",
+    fitness_coach: "Fitness coach",
+  };
+
+  return labels[normalized] || subtitle.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function MessageReceipt({ message }: { message: Message }) {
@@ -498,76 +509,75 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
 
   if (!isAuthenticated) {
     return (
-      <div className="grid min-h-[calc(100vh-132px)] place-items-center rounded-lg border border-[#253f5a] bg-[#06111f]/86 text-slate-300">
+      <div className="goalix-chat-empty-auth">
         Sign in again to use chat.
       </div>
     );
   }
 
   return (
-    <div className="grid min-h-[calc(100vh-132px)] gap-4 text-slate-100 xl:grid-cols-[320px_minmax(0,1fr)_300px]">
-      <aside className="overflow-hidden rounded-lg border border-[#253f5a] bg-[#06111f]/86">
-        <div className="flex h-14 items-center gap-3 border-b border-[#253f5a] px-4">
-          <MessageSquare className="h-5 w-5 text-lime-300" />
-          <h1 className="text-base font-semibold">Chats</h1>
-          {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin text-cyan-300" />}
+    <div className="goalix-chat-shell">
+      <aside className="goalix-chat-panel goalix-chat-conversations">
+        <div className="goalix-chat-panel-head">
+          <MessageSquare className="goalix-chat-head-icon" />
+          <h1>Chats</h1>
+          {loading && <Loader2 className="goalix-chat-loading" />}
         </div>
-        <div className="max-h-[calc(100vh-190px)] overflow-y-auto p-3">
+        <div className="goalix-chat-scroll">
           {filteredConversations.map((conversation) => (
             <button
               key={conversation.id}
               onClick={() => setSelectedId(conversation.id)}
               className={cn(
-                "mb-2 flex w-full items-center gap-3 rounded-lg border p-3 text-left transition",
-                selectedId === conversation.id
-                  ? "border-lime-300/50 bg-lime-300/10"
-                  : cn(conversationAccent(conversation.type), "hover:border-cyan-300/35"),
+                "goalix-chat-list-card",
+                selectedId === conversation.id && "is-active",
+                conversation.status === "closed" && "is-locked",
               )}
             >
-              <Avatar className="h-10 w-10 border border-white/10">
-                <AvatarFallback className="bg-[#0a1a2d] text-xs font-bold text-cyan-200">
+              <Avatar className="goalix-chat-avatar">
+                <AvatarFallback>
                   {getInitials(conversation.target.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
+              <span className="goalix-chat-list-copy">
+                <span className="goalix-chat-list-title">
                   {conversation.target.name}
                 </span>
-                <span className="block truncate text-xs text-slate-400">
+                <span className="goalix-chat-list-subtitle">
                   {conversation.last_message_body ||
                     (conversation.last_attachment_url ? "Image" : conversationLabel(conversation))}
                 </span>
               </span>
-              {conversation.status === "closed" && <Lock className="h-4 w-4 text-slate-500" />}
+              {conversation.status === "closed" && <Lock className="goalix-chat-lock" />}
             </button>
           ))}
           {!loading && filteredConversations.length === 0 && (
-            <div className="rounded-lg border border-dashed border-[#2b4661] p-5 text-center text-sm text-slate-400">
+            <div className="goalix-chat-empty-state">
               {query.trim() ? "No chats match your search." : "No chats yet."}
             </div>
           )}
         </div>
       </aside>
 
-      <main className="flex min-h-[620px] flex-col overflow-hidden rounded-lg border border-[#253f5a] bg-[#06111f]/88">
-        <div className="flex min-h-16 items-center gap-3 border-b border-[#253f5a] px-4">
+      <main className="goalix-chat-panel goalix-chat-thread">
+        <div className="goalix-chat-thread-head">
           {selected ? (
             <>
-              <Avatar className="h-10 w-10 border border-lime-300/25">
-                <AvatarFallback className="bg-[#0a1a2d] text-sm font-bold text-lime-300">
+              <Avatar className="goalix-chat-avatar is-thread">
+                <AvatarFallback>
                   {getInitials(selected.target.name)}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold">{selected.target.name}</h2>
-                <div className="mt-1 flex items-center gap-2">
+              <div className="goalix-chat-thread-title">
+                <h2>{selected.target.name}</h2>
+                <div>
                   <Badge
                     variant={selected.status === "open" ? "success" : "secondary"}
-                    className="rounded-full"
+                    className="goalix-chat-status-badge"
                   >
                     {selected.status}
                   </Badge>
-                  <span className="text-xs text-slate-400">{conversationLabel(selected)}</span>
+                  <span>{conversationLabel(selected)}</span>
                 </div>
               </div>
               {selected.canClose && (
@@ -575,7 +585,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="ml-auto border-red-400/35 text-red-200 hover:bg-red-500/10"
+                  className="goalix-chat-close-session"
                   onClick={closeSession}
                 >
                   Close session
@@ -583,54 +593,49 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               )}
             </>
           ) : (
-            <span className="text-sm text-slate-400">Select a chat</span>
+            <span className="goalix-chat-muted">Select a chat</span>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-5">
+        <div className="goalix-chat-messages">
           {messagesLoading && (
-            <div className="grid h-full place-items-center text-slate-400">
+            <div className="goalix-chat-center">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           )}
           {!messagesLoading && selected && messages.length === 0 && (
-            <div className="grid h-full place-items-center text-sm text-slate-400">
+            <div className="goalix-chat-center">
               No messages yet.
             </div>
           )}
           {!messagesLoading && !selected && (
-            <div className="grid h-full place-items-center text-sm text-slate-400">
+            <div className="goalix-chat-center">
               No chat selected.
             </div>
           )}
-          <div className="space-y-3">
+          <div className="goalix-chat-message-stack">
             {messages.map((message) => {
               const mine = message.sender_user_id === user?.id;
               return (
                 <div
                   key={message.id}
-                  className={cn("flex", mine ? "justify-end" : "justify-start")}
+                  className={cn("goalix-chat-message-row", mine ? "is-own" : "is-other")}
                 >
                   <div
-                    className={cn(
-                      "max-w-[min(680px,82%)] rounded-lg border px-3 py-2",
-                      mine
-                        ? "border-lime-300/35 bg-lime-300/12"
-                        : "border-[#2b4661] bg-white/[0.04]",
-                    )}
+                    className="goalix-chat-bubble"
                   >
-                    <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-400">
+                    <div className="goalix-chat-message-meta">
                       <span>{mine ? "You" : message.sender_name || "User"}</span>
                       <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       {message.edited_at && <span>edited</span>}
                       {mine && (
-                        <span className="ml-auto flex items-center gap-1">
+                        <span className="goalix-chat-message-actions">
                           <MessageReceipt message={message} />
                           {selected?.canSend && message.body && (
                             <button
                               type="button"
                               onClick={() => startEdit(message)}
-                              className="rounded p-1 text-slate-400 transition hover:bg-white/10 hover:text-cyan-200"
+                              className="goalix-chat-icon-button"
                               title="Edit message"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -641,7 +646,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                               type="button"
                               onClick={() => deleteMessage(message)}
                               disabled={deletingId === message.id}
-                              className="rounded p-1 text-slate-400 transition hover:bg-red-500/15 hover:text-red-200 disabled:opacity-50"
+                              className="goalix-chat-icon-button is-danger"
                               title="Delete message"
                             >
                               {deletingId === message.id ? (
@@ -655,7 +660,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       )}
                     </div>
                     {message.body && (
-                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-100">
+                      <p className="goalix-chat-message-text">
                         {message.body}
                       </p>
                     )}
@@ -664,7 +669,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                         href={absoluteUploadUrl(message.attachment_url)}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-2 block overflow-hidden rounded-md border border-white/10"
+                        className="goalix-chat-attachment"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -682,37 +687,37 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           </div>
         </div>
 
-        <form onSubmit={sendMessage} className="border-t border-[#253f5a] p-3">
+        <form onSubmit={sendMessage} className="goalix-chat-composer">
           {error && (
-            <div className="mb-3 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            <div className="goalix-chat-alert is-error">
               {error}
             </div>
           )}
           {selected?.status === "closed" && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-slate-500/25 bg-slate-500/10 px-3 py-2 text-sm text-slate-300">
+            <div className="goalix-chat-alert">
               <Lock className="h-4 w-4" />
               Session closed.
             </div>
           )}
           {editingMessage && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-lime-300/25 bg-lime-300/10 px-3 py-2 text-sm text-lime-100">
+            <div className="goalix-chat-alert is-editing">
               <Edit3 className="h-4 w-4" />
               <span className="min-w-0 flex-1 truncate">Editing message</span>
-              <button type="button" onClick={cancelEdit} className="text-lime-100">
+              <button type="button" onClick={cancelEdit}>
                 <X className="h-4 w-4" />
               </button>
             </div>
           )}
           {image && (
-            <div className="mb-3 flex items-center gap-2 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+            <div className="goalix-chat-alert is-image">
               <ImagePlus className="h-4 w-4" />
               <span className="min-w-0 flex-1 truncate">{image.name}</span>
-              <button type="button" onClick={() => setImage(null)} className="text-cyan-100">
+              <button type="button" onClick={() => setImage(null)}>
                 <X className="h-4 w-4" />
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2">
+          <div className="goalix-chat-composer-row">
             <input
               ref={fileRef}
               type="file"
@@ -725,7 +730,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               variant="outline"
               size="icon"
               disabled={!selected?.canSend || sending || Boolean(editingMessage)}
-              className="shrink-0 border-[#2b4661] bg-white/[0.03]"
+              className="goalix-chat-attach-button"
               onClick={() => fileRef.current?.click()}
               title="Attach image"
             >
@@ -739,7 +744,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               maxLength={4000}
               disabled={!selected?.canSend || sending}
               placeholder={selected?.canSend ? "Message" : ""}
-              className="min-h-11 resize-none border-[#2b4661] bg-[#07172a]/90 text-slate-100 placeholder:text-slate-500"
+              className="goalix-chat-input"
             />
             <Button
               type="submit"
@@ -748,7 +753,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                 sending ||
                 (editingMessage ? !body.trim() : !body.trim() && !image)
               }
-              className="h-11 shrink-0 gap-2 bg-lime-300 text-[#06111f] hover:bg-lime-200"
+              className="goalix-chat-send-button"
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -763,23 +768,23 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         </form>
       </main>
 
-      <aside className="overflow-hidden rounded-lg border border-[#253f5a] bg-[#06111f]/86">
-        <div className="flex h-14 items-center gap-3 border-b border-[#253f5a] px-4">
-          {role === "admin" ? <Shield className="h-5 w-5 text-cyan-300" /> : role === "coach" ? <Users className="h-5 w-5 text-cyan-300" /> : <UserRound className="h-5 w-5 text-cyan-300" />}
-          <h2 className="text-base font-semibold">Contacts</h2>
+      <aside className="goalix-chat-panel goalix-chat-contacts">
+        <div className="goalix-chat-panel-head">
+          {role === "admin" ? <Shield className="goalix-chat-head-icon" /> : role === "coach" ? <Users className="goalix-chat-head-icon" /> : <UserRound className="goalix-chat-head-icon" />}
+          <h2>Contacts</h2>
         </div>
-        <div className="border-b border-[#253f5a] p-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <div className="goalix-chat-search-wrap">
+          <div className="goalix-chat-search">
+            <Search />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="border-[#2b4661] bg-[#07172a]/90 pl-9 text-slate-100"
+              className="goalix-chat-search-input"
               placeholder="Search"
             />
           </div>
         </div>
-        <div className="max-h-[calc(100vh-246px)] overflow-y-auto p-3">
+        <div className="goalix-chat-scroll">
           {role === "admin" && (
             <ContactSection
               title="Coaches"
@@ -819,36 +824,36 @@ function ContactSection({
   onOpen: (contact: Contact) => void;
 }) {
   return (
-    <section className="mb-5">
-      <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <section className="goalix-chat-contact-section">
+      <h3>
         {title}
       </h3>
-      <div className="space-y-2">
+      <div className="goalix-chat-contact-list">
         {contacts.map((contact) => (
           <button
             key={`${contact.type}-${contact.id}`}
             onClick={() => onOpen(contact)}
-            className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-lime-300/40 hover:bg-lime-300/10"
+            className="goalix-chat-contact-card"
           >
-            <Avatar className="h-9 w-9 border border-white/10">
-              <AvatarFallback className="bg-[#0a1a2d] text-xs font-bold text-cyan-200">
+            <Avatar className="goalix-chat-avatar is-contact">
+              <AvatarFallback>
                 {getInitials(contact.name)}
               </AvatarFallback>
             </Avatar>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-slate-100">
+            <span className="goalix-chat-list-copy">
+              <span className="goalix-chat-list-title">
                 {contact.name}
               </span>
               {contact.subtitle && (
-                <span className="block truncate text-xs text-slate-500">
-                  {contact.subtitle}
+                <span className="goalix-chat-list-subtitle">
+                  {formatContactSubtitle(contact.subtitle)}
                 </span>
               )}
             </span>
           </button>
         ))}
         {contacts.length === 0 && (
-          <div className="rounded-lg border border-dashed border-[#2b4661] px-3 py-5 text-center text-sm text-slate-500">
+          <div className="goalix-chat-empty-state">
             No contacts.
           </div>
         )}

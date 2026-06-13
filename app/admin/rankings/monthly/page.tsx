@@ -95,7 +95,7 @@ export default function MonthlyRankingsPage() {
                   label: "Score",
                   data: top10.map((ranking) => parseFloat(ranking.total_score)),
                   backgroundColor: top10.map((_, i) =>
-                    i === 0 ? "#fbbf24" : i === 1 ? "#9ca3af" : i === 2 ? "#d97706" : "#22d3ee"
+                    i === 0 ? "#b2d23b" : i === 1 ? "#51b848" : i === 2 ? "#087f83" : "#2d9ad5"
                   ),
                 },
               ]}

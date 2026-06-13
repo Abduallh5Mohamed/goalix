@@ -40,39 +40,39 @@ export default function ActivityCard() {
                   opacity="0.2"
                 />
 
-                <circle cx="40" cy="25" r="8" fill="#22d3ee" />
+                <circle cx="40" cy="25" r="8" fill="#2d9ad5" />
 
-                <ellipse cx="40" cy="40" rx="8" ry="12" fill="#22d3ee" />
+                <ellipse cx="40" cy="40" rx="8" ry="12" fill="#2d9ad5" />
 
                 <path
                   d="M32 42 L28 65 L35 80"
-                  stroke="#22d3ee"
+                  stroke="#2d9ad5"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
                 <path
                   d="M48 42 L52 65 L45 80"
-                  stroke="#22d3ee"
+                  stroke="#2d9ad5"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
 
                 <path
                   d="M40 50 L35 70 L25 90"
-                  stroke="#22d3ee"
+                  stroke="#2d9ad5"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
                 <path
                   d="M40 50 L45 70 L55 90"
-                  stroke="#22d3ee"
+                  stroke="#2d9ad5"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
 
-                <circle cx="70" cy="70" r="20" fill="#22d3ee" opacity="0.3" />
-                <circle cx="70" cy="70" r="15" fill="#22d3ee" opacity="0.5" />
-                <circle cx="70" cy="70" r="10" fill="#22d3ee" />
+                <circle cx="70" cy="70" r="20" fill="#2d9ad5" opacity="0.3" />
+                <circle cx="70" cy="70" r="15" fill="#2d9ad5" opacity="0.5" />
+                <circle cx="70" cy="70" r="10" fill="#2d9ad5" />
 
                 <path
                   d="M64 70 L68 74 L76 66"
@@ -86,7 +86,7 @@ export default function ActivityCard() {
 
               <defs>
                 <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity="1" />
+                  <stop offset="0%" stopColor="#2d9ad5" stopOpacity="1" />
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity="1" />
                 </linearGradient>
               </defs>

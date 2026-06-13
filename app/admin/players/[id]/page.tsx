@@ -122,8 +122,8 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                   <LineChart
                     labels={measurements.map((m) => formatDate(m.measured_at))}
                     datasets={[
-                      { label: "Height (cm)", data: measurements.map((m) => Number(m.height_cm) || 0), borderColor: "#22d3ee", backgroundColor: "rgba(34,211,238,0.1)" },
-                      { label: "Weight (kg)", data: measurements.map((m) => Number(m.weight_kg) || 0), borderColor: "#3ddc84", backgroundColor: "rgba(61,220,132,0.1)" },
+                      { label: "Height (cm)", data: measurements.map((m) => Number(m.height_cm) || 0), borderColor: "#2d9ad5", backgroundColor: "rgba(45,154,213,0.12)" },
+                      { label: "Weight (kg)", data: measurements.map((m) => Number(m.weight_kg) || 0), borderColor: "#51b848", backgroundColor: "rgba(81,184,72,0.12)" },
                     ]}
                     height={280}
                   />

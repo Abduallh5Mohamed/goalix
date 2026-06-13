@@ -96,7 +96,7 @@ export default function ParentChildPerformancePage() {
           <CardContent>
             <LineChart
               labels={scoreData.map((d) => d.label)}
-              datasets={[{ label: "Overall Score", data: scoreData.map((d) => d.value), color: "#22d3ee" }]}
+              datasets={[{ label: "Overall Score", data: scoreData.map((d) => d.value), color: "#2d9ad5" }]}
               height={280}
             />
           </CardContent>
@@ -110,7 +110,7 @@ export default function ParentChildPerformancePage() {
           <CardContent>
             <BarChart
               labels={skillData.map((d) => d.label)}
-              datasets={[{ label: "Score", data: skillData.map((d) => d.value), color: "#3ddc84" }]}
+              datasets={[{ label: "Score", data: skillData.map((d) => d.value), color: "#51b848" }]}
               height={280}
             />
           </CardContent>

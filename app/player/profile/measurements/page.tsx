@@ -96,21 +96,21 @@ export default function PlayerMeasurementsPage() {
       keys: ["height_cm", "heightCm", "height"],
       unit: "cm",
       color: "text-cyan-200",
-      chartColor: "#22d3ee",
+      chartColor: "#2d9ad5",
     },
     {
       label: "Weight",
       keys: ["weight_kg", "weightKg", "weight"],
       unit: "kg",
       color: "text-lime-200",
-      chartColor: "#3ddc84",
+      chartColor: "#51b848",
     },
     {
       label: "Sprint Speed",
       keys: ["sprint_speed", "sprintSpeed"],
       unit: "s",
       color: "text-amber-200",
-      chartColor: "#f59e0b",
+      chartColor: "#b2d23b",
       inverseBetter: true,
     },
     {
@@ -118,7 +118,7 @@ export default function PlayerMeasurementsPage() {
       keys: ["endurance", "stamina"],
       unit: "/10",
       color: "text-violet-200",
-      chartColor: "#a855f7",
+      chartColor: "#087f83",
     },
     {
       label: "Flexibility",

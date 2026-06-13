@@ -33,16 +33,16 @@ export const PAYMENT_STATUS_CONFIG = {
 };
 
 export const ATTENDANCE_STATUS_CONFIG = {
-  present: { label: "Present", color: "#3ddc84" },
-  absent: { label: "Absent", color: "#ef4444" },
-  late: { label: "Late", color: "#f59e0b" },
-  excused: { label: "Excused", color: "#6b7280" },
+  present: { label: "Present", color: "#51b848" },
+  absent: { label: "Absent", color: "#2d9ad5" },
+  late: { label: "Late", color: "#b2d23b" },
+  excused: { label: "Excused", color: "#087f83" },
 };
 
 export const TREND_CONFIG = {
-  improving: { label: "Improving", icon: "↑", color: "#3ddc84" },
-  stable: { label: "Stable", icon: "→", color: "#f59e0b" },
-  declining: { label: "Declining", icon: "↓", color: "#ef4444" },
+  improving: { label: "Improving", icon: "↑", color: "#51b848" },
+  stable: { label: "Stable", icon: "→", color: "#b2d23b" },
+  declining: { label: "Declining", icon: "↓", color: "#2d9ad5" },
 };
 
 export const RANKING_WEIGHTS = {
