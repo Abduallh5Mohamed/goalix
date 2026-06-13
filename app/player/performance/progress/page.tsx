@@ -166,7 +166,7 @@ export default function PlayerProgressPage() {
                       {
                         label: "Overall Score",
                         data: overallData.map((item) => item.value),
-                        color: "#22d3ee",
+                        color: "#2d9ad5",
                       },
                     ]}
                     height={300}
@@ -188,7 +188,7 @@ export default function PlayerProgressPage() {
                         {
                           label: "Score",
                           data: breakdownData.map((item) => item.value),
-                          color: "#3ddc84",
+                          color: "#51b848",
                         },
                       ]}
                       height={250}
@@ -199,10 +199,10 @@ export default function PlayerProgressPage() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 {[
-                  ["Technical", technicalData, "#22d3ee"],
-                  ["Tactical", tacticalData, "#3ddc84"],
-                  ["Physical", physicalData, "#f59e0b"],
-                  ["Mentality", mentalData, "#a855f7"],
+                  ["Technical", technicalData, "#2d9ad5"],
+                  ["Tactical", tacticalData, "#51b848"],
+                  ["Physical", physicalData, "#b2d23b"],
+                  ["Mentality", mentalData, "#087f83"],
                 ].map(([label, data, color]) => {
                   const points = data as typeof technicalData;
                   return (

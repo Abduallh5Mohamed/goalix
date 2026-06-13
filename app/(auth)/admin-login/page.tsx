@@ -212,19 +212,7 @@ export default function AdminLoginPage() {
         : "Use one of your saved backup codes.";
 
   return (
-    <GoalixAuthShell
-      badge="Staff command center"
-      headline={
-        <>
-          Smarter <span>operations.</span>
-          <br />
-          Faster <span>decisions.</span>
-        </>
-      }
-      description="Manage training, attendance, players, payments and match operations through a secure Goalix workspace."
-      metricLabel="Team performance"
-      metricValue="91"
-    >
+    <GoalixAuthShell>
       <div className="goalix-login-card">
         <div className="goalix-login-card-head">
           <div className="goalix-login-card-icon">

@@ -9,7 +9,7 @@ interface MetricsCardProps {
 }
 
 function drawHeartbeat(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  ctx.strokeStyle = '#22d3ee';
+  ctx.strokeStyle = '#2d9ad5';
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -41,7 +41,7 @@ function drawHeartbeat(ctx: CanvasRenderingContext2D, width: number, height: num
 
   ctx.stroke();
 
-  ctx.shadowColor = '#22d3ee';
+  ctx.shadowColor = '#2d9ad5';
   ctx.shadowBlur = 15;
   ctx.stroke();
 }
@@ -57,7 +57,7 @@ function drawStepsGraph(ctx: CanvasRenderingContext2D, width: number, height: nu
     const y = height - barHeight;
 
     const gradient = ctx.createLinearGradient(x, y, x, height);
-    gradient.addColorStop(0, '#22d3ee');
+    gradient.addColorStop(0, '#2d9ad5');
     gradient.addColorStop(1, '#3b82f6');
 
     ctx.fillStyle = gradient;
