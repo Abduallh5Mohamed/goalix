@@ -90,7 +90,7 @@ export default function AttendanceOverviewPage() {
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${Math.min(100, Math.max(0, group.rate))}%`,
-                          backgroundColor: group.rate >= 80 ? "#3ddc84" : group.rate >= 60 ? "#f59e0b" : "#ef4444",
+                          backgroundColor: group.rate >= 80 ? "#51b848" : group.rate >= 60 ? "#b2d23b" : "#2d9ad5",
                         }}
                       />
                     </div>
@@ -110,7 +110,7 @@ export default function AttendanceOverviewPage() {
             <DoughnutChart
               labels={["Present", "Absent", "Late", "Excused"]}
               data={[presentCount, absentCount, lateCount, excusedCount]}
-              colors={["#3ddc84", "#ef4444", "#f59e0b", "#6b7280"]}
+              colors={["#51b848", "#2d9ad5", "#b2d23b", "#087f83"]}
               height={240}
               centerValue={`${overallRate}%`}
               centerLabel="Rate"

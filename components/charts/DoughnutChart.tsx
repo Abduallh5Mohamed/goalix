@@ -8,6 +8,7 @@ import {
 } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import { cn } from "@/lib/utils";
+import { GOALIX_CHART_COLORS, useGoalixChartTheme } from "./useGoalixChartTheme";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -21,16 +22,7 @@ interface DoughnutChartProps {
   centerValue?: string | number;
 }
 
-const defaultColors = [
-  "#22d3ee",
-  "#3ddc84",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#10b981",
-];
+const defaultColors = GOALIX_CHART_COLORS;
 
 export function DoughnutChart({
   labels,
@@ -41,6 +33,7 @@ export function DoughnutChart({
   centerLabel,
   centerValue,
 }: DoughnutChartProps) {
+  const chartTheme = useGoalixChartTheme();
   const chartData = {
     labels,
     datasets: [
@@ -63,7 +56,7 @@ export function DoughnutChart({
       legend: {
         position: "bottom" as const,
         labels: {
-          color: "#94a3b8",
+          color: chartTheme.legend,
           font: { size: 12 },
           padding: 16,
           usePointStyle: true,
@@ -71,10 +64,10 @@ export function DoughnutChart({
         },
       },
       tooltip: {
-        backgroundColor: "#0d2036",
-        titleColor: "#f8fafc",
-        bodyColor: "#94a3b8",
-        borderColor: "#1e293b",
+        backgroundColor: chartTheme.tooltipBackground,
+        titleColor: chartTheme.tooltipTitle,
+        bodyColor: chartTheme.tooltipBody,
+        borderColor: chartTheme.tooltipBorder,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,

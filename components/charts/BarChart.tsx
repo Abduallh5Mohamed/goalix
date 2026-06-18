@@ -11,6 +11,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { cn } from "@/lib/utils";
+import { useGoalixChartTheme } from "./useGoalixChartTheme";
 
 ChartJS.register(
   CategoryScale,
@@ -41,13 +42,14 @@ export function BarChart({
   height = 300,
   horizontal = false,
 }: BarChartProps) {
+  const chartTheme = useGoalixChartTheme();
   const data = {
     labels,
     datasets: datasets.map((ds) => ({
       label: ds.label,
       data: ds.data,
-      backgroundColor: ds.backgroundColor || `${ds.color || "#22d3ee"}cc`,
-      hoverBackgroundColor: ds.color || "#22d3ee",
+      backgroundColor: ds.backgroundColor || `${ds.color || chartTheme.defaultColor}cc`,
+      hoverBackgroundColor: ds.color || chartTheme.defaultColor,
       borderRadius: 6,
       borderSkipped: false as const,
       barThickness: 24,
@@ -63,7 +65,7 @@ export function BarChart({
         display: datasets.length > 1,
         position: "top" as const,
         labels: {
-          color: "#94a3b8",
+          color: chartTheme.legend,
           font: { size: 12 },
           padding: 16,
           usePointStyle: true,
@@ -71,10 +73,10 @@ export function BarChart({
         },
       },
       tooltip: {
-        backgroundColor: "#0d2036",
-        titleColor: "#f8fafc",
-        bodyColor: "#94a3b8",
-        borderColor: "#1e293b",
+        backgroundColor: chartTheme.tooltipBackground,
+        titleColor: chartTheme.tooltipTitle,
+        bodyColor: chartTheme.tooltipBody,
+        borderColor: chartTheme.tooltipBorder,
         borderWidth: 1,
         padding: 12,
         cornerRadius: 8,
@@ -82,12 +84,12 @@ export function BarChart({
     },
     scales: {
       x: {
-        grid: { color: "#1e293b40", drawBorder: false },
-        ticks: { color: "#64748b", font: { size: 11 } },
+        grid: { color: chartTheme.grid, drawBorder: false },
+        ticks: { color: chartTheme.axis, font: { size: 11 } },
       },
       y: {
-        grid: { color: "#1e293b40", drawBorder: false },
-        ticks: { color: "#64748b", font: { size: 11 } },
+        grid: { color: chartTheme.grid, drawBorder: false },
+        ticks: { color: chartTheme.axis, font: { size: 11 } },
       },
     },
   };

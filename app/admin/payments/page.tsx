@@ -118,7 +118,7 @@ export default function PaymentsOverviewPage() {
             <DoughnutChart
               labels={["Paid", "Pending", "Overdue"]}
               data={[paidCount, pendingCount, overdueCount]}
-              colors={["#3ddc84", "#f59e0b", "#ef4444"]}
+              colors={["#51b848", "#b2d23b", "#2d9ad5"]}
               height={220}
               centerValue={`${paidCount}`}
               centerLabel="Paid"
@@ -128,16 +128,16 @@ export default function PaymentsOverviewPage() {
       </div>
 
       {overdueCount > 0 && (
-        <Card className="border-red-500/30 bg-red-500/5">
+        <Card className="border-cyan-500/30 bg-cyan-500/5">
           <CardHeader>
-            <CardTitle className="text-base text-red-400">Overdue Payments</CardTitle>
+            <CardTitle className="text-base text-cyan-400">Overdue Payments</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
               {overdueCount} overdue subscription{overdueCount > 1 ? "s" : ""} totalling {formatCurrency(overdue)}.
             </p>
             <Link href="/admin/payments/invoices?status=overdue">
-              <Button variant="destructive" size="sm" className="mt-3">View Overdue Invoices</Button>
+              <Button size="sm" className="mt-3 bg-cyan-500 text-slate-950 hover:bg-cyan-400">View Overdue Invoices</Button>
             </Link>
           </CardContent>
         </Card>

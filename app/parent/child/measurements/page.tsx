@@ -66,7 +66,7 @@ export default function ParentChildMeasurementsPage() {
           <CardContent>
             <LineChart
               labels={heightData.map((d) => d.label)}
-              datasets={[{ label: "Height (cm)", data: heightData.map((d) => d.value), color: "#22d3ee" }]}
+              datasets={[{ label: "Height (cm)", data: heightData.map((d) => d.value), color: "#2d9ad5" }]}
               height={250}
             />
           </CardContent>
@@ -80,7 +80,7 @@ export default function ParentChildMeasurementsPage() {
           <CardContent>
             <LineChart
               labels={weightData.map((d) => d.label)}
-              datasets={[{ label: "Weight (kg)", data: weightData.map((d) => d.value), color: "#3ddc84" }]}
+              datasets={[{ label: "Weight (kg)", data: weightData.map((d) => d.value), color: "#51b848" }]}
               height={250}
             />
           </CardContent>
