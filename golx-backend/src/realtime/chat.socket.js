@@ -1,5 +1,5 @@
 const { Server } = require("socket.io");
-const env = require("../config/env");
+const { corsOrigin } = require("../config/cors");
 const { authenticateAccessToken } = require("../middleware/auth.middleware");
 const { setChatRealtime } = require("./chat.realtime");
 
@@ -29,7 +29,7 @@ function readSocketToken(socket) {
 function setupChatSocket(server, chatService) {
   const io = new Server(server, {
     cors: {
-      origin: env.CORS_ORIGINS.split(","),
+      origin: corsOrigin,
       credentials: true,
     },
     maxHttpBufferSize: 64 * 1024,
@@ -38,8 +38,8 @@ function setupChatSocket(server, chatService) {
   io.use(async (socket, next) => {
     try {
       const user = await authenticateAccessToken(readSocketToken(socket));
-      if (!["admin", "coach", "player"].includes(user.role)) {
-        return next(new Error("Chat is not available for this role"));
+      if (!["admin", "coach", "player", "parent"].includes(user.role)) {
+        return next(new Error("Realtime is not available for this role"));
       }
       socket.user = user;
       return next();

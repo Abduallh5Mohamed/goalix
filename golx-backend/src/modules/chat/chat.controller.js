@@ -141,6 +141,7 @@ class ChatController {
         req.user,
         req.params.id,
         req.params.messageId,
+        req.query.scope,
       );
       emitMessageDeleted(
         result.message,

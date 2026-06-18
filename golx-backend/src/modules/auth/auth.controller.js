@@ -238,7 +238,11 @@ class AuthController {
             if (!user) {
                 return res.status(404).json(ApiResponse.error('RESOURCE_NOT_FOUND', 'User not found'));
             }
-            res.json(ApiResponse.success(this.authService._sanitizeUser(user)));
+            const sanitized = this.authService._sanitizeUser(user);
+            res.json(ApiResponse.success({
+                ...sanitized,
+                user: sanitized,
+            }, { requestId: req.id }));
         } catch (err) {
             next(err);
         }
@@ -252,10 +256,6 @@ class AuthController {
             maxAge,
             path,
         };
-
-        if (process.env.NODE_ENV === 'development') {
-            options.domain = 'localhost';
-        }
 
         return options;
     }

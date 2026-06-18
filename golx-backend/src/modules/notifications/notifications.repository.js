@@ -1,4 +1,9 @@
 const BaseRepository = require('../../shared/base.repository');
+const {
+    emitNotificationRead,
+    emitNotifications,
+    emitNotificationsReadAll,
+} = require('../../realtime/chat.realtime');
 
 class NotificationsRepository extends BaseRepository {
     constructor(db) {
@@ -37,14 +42,15 @@ class NotificationsRepository extends BaseRepository {
         }
 
         const db = this.db;
+        const notificationMatchId =
+            "COALESCE(notification_inbox.data->'match'->>'id', notification_inbox.data->>'matchId')";
+
         query.andWhere((visibility) => {
             visibility.where('notification_inbox.type', '<>', 'match').orWhereExists(function visibleMatchNotification() {
                 this.select(db.raw('1'))
                     .from('matches as m')
-                    .whereRaw("notification_inbox.data ? 'match'")
-                    .whereRaw(
-                        "m.id::text = notification_inbox.data->'match'->>'id'",
-                    )
+                    .whereRaw(`${notificationMatchId} IS NOT NULL`)
+                    .whereRaw(`m.id::text = ${notificationMatchId}`)
                     .whereNull('m.deleted_at')
                     .whereExists(function hasTactics() {
                         this.select(db.raw('1'))
@@ -123,11 +129,24 @@ class NotificationsRepository extends BaseRepository {
 
     async createNotification(data) {
         const [row] = await this.db('notification_inbox').insert(data).returning('*');
+        emitNotifications([row]);
         return row;
     }
 
     async createBulk(rows) {
-        return this.db('notification_inbox').insert(rows).returning('*');
+        const created = await this.db('notification_inbox').insert(rows).returning('*');
+        emitNotifications(created);
+        return created;
+    }
+
+    async targetUsers(academyId, targetRole) {
+        return this.db('auth_users')
+            .where({ academy_id: academyId, is_active: true })
+            .whereNull('deleted_at')
+            .modify((q) => {
+                if (targetRole) q.where('role', targetRole);
+            })
+            .select('id as user_id');
     }
 
     async markAsRead(id, userId) {
@@ -135,13 +154,16 @@ class NotificationsRepository extends BaseRepository {
             .where({ id, user_id: userId })
             .update({ is_read: true })
             .returning('*');
+        if (row) emitNotificationRead(row);
         return row;
     }
 
     async markAllAsRead(userId) {
-        return this.db('notification_inbox')
+        const count = await this.db('notification_inbox')
             .where({ user_id: userId, is_read: false })
             .update({ is_read: true });
+        if (count) emitNotificationsReadAll(userId);
+        return count;
     }
 
     async getUnreadCount(userId, userContext = null) {

@@ -19,10 +19,14 @@ import Link from "next/link";
 import { useGetUnreadNotificationsCountQuery } from "@/lib/store/api/calendarApi";
 
 export function AdminHeader() {
-  const { user } = useCurrentUser();
+  const authState = useCurrentUser();
+  const { user } = authState;
   const { logout } = useAuth();
   const displayIdentifier = user?.email || user?.username || "";
+  const notificationsEnabled =
+    authState.isAuthenticated && authState.role === "admin";
   const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(undefined, {
+    skip: !notificationsEnabled,
     pollingInterval: 60000,
   });
 

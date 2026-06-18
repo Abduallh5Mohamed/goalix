@@ -8,37 +8,36 @@ const setupChatSocket = require('./realtime/chat.socket');
 let workers = null;
 
 async function main() {
-    // Connect Redis (optional — server starts even if Redis is unavailable)
     await connectRedis();
 
-    // Start BullMQ workers only if Redis is available
-    if (isRedisAvailable()) {
+    const bullmqEnabled = process.env.BULLMQ_ENABLED !== 'false';
+
+    if (bullmqEnabled && isRedisAvailable()) {
         const redisConnection = {
             host: new URL(env.REDIS_URL).hostname,
             port: parseInt(new URL(env.REDIS_URL).port || '6379', 10),
         };
         workers = startWorkers(redisConnection);
+    } else if (bullmqEnabled) {
+        logger.warn('BullMQ workers not started - Redis unavailable');
     } else {
-        logger.warn('⚠️  BullMQ workers not started — Redis unavailable');
+        logger.info('BullMQ disabled for this environment');
     }
 
-    // Start HTTP server
-    const server = app.listen(env.PORT, () => {
-        logger.info(`🚀 GOLX API running on port ${env.PORT} [${env.NODE_ENV}]`);
+    const server = app.listen(env.PORT, env.HOST, () => {
+        logger.info(`GOLX API running on ${env.HOST}:${env.PORT} [${env.NODE_ENV}]`);
     });
 
     const io = setupChatSocket(server, app.locals.services.chatService);
 
-    // Graceful shutdown
     const shutdown = async (signal) => {
-        logger.info({ signal }, 'Shutting down gracefully…');
+        logger.info({ signal }, 'Shutting down gracefully...');
         server.close(async () => {
             io.close();
             await stopWorkers(workers);
             logger.info('Server closed');
             process.exit(0);
         });
-        // Force exit after 10s
         setTimeout(() => process.exit(1), 10000);
     };
 

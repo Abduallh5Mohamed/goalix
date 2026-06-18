@@ -20,6 +20,7 @@ import {
   Send,
   X,
 } from "lucide-react";
+import { QrAttendanceScanner } from "@/components/attendance/QrAttendanceScanner";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,8 @@ const MAX_EXTENSION_MINUTES = 60;
 export default function CoachTrainingEventPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
-  const { data: event, isLoading } = useGetCoachTrainingEventQuery(eventId);
+  const { data: event, isLoading, isError, refetch } =
+    useGetCoachTrainingEventQuery(eventId);
   const nowMs = useSyncExternalStore(
     subscribeTrainingDetailClock,
     getTrainingDetailClockSnapshot,
@@ -542,6 +544,20 @@ export default function CoachTrainingEventPage() {
         </div>
       )}
 
+      {isError && (
+        <Card className="border-destructive/30 bg-destructive/10">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-destructive">
+            <span>
+              Could not load this training session. Your session may need refresh,
+              or the backend may be rate-limited from repeated requests.
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {event && (
         <>
           <div className="grid gap-4 md:grid-cols-4">
@@ -583,6 +599,15 @@ export default function CoachTrainingEventPage() {
               {pageError}
             </p>
           )}
+
+          <QrAttendanceScanner
+            mode="training"
+            id={eventId}
+            disabled={!trainingOpen || savingAttendance}
+            onScanSuccess={() => {
+              void refetch();
+            }}
+          />
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
@@ -931,6 +956,7 @@ export default function CoachTrainingEventPage() {
                     {[
                       ["strengths", "Strengths"],
                       ["weaknesses", "Weaknesses"],
+                      ["coachNotes", "Coach Notes"],
                       ["developmentNotes", "Development Notes"],
                       ["improvementPlan", "Improvement Plan"],
                     ].map(([key, label]) => (

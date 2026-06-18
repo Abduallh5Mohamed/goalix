@@ -12,7 +12,18 @@ const redisConnection = {
     ...(redisUrl.protocol === 'rediss:' ? { tls: {} } : {}),
 };
 
+const bullmqEnabled = process.env.BULLMQ_ENABLED !== 'false';
+
+const createNoopQueue = (name) => ({
+    add: async (jobName) => {
+        logger.debug({ queue: name, jobName }, 'BullMQ disabled; skipping queued job');
+        return { id: null, name: jobName, skipped: true };
+    },
+});
+
 const createQueue = (name) => {
+    if (!bullmqEnabled) return createNoopQueue(name);
+
     const queue = new Queue(`${env.BULLMQ_PREFIX}-${name}`, {
         connection: redisConnection,
         defaultJobOptions: {

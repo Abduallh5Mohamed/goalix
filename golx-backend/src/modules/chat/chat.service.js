@@ -330,7 +330,7 @@ class ChatService {
 
   async listMessages(user, conversationId, filters) {
     const conversation = await this._requireConversation(user, conversationId);
-    const rows = await this.repo.listMessages(conversation.id, filters);
+    const rows = await this.repo.listMessages(conversation.id, user.userId, filters);
     return rows.reverse();
   }
 
@@ -411,7 +411,7 @@ class ChatService {
     };
   }
 
-  async deleteMessage(user, conversationId, messageId) {
+  async deleteMessage(user, conversationId, messageId, scope = "everyone") {
     const conversation = await this._requireConversation(user, conversationId);
     await this._assertCurrentCoachPlayerAccess(conversation);
     if (conversation.status !== "open") {
@@ -423,20 +423,33 @@ class ChatService {
       conversation.id,
     );
     if (!message) throw new NotFoundError("Message", messageId);
+
+    if (scope === "me") {
+      await this.repo.hideMessageForUser(messageId, user.userId);
+      return {
+        message: {
+          id: message.id,
+          conversation_id: message.conversation_id,
+          visibility: "self",
+        },
+        conversation: this._decorateConversation(conversation, user),
+        recipientUserIds: [user.userId],
+      };
+    }
+
     if (message.sender_user_id !== user.userId) {
       throw new ForbiddenError("You can only delete your own messages");
     }
 
     const deleted = await this.repo.softDeleteMessage(messageId, user.userId);
+    const deletedMessage = await this.repo.findMessageById(deleted.id, {
+      includeDeleted: true,
+    });
     const updatedConversation = await this.repo.refreshConversationLastMessageAt(
       conversation.id,
     );
     return {
-      message: {
-        id: deleted.id,
-        conversation_id: deleted.conversation_id,
-        deleted_at: deleted.deleted_at,
-      },
+      message: deletedMessage,
       conversation: this._decorateConversation(updatedConversation, user),
       recipientUserIds: this.repo.conversationUserIds(conversation),
     };

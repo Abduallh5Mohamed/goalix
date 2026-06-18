@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import {
   Activity,
   CalendarClock,
@@ -13,12 +14,14 @@ import {
   Star,
   Target,
 } from "lucide-react";
+import { PlayerAttendanceQrPrompt } from "@/components/attendance/PlayerAttendanceQrPrompt";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
   useGetPlayerAttendanceQuery,
+  useGetPlayerAttendanceQrQuery,
   useGetPlayerEvaluationsQuery,
   useGetPlayerTrainingsQuery,
 } from "@/lib/store/api/calendarApi";
@@ -37,6 +40,21 @@ const numberValue = (value: unknown) => {
   }
   return null;
 };
+
+let playerTrainingClockSnapshot = 0;
+const subscribePlayerTrainingClock = (onStoreChange: () => void) => {
+  playerTrainingClockSnapshot = Date.now();
+  onStoreChange();
+  const intervalId = window.setInterval(() => {
+    playerTrainingClockSnapshot = Date.now();
+    onStoreChange();
+  }, 1000);
+  return () => window.clearInterval(intervalId);
+};
+const getPlayerTrainingClockSnapshot = () => playerTrainingClockSnapshot;
+const getServerPlayerTrainingClockSnapshot = () => 0;
+
+const QR_WINDOW_MS = 15 * 60 * 1000;
 
 const formatRating = (value: unknown) => {
   const rating = numberValue(value);
@@ -203,10 +221,17 @@ function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) 
                 icon={ClipboardList}
               />
             )}
-            {(evaluation.coach_notes || evaluation.development_notes) && (
+            {evaluation.coach_notes && (
               <DetailBlock
                 label="Coach Notes"
-                value={evaluation.coach_notes || evaluation.development_notes}
+                value={evaluation.coach_notes}
+                icon={CheckCircle2}
+              />
+            )}
+            {evaluation.development_notes && (
+              <DetailBlock
+                label="Development Notes"
+                value={evaluation.development_notes}
                 icon={CheckCircle2}
               />
             )}
@@ -217,9 +242,23 @@ function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) 
 }
 
 export default function PlayerTrainingPage() {
-  const trainingsQuery = useGetPlayerTrainingsQuery();
+  const nowMs = useSyncExternalStore(
+    subscribePlayerTrainingClock,
+    getPlayerTrainingClockSnapshot,
+    getServerPlayerTrainingClockSnapshot,
+  );
+  const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
+  const trainingsQuery = useGetPlayerTrainingsQuery(undefined, {
+    pollingInterval: 5000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
   const evaluationsQuery = useGetPlayerEvaluationsQuery();
-  const attendanceQuery = useGetPlayerAttendanceQuery();
+  const attendanceQuery = useGetPlayerAttendanceQuery(undefined, {
+    pollingInterval: 5000,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
 
   const trainings = trainingsQuery.data?.data ?? [];
   const evaluations = evaluationsQuery.data?.data ?? [];
@@ -327,6 +366,19 @@ export default function PlayerTrainingPage() {
                       key={event.id}
                       className="rounded-lg border border-white/10 bg-white/[0.035] p-4"
                     >
+                      {nowMs >= eventTimestamp(event) - QR_WINDOW_MS &&
+                        nowMs < Date.parse(event.end_datetime) &&
+                        event.status === "scheduled" && (
+                          <PlayerAttendanceQrPrompt
+                            kind="training"
+                            title={event.title}
+                            startsAt={event.start_datetime}
+                            qr={attendanceQrQuery.data}
+                            attendanceStatus={event.attendance?.[0]?.status}
+                            className="mb-4"
+                          />
+                        )}
+
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">

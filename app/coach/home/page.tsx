@@ -59,6 +59,30 @@ const statusVariant = (status: string) => {
   return "secondary" as const;
 };
 
+const normalizeKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+const textValue = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const values = value.map(textValue).filter(Boolean);
+    return values.length ? values.join(", ") : null;
+  }
+  return null;
+};
+
+const playerMainPosition = (player: CoachPlayer) => {
+  const mainPosition = player.customProfile?.find((field) => {
+    const key = normalizeKey(field.key || "");
+    const label = normalizeKey(field.label || "");
+    return key === "main_position" || label === "main_position";
+  });
+
+  return textValue(mainPosition?.value) || "No main position";
+};
+
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] backdrop-blur-xl ${className}`}>
@@ -177,7 +201,7 @@ function PlayerRow({ player }: { player: CoachPlayer }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-white">{player.full_name}</p>
         <p className="text-xs text-slate-400">
-          {player.position || "No position"} - {titleCase(player.profile_status)}
+          {playerMainPosition(player)} - {titleCase(player.profile_status)}
         </p>
       </div>
       <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>

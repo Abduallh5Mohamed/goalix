@@ -6,6 +6,15 @@ export function getNotificationHref(
   type: string,
   data?: Record<string, unknown> | null,
 ) {
+  const explicitHref = data?.href;
+  if (
+    typeof explicitHref === "string" &&
+    explicitHref.startsWith("/") &&
+    !explicitHref.startsWith("//")
+  ) {
+    return explicitHref;
+  }
+
   const matchData = data?.match as { id?: string } | undefined;
   const matchId = (data?.matchId as string | undefined) ?? matchData?.id;
   const eventId = data?.eventId as string | undefined;
@@ -27,6 +36,12 @@ export function getNotificationHref(
   if (type === "payment") {
     if (role === "admin") return "/admin/payments";
     if (role === "parent") return "/parent/payments";
+  }
+
+  if (type === "chat" || type === "message") {
+    if (role === "admin") return "/admin/chat";
+    if (role === "coach") return "/coach/chat";
+    if (role === "player") return "/player/chat";
   }
 
   if (type === "ranking") {

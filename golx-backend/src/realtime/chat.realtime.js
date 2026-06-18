@@ -27,9 +27,31 @@ function emitMessageUpdated(message, conversation, userIds) {
 
 function emitMessageDeleted(message, conversation, userIds) {
   if (!io) return;
+  if (message.visibility === "self") {
+    emitToUsers(userIds, "chat:message_deleted", message);
+    emitToUsers(userIds, "chat:conversation", conversation);
+    return;
+  }
   io.to(`chat:${message.conversation_id}`).emit("chat:message_deleted", message);
   emitToUsers(userIds, "chat:message_deleted", message);
   emitToUsers(userIds, "chat:conversation", conversation);
+}
+
+function emitNotifications(notifications) {
+  if (!io || !notifications?.length) return;
+  for (const notification of notifications) {
+    emitToUsers([notification.user_id], "notification:new", notification);
+  }
+}
+
+function emitNotificationRead(notification) {
+  if (!io || !notification?.user_id) return;
+  emitToUsers([notification.user_id], "notification:read", notification);
+}
+
+function emitNotificationsReadAll(userId) {
+  if (!io || !userId) return;
+  emitToUsers([userId], "notification:read_all", { user_id: userId });
 }
 
 function emitMessagesRead(messages, conversation, userIds) {
@@ -56,6 +78,9 @@ module.exports = {
   emitMessageDeleted,
   emitMessageUpdated,
   emitMessagesRead,
+  emitNotificationRead,
+  emitNotifications,
+  emitNotificationsReadAll,
   emitSessionClosed,
   setChatRealtime,
 };

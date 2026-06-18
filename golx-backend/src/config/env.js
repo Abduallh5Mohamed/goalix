@@ -3,6 +3,7 @@ const { z } = require('zod');
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().default(3000),
+    HOST: z.string().default('0.0.0.0'),
 
     // Database
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
@@ -28,6 +29,8 @@ const envSchema = z.object({
     // Pagination
     DEFAULT_PAGE_LIMIT: z.coerce.number().default(20),
     MAX_PAGE_LIMIT: z.coerce.number().default(100),
+    API_RATE_LIMIT_MAX: z.coerce.number().default(1000),
+    API_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
 
     // Account Lockout
     MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(5),

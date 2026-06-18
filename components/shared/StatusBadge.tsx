@@ -50,6 +50,7 @@ export function StatusBadge({ status, type, className }: StatusBadgeProps) {
     const colorMap: Record<string, string> = {
       emerald: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
       amber: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+      orange: "bg-orange-500/20 text-orange-400 border-orange-500/30",
       red: "bg-red-500/20 text-red-400 border-red-500/30",
     };
     return (

@@ -25,6 +25,7 @@ import {
   Square,
   X,
 } from "lucide-react";
+import { QrAttendanceScanner } from "@/components/attendance/QrAttendanceScanner";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export default function CoachMatchDayPage() {
   const params = useParams<{ matchId: string }>();
   const router = useRouter();
   const matchId = String(params.matchId || "");
-  const { data: match, isLoading } = useGetCoachMatchQuery(matchId, {
+  const { data: match, isLoading, refetch } = useGetCoachMatchQuery(matchId, {
     skip: !matchId,
     pollingInterval: 15000,
     refetchOnFocus: true,
@@ -264,7 +265,6 @@ export default function CoachMatchDayPage() {
       starters
         .filter(
           (player) =>
-            !injuredPlayerIds.has(player.player_id) &&
             !redCardedPlayerIds.has(player.player_id) &&
             !doubleYellowPlayerIds.has(player.player_id),
         )
@@ -273,7 +273,6 @@ export default function CoachMatchDayPage() {
     substitutions.forEach((substitution) => {
       ids.delete(substitution.out_player_id);
       if (
-        !injuredPlayerIds.has(substitution.in_player_id) &&
         !redCardedPlayerIds.has(substitution.in_player_id) &&
         !doubleYellowPlayerIds.has(substitution.in_player_id)
       ) {
@@ -283,7 +282,6 @@ export default function CoachMatchDayPage() {
     return ids;
   }, [
     doubleYellowPlayerIds,
-    injuredPlayerIds,
     redCardedPlayerIds,
     starters,
     substitutions,
@@ -354,7 +352,7 @@ export default function CoachMatchDayPage() {
         return;
       }
 
-      if (["red_card", "injury"].includes(event.incident.incident_type)) {
+      if (event.incident.incident_type === "red_card") {
         stopPlayer(event.incident.player_id, event.minute);
         const state = states.get(event.incident.player_id);
         if (state) state.stopped = true;
@@ -995,6 +993,15 @@ export default function CoachMatchDayPage() {
             </Card>
 
             <div className="space-y-6">
+              <QrAttendanceScanner
+                mode="match"
+                id={matchId}
+                disabled={savingAttendance || match.match_status === "finished"}
+                onScanSuccess={() => {
+                  void refetch();
+                }}
+              />
+
               <Card className="border-border/50 bg-card">
                 <CardHeader>
                   <CardTitle className="text-base">Live Match</CardTitle>

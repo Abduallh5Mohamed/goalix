@@ -3,8 +3,9 @@ import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolk
 import { loginSuccess, logout } from "../slices/authSlice";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
+import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE = getApiBaseUrl();
 
 let refreshPromise: Promise<boolean> | null = null;
 

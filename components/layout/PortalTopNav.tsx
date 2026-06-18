@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DashboardBrand } from "@/components/layout/DashboardBrand";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
+import { useRealtimeNotifications } from "@/lib/hooks/useRealtimeNotifications";
+import { getNotificationHref } from "@/lib/notifications";
 import type { UserRole } from "@/lib/types";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
 import {
@@ -208,37 +210,29 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
   );
 }
 
-function notificationHref(role: UserRole, type: string, data?: Record<string, unknown> | null) {
-  const matchData = data?.match as { id?: string } | undefined;
-  const eventId = data?.eventId as string | undefined;
-
-  if (type === "match" || matchData?.id) {
-    if (role === "admin") return "/admin/matches";
-    if (role === "coach") return matchData?.id ? `/coach/matches/evaluation/${matchData.id}` : "/coach/matches";
-    if (role === "parent") return "/parent/matches";
-    return "/player/matches";
-  }
-
-  if (type === "training" || eventId) {
-    if (role === "coach" && eventId) return `/coach/training/${eventId}`;
-    if (role === "parent") return "/parent/calendar";
-    return role === "player" ? "/player/training" : "/admin/calendar";
-  }
-
-  return ROLE_ROUTES[role];
-}
-
 export function PortalTopNav({ role }: { role: UserRole }) {
+  useRealtimeNotifications();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user } = useCurrentUser();
+  const authState = useCurrentUser();
+  const { user } = authState;
   const { logout } = useAuth();
   const nav = NAV_ITEMS[role] as NavItem[];
+  const notificationsEnabled =
+    authState.isAuthenticated && authState.role === role;
   const { data: notificationsData } = useGetNotificationsQuery(undefined, {
-    pollingInterval: 60000,
+    skip: !notificationsEnabled,
+    pollingInterval: 10000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(
     undefined,
-    { pollingInterval: 60000 },
+    {
+      skip: !notificationsEnabled,
+      pollingInterval: 10000,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+    },
   );
   const [markNotificationRead] = useMarkNotificationReadMutation();
   const [markAllNotificationsRead] = useMarkAllNotificationsReadMutation();
@@ -295,7 +289,7 @@ export function PortalTopNav({ role }: { role: UserRole }) {
                       className="cursor-pointer rounded-lg p-0 focus:bg-white/[0.04]"
                     >
                       <Link
-                        href={notificationHref(role, notification.type, notification.data)}
+                        href={getNotificationHref(role, notification.type, notification.data)}
                         onClick={() => {
                           if (!notification.is_read) {
                             markNotificationRead(notification.id);

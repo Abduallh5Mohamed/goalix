@@ -2,7 +2,7 @@
 
 export type UserRole = "admin" | "coach" | "player" | "parent";
 
-export type PlayerLevel = "A" | "B" | "C";
+export type PlayerLevel = "A" | "B" | "C" | "D" | "F";
 
 export type GoalStatus = "active" | "completed" | "paused";
 

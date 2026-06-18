@@ -10,10 +10,10 @@ exports.up = async function (knex) {
         t.uuid('academy_id').notNullable().references('id').inTable('academy_academies').onDelete('CASCADE');
         t.string('full_name', 255).notNullable();
         t.date('date_of_birth');
-        t.enum('level', ['beginner', 'intermediate', 'advanced', 'elite'], {
+        t.enum('level', ['A', 'B', 'C', 'D', 'F'], {
             useNative: true,
             enumName: 'player_level',
-        }).defaultTo('beginner');
+        }).defaultTo('F');
         t.string('position', 50);
         t.enum('preferred_foot', ['left', 'right', 'both'], {
             useNative: true,

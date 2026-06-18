@@ -16,58 +16,63 @@ class NotificationsService {
         return this.repo.getUnreadCount(user.userId, user);
     }
 
-    async sendNotification(data) {
-        const notification = await this.repo.createNotification({
-            user_id: data.userId,
-            type: data.type,
-            title: data.title,
-            body: data.body,
-            is_read: false,
-        });
+    async sendNotification(data, academyId) {
+        const recipients = data.userId
+            ? [{ user_id: data.userId }]
+            : await this.repo.targetUsers(academyId, data.targetRole);
+
+        const notifications = recipients.length
+            ? await this.repo.createBulk(recipients.map((recipient) => ({
+                user_id: recipient.user_id,
+                type: data.type,
+                title: data.title,
+                body: data.body,
+                data: data.data || {},
+                is_read: false,
+            })))
+            : [];
 
         // Queue delivery via channel
         if (data.channel !== 'in_app') {
-            await this.queue.add('deliver-notification', {
-                notificationId: notification.id,
+            await this.queue.add('bulk-notification', {
+                notificationIds: notifications.map((notification) => notification.id),
                 channel: data.channel,
-                userId: data.userId,
+                academyId,
+                targetRole: data.targetRole,
             });
         }
 
         // Log
-        await this.repo.logNotification({
-            notification_id: notification.id,
-            user_id: data.userId,
-            channel: data.channel,
-            status: 'sent',
-        });
+        for (const notification of notifications) {
+            await this.repo.logNotification({
+                notification_id: notification.id,
+                user_id: notification.user_id,
+                channel: data.channel,
+                status: 'sent',
+            });
+        }
 
         eventBus.publish(NOTIFICATIONS_EVENTS.NOTIFICATION_SENT, {
-            notificationId: notification.id,
-            userId: data.userId,
+            count: notifications.length,
+            targetRole: data.targetRole || null,
             type: data.type,
         });
 
-        return notification;
+        return {
+            count: notifications.length,
+            notifications,
+        };
     }
 
     async sendBulkNotification(academyId, data) {
-        // Queue bulk delivery
-        await this.queue.add('bulk-notification', {
-            academyId,
-            type: data.type,
-            title: data.title,
-            body: data.body,
-            channel: data.channel,
-            targetRole: data.targetRole,
-        });
-
+        const result = await this.sendNotification(data, academyId);
         eventBus.publish(NOTIFICATIONS_EVENTS.BULK_NOTIFICATION_SENT, {
             type: data.type,
             academyId,
+            count: result.count,
         });
 
-        return { message: 'Bulk notification queued' };
+        return { message: 'Bulk notification sent', count: result.count };
     }
 
     async markAsRead(notificationId, userId) {

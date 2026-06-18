@@ -5,6 +5,177 @@ class RankingsRepository extends BaseRepository {
         super('ranking_snapshots', db);
     }
 
+    _avgRatingToScore(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return null;
+        return Math.max(0, Math.min(100, numeric * 10));
+    }
+
+    _attendanceToScore(attended, total) {
+        const totalNumber = Number(total || 0);
+        if (!totalNumber) return null;
+        return Math.max(0, Math.min(100, (Number(attended || 0) / totalNumber) * 100));
+    }
+
+    _weightedScore({ trainingScore, matchScore, attendanceScore }) {
+        const parts = [
+            { value: matchScore, weight: 0.45 },
+            { value: trainingScore, weight: 0.4 },
+            { value: attendanceScore, weight: 0.15 },
+        ].filter((part) => Number.isFinite(part.value));
+
+        if (!parts.length) return 0;
+        const weightTotal = parts.reduce((sum, part) => sum + part.weight, 0);
+        return Number(
+            (
+                parts.reduce((sum, part) => sum + part.value * part.weight, 0) /
+                weightTotal
+            ).toFixed(2),
+        );
+    }
+
+    async findLiveRankingsFallback(period, { groupId, academyId, page = 1, limit = 20 }) {
+        const players = await this.db('player_profiles as pp')
+            .leftJoin('player_group_assignments as pga', function joinCurrentGroup() {
+                this.on('pga.player_id', '=', 'pp.id').andOnNull('pga.left_at');
+            })
+            .leftJoin('academy_groups as ag', 'pga.group_id', 'ag.id')
+            .modify((q) => {
+                if (academyId) q.where('pp.academy_id', academyId);
+                if (groupId) q.where('pga.group_id', groupId);
+            })
+            .whereNull('pp.deleted_at')
+            .select(
+                'pp.id as player_id',
+                'pp.full_name as player_name',
+                'pga.group_id',
+                'ag.name as group_name',
+            );
+
+        const playerIds = players.map((player) => player.player_id);
+        if (!playerIds.length) {
+            return { data: [], total: 0, page, totalPages: 1 };
+        }
+
+        const [trainingRows, matchRows, trainingAttendanceRows, matchAttendanceRows] =
+            await Promise.all([
+                this.db('player_event_evaluations as pee')
+                    .join('calendar_events as ce', 'pee.event_id', 'ce.id')
+                    .whereIn('pee.player_id', playerIds)
+                    .where('ce.academy_id', academyId)
+                    .whereNull('ce.deleted_at')
+                    .whereNot('ce.status', 'cancelled')
+                    .groupBy('pee.player_id')
+                    .select(
+                        'pee.player_id',
+                        this.db.raw(`
+                            AVG(
+                                COALESCE(
+                                    pee.overall_rating,
+                                    (
+                                      COALESCE(pee.technical_rating, 0)
+                                      + COALESCE(pee.tactical_rating, 0)
+                                      + COALESCE(pee.physical_rating, 0)
+                                      + COALESCE(pee.mentality_rating, 0)
+                                    ) / NULLIF(
+                                      (CASE WHEN pee.technical_rating IS NULL THEN 0 ELSE 1 END)
+                                      + (CASE WHEN pee.tactical_rating IS NULL THEN 0 ELSE 1 END)
+                                      + (CASE WHEN pee.physical_rating IS NULL THEN 0 ELSE 1 END)
+                                      + (CASE WHEN pee.mentality_rating IS NULL THEN 0 ELSE 1 END),
+                                      0
+                                    )
+                                )
+                            ) as avg_rating
+                        `),
+                    ),
+                this.db('match_player_stats as mps')
+                    .join('matches as m', 'mps.match_id', 'm.id')
+                    .join('player_profiles as pp', 'mps.player_id', 'pp.id')
+                    .whereIn('mps.player_id', playerIds)
+                    .where('pp.academy_id', academyId)
+                    .whereNull('m.deleted_at')
+                    .whereNot('m.status', 'cancelled')
+                    .groupBy('mps.player_id')
+                    .select(
+                        'mps.player_id',
+                        this.db.raw('AVG(COALESCE(mps.performance_rating, mps.performance_score)) as avg_rating'),
+                    ),
+                this.db('event_attendance as ea')
+                    .join('calendar_events as ce', 'ea.event_id', 'ce.id')
+                    .whereIn('ea.player_id', playerIds)
+                    .where('ce.academy_id', academyId)
+                    .whereNull('ce.deleted_at')
+                    .whereNot('ce.status', 'cancelled')
+                    .groupBy('ea.player_id')
+                    .select(
+                        'ea.player_id',
+                        this.db.raw('COUNT(*)::int as total'),
+                        this.db.raw("SUM(CASE WHEN ea.status IN ('present', 'late') THEN 1 ELSE 0 END)::int as attended"),
+                    ),
+                this.db('match_attendance as ma')
+                    .join('matches as m', 'ma.match_id', 'm.id')
+                    .join('player_profiles as pp', 'ma.player_id', 'pp.id')
+                    .whereIn('ma.player_id', playerIds)
+                    .where('pp.academy_id', academyId)
+                    .whereNull('m.deleted_at')
+                    .whereNot('m.status', 'cancelled')
+                    .groupBy('ma.player_id')
+                    .select(
+                        'ma.player_id',
+                        this.db.raw('COUNT(*)::int as total'),
+                        this.db.raw("SUM(CASE WHEN ma.status IN ('present', 'late') THEN 1 ELSE 0 END)::int as attended"),
+                    ),
+            ]);
+
+        const byPlayer = (rows) => new Map(rows.map((row) => [row.player_id, row]));
+        const trainingByPlayer = byPlayer(trainingRows);
+        const matchByPlayer = byPlayer(matchRows);
+        const trainingAttendanceByPlayer = byPlayer(trainingAttendanceRows);
+        const matchAttendanceByPlayer = byPlayer(matchAttendanceRows);
+
+        const rows = players
+            .map((player) => {
+                const trainingScore = this._avgRatingToScore(
+                    trainingByPlayer.get(player.player_id)?.avg_rating,
+                );
+                const matchScore = this._avgRatingToScore(
+                    matchByPlayer.get(player.player_id)?.avg_rating,
+                );
+                const trainingAttendance = trainingAttendanceByPlayer.get(player.player_id);
+                const matchAttendance = matchAttendanceByPlayer.get(player.player_id);
+                const attendanceScore = this._attendanceToScore(
+                    Number(trainingAttendance?.attended || 0) + Number(matchAttendance?.attended || 0),
+                    Number(trainingAttendance?.total || 0) + Number(matchAttendance?.total || 0),
+                );
+
+                return {
+                    id: `live:${period}:${player.player_id}`,
+                    player_id: player.player_id,
+                    player_name: player.player_name,
+                    group_id: player.group_id,
+                    group_name: player.group_name,
+                    total_score: this._weightedScore({
+                        trainingScore,
+                        matchScore,
+                        attendanceScore,
+                    }).toFixed(2),
+                    period,
+                    calculated_at: new Date().toISOString(),
+                    trend: 'new',
+                };
+            })
+            .sort((a, b) => {
+                const scoreDiff = Number(b.total_score) - Number(a.total_score);
+                if (scoreDiff) return scoreDiff;
+                return String(a.player_name || '').localeCompare(String(b.player_name || ''));
+            })
+            .map((row, index) => ({ ...row, rank: index + 1 }));
+
+        const total = rows.length;
+        const data = rows.slice((page - 1) * limit, (page - 1) * limit + limit);
+        return { data, total, page, totalPages: Math.ceil(total / limit) || 1 };
+    }
+
     // ─── Rankings ───────────────────────────────────────────────────────
     async findRankings(period, { groupId, academyId, page = 1, limit = 20 }) {
         // Always scope by academy — prevents cross-tenant ranking read via ?groupId
@@ -23,6 +194,15 @@ class RankingsRepository extends BaseRepository {
             );
 
         const [{ count }] = await query.clone().clearSelect().count('ranking_snapshots.id as count');
+        if (+count === 0) {
+            return this.findLiveRankingsFallback(period, {
+                groupId,
+                academyId,
+                page,
+                limit,
+            });
+        }
+
         const data = await query
             .orderBy([
                 { column: 'ranking_snapshots.total_score', order: 'desc' },
