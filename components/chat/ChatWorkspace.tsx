@@ -730,7 +730,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                         </DropdownMenu>
                       )}
                     </div>
-                    {message.body && (
+                    {message.body ? (
                       <p className="goalix-chat-message-text">
                         {message.body}
                       </p>
