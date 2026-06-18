@@ -160,7 +160,11 @@ class AuthService {
             }
         }
 
-        if (user.role !== 'admin' && credentialMode !== 'username') {
+        if (user.role === 'coach' && !['email', 'username'].includes(credentialMode)) {
+            throw new UnauthorizedError('Invalid credentials');
+        }
+
+        if (['player', 'parent'].includes(user.role) && credentialMode !== 'username') {
             throw new UnauthorizedError('Invalid credentials');
         }
 
@@ -443,6 +447,7 @@ class AuthService {
     // ─── Private Helpers ────────────────────────────────────────────────
     async _generateTokens(user, ip, userAgent) {
         const accessJti = crypto.randomUUID();
+        const refreshJti = crypto.randomUUID();
         const payload = {
             userId: user.id,
             role: user.role,
@@ -457,7 +462,7 @@ class AuthService {
         });
 
         const refreshToken = jwt.sign(
-            { userId: user.id },
+            { userId: user.id, jti: refreshJti },
             env.JWT_REFRESH_SECRET,
             { expiresIn: env.JWT_REFRESH_EXPIRY, algorithm: 'HS256' },
         );

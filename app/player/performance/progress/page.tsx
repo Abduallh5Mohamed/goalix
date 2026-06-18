@@ -45,6 +45,18 @@ const chartPoint = (
   value: ratingPercent(evaluation[key]),
 });
 
+const evaluationNotes = (evaluation: PlayerEvaluationRecord) =>
+  [
+    { label: "Strengths", value: evaluation.strengths },
+    { label: "Weaknesses", value: evaluation.weaknesses },
+    { label: "Improvement Plan", value: evaluation.improvement_plan },
+    { label: "Coach Notes", value: evaluation.coach_notes },
+    { label: "Development Notes", value: evaluation.development_notes },
+  ].filter(
+    (item): item is { label: string; value: string } =>
+      typeof item.value === "string" && item.value.trim().length > 0,
+  );
+
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
@@ -243,37 +255,47 @@ export default function PlayerProgressPage() {
                   {evaluations
                     .slice()
                     .reverse()
-                    .map((evaluation) => (
-                      <div
-                        key={evaluation.id}
-                        className="rounded-lg border border-white/10 bg-white/[0.035] p-4"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              {evaluation.title || "Training evaluation"}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {formatDate(evaluation.start_datetime ?? "")}
+                    .map((evaluation) => {
+                      const notes = evaluationNotes(evaluation);
+
+                      return (
+                        <div
+                          key={evaluation.id}
+                          className="rounded-lg border border-white/10 bg-white/[0.035] p-4"
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-white">
+                                {evaluation.title || "Training evaluation"}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {formatDate(evaluation.start_datetime ?? "")}
+                              </p>
+                            </div>
+                            <p className="text-xl font-bold text-cyan-200">
+                              {formatRating(evaluation.overall_rating)}
                             </p>
                           </div>
-                          <p className="text-xl font-bold text-cyan-200">
-                            {formatRating(evaluation.overall_rating)}
-                          </p>
+                          {notes.length > 0 && (
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                              {notes.map((note) => (
+                                <div
+                                  key={note.label}
+                                  className="rounded-md bg-[#06111f]/70 p-3"
+                                >
+                                  <p className="text-[10px] font-semibold uppercase text-slate-500">
+                                    {note.label}
+                                  </p>
+                                  <p className="mt-1 text-sm leading-6 text-slate-300">
+                                    {note.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        {(evaluation.coach_notes ||
-                          evaluation.development_notes ||
-                          evaluation.improvement_plan) && (
-                          <p className="text-sm italic text-slate-300">
-                            &quot;
-                            {evaluation.coach_notes ||
-                              evaluation.development_notes ||
-                              evaluation.improvement_plan}
-                            &quot;
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                 </CardContent>
               </Card>
             </>

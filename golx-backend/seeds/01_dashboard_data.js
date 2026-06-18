@@ -76,7 +76,7 @@ exports.seed = async function (knex) {
     await knex('auth_users').insert([
         {
             id: IDs.admin,
-            email: 'admin@golx.com',
+            email: 'admin@golix.com',
             password_hash: pw,
             role: 'admin',
             is_active: true,
@@ -175,7 +175,7 @@ exports.seed = async function (knex) {
     const groups = [IDs.g1, IDs.g2, IDs.g3, IDs.g4, IDs.g5, IDs.g6];
     const positions = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper', 'Winger'];
     const feet = ['right', 'left', 'both'];
-    const levels = ['beginner', 'intermediate', 'advanced', 'elite'];
+    const levels = ['A', 'B', 'C', 'D', 'F'];
 
     const playerUserRows = playerUserIds.map((uid, i) => ({
         id: uid,
@@ -195,7 +195,7 @@ exports.seed = async function (knex) {
         academy_id: IDs.academy,
         full_name: playerNames[i],
         date_of_birth: `${birthYears[i % 6]}-${String((i % 12) + 1).padStart(2, '0')}-15`,
-        level: levels[i % 4],
+        level: levels[i % levels.length],
         position: positions[i % 5],
         preferred_foot: feet[i % 3],
         guardian_name: `Guardian of ${playerNames[i].split(' ')[0]}`,

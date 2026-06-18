@@ -309,7 +309,11 @@ export interface RankingSystemInput {
     trend: "New" | "Improving" | "Declining" | "Stable";
     rank: number;
     predicted_next_score: number | null;
+    carry_forward?: boolean;
+    carried_from_week_start?: string | null;
   };
+  carry_forward?: boolean;
+  carried_from_week_start?: string | null;
   output: "match_score";
 }
 
@@ -455,6 +459,24 @@ export type PlayerProfile = CoachPlayer &
     weight_kg?: string | number | null;
   };
 
+export interface PlayerAttendanceQr {
+  playerId: string;
+  playerName: string;
+  playerCode: string | null;
+  username: string | null;
+  payload: string;
+  qrCodeDataUrl: string;
+}
+
+export interface AttendanceQrScanResult {
+  playerId: string;
+  playerName: string;
+  status: "present";
+  arrivalTime?: string | null;
+  alreadyMarked: boolean;
+  attendance: TrainingAttendance | MatchAttendance;
+}
+
 export interface PlayerProgress {
   playerId: string;
   playerName: string;
@@ -508,6 +530,7 @@ export interface PlayerAttendanceRecord {
   match_date?: string | null;
   match_time?: string | null;
   location?: string | null;
+  inferred_absence?: boolean;
 }
 
 export type PlayerEvaluationRecord = TrainingEvaluation & {
@@ -821,6 +844,9 @@ export interface PlayerAssignmentSubmission {
   playerId: string;
   notes?: string;
   submittedAt: string;
+  reviewStatus?: "pending" | "approved" | "rejected";
+  coachComment?: string;
+  reviewedAt?: string | null;
   files?: PlayerAssignmentFile[];
   inputDate?: string;
   sleepHours?: number;
@@ -1281,6 +1307,18 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: TrainingAttendance[] }) => res.data,
       invalidatesTags: ["CalendarEvents"],
     }),
+    scanTrainingAttendanceQr: builder.mutation<
+      AttendanceQrScanResult,
+      { eventId: string; payload: string }
+    >({
+      query: ({ eventId, payload }) => ({
+        url: `/coach/events/${eventId}/attendance/qr-scan`,
+        method: "POST",
+        body: { payload },
+      }),
+      transformResponse: (res: { data: AttendanceQrScanResult }) => res.data,
+      invalidatesTags: ["CalendarEvents", "Notifications"],
+    }),
     upsertTrainingEvaluations: builder.mutation<
       TrainingEvaluation[],
       { eventId: string; records: Record<string, unknown>[] }
@@ -1515,6 +1553,18 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: MatchAttendance[] }) => res.data,
       invalidatesTags: ["Matches"],
     }),
+    scanMatchAttendanceQr: builder.mutation<
+      AttendanceQrScanResult,
+      { matchId: string; payload: string }
+    >({
+      query: ({ matchId, payload }) => ({
+        url: `/coach/matches/${matchId}/attendance/qr-scan`,
+        method: "POST",
+        body: { payload },
+      }),
+      transformResponse: (res: { data: AttendanceQrScanResult }) => res.data,
+      invalidatesTags: ["Matches", "Notifications"],
+    }),
     upsertMatchStats: builder.mutation<
       MatchPlayerStats[],
       { matchId: string; records: Record<string, unknown>[]; finalize?: boolean }
@@ -1741,6 +1791,11 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: PlayerProfile }) => res.data,
       providesTags: ["CoachPlayers"],
     }),
+    getPlayerAttendanceQr: builder.query<PlayerAttendanceQr, void>({
+      query: () => "/player/attendance-qr",
+      transformResponse: (res: { data: PlayerAttendanceQr }) => res.data,
+      providesTags: ["CoachPlayers"],
+    }),
     getPlayerProgress: builder.query<PlayerProgress, void>({
       query: () => "/player/progress",
       transformResponse: (res: { data: PlayerProgress }) => res.data,
@@ -1924,6 +1979,7 @@ export const {
   useUpdateCoachTrainingStatusMutation,
   useExtendCoachTrainingEventMutation,
   useUpsertTrainingAttendanceMutation,
+  useScanTrainingAttendanceQrMutation,
   useUpsertTrainingEvaluationsMutation,
   useGetCoachMatchesQuery,
   useGetCoachMatchQuery,
@@ -1942,6 +1998,7 @@ export const {
   useDeleteMatchSubstitutionMutation,
   useDeleteMatchIncidentMutation,
   useUpsertMatchAttendanceMutation,
+  useScanMatchAttendanceQrMutation,
   useUpsertMatchStatsMutation,
   useCreateFriendlyRequestMutation,
   useGetCoachFriendlyRequestsQuery,
@@ -1962,6 +2019,7 @@ export const {
   useGetCoachPlayerCustomProfileQuery,
   useSaveCoachPlayerCustomProfileMutation,
   useGetPlayerProfileQuery,
+  useGetPlayerAttendanceQrQuery,
   useGetPlayerProgressQuery,
   useGetPlayerAttendanceQuery,
   useGetPlayerEvaluationsQuery,

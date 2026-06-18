@@ -718,6 +718,23 @@ class CalendarController {
     }
   };
 
+  coachScanEventAttendanceQr = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachScanEventAttendanceQr(
+            req.user.userId,
+            req.user.academyId,
+            req.params.eventId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachUpdateEventAttendance = async (req, res, next) => {
     try {
       res.json(
@@ -1089,6 +1106,23 @@ class CalendarController {
     }
   };
 
+  coachScanMatchAttendanceQr = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachScanMatchAttendanceQr(
+            req.user.userId,
+            req.user.academyId,
+            req.params.matchId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachUpsertPlayerStats = async (req, res, next) => {
     try {
       res.json(
@@ -1245,6 +1279,21 @@ class CalendarController {
       res.json(
         ApiResponse.success(
           await this.service.playerGetProfile(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  playerGetAttendanceQr = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.playerGetAttendanceQr(
             req.user.userId,
             req.user.academyId,
           ),

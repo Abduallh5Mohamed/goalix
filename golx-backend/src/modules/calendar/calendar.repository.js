@@ -1,3 +1,5 @@
+const { emitNotifications } = require("../../realtime/chat.realtime");
+
 class CalendarRepository {
   constructor(db) {
     this.db = db;
@@ -1285,7 +1287,9 @@ class CalendarRepository {
 
   async createNotifications(rows, trx = this.db) {
     if (!rows.length) return [];
-    return trx("notification_inbox").insert(rows).returning("*");
+    const created = await trx("notification_inbox").insert(rows).returning("*");
+    emitNotifications(created);
+    return created;
   }
 
   async adminUsers(academyId) {

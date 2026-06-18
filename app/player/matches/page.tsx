@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import {
   CalendarClock,
   ClipboardList,
@@ -13,12 +14,20 @@ import {
   Trophy,
   UserCheck,
 } from "lucide-react";
+import { PlayerAttendanceQrPrompt } from "@/components/attendance/PlayerAttendanceQrPrompt";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useGetPlayerMatchesQuery } from "@/lib/store/api/calendarApi";
-import type { Match, MatchPlayerStats } from "@/lib/store/api/calendarApi";
+import {
+  useGetPlayerAttendanceQrQuery,
+  useGetPlayerMatchesQuery,
+} from "@/lib/store/api/calendarApi";
+import type {
+  Match,
+  MatchPlayerStats,
+  PlayerAttendanceQr,
+} from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
 const numberValue = (value: unknown) => {
@@ -29,6 +38,21 @@ const numberValue = (value: unknown) => {
   }
   return null;
 };
+
+let playerMatchesClockSnapshot = 0;
+const subscribePlayerMatchesClock = (onStoreChange: () => void) => {
+  playerMatchesClockSnapshot = Date.now();
+  onStoreChange();
+  const intervalId = window.setInterval(() => {
+    playerMatchesClockSnapshot = Date.now();
+    onStoreChange();
+  }, 1000);
+  return () => window.clearInterval(intervalId);
+};
+const getPlayerMatchesClockSnapshot = () => playerMatchesClockSnapshot;
+const getServerPlayerMatchesClockSnapshot = () => 0;
+
+const QR_WINDOW_MS = 15 * 60 * 1000;
 
 const formatRating = (value: unknown) => {
   const rating = numberValue(value);
@@ -197,15 +221,39 @@ function MatchEvaluation({
   );
 }
 
-function MatchCard({ match }: { match: Match }) {
+function MatchCard({
+  match,
+  nowMs,
+  qr,
+}: {
+  match: Match;
+  nowMs: number;
+  qr?: PlayerAttendanceQr;
+}) {
   const mySquad = match.squad?.[0];
   const myStats = match.stats?.[0];
   const myAttendance = match.attendance?.[0];
   const hasPlan = Boolean(match.tactics || mySquad);
+  const startMs = matchTimestamp(match);
+  const showAttendanceQr = Boolean(
+    startMs &&
+      nowMs >= startMs - QR_WINDOW_MS &&
+      !["finished", "completed", "cancelled"].includes(match.status),
+  );
 
   return (
     <Card className="border-white/10 bg-white/[0.045] shadow-none">
       <CardContent className="space-y-4 p-4">
+        {showAttendanceQr && (
+          <PlayerAttendanceQrPrompt
+            kind="match"
+            title={match.opponent_name}
+            startsAt={`${match.match_date}T${match.match_time}`}
+            qr={qr}
+            attendanceStatus={myAttendance?.status}
+          />
+        )}
+
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-cyan-400/10 p-2 text-cyan-200">
@@ -328,8 +376,14 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 export default function PlayerMatchesPage() {
+  const nowMs = useSyncExternalStore(
+    subscribePlayerMatchesClock,
+    getPlayerMatchesClockSnapshot,
+    getServerPlayerMatchesClockSnapshot,
+  );
+  const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
   const { data, isLoading, isFetching } = useGetPlayerMatchesQuery(undefined, {
-    pollingInterval: 15000,
+    pollingInterval: 5000,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
@@ -370,7 +424,12 @@ export default function PlayerMatchesPage() {
             </h2>
               {upcomingMatches.length ? (
                 upcomingMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    nowMs={nowMs}
+                    qr={attendanceQrQuery.data}
+                  />
                 ))
               ) : (
                 <EmptyState text="No upcoming matches are visible for you yet." />
@@ -383,7 +442,12 @@ export default function PlayerMatchesPage() {
             </h2>
               {completedMatches.length ? (
                 completedMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    nowMs={nowMs}
+                    qr={attendanceQrQuery.data}
+                  />
                 ))
               ) : (
                 <EmptyState text="No completed matches with your data yet." />

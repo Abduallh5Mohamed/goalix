@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   useSaveCoachMeasurementsMutation,
 } from "@/lib/store/api/coachApi";
 import { getInitials } from "@/lib/utils";
-import { CheckCircle2, Loader2, RefreshCw, Ruler, Save } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Ruler, Save, Search } from "lucide-react";
 
 type MeasurementDraft = {
   heightCm: string;
@@ -50,7 +50,7 @@ const fields: {
   { key: "heightCm", label: "Height (cm)", placeholder: "152" },
   { key: "weightKg", label: "Weight (kg)", placeholder: "42" },
   { key: "sprintSpeed", label: "Sprint (s)", placeholder: "7.0" },
-  { key: "stamina", label: "Stamina", placeholder: "85" },
+  { key: "stamina", label: "Endurance", placeholder: "85" },
   { key: "flexibility", label: "Flexibility", placeholder: "75" },
 ];
 
@@ -64,26 +64,64 @@ export default function CoachMeasurementsPage() {
   const { data: groups = [], isLoading: loadingGroups, isError: groupsError, refetch } =
     useGetCoachGroupsQuery();
   const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [search, setSearch] = useState("");
+  const [measurementMonth, setMeasurementMonth] = useState(() =>
+    new Date().toISOString().slice(0, 7),
+  );
   const selectedGroup = selectedGroupId || groups[0]?.id || "";
   const { data: groupDetail, isFetching: loadingPlayers } = useGetCoachGroupQuery(
     selectedGroup,
     { skip: !selectedGroup }
   );
   const players = groupDetail?.players ?? [];
+  const visiblePlayers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return players;
+    return players.filter((player) =>
+      [
+        player.fullName,
+        player.position,
+        player.groupName,
+        player.branchName,
+        player.parentPhone,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [players, search]);
   const [measurements, setMeasurements] = useState<Record<string, MeasurementDraft>>({});
   const [saved, setSaved] = useState(false);
   const [saveMeasurements, { isLoading: isSaving, error: saveError }] =
     useSaveCoachMeasurementsMutation();
 
-  const handleChange = (playerId: string, field: MeasurementKey, value: string) => {
+  const draftFromPlayer = (player: (typeof players)[number]) => {
+    return {
+      ...emptyDraft,
+      heightCm: player.height ? String(player.height) : "",
+      weightKg: player.weight ? String(player.weight) : "",
+      sprintSpeed: player.sprintSpeed ? String(player.sprintSpeed) : "",
+      stamina: player.stamina ? String(player.stamina) : "",
+      flexibility: player.flexibility ? String(player.flexibility) : "",
+    };
+  };
+
+  const handleChange = (
+    player: (typeof players)[number],
+    field: MeasurementKey,
+    value: string,
+  ) => {
     setMeasurements((prev) => ({
       ...prev,
-      [playerId]: { ...(prev[playerId] ?? emptyDraft), [field]: value },
+      [player.id]: { ...(prev[player.id] ?? draftFromPlayer(player)), [field]: value },
     }));
     setSaved(false);
   };
 
+  const getDraft = (player: (typeof players)[number]) =>
+    measurements[player.id] ?? draftFromPlayer(player);
+
   const handleSave = async () => {
+    const measuredAt = `${measurementMonth}-01`;
     const records = players
       .map((player) => {
         const draft = measurements[player.id] ?? emptyDraft;
@@ -95,6 +133,7 @@ export default function CoachMeasurementsPage() {
           stamina: toNumber(draft.stamina),
           flexibility: toNumber(draft.flexibility),
           notes: draft.notes.trim() || undefined,
+          measuredAt,
         };
       })
       .filter((record) =>
@@ -124,7 +163,7 @@ export default function CoachMeasurementsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Player Measurements"
-        description="Record physical measurements for your players"
+        description="Record monthly physical measurements for your players"
         breadcrumbs={[
           { label: "Home", href: "/coach/home" },
           { label: "Measurements" },
@@ -143,31 +182,63 @@ export default function CoachMeasurementsPage() {
         </Card>
       )}
 
-      <div className="w-full sm:w-64">
-        <Label className="mb-2 block text-sm">Group</Label>
-        <Select
-          value={selectedGroup}
-          onValueChange={(value) => {
-            setSelectedGroupId(value);
-            setMeasurements({});
-            setSaved(false);
-          }}
-          disabled={loadingGroups || groups.length === 0}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+      <Card className="border-border/50 bg-card">
+        <CardContent className="grid gap-4 p-4 lg:grid-cols-[240px_180px_1fr]">
+          <div>
+            <Label className="mb-2 block text-sm">Group</Label>
+            <Select
+              value={selectedGroup}
+              onValueChange={(value) => {
+                setSelectedGroupId(value);
+                setMeasurements({});
+                setSaved(false);
+              }}
+              disabled={loadingGroups || groups.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="measurement-month" className="mb-2 block text-sm">
+              Measurement month
+            </Label>
+            <Input
+              id="measurement-month"
+              type="month"
+              value={measurementMonth}
+              onChange={(event) => setMeasurementMonth(event.target.value)}
             />
-          </SelectTrigger>
-          <SelectContent>
-            {groups.map((group) => (
-              <SelectItem key={group.id} value={group.id}>
-                {group.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          </div>
+
+          <div>
+            <Label htmlFor="player-search" className="mb-2 block text-sm">
+              Search players
+            </Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="player-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by name, position, group, branch, or phone"
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {loadingGroups || loadingPlayers ? (
         <Card className="border-border/50 bg-card">
@@ -187,8 +258,8 @@ export default function CoachMeasurementsPage() {
       )}
 
       <div className="space-y-4">
-        {players.map((player) => {
-          const draft = measurements[player.id] ?? emptyDraft;
+        {visiblePlayers.map((player) => {
+          const draft = getDraft(player);
 
           return (
             <Card key={player.id} className="border-border/50 bg-card">
@@ -205,7 +276,7 @@ export default function CoachMeasurementsPage() {
                         {player.fullName}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {player.position} - Age {player.age}
+                        {player.position} - Age {player.age} - {player.groupName}
                       </p>
                     </div>
                   </div>
@@ -213,6 +284,9 @@ export default function CoachMeasurementsPage() {
                     <Ruler className="h-3.5 w-3.5" />
                     <span>
                       Latest: {player.height || "--"}cm / {player.weight || "--"}kg
+                      {player.sprintSpeed ? ` / ${player.sprintSpeed}s` : ""}
+                      {player.stamina ? ` / End ${player.stamina}` : ""}
+                      {player.flexibility ? ` / Flex ${player.flexibility}` : ""}
                     </span>
                   </div>
                 </div>
@@ -230,7 +304,7 @@ export default function CoachMeasurementsPage() {
                         placeholder={field.placeholder}
                         value={draft[field.key]}
                         onChange={(event) =>
-                          handleChange(player.id, field.key, event.target.value)
+                          handleChange(player, field.key, event.target.value)
                         }
                         className="text-center"
                       />
@@ -244,7 +318,7 @@ export default function CoachMeasurementsPage() {
                       placeholder="Optional"
                       value={draft.notes}
                       onChange={(event) =>
-                        handleChange(player.id, "notes", event.target.value)
+                        handleChange(player, "notes", event.target.value)
                       }
                     />
                   </div>
@@ -254,6 +328,14 @@ export default function CoachMeasurementsPage() {
           );
         })}
       </div>
+
+      {!loadingGroups && !loadingPlayers && players.length > 0 && !visiblePlayers.length && (
+        <Card className="border-border/50 bg-card">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No players match your search.
+          </CardContent>
+        </Card>
+      )}
 
       {saveError && (
         <p className="text-sm text-red-400">

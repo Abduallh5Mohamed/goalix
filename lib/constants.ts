@@ -22,7 +22,9 @@ export const ROLE_ROUTES: Record<string, string> = {
 export const PLAYER_LEVELS = {
   A: { label: "Level A", color: "emerald" },
   B: { label: "Level B", color: "amber" },
-  C: { label: "Level C", color: "red" },
+  C: { label: "Level C", color: "amber" },
+  D: { label: "Level D", color: "orange" },
+  F: { label: "Level F", color: "red" },
 };
 
 export const PAYMENT_STATUS_CONFIG = {
@@ -159,14 +161,6 @@ export const NAV_ITEMS = {
       children: [
         { label: "All Training", href: "/coach/training" },
         { label: "Create Training", href: "/coach/training/create" },
-      ],
-    },
-    {
-      label: "Schedule",
-      icon: "Calendar",
-      children: [
-        { label: "Sessions", href: "/coach/schedule" },
-        { label: "Session Detail", href: "/coach/schedule/session" },
       ],
     },
     {

@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, AlertTriangle, CheckCircle, Info, Send, Check, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { useCurrentUser } from "@/lib/auth/auth-context";
+import { getNotificationHref } from "@/lib/notifications";
 import {
   useGetNotificationsQuery,
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
-  type NotificationRow,
 } from "@/lib/store/api/adminApi";
 
 const typeIcons: Record<string, React.ElementType> = {
   warning: AlertTriangle,
   alert: AlertTriangle,
+  error: AlertTriangle,
   success: CheckCircle,
   info: Info,
   system: Bell,
@@ -25,13 +27,25 @@ const typeIcons: Record<string, React.ElementType> = {
 const typeColors: Record<string, string> = {
   warning: "bg-amber-500/10 text-amber-400",
   alert: "bg-red-500/10 text-red-400",
+  error: "bg-red-500/10 text-red-400",
   success: "bg-emerald-500/10 text-emerald-400",
   info: "bg-blue-500/10 text-blue-400",
   system: "bg-muted text-muted-foreground",
 };
 
 export default function NotificationsPage() {
-  const { data, isLoading, isError, refetch } = useGetNotificationsQuery({ limit: 50 });
+  const authState = useCurrentUser();
+  const notificationsEnabled =
+    authState.isAuthenticated && authState.role === "admin";
+  const { data, isLoading, isError, refetch } = useGetNotificationsQuery(
+    { limit: 50 },
+    {
+      skip: !notificationsEnabled,
+      pollingInterval: 10000,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+    },
+  );
   const [markAllRead] = useMarkAllNotificationsReadMutation();
   const [markRead] = useMarkNotificationReadMutation();
 
@@ -49,7 +63,14 @@ export default function NotificationsPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <p className="text-muted-foreground">Failed to load notifications.</p>
-        <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
+        <Button
+          variant="outline"
+          disabled={!notificationsEnabled}
+          onClick={() => {
+            if (notificationsEnabled) refetch();
+          }}
+          className="gap-1.5"
+        >
           <RefreshCw className="h-4 w-4" />
           Retry
         </Button>
@@ -121,7 +142,13 @@ export default function NotificationsPage() {
                   <div className={`mt-0.5 rounded-lg p-2 ${color}`}>
                     <Icon className="h-4 w-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <Link
+                    href={getNotificationHref("admin", notif.type, notif.data)}
+                    onClick={() => {
+                      if (!notif.is_read) markRead(notif.id);
+                    }}
+                    className="min-w-0 flex-1"
+                  >
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-semibold">{notif.title}</h4>
                       {!notif.is_read && (
@@ -133,7 +160,7 @@ export default function NotificationsPage() {
                       <span>{new Date(notif.created_at).toLocaleString()}</span>
                       <Badge variant="outline" className="text-[10px] capitalize">{notif.type}</Badge>
                     </div>
-                  </div>
+                  </Link>
                   {!notif.is_read && (
                     <Button
                       variant="ghost"

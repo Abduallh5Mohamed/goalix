@@ -4,6 +4,7 @@ const uuidParam = z.object({ id: z.string().uuid() });
 const groupParam = z.object({ groupId: z.string().uuid() });
 const sessionParam = z.object({ sessionId: z.string().uuid() });
 const assignmentParam = z.object({ assignmentId: z.string().uuid() });
+const playerAssignmentSubmissionParam = assignmentParam.extend({ submissionId: z.string().uuid() });
 
 const coachRoleSchema = z.enum([
   "head_coach",
@@ -169,6 +170,7 @@ const coachMeasurementsSchema = z.object({
         stamina: z.number().min(0).max(100).optional(),
         flexibility: z.number().min(0).max(100).optional(),
         notes: z.string().max(500).optional(),
+        measuredAt: z.string().date().optional(),
       }),
     )
     .min(1),
@@ -283,25 +285,68 @@ const submitCoachAssignmentSchema = z.object({
   files: z.array(assignmentFileSchema).min(1).max(8),
 });
 
-const playerAssignmentSchema = z.object({
+const playerAssignmentBaseSchema = z.object({
   title: z.string().min(2).max(255),
   description: z.string().max(3000).optional(),
   openAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)).optional(),
   dueAt: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)).optional(),
-  groupIds: z.array(z.string().uuid()).min(1).max(50),
+  targetType: z.enum(["group", "birth_year"]).default("group"),
+  groupIds: z.array(z.string().uuid()).max(50).default([]),
+  birthYearIds: z.array(z.string().uuid()).max(50).default([]),
 });
 
-const updatePlayerAssignmentSchema = playerAssignmentSchema
+const validatePlayerAssignmentTarget = (data, ctx) => {
+  if (data.targetType === "birth_year") {
+    if (!data.birthYearIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select at least one target birthday.",
+        path: ["birthYearIds"],
+      });
+    }
+    return;
+  }
+  if (!data.groupIds.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select at least one target group.",
+      path: ["groupIds"],
+    });
+  }
+};
+
+const playerAssignmentSchema = playerAssignmentBaseSchema.superRefine(validatePlayerAssignmentTarget);
+
+const updatePlayerAssignmentSchema = playerAssignmentBaseSchema
   .partial()
   .extend({
     status: z.enum(["active", "closed", "cancelled"]).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.targetType !== undefined || data.groupIds !== undefined || data.birthYearIds !== undefined) {
+      validatePlayerAssignmentTarget(
+        {
+          ...data,
+          targetType: data.targetType || "group",
+          groupIds: data.groupIds || [],
+          birthYearIds: data.birthYearIds || [],
+        },
+        ctx,
+      );
+    }
   });
+
+const reviewPlayerAssignmentSubmissionSchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  comment: z.string().trim().max(3000).optional(),
+});
 
 module.exports = {
   uuidParam,
   groupParam,
   sessionParam,
   assignmentParam,
+  playerAssignmentSubmissionParam,
   createCoachSchema,
   updateCoachSchema,
   assignGroupSchema,
@@ -322,4 +367,5 @@ module.exports = {
   submitCoachAssignmentSchema,
   playerAssignmentSchema,
   updatePlayerAssignmentSchema,
+  reviewPlayerAssignmentSubmissionSchema,
 };

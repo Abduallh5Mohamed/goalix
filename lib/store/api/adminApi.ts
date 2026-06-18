@@ -34,7 +34,7 @@ export interface PlayerRow {
   player_code?: string | null;
   full_name: string;
   date_of_birth: string | null;
-  level: "A" | "B" | "C" | null;
+  level: "A" | "B" | "C" | "D" | "F" | null;
   position: string | null;
   photo_url: string | null;
   is_active?: boolean | null;
@@ -69,6 +69,9 @@ export interface PlayerMeasurement {
   player_id: string;
   height_cm: string | null;
   weight_kg: string | null;
+  sprint_speed?: string | null;
+  stamina?: string | number | null;
+  flexibility?: string | number | null;
   measured_at: string;
   measured_by: string | null;
   notes: string | null;
@@ -88,7 +91,7 @@ export interface CreatePlayerInput {
   isActive?: boolean;
   branchId: string;
   groupId?: string;
-  level?: "beginner" | "intermediate" | "advanced" | "elite";
+  level?: "A" | "B" | "C" | "D" | "F";
   position?: string;
   secondaryPositions?: string[];
   preferredFoot?: "left" | "right" | "both";
@@ -444,6 +447,7 @@ export interface NotificationRow {
   title: string;
   body: string;
   type: string;
+  data?: Record<string, unknown> | null;
   is_read: boolean;
   created_at: string;
 }

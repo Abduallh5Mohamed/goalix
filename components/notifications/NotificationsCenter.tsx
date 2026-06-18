@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getNotificationHref } from "@/lib/notifications";
+import { useCurrentUser } from "@/lib/auth/auth-context";
 import {
   useGetNotificationsQuery,
   useGetUnreadNotificationsCountQuery,
@@ -41,6 +42,7 @@ const typeIcons: Record<string, ElementType> = {
   evaluation: Star,
   ranking: Trophy,
   alert: AlertCircle,
+  error: AlertCircle,
   warning: AlertCircle,
   info: Info,
   system: Bell,
@@ -55,6 +57,7 @@ const typeColors: Record<string, string> = {
   evaluation: "text-violet-500 bg-violet-500/10",
   ranking: "text-yellow-500 bg-yellow-500/10",
   alert: "text-red-500 bg-red-500/10",
+  error: "text-red-500 bg-red-500/10",
   warning: "text-amber-500 bg-amber-500/10",
   info: "text-sky-500 bg-sky-500/10",
   system: "text-muted-foreground bg-muted",
@@ -75,11 +78,20 @@ function matchesFilter(notification: NotificationRow, filter: string) {
 
 export function NotificationsCenter({ role }: { role: UserRole }) {
   const [filter, setFilter] = useState("all");
+  const authState = useCurrentUser();
+  const notificationsEnabled =
+    authState.isAuthenticated && authState.role === role;
   const { data, isLoading, isError, refetch } = useGetNotificationsQuery(undefined, {
-    pollingInterval: 60000,
+    skip: !notificationsEnabled,
+    pollingInterval: 10000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
-    pollingInterval: 60000,
+    skip: !notificationsEnabled,
+    pollingInterval: 10000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const [markAllRead, markAllReadState] = useMarkAllNotificationsReadMutation();
   const [markRead] = useMarkNotificationReadMutation();
@@ -108,7 +120,14 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <Bell className="h-10 w-10 text-muted-foreground/40" />
         <p className="text-muted-foreground">Failed to load notifications.</p>
-        <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
+        <Button
+          variant="outline"
+          disabled={!notificationsEnabled}
+          onClick={() => {
+            if (notificationsEnabled) refetch();
+          }}
+          className="gap-1.5"
+        >
           <RefreshCw className="h-4 w-4" />
           Retry
         </Button>

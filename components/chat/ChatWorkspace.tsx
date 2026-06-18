@@ -19,6 +19,13 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +33,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/auth/auth-context";
 import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
+import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE = getApiBaseUrl();
 
 type ChatRole = "admin" | "coach" | "player";
 type ContactType = "admin" | "coach" | "player";
@@ -79,6 +87,9 @@ type Message = {
   delivered_at?: string | null;
   edited_at?: string | null;
   read_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by_user_id?: string | null;
+  visibility?: "self" | "everyone";
 };
 
 type ContactsResponse = {
@@ -182,6 +193,14 @@ function MessageReceipt({ message }: { message: Message }) {
   return null;
 }
 
+const allowedImageTypes = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+]);
+const maxChatImageBytes = 8 * 1024 * 1024;
+
 export function ChatWorkspace({ role }: { role: ChatRole }) {
   const { user, isAuthenticated } = useCurrentUser();
   const [contacts, setContacts] = useState<ContactsResponse>({});
@@ -251,9 +270,16 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     });
   }, []);
 
-  const removeMessage = useCallback((message: Pick<Message, "id" | "conversation_id">) => {
+  const handleMessageDeleted = useCallback((message: Message) => {
     if (message.conversation_id !== selectedRef.current) return;
-    setMessages((prev) => prev.filter((item) => item.id !== message.id));
+    if (message.visibility === "self") {
+      setMessages((prev) => prev.filter((item) => item.id !== message.id));
+      setEditingMessage((current) => (current?.id === message.id ? null : current));
+      return;
+    }
+    setMessages((prev) =>
+      prev.map((item) => (item.id === message.id ? { ...item, ...message } : item)),
+    );
     setEditingMessage((current) => (current?.id === message.id ? null : current));
   }, []);
 
@@ -304,7 +330,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
 
     socket.on("chat:message", upsertMessage);
     socket.on("chat:message_updated", upsertMessage);
-    socket.on("chat:message_deleted", removeMessage);
+    socket.on("chat:message_deleted", handleMessageDeleted);
     socket.on("chat:messages_read", upsertMessages);
     socket.on("chat:conversation", () => {
       void loadConversations();
@@ -320,7 +346,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated, loadConversations, removeMessage, upsertMessage, upsertMessages]);
+  }, [handleMessageDeleted, isAuthenticated, loadConversations, upsertMessage, upsertMessages]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -490,16 +516,35 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     setBody("");
   }
 
-  async function deleteMessage(message: Message) {
+  function handleImageChange(file?: File | null) {
+    if (!file) {
+      setImage(null);
+      return;
+    }
+    if (!allowedImageTypes.has(file.type)) {
+      setError("Chat image must be PNG, JPG, JPEG, or WEBP.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    if (file.size > maxChatImageBytes) {
+      setError("Chat image must be 8MB or smaller.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    setError("");
+    setImage(file);
+  }
+
+  async function deleteMessage(message: Message, scope: "me" | "everyone") {
     if (!selected || deletingId) return;
     setDeletingId(message.id);
     setError("");
     try {
-      await apiJson<{ id: string; conversation_id: string }>(
-        `/conversations/${selected.id}/messages/${message.id}`,
+      const deleted = await apiJson<Message>(
+        `/conversations/${selected.id}/messages/${message.id}?scope=${scope}`,
         { method: "DELETE" },
       );
-      removeMessage(message);
+      handleMessageDeleted(deleted);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete message");
     } finally {
@@ -616,6 +661,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           <div className="goalix-chat-message-stack">
             {messages.map((message) => {
               const mine = message.sender_user_id === user?.id;
+              const deletedForEveryone = Boolean(message.deleted_at);
               return (
                 <div
                   key={message.id}
@@ -627,7 +673,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                     <div className="goalix-chat-message-meta">
                       <span>{mine ? "You" : message.sender_name || "User"}</span>
                       <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      {message.edited_at && <span>edited</span>}
+                      {message.edited_at && !deletedForEveryone && <span>edited</span>}
                       {mine && (
                         <span className="goalix-chat-message-actions">
                           <MessageReceipt message={message} />
@@ -641,10 +687,13 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          {selected?.canSend && (
+                        </span>
+                      )}
+                      {selected?.canSend && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              onClick={() => deleteMessage(message)}
                               disabled={deletingId === message.id}
                               className="goalix-chat-icon-button is-danger"
                               title="Delete message"
@@ -655,16 +704,38 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                                 <Trash2 className="h-3.5 w-3.5" />
                               )}
                             </button>
-                          )}
-                        </span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align={mine ? "end" : "start"}
+                            className="border-[#2b4661] bg-[#07172a] text-slate-100"
+                          >
+                            <DropdownMenuItem
+                              className="cursor-pointer focus:bg-white/10"
+                              onClick={() => deleteMessage(message, "me")}
+                            >
+                              Delete for me
+                            </DropdownMenuItem>
+                            {mine && !deletedForEveryone && (
+                              <>
+                                <DropdownMenuSeparator className="bg-[#2b4661]" />
+                                <DropdownMenuItem
+                                  className="cursor-pointer text-red-200 focus:bg-red-500/15 focus:text-red-100"
+                                  onClick={() => deleteMessage(message, "everyone")}
+                                >
+                                  Delete for everyone
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                     {message.body && (
                       <p className="goalix-chat-message-text">
                         {message.body}
                       </p>
-                    )}
-                    {message.attachment_url && (
+                    ) : null}
+                    {!deletedForEveryone && message.attachment_url && (
                       <a
                         href={absoluteUploadUrl(message.attachment_url)}
                         target="_blank"
@@ -676,6 +747,8 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                           src={absoluteUploadUrl(message.attachment_url)}
                           alt={message.attachment_original_name || "Chat image"}
                           crossOrigin="use-credentials"
+                          loading="lazy"
+                          decoding="async"
                           className="max-h-[340px] w-full object-contain"
                         />
                       </a>
@@ -723,7 +796,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               type="file"
               accept="image/png,image/jpeg,image/jpg,image/webp"
               className="hidden"
-              onChange={(event) => setImage(event.target.files?.[0] || null)}
+              onChange={(event) => handleImageChange(event.target.files?.[0])}
             />
             <Button
               type="button"

@@ -23,7 +23,7 @@ class NotificationsController {
 
     send = async (req, res, next) => {
         try {
-            const notif = await this.service.sendNotification(req.body);
+            const notif = await this.service.sendNotification(req.body, req.user.academyId);
             res.status(201).json(ApiResponse.success(notif));
         } catch (err) { next(err); }
     };

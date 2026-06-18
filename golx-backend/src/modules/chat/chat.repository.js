@@ -329,7 +329,17 @@ class ChatRepository {
       .orderBy("cp.full_name", "asc");
   }
 
-  conversationBaseQuery() {
+  conversationBaseQuery(viewerUserId = null) {
+    const hiddenForViewerClause = viewerUserId
+      ? `AND NOT EXISTS (
+          SELECT 1
+            FROM chat_message_user_deletions cmud
+           WHERE cmud.message_id = cm.id
+             AND cmud.user_id = ?
+        )`
+      : "";
+    const hiddenBindings = viewerUserId ? [viewerUserId] : [];
+
     return this.db("chat_conversations as c")
       .leftJoin("coach_profiles as cp", "c.coach_id", "cp.id")
       .leftJoin("player_profiles as pp", "c.player_id", "pp.id")
@@ -346,22 +356,26 @@ class ChatRepository {
               FROM chat_messages cm
              WHERE cm.conversation_id = c.id
                AND cm.deleted_at IS NULL
+               ${hiddenForViewerClause}
              ORDER BY cm.created_at DESC
              LIMIT 1) as last_message_body`,
+          hiddenBindings,
         ),
         this.db.raw(
           `(SELECT cm.attachment_url
               FROM chat_messages cm
              WHERE cm.conversation_id = c.id
                AND cm.deleted_at IS NULL
+               ${hiddenForViewerClause}
              ORDER BY cm.created_at DESC
              LIMIT 1) as last_attachment_url`,
+          hiddenBindings,
         ),
       );
   }
 
   listConversationsForUser(user) {
-    return this.conversationBaseQuery()
+    return this.conversationBaseQuery(user.userId)
       .where("c.academy_id", user.academyId)
       .where((q) => {
         if (user.role === "admin") {
@@ -443,12 +457,24 @@ class ChatRepository {
     return this.findMessageById(row.id);
   }
 
-  messageBaseQuery() {
+  messageBaseQuery({ includeDeleted = false, viewerUserId = null } = {}) {
+    const db = this.db;
     return this.db("chat_messages as cm")
       .leftJoin("auth_users as au", "cm.sender_user_id", "au.id")
       .leftJoin("coach_profiles as cp", "cp.user_id", "au.id")
       .leftJoin("player_profiles as pp", "pp.user_id", "au.id")
-      .whereNull("cm.deleted_at")
+      .modify((q) => {
+        if (!includeDeleted) q.whereNull("cm.deleted_at");
+        if (viewerUserId) {
+          q.leftJoin("chat_message_user_deletions as cmud", function joinDeletes() {
+            this.on("cmud.message_id", "=", "cm.id").andOn(
+              "cmud.user_id",
+              "=",
+              db.raw("?", [viewerUserId]),
+            );
+          }).whereNull("cmud.message_id");
+        }
+      })
       .select(
         "cm.*",
         "au.role as sender_role",
@@ -458,8 +484,8 @@ class ChatRepository {
       );
   }
 
-  findMessageById(messageId) {
-    return this.messageBaseQuery().where("cm.id", messageId).first();
+  findMessageById(messageId, options = {}) {
+    return this.messageBaseQuery(options).where("cm.id", messageId).first();
   }
 
   findMessagesByIds(messageIds) {
@@ -503,6 +529,15 @@ class ChatRepository {
     return row || null;
   }
 
+  async hideMessageForUser(messageId, userId) {
+    const [row] = await this.db("chat_message_user_deletions")
+      .insert({ message_id: messageId, user_id: userId })
+      .onConflict(["message_id", "user_id"])
+      .ignore()
+      .returning(["message_id", "user_id", "created_at"]);
+    return row || { message_id: messageId, user_id: userId };
+  }
+
   async refreshConversationLastMessageAt(conversationId) {
     const latest = await this.db("chat_messages")
       .where({ conversation_id: conversationId })
@@ -518,8 +553,11 @@ class ChatRepository {
     return this.findConversationById(conversationId);
   }
 
-  listMessages(conversationId, { limit = 50, before } = {}) {
-    return this.messageBaseQuery()
+  listMessages(conversationId, userId, { limit = 50, before } = {}) {
+    return this.messageBaseQuery({
+      includeDeleted: true,
+      viewerUserId: userId,
+    })
       .where("cm.conversation_id", conversationId)
       .modify((q) => {
         if (before) q.where("cm.created_at", "<", before);

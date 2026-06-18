@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   AlertTriangle,
@@ -70,8 +70,28 @@ const isFinishedMatch = (match: Match) =>
 const matchFriendlyLabel = (matchType: Match["match_type"]) =>
   matchType === "friendly" ? "Friendly" : "Not friendly";
 
+const inputDateValue = (date = new Date()) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+
+const selectedKickoff = (date: string, time: string) => {
+  if (!date || !time) return null;
+  const kickoff = new Date(`${date}T${time}:00`);
+  return Number.isFinite(kickoff.getTime()) ? kickoff : null;
+};
+
+const validateFutureKickoff = (date: string, time: string) => {
+  const kickoff = selectedKickoff(date, time);
+  if (!kickoff) return "Choose a valid match date and time.";
+  if (kickoff <= new Date()) {
+    return "Choose a future match date and time. Past matches cannot be created here.";
+  }
+  return "";
+};
+
 export default function AdminMatchesPage() {
-  const { data: matchesRes, isLoading } = useGetAdminMatchesQuery(
+  const { data: matchesRes, isLoading, refetch: refetchMatches } = useGetAdminMatchesQuery(
     {
       limit: 100,
     },
@@ -129,6 +149,11 @@ export default function AdminMatchesPage() {
 
     if (!form.coachId) {
       setFormError("Select the coach who will manage this match.");
+      return;
+    }
+    const kickoffError = validateFutureKickoff(form.matchDate, form.matchTime);
+    if (kickoffError) {
+      setFormError(kickoffError);
       return;
     }
 
@@ -199,6 +224,14 @@ export default function AdminMatchesPage() {
       setPostponeError("Choose the new date and time.");
       return;
     }
+    const kickoffError = validateFutureKickoff(
+      postponeForm.matchDate,
+      postponeForm.matchTime,
+    );
+    if (kickoffError) {
+      setPostponeError(kickoffError);
+      return;
+    }
     try {
       await postponeAdminMatch({
         id: postponeMatchRow.id,
@@ -230,12 +263,38 @@ export default function AdminMatchesPage() {
     (match) => match.id === selectedFinishedMatchId,
   )
     ? selectedFinishedMatchId
-    : finishedMatches[0]?.id || "";
-  const { data: selectedFinishedMatch, isLoading: loadingFinishedMatch } =
+    : "";
+  const {
+    data: selectedFinishedMatch,
+    isLoading: loadingFinishedMatch,
+    isError: selectedFinishedMatchError,
+  } =
     useGetAdminMatchQuery(activeFinishedMatchId, {
       skip: !activeFinishedMatchId,
     });
   const coaches = coachesRes?.data ?? [];
+
+  useEffect(() => {
+    if (!form.coachId && coaches.length === 1) {
+      setForm((previous) => ({ ...previous, coachId: coaches[0].id }));
+    }
+  }, [coaches, form.coachId]);
+
+  useEffect(() => {
+    if (!selectedFinishedMatchError) return;
+    setSelectedFinishedMatchId("");
+    refetchMatches();
+  }, [refetchMatches, selectedFinishedMatchError]);
+
+  useEffect(() => {
+    if (
+      selectedFinishedMatchId &&
+      !finishedMatches.some((match) => match.id === selectedFinishedMatchId)
+    ) {
+      setSelectedFinishedMatchId("");
+    }
+  }, [finishedMatches, selectedFinishedMatchId]);
+  const todayInput = inputDateValue();
   const calendarItems = useMemo(
     () =>
       matches.map((match) => ({
@@ -355,6 +414,7 @@ export default function AdminMatchesPage() {
                 <Label>Date</Label>
                 <Input
                   type="date"
+                  min={todayInput}
                   value={form.matchDate}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, matchDate: e.target.value }))
@@ -410,7 +470,14 @@ export default function AdminMatchesPage() {
             <DialogFooter>
               <Button
                 type="submit"
-                disabled={creating}
+                disabled={
+                  creating ||
+                  !form.coachId ||
+                  !form.opponentName.trim() ||
+                  !form.matchDate ||
+                  !form.matchTime ||
+                  !form.location.trim()
+                }
                 className="gap-2"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -491,6 +558,7 @@ export default function AdminMatchesPage() {
               <Label>New date</Label>
               <Input
                 type="date"
+                min={todayInput}
                 value={postponeForm.matchDate}
                 onChange={(event) =>
                   setPostponeForm((prev) => ({
