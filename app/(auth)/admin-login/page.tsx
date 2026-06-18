@@ -23,8 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
-
 type Step = "credentials" | "totp" | "backup";
 
 type ApiUser = {
@@ -93,14 +91,14 @@ export default function AdminLoginPage() {
     setError("");
     setIsLoading(true);
 
-    try {
-      dispatch(loginStart());
-      const res = await fetch(`${API_BASE}/api/v1/auth/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildLoginBody(identifier, password)),
-        credentials: "include",
-      });
+        try {
+            dispatch(loginStart());
+            const res = await fetch("/api/v1/auth/admin/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(buildLoginBody(identifier, password)),
+                credentials: "include",
+            });
 
       const json = await res.json();
 
@@ -143,13 +141,13 @@ export default function AdminLoginPage() {
     setError("");
     setIsLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/auth/2fa/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tempToken, token: totpCode }),
-        credentials: "include",
-      });
+        try {
+            const res = await fetch("/api/v1/auth/2fa/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tempToken, token: totpCode }),
+                credentials: "include",
+            });
 
       const json = await res.json();
       if (!res.ok) {
@@ -178,13 +176,13 @@ export default function AdminLoginPage() {
     setError("");
     setIsLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/auth/2fa/backup-verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tempToken, code: backupCode }),
-        credentials: "include",
-      });
+        try {
+            const res = await fetch("/api/v1/auth/2fa/backup-verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tempToken, code: backupCode }),
+                credentials: "include",
+            });
 
       const json = await res.json();
       if (!res.ok) {

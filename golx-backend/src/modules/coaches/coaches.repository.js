@@ -185,6 +185,7 @@ class CoachesRepository extends BaseRepository {
                 this.db.raw("(SELECT pm.height_cm FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as height"),
                 this.db.raw("(SELECT pm.weight_kg FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as weight"),
                 this.db.raw("(SELECT pm.sprint_speed FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as sprint_speed"),
+                this.db.raw("(SELECT pm.stamina FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as stamina"),
                 this.db.raw("(SELECT pm.flexibility FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as flexibility"),
                 this.db.raw(`
                     COALESCE((
@@ -347,19 +348,44 @@ class CoachesRepository extends BaseRepository {
 
     // ─── Group assignments (owned by coaches module) ────────────────────
     async insertCoachMeasurements(records, measuredBy) {
-        const rows = records.map((record) => ({
-            player_id: record.playerId,
-            height_cm: record.heightCm || null,
-            weight_kg: record.weightKg || null,
-            sprint_speed: record.sprintSpeed || null,
-            stamina: record.stamina || null,
-            flexibility: record.flexibility || null,
-            measured_at: new Date(),
-            measured_by: measuredBy,
-            notes: record.notes || 'Coach measurement entry',
-        }));
+        return this.db.transaction(async (trx) => {
+            const saved = [];
+            for (const record of records) {
+                const measuredAt = record.measuredAt ? new Date(record.measuredAt) : new Date();
+                const monthStart = new Date(measuredAt.getFullYear(), measuredAt.getMonth(), 1);
+                const monthEnd = new Date(measuredAt.getFullYear(), measuredAt.getMonth() + 1, 1);
+                const data = {
+                    player_id: record.playerId,
+                    height_cm: record.heightCm ?? null,
+                    weight_kg: record.weightKg ?? null,
+                    sprint_speed: record.sprintSpeed ?? null,
+                    stamina: record.stamina ?? null,
+                    flexibility: record.flexibility ?? null,
+                    measured_at: measuredAt,
+                    measured_by: measuredBy,
+                    notes: record.notes || 'Monthly coach measurement',
+                };
+                const existing = await trx('player_measurements')
+                    .where('player_id', record.playerId)
+                    .where('measured_at', '>=', monthStart)
+                    .where('measured_at', '<', monthEnd)
+                    .first('id');
 
-        return this.db('player_measurements').insert(rows).returning('*');
+                if (existing) {
+                    const [row] = await trx('player_measurements')
+                        .where({ id: existing.id })
+                        .update(data)
+                        .returning('*');
+                    saved.push(row);
+                } else {
+                    const [row] = await trx('player_measurements')
+                        .insert(data)
+                        .returning('*');
+                    saved.push(row);
+                }
+            }
+            return saved;
+        });
     }
 
     async findCoachEvaluations(coachId, academyId, { page = 1, limit = 100 } = {}) {
@@ -924,13 +950,24 @@ class CoachesRepository extends BaseRepository {
             .offset((page - 1) * limit);
 
         const assignmentIds = data.map((assignment) => assignment.id);
-        const [groups, submissionCounts] = await Promise.all([
+        const [groups, birthYears, submissionCounts] = await Promise.all([
             this.findPlayerAssignmentGroups(assignmentIds),
+            this.findPlayerAssignmentBirthYears(assignmentIds),
             this.countPlayerAssignmentSubmissions(assignmentIds),
         ]);
         const groupsByAssignment = groups.reduce((acc, group) => {
             if (!acc[group.assignment_id]) acc[group.assignment_id] = [];
             acc[group.assignment_id].push({ id: group.id, name: group.name });
+            return acc;
+        }, {});
+        const birthYearsByAssignment = birthYears.reduce((acc, birthYear) => {
+            if (!acc[birthYear.assignment_id]) acc[birthYear.assignment_id] = [];
+            acc[birthYear.assignment_id].push({
+                id: birthYear.id,
+                label: birthYear.label,
+                fromYear: birthYear.from_year,
+                toYear: birthYear.to_year,
+            });
             return acc;
         }, {});
         const countsByAssignment = new Map(
@@ -941,6 +978,7 @@ class CoachesRepository extends BaseRepository {
             data: data.map((assignment) => ({
                 ...assignment,
                 groups: groupsByAssignment[assignment.id] || [],
+                birth_years: birthYearsByAssignment[assignment.id] || [],
                 submission_count: countsByAssignment.get(assignment.id) || 0,
             })),
             total: +count,
@@ -956,6 +994,15 @@ class CoachesRepository extends BaseRepository {
             .whereIn('pag.assignment_id', assignmentIds)
             .select('pag.assignment_id', 'ag.id', 'ag.name')
             .orderBy('ag.name', 'asc');
+    }
+
+    async findPlayerAssignmentBirthYears(assignmentIds) {
+        if (!assignmentIds.length) return [];
+        return this.db('player_assignment_birth_years as paby')
+            .join('academy_birth_years as aby', 'paby.birth_year_id', 'aby.id')
+            .whereIn('paby.assignment_id', assignmentIds)
+            .select('paby.assignment_id', 'aby.id', 'aby.label', 'aby.from_year', 'aby.to_year')
+            .orderBy('aby.from_year', 'asc');
     }
 
     async countPlayerAssignmentSubmissions(assignmentIds) {
@@ -978,16 +1025,23 @@ class CoachesRepository extends BaseRepository {
             .first();
         if (!assignment) return null;
 
-        const [groups, submissionCounts] = await Promise.all([
+        const [groups, birthYears, submissionCounts] = await Promise.all([
             this.findPlayerAssignmentGroups([assignment.id]),
+            this.findPlayerAssignmentBirthYears([assignment.id]),
             this.countPlayerAssignmentSubmissions([assignment.id]),
         ]);
         assignment.groups = groups.map((group) => ({ id: group.id, name: group.name }));
+        assignment.birth_years = birthYears.map((birthYear) => ({
+            id: birthYear.id,
+            label: birthYear.label,
+            fromYear: birthYear.from_year,
+            toYear: birthYear.to_year,
+        }));
         assignment.submission_count = Number(submissionCounts[0]?.count || 0);
         return assignment;
     }
 
-    async createPlayerAssignment(data, groupIds) {
+    async createPlayerAssignment(data, groupIds, birthYearIds = []) {
         return this.db.transaction(async (trx) => {
             const [assignment] = await trx('player_assignments').insert(data).returning('*');
             if (groupIds.length) {
@@ -998,11 +1052,19 @@ class CoachesRepository extends BaseRepository {
                     })),
                 );
             }
+            if (birthYearIds.length) {
+                await trx('player_assignment_birth_years').insert(
+                    birthYearIds.map((birthYearId) => ({
+                        assignment_id: assignment.id,
+                        birth_year_id: birthYearId,
+                    })),
+                );
+            }
             return assignment;
         });
     }
 
-    async updatePlayerAssignment(assignmentId, data, groupIds) {
+    async updatePlayerAssignment(assignmentId, data, groupIds, birthYearIds) {
         return this.db.transaction(async (trx) => {
             const [assignment] = await trx('player_assignments')
                 .where({ id: assignmentId })
@@ -1020,8 +1082,28 @@ class CoachesRepository extends BaseRepository {
                     );
                 }
             }
+            if (birthYearIds) {
+                await trx('player_assignment_birth_years').where({ assignment_id: assignmentId }).del();
+                if (birthYearIds.length) {
+                    await trx('player_assignment_birth_years').insert(
+                        birthYearIds.map((birthYearId) => ({
+                            assignment_id: assignmentId,
+                            birth_year_id: birthYearId,
+                        })),
+                    );
+                }
+            }
             return assignment;
         });
+    }
+
+    async deletePlayerAssignment(assignmentId) {
+        const [assignment] = await this.db('player_assignments')
+            .where({ id: assignmentId })
+            .whereNull('deleted_at')
+            .update({ deleted_at: new Date(), updated_at: new Date() })
+            .returning('*');
+        return assignment || null;
     }
 
     async findPlayerAssignmentSubmissions(assignmentId) {
@@ -1045,6 +1127,21 @@ class CoachesRepository extends BaseRepository {
             ...submission,
             files: filesBySubmission[submission.id] || [],
         }));
+    }
+
+    async reviewPlayerAssignmentSubmission(submissionId, data) {
+        const [submission] = await this.db('player_assignment_submissions')
+            .where({ id: submissionId })
+            .update({
+                review_status: data.status,
+                coach_comment: data.comment || null,
+                reviewed_by_coach_id: data.coachId,
+                reviewed_by_user_id: data.userId,
+                reviewed_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return submission || null;
     }
 
     async unassignGroup(coachId, groupId) {

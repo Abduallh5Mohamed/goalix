@@ -353,6 +353,23 @@ const attendanceRecordsSchema = z.object({
     .max(200),
 });
 
+const attendanceQrScanSchema = z
+  .object({
+    payload: z.string().trim().min(1).max(2000).optional(),
+    playerId: uuid.optional(),
+    playerCode: z.string().trim().min(1).max(100).optional(),
+    username: z.string().trim().min(1).max(100).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.payload && !data.playerId && !data.playerCode && !data.username) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["payload"],
+        message: "QR payload, player ID, player code, or username is required.",
+      });
+    }
+  });
+
 const updateEventAttendanceSchema = z.object({
   status: eventAttendanceStatusSchema.optional(),
   arrivalTime: timeSchema.optional(),
@@ -761,6 +778,7 @@ module.exports = {
   trainingStatusSchema,
   trainingExtendSchema,
   attendanceRecordsSchema,
+  attendanceQrScanSchema,
   updateEventAttendanceSchema,
   injuryRiskPainDiscomfortSchema,
   evaluationRecordsSchema,

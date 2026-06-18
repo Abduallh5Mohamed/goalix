@@ -34,13 +34,26 @@ import {
   type PlayerAssignment,
   type PlayerAssignmentUpload,
 } from "@/lib/store/api/calendarApi";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 const fileAccept =
   "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp";
 
 const sleepOptions = Array.from({ length: 13 }, (_, value) => value);
 const mealsOptions = Array.from({ length: 9 }, (_, value) => value);
+
+const formatAssignmentDateTime = (value: string | null | undefined, fallback: string) => {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : formatDateTime(parsed);
+};
+
+const assignmentReviewBadge = (assignment: PlayerAssignment) => {
+  if (!assignment.submission) return { label: "pending", variant: "warning" as const };
+  if (assignment.submission.reviewStatus === "approved") return { label: "accepted", variant: "success" as const };
+  if (assignment.submission.reviewStatus === "rejected") return { label: "needs redo", variant: "destructive" as const };
+  return { label: "submitted", variant: "info" as const };
+};
 
 export default function PlayerAssignmentsPage() {
   const assignmentsQuery = useGetPlayerAssignmentsQuery({ limit: 100 });
@@ -225,22 +238,30 @@ export default function PlayerAssignmentsPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{assignment.title}</h3>
-                    <Badge variant={assignment.submission ? "success" : "warning"}>
-                      {assignment.submission ? "submitted" : "pending"}
+                    <Badge variant={assignmentReviewBadge(assignment).variant}>
+                      {assignmentReviewBadge(assignment).label}
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {assignment.description || "No description"}
                   </p>
+                  {assignment.submission?.coachComment && (
+                    <div className="mt-3 rounded-md border border-cyan-400/20 bg-cyan-400/10 p-3 text-sm">
+                      <p className="font-medium text-cyan-100">Coach comment</p>
+                      <p className="mt-1 text-muted-foreground">{assignment.submission.coachComment}</p>
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     {assignment.coachName && <span>Coach {assignment.coachName}</span>}
-                    <span>Due {assignment.dueAt ? formatDate(assignment.dueAt) : "no deadline"}</span>
+                    <span>Opens {formatAssignmentDateTime(assignment.openAt, "now")}</span>
+                    <span>Due {formatAssignmentDateTime(assignment.dueAt, "no deadline")}</span>
                     <span>{assignment.acceptedFileTypes.join(", ")}</span>
                   </div>
                 </div>
                 <Button
                   className="gap-2"
                   variant={assignment.submission ? "outline" : "default"}
+                  disabled={assignment.submission?.reviewStatus === "approved"}
                   onClick={() => {
                     setSelected(assignment);
                     setUploaded(null);
@@ -248,7 +269,11 @@ export default function PlayerAssignmentsPage() {
                   }}
                 >
                   <FileUp className="h-4 w-4" />
-                  {assignment.submission ? "Resubmit" : "Submit"}
+                  {assignment.submission?.reviewStatus === "approved"
+                    ? "Accepted"
+                    : assignment.submission
+                      ? "Resubmit"
+                      : "Submit"}
                 </Button>
               </CardContent>
             </Card>
@@ -279,6 +304,12 @@ export default function PlayerAssignmentsPage() {
             <DialogDescription>{selected?.title}</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAssignmentSubmit}>
+            {selected?.submission?.coachComment && (
+              <div className="rounded-md border border-cyan-400/20 bg-cyan-400/10 p-3 text-sm">
+                <p className="font-medium text-cyan-100">Coach comment</p>
+                <p className="mt-1 text-muted-foreground">{selected.submission.coachComment}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="assignment-file">Upload PDF, Word, or Image</Label>
               <Input

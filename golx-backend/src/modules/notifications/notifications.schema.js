@@ -4,7 +4,7 @@ const uuidParam = z.object({ id: z.string().uuid() });
 
 const sendNotificationSchema = z.object({
     userId: z.string().uuid().optional(),
-    type: z.enum(['info', 'warning', 'success', 'error']).default('info'),
+    type: z.enum(['info', 'warning', 'success', 'error', 'alert']).default('info'),
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
@@ -12,7 +12,7 @@ const sendNotificationSchema = z.object({
 });
 
 const bulkNotificationSchema = z.object({
-    type: z.enum(['info', 'warning', 'success', 'error']).default('info'),
+    type: z.enum(['info', 'warning', 'success', 'error', 'alert']).default('info'),
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
@@ -21,7 +21,7 @@ const bulkNotificationSchema = z.object({
 
 const notificationsQuery = z.object({
     isRead: z.enum(['true', 'false']).optional(),
-    type: z.enum(['info', 'warning', 'success', 'error']).optional(),
+    type: z.enum(['info', 'warning', 'success', 'error', 'alert']).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
 });

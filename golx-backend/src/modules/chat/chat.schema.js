@@ -55,8 +55,13 @@ const editMessageSchema = z.object({
   body: z.string().trim().min(1).max(4000),
 });
 
+const deleteMessageQuery = z.object({
+  scope: z.enum(["me", "everyone"]).default("everyone"),
+});
+
 module.exports = {
   createConversationSchema,
+  deleteMessageQuery,
   editMessageSchema,
   idParam,
   messageParam,

@@ -10,6 +10,7 @@ const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 
 const env = require('./config/env');
+const { corsOrigin, isAllowedOrigin } = require('./config/cors');
 const logger = require('./shared/logger');
 const db = require('./infrastructure/database');
 const { redis } = require('./infrastructure/redis');
@@ -141,6 +142,12 @@ if (process.env.NODE_ENV !== 'test') {
         calendarService
             .notifyDueMatchDays()
             .catch((err) => logger.error({ err }, 'Match day notification scan failed'));
+        calendarService
+            .notifyDueAttendanceQrReminders()
+            .catch((err) => logger.error({ err }, 'Attendance QR reminder scan failed'));
+        calendarService
+            .notifyDueMonthlyMeasurementReminders()
+            .catch((err) => logger.error({ err }, 'Monthly measurement reminder scan failed'));
     }, 60 * 1000);
     matchDayInterval.unref?.();
 
@@ -173,12 +180,19 @@ if (process.env.NODE_ENV !== 'test') {
 app.set('trust proxy', 1);
 
 // ─── Global Middleware ────────────────────────────────────────────────
+// Attach a request ID before body parsing so parse errors are traceable too.
+app.use((req, res, next) => {
+    req.id = req.get('x-request-id') || randomUUID();
+    res.setHeader('X-Request-ID', req.id);
+    next();
+});
+
 app.use(helmet({
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     contentSecurityPolicy: false, // CSP handled by frontend / reverse proxy
 }));
 app.use(cors({
-    origin: env.CORS_ORIGINS.split(','),
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-CSRF-Token', 'X-File-Name'],
@@ -193,18 +207,12 @@ app.use((req, res, next) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
     const origin = req.get('origin');
     if (!origin) return next();
-    if (env.CORS_ORIGINS.split(',').includes(origin)) return next();
+    if (isAllowedOrigin(origin)) return next();
 
     return res.status(403).json({
         success: false,
         error: { code: 'CSRF_ORIGIN_REJECTED', message: 'Request origin is not allowed' },
     });
-});
-
-// Attach a unique request ID to every request for tracing
-app.use((req, _res, next) => {
-    req.id = randomUUID();
-    next();
 });
 
 const sensitiveAuditTargets = [
@@ -282,6 +290,7 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
         }
 
         res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'private, max-age=604800');
         return res.sendFile(requestedPath, (err) => {
             if (err) next(err);
         });

@@ -173,9 +173,29 @@ class CoachesController {
         } catch (err) { next(err); }
     };
 
+    deleteMePlayerAssignment = async (req, res, next) => {
+        try {
+            const data = await this.service.deleteMyPlayerAssignment(req.user.userId, req.user.academyId, req.params.assignmentId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
     getMePlayerAssignmentSubmissions = async (req, res, next) => {
         try {
             const data = await this.service.getMyPlayerAssignmentSubmissions(req.user.userId, req.user.academyId, req.params.assignmentId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    reviewMePlayerAssignmentSubmission = async (req, res, next) => {
+        try {
+            const data = await this.service.reviewMyPlayerAssignmentSubmission(
+                req.user.userId,
+                req.user.academyId,
+                req.params.assignmentId,
+                req.params.submissionId,
+                req.body,
+            );
             res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
     };

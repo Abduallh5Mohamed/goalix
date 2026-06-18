@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
 import {
   Loader2,
@@ -18,6 +18,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
@@ -243,6 +250,18 @@ const monthLabel = (key: string) => {
     month: "long",
     year: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
+};
+
+const dateKey = (date: Date) => date.toISOString().slice(0, 10);
+
+const currentWeekStartKey = () => {
+  const now = new Date();
+  const utcDate = new Date(
+    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
+  );
+  const day = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() - day + 1);
+  return dateKey(utcDate);
 };
 
 const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
@@ -552,7 +571,7 @@ function WinnerPodium({ players }: { players: RankingSystemInput[] }) {
               Winner Podium
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Top 3 overall players from the latest Ranking System output.
+              Top 3 overall players from the selected weekly Ranking System output.
             </p>
           </div>
           <Badge variant="outline" className="w-fit rounded-md">
@@ -859,16 +878,42 @@ export default function CoachRankingsPage() {
     useGetCoachRankingSystemInputsQuery({ limit: 500 });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
-  const latestWeek = rows[0]?.week_start ?? null;
-  const latestRows = useMemo(
-    () => rows.filter((row) => row.week_start === latestWeek),
-    [latestWeek, rows],
-  );
-  const modelRows = useMemo(() => sortByModelRank(latestRows), [latestRows]);
-  const podiumPlayers = useMemo(() => modelRows.slice(0, 3), [modelRows]);
-  const latestDisplayRows = useMemo(() => modelRows.map(toDisplayRow), [modelRows]);
   const weeklyHistory = useMemo(() => buildWeeklyHistory(rows), [rows]);
   const monthlyHistory = useMemo(() => buildMonthlyHistory(rows), [rows]);
+  const [selectedWeek, setSelectedWeek] = useState("");
+  const currentWeek = useMemo(() => currentWeekStartKey(), []);
+  const defaultWeek =
+    weeklyHistory.find((summary) => summary.key < currentWeek)?.key ??
+    weeklyHistory[0]?.key ??
+    "";
+  const effectiveWeek = selectedWeek || defaultWeek;
+  const selectedWeekSummary =
+    weeklyHistory.find((summary) => summary.key === effectiveWeek) ??
+    weeklyHistory[0];
+  const selectedRows = useMemo(
+    () =>
+      selectedWeekSummary
+        ? rows.filter((row) => row.week_start === selectedWeekSummary.key)
+        : [],
+    [rows, selectedWeekSummary],
+  );
+  const modelRows = useMemo(() => sortByModelRank(selectedRows), [selectedRows]);
+  const podiumPlayers = useMemo(() => modelRows.slice(0, 3), [modelRows]);
+  const selectedDisplayRows = useMemo(
+    () => modelRows.map(toDisplayRow),
+    [modelRows],
+  );
+
+  useEffect(() => {
+    if (!defaultWeek) {
+      if (selectedWeek) setSelectedWeek("");
+      return;
+    }
+
+    if (!selectedWeek || !weeklyHistory.some((summary) => summary.key === selectedWeek)) {
+      setSelectedWeek(defaultWeek);
+    }
+  }, [defaultWeek, selectedWeek, weeklyHistory]);
 
   const leaders = useMemo(() => {
     const byRole = (role: RankingSystemInput["role_family"]) =>
@@ -930,24 +975,40 @@ export default function CoachRankingsPage() {
       ) : (
         <>
           <Card className="border-border/50 bg-card">
-            <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium">Active Week</p>
+                <p className="text-sm font-medium">Selected Week</p>
                 <p className="text-xs text-muted-foreground">
-                  {latestWeek
-                    ? `${formatDate(latestWeek)} to ${formatDate(modelRows[0]?.week_end)}`
+                  {selectedWeekSummary
+                    ? selectedWeekSummary.subLabel
                     : "No weekly model output yet"}
                 </p>
               </div>
-              <Badge variant="info" className="w-fit rounded-md">
-                {modelRows.length} player{modelRows.length === 1 ? "" : "s"}
-              </Badge>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                {weeklyHistory.length > 0 && (
+                  <Select value={effectiveWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-full sm:w-64">
+                      <SelectValue placeholder="Choose week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weeklyHistory.map((summary) => (
+                        <SelectItem key={summary.key} value={summary.key}>
+                          {summary.label} - {summary.rows.length} players
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Badge variant="info" className="w-fit rounded-md">
+                  {modelRows.length} player{modelRows.length === 1 ? "" : "s"}
+                </Badge>
+              </div>
             </CardContent>
           </Card>
 
           <WinnerPodium players={podiumPlayers} />
 
-          <RoleTopThreeSection rows={latestDisplayRows} />
+          <RoleTopThreeSection rows={selectedDisplayRows} />
 
           <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {leaderCards.map((card) => {

@@ -5,11 +5,13 @@ import {
   Activity,
   Calendar,
   CalendarCheck,
+  CheckCircle2,
   Clock,
   Dumbbell,
   Loader2,
   MapPin,
   Trophy,
+  XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,8 @@ const statusOrder: AttendanceStatus[] = [
 ];
 
 const attendedStatuses = new Set<AttendanceStatus>(["present", "late"]);
+const missedStatuses = new Set<AttendanceStatus>(["absent", "injured"]);
+const excusedStatuses = new Set<AttendanceStatus>(["excused"]);
 
 const emptyCounts = () =>
   statusOrder.reduce(
@@ -125,6 +129,79 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+function AttendanceSummaryList({
+  title,
+  description,
+  records,
+  emptyText,
+  icon: Icon,
+  tone,
+}: {
+  title: string;
+  description: string;
+  records: PlayerAttendanceRecord[];
+  emptyText: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: "success" | "danger" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "bg-emerald-400/10 text-emerald-200"
+      : tone === "danger"
+        ? "bg-red-400/10 text-red-200"
+        : "bg-amber-400/10 text-amber-200";
+
+  return (
+    <Card className="border-white/10 bg-white/[0.045] shadow-none">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between gap-3 text-base font-semibold">
+          <span>{title}</span>
+          <Badge variant="outline">{records.length}</Badge>
+        </CardTitle>
+        <p className="text-sm text-slate-400">{description}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {records.length ? (
+          records.slice(0, 8).map((record) => {
+            const dateTime = recordDateTime(record);
+
+            return (
+              <div
+                key={`${record.record_type}-${record.id}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${toneClass}`}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">
+                      {recordTitle(record)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {dateTime ? formatDate(dateTime) : "No date"}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={statusVariant(record.status)}>
+                  {attendanceLabels[record.status] || titleCase(record.status)}
+                </Badge>
+              </div>
+            );
+          })
+        ) : (
+          <EmptyState text={emptyText} />
+        )}
+        {records.length > 8 && (
+          <p className="text-xs text-slate-400">
+            Showing latest 8 of {records.length} records.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
   const dateTime = recordDateTime(record);
 
@@ -144,6 +221,9 @@ function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
             <Badge variant="outline">
               {record.record_type === "match" ? "Match" : "Training"}
             </Badge>
+            {record.inferred_absence && (
+              <Badge variant="secondary">Auto absent</Badge>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
             {dateTime && (
@@ -199,10 +279,20 @@ export default function PlayerAttendancePage() {
     () => records.filter((record) => record.record_type === "match"),
     [records],
   );
+  const attendedRecords = useMemo(
+    () => records.filter((record) => attendedStatuses.has(record.status)),
+    [records],
+  );
+  const missedRecords = useMemo(
+    () => records.filter((record) => missedStatuses.has(record.status)),
+    [records],
+  );
+  const excusedRecords = useMemo(
+    () => records.filter((record) => excusedStatuses.has(record.status)),
+    [records],
+  );
   const statusCounts = useMemo(() => countAttendance(records), [records]);
-  const totalAttended = records.filter((record) =>
-    attendedStatuses.has(record.status),
-  ).length;
+  const totalAttended = attendedRecords.length;
   const latestRecord = records[0];
   const totalRows = attendanceQuery.data?.pagination.total ?? records.length;
 
@@ -242,22 +332,22 @@ export default function PlayerAttendancePage() {
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              label="Attendance Rate"
+              label="Attended"
               value={`${attendanceRate(records)}%`}
-              detail={`${totalAttended}/${records.length} recorded sessions attended`}
+              detail={`${totalAttended}/${records.length} training and match records`}
+              icon={CheckCircle2}
+            />
+            <MetricCard
+              label="Missed"
+              value={String(missedRecords.length)}
+              detail="Absent or injured records"
+              icon={XCircle}
+            />
+            <MetricCard
+              label="Training / Matches"
+              value={`${trainingRecords.length} / ${matchRecords.length}`}
+              detail="All recorded attendance rows"
               icon={Activity}
-            />
-            <MetricCard
-              label="Training"
-              value={`${attendanceRate(trainingRecords)}%`}
-              detail={`${trainingRecords.length} training records`}
-              icon={Dumbbell}
-            />
-            <MetricCard
-              label="Matches"
-              value={`${attendanceRate(matchRecords)}%`}
-              detail={`${matchRecords.length} match records`}
-              icon={Trophy}
             />
             <MetricCard
               label="Latest Status"
@@ -268,6 +358,33 @@ export default function PlayerAttendancePage() {
               }
               detail={latestRecord ? recordTitle(latestRecord) : "Nothing recorded yet"}
               icon={CalendarCheck}
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-3">
+            <AttendanceSummaryList
+              title="Attended"
+              description="Sessions and matches you attended."
+              records={attendedRecords}
+              emptyText="No attended records yet."
+              icon={CheckCircle2}
+              tone="success"
+            />
+            <AttendanceSummaryList
+              title="Missed"
+              description="Sessions and matches marked absent or injured."
+              records={missedRecords}
+              emptyText="No missed records. Clean sheet."
+              icon={XCircle}
+              tone="danger"
+            />
+            <AttendanceSummaryList
+              title="Excused"
+              description="Records marked with an accepted excuse."
+              records={excusedRecords}
+              emptyText="No excused records."
+              icon={CalendarCheck}
+              tone="warning"
             />
           </section>
 

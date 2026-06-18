@@ -7,7 +7,7 @@
 const bcrypt = require('bcrypt');
 const { ensureIamForAuthUser } = require('../src/shared/iam-sync');
 
-const ADMIN_EMAIL = 'admin@goalix.com';
+const ADMIN_EMAIL = 'admin@golix.com';
 const ADMIN_PASSWORD = 'Admin@123456';
 
 exports.seed = async function seed(knex) {

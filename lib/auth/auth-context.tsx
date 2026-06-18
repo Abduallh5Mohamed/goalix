@@ -12,8 +12,9 @@ import {
 import { ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, rememberAuthSession } from "@/lib/auth/session";
+import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE = getApiBaseUrl();
 
 interface AuthContextType {
   login: (username: string, password: string, role: "player" | "parent") => Promise<void>;

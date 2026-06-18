@@ -1,7 +1,6 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -44,18 +43,6 @@ const testDashboardLinks = [
 export default function HeroSection() {
   const router = useRouter();
 
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800;900&family=Inter:wght@400;500;600;700&display=swap";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
   return (
     <>
     <div
@@ -83,7 +70,14 @@ export default function HeroSection() {
         }}
       >
         <div className="gx-hero-nav-left" style={{ display: "flex", alignItems: "center", gap: 40 }}>
-          <Image src="/Logo.png" alt="Goalix" width={110} height={32} priority style={{ objectFit: "contain" }} />
+          <Image
+            src="/Logo.png"
+            alt="Goalix"
+            width={110}
+            height={32}
+            priority
+            style={{ width: "auto", height: "auto", objectFit: "contain" }}
+          />
           <div className="gx-hero-links" style={{ display: "flex", gap: 36 }}>
             {navLinks.map((link, index) => (
               <div
@@ -475,7 +469,7 @@ function GoalixAddedSections() {
 
       <footer className="gx-footer">
         <div className="gx-footer-brand">
-          <Image src="/Logo.png" alt="GOALIX" width={138} height={42} style={{ height: "auto" }} />
+          <Image src="/Logo.png" alt="GOALIX" width={138} height={42} style={{ width: "auto", height: "auto" }} />
           <p>AI-powered football analytics platform built to win matches.</p>
           <div className="gx-socials" aria-label="Social links">
             <a href="#">IG</a>

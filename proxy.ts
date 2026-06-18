@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function securityHeaders() {
+function securityHeaders(nonce: string, requestHost?: string) {
   const isDev = process.env.NODE_ENV === "development";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
   let apiHttpOrigin = "http://localhost:3000";
@@ -28,12 +28,18 @@ function securityHeaders() {
     "ws://localhost:3001",
     "ws://127.0.0.1:3001",
   ];
+
+  if (isDev && requestHost) {
+    httpConnectSources.push(`http://${requestHost}:3000`, `http://${requestHost}:3001`);
+    wsConnectSources.push(`ws://${requestHost}:3000`, `ws://${requestHost}:3001`);
+  }
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    `img-src 'self' blob: data: ${apiHttpOrigin} http://localhost:3000 http://127.0.0.1:3000`,
-    "font-src 'self' data: https://fonts.gstatic.com",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' blob: data: ${[...new Set(httpConnectSources)].join(" ")}`,
+    "font-src 'self' data:",
     `connect-src 'self' ${[...new Set([...httpConnectSources, ...wsConnectSources])].join(" ")}`,
     "object-src 'none'",
     "base-uri 'self'",
@@ -46,19 +52,21 @@ function securityHeaders() {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   };
 
   if (!isDev) {
     headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
     headers["Content-Security-Policy"] = `${csp}; upgrade-insecure-requests`;
+    headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()";
   }
 
   return headers;
 }
 
 export async function proxy(request: NextRequest) {
-  const headers = securityHeaders();
+  const nonce = btoa(crypto.randomUUID());
+  const requestHost = request.headers.get("host")?.split(":")[0] || request.nextUrl.hostname;
+  const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
 
