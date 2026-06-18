@@ -140,28 +140,6 @@ export default function HeroSection() {
           <button
             onClick={() => router.push("/login")}
             style={{
-              background: "transparent",
-              border: "1.5px solid rgba(255,255,255,0.1)",
-              borderRadius: 12,
-              padding: "7px 20px",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            Log in
-          </button>
-          <button
-            onClick={() => router.push("/login")}
-            style={{
               background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)",
               border: "none",
               borderRadius: 12,
@@ -175,7 +153,7 @@ export default function HeroSection() {
               gap: 10,
             }}
           >
-            Register
+            Log in
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />
