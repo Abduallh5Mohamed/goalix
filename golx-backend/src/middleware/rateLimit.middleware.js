@@ -6,11 +6,11 @@ const ApiResponse = require('../shared/api-response');
 const keyGenerator = (req) => req.ip;
 
 /**
- * General API rate limiter: 100 requests per 15 minutes
+ * General API rate limiter for authenticated dashboards and realtime fallbacks.
  */
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: env.API_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000,
+    max: env.API_RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator,

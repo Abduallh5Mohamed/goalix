@@ -11,6 +11,7 @@ const positiveNumberSchema = z.number().positive().optional();
 const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date format: YYYY-MM-DD");
+const playerLevelSchema = z.enum(["A", "B", "C", "D", "F"]);
 
 const playerBaseSchema = z.object({
   username: z
@@ -46,7 +47,7 @@ const playerBaseSchema = z.object({
   nationality: z.string().max(100).optional(),
   branchId: z.string().uuid(),
   groupId: z.string().uuid().optional(),
-  level: z.enum(["beginner", "intermediate", "advanced", "elite"]).optional(),
+  level: playerLevelSchema.optional(),
   position: z.string().max(30).optional(),
   secondaryPositions: z.array(z.string().min(1).max(50)).max(5).optional(),
   preferredFoot: z.enum(["left", "right", "both"]).optional(),
@@ -176,7 +177,7 @@ const updatePlayerSchema = playerBaseSchema
 const listPlayersQuery = z.object({
   branchId: z.string().uuid().optional(),
   groupId: z.string().uuid().optional(),
-  level: z.enum(["beginner", "intermediate", "advanced", "elite"]).optional(),
+  level: playerLevelSchema.optional(),
   isActive: z.coerce.boolean().optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().positive().optional(),

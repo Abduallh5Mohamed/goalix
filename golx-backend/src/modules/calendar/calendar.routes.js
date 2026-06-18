@@ -322,6 +322,14 @@ function coachCalendarRoutes(controller) {
     }),
     controller.coachUpsertEventAttendance,
   );
+  router.post(
+    "/events/:eventId/attendance/qr-scan",
+    validate({
+      params: schema.eventParam,
+      body: schema.attendanceQrScanSchema,
+    }),
+    controller.coachScanEventAttendanceQr,
+  );
   router.patch(
     "/events/:eventId/attendance/:playerId",
     validate({
@@ -469,6 +477,14 @@ function coachCalendarRoutes(controller) {
     controller.coachUpsertMatchAttendance,
   );
   router.post(
+    "/matches/:matchId/attendance/qr-scan",
+    validate({
+      params: schema.matchParam,
+      body: schema.attendanceQrScanSchema,
+    }),
+    controller.coachScanMatchAttendanceQr,
+  );
+  router.post(
     "/matches/:matchId/player-stats",
     validate({ params: schema.matchParam, body: schema.playerStatsSchema }),
     controller.coachUpsertPlayerStats,
@@ -544,6 +560,7 @@ function playerCalendarRoutes(controller) {
     controller.playerListCalendarEvents,
   );
   router.get("/profile", controller.playerGetProfile);
+  router.get("/attendance-qr", controller.playerGetAttendanceQr);
   router.get(
     "/matches",
     validate({ query: schema.adminMatchFiltersQuery }),

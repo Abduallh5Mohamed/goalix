@@ -580,6 +580,14 @@ class PlayersService {
       ? new Date(nextBirthDate).getFullYear()
       : null;
 
+    if (data.branchId) {
+      const branch = await this.repo.findBranchByIdAndAcademy(
+        data.branchId,
+        academyId,
+      );
+      if (!branch) throw new NotFoundError("Branch", data.branchId);
+    }
+
     if (data.groupId) {
       const group = await this.repo.findGroupByIdAndBranch(
         data.groupId,

@@ -30,6 +30,7 @@ import {
   type CoachRole,
   type CoachRow,
 } from "@/lib/store/api/adminApi";
+import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
 type CoachForm = {
   firstName: string;
@@ -105,7 +106,7 @@ type ApiErrorDetails = {
 };
 
 const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_BASE = getApiBaseUrl();
 
 function getApiErrorMessage(err: unknown, fallback: string) {
   const apiError = err as ApiErrorDetails;

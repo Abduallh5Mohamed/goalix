@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Loader2, Save, UserMinus, UserPlus } from "lucide-react";
+import { AlertTriangle, Loader2, Save, UserMinus, UserPlus } from "lucide-react";
 import { FormationPreview3D } from "@/components/coach/FormationPreview3D";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   type CoachPlayer,
+  type InjuryRiskPredictionRecord,
   type Match,
   useGetCoachAdminMatchRequestsQuery,
   useGetCoachGroupsScopedQuery,
+  useGetInjuryRiskPredictionsQuery,
   useGetCoachMatchQuery,
   useGetCoachMatchesQuery,
   useGetCoachPlayersScopedQuery,
@@ -96,6 +98,31 @@ const playerMainPosition = (
   player: Pick<CoachPlayer, "position" | "customProfile">,
 ) => customProfileValue(player, "main_position", "Main Position") || player.position || "";
 
+const playerDisplayPosition = (
+  player: Pick<CoachPlayer, "position" | "customProfile">,
+) => playerMainPosition(player) || "No main position";
+
+const isHighInjuryRisk = (record?: InjuryRiskPredictionRecord) => {
+  const prediction = record?.prediction;
+  return (
+    Boolean(prediction?.alert_flag) ||
+    String(prediction?.risk_level || "").toLowerCase() === "high"
+  );
+};
+
+function InjuryRiskBadge({ record }: { record?: InjuryRiskPredictionRecord }) {
+  if (!isHighInjuryRisk(record)) return null;
+  return (
+    <Badge
+      variant="destructive"
+      className="inline-flex w-fit items-center gap-1 rounded-md text-[11px]"
+    >
+      <AlertTriangle className="h-3 w-3" />
+      High injury risk
+    </Badge>
+  );
+}
+
 const slotAllowsPlayer = (slotLabel: string, player: CoachPlayer) => {
   const slotPosition = normalizePosition(slotLabel);
   const mainPosition = normalizePosition(playerMainPosition(player));
@@ -150,6 +177,7 @@ export default function CoachMatchConfigurationPage() {
     });
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: injuryRiskRows = [] } = useGetInjuryRiskPredictionsQuery();
   const { data: groups = [] } = useGetCoachGroupsScopedQuery();
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
   const [upsertSquad, { isLoading: savingSquad }] =
@@ -246,6 +274,10 @@ export default function CoachMatchConfigurationPage() {
     [acceptedRequestMatches, matches, nowMs],
   );
   const players = playersRes?.data ?? [];
+  const injuryRiskByPlayerId = useMemo(
+    () => new Map(injuryRiskRows.map((row) => [row.player_id, row])),
+    [injuryRiskRows],
+  );
   const [matchId, setMatchId] = useState(() =>
     typeof window === "undefined"
       ? ""
@@ -263,6 +295,9 @@ export default function CoachMatchConfigurationPage() {
   > | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [acknowledgedRiskPlayerIds, setAcknowledgedRiskPlayerIds] = useState<
+    Set<string>
+  >(new Set());
 
   const selectedMatch =
     matchOptions.find((match) => match.id === matchId) ?? matchOptions[0];
@@ -297,9 +332,13 @@ export default function CoachMatchConfigurationPage() {
         return;
       }
 
+      const rosterPlayer = players.find((item) => item.id === player.player_id);
+      const savedPosition = rosterPlayer
+        ? playerMainPosition(rosterPlayer) || player.position
+        : player.position;
       const slot =
         nextSlots.find(
-          (item) => item.label === player.position && !usedSlotIds.has(item.id),
+          (item) => item.label === savedPosition && !usedSlotIds.has(item.id),
         ) ?? nextSlots.find((item) => !usedSlotIds.has(item.id));
       if (!slot) return;
       usedSlotIds.add(slot.id);
@@ -314,7 +353,7 @@ export default function CoachMatchConfigurationPage() {
       reserveIds: reserves,
       reserveInstructions: reserveInstructionMap,
     };
-  }, [activeFormation, selectedMatchDetails?.squad]);
+  }, [activeFormation, players, selectedMatchDetails?.squad]);
   const activeSlotState = slotState ?? savedLineup.slotState;
   const activeReserveIds = reserveIds ?? savedLineup.reserveIds;
   const activeReserveInstructions =
@@ -428,7 +467,29 @@ export default function CoachMatchConfigurationPage() {
     }
   };
 
+  const confirmHighRiskPlayer = (player: CoachPlayer, role: string) => {
+    const risk = injuryRiskByPlayerId.get(player.id);
+    if (!isHighInjuryRisk(risk)) return true;
+    if (acknowledgedRiskPlayerIds.has(player.id)) return true;
+    const percentage =
+      risk?.prediction?.risk_percentage !== undefined
+        ? `${risk.prediction.risk_percentage}%`
+        : "high";
+    const confirmed = window.confirm(
+      `${player.full_name} has a high injury risk (${percentage}). Are you sure you want to use this player as ${role} despite the injury risk?`,
+    );
+    if (confirmed) {
+      setAcknowledgedRiskPlayerIds((prev) => new Set(prev).add(player.id));
+    }
+    return confirmed;
+  };
+
   const toggleReserve = (playerId: string) => {
+    const player = targetPlayers.find((item) => item.id === playerId);
+    const adding = !activeReserveIds.includes(playerId);
+    if (adding && player && !confirmHighRiskPlayer(player, "a substitute")) {
+      return;
+    }
     setReserveIds((prev) => {
       const base = prev ?? activeReserveIds;
       return base.includes(playerId)
@@ -467,6 +528,30 @@ export default function CoachMatchConfigurationPage() {
         squadRole: "reserve",
         playerInstruction: activeReserveInstructions[playerId] || "",
       }));
+    const selectedSquadPlayerIds = [
+      ...starters.map((item) => item.playerId),
+      ...reserves.map((item) => item.playerId),
+    ];
+    const highRiskPlayers = selectedSquadPlayerIds
+      .map((playerId) => targetPlayers.find((player) => player.id === playerId))
+      .filter((player): player is CoachPlayer => Boolean(player))
+      .filter(
+        (player) =>
+          isHighInjuryRisk(injuryRiskByPlayerId.get(player.id)) &&
+          !acknowledgedRiskPlayerIds.has(player.id),
+      );
+    if (highRiskPlayers.length) {
+      const names = highRiskPlayers.map((player) => player.full_name).join(", ");
+      const confirmed = window.confirm(
+        `The Injury Risk model marked these players as high risk: ${names}. Are you sure you want to save them in the match squad?`,
+      );
+      if (!confirmed) return;
+      setAcknowledgedRiskPlayerIds((prev) => {
+        const next = new Set(prev);
+        highRiskPlayers.forEach((player) => next.add(player.id));
+        return next;
+      });
+    }
 
     try {
       if (effectiveTargetId) {
@@ -553,6 +638,7 @@ export default function CoachMatchConfigurationPage() {
                   setSlotState(null);
                   setReserveIds(null);
                   setReserveInstructions(null);
+                  setAcknowledgedRiskPlayerIds(new Set());
                 }}
               >
                 <SelectTrigger>
@@ -581,6 +667,7 @@ export default function CoachMatchConfigurationPage() {
                   setSlotState({});
                   setReserveIds([]);
                   setReserveInstructions({});
+                  setAcknowledgedRiskPlayerIds(new Set());
                 }}
               >
                 <SelectTrigger>
@@ -604,6 +691,7 @@ export default function CoachMatchConfigurationPage() {
                   setSlotState({});
                   setReserveIds([]);
                   setReserveInstructions({});
+                  setAcknowledgedRiskPlayerIds(new Set());
                 }}
               >
                 <SelectTrigger>
@@ -733,20 +821,34 @@ export default function CoachMatchConfigurationPage() {
                     </div>
                     <Select
                       value={current?.playerId ?? ""}
-                      onValueChange={(value) =>
-                        updateSlot(slot.id, { playerId: value })
-                      }
+                      onValueChange={(value) => {
+                        const player = targetPlayers.find((item) => item.id === value);
+                        if (
+                          player &&
+                          !confirmHighRiskPlayer(player, slot.label)
+                        ) {
+                          return;
+                        }
+                        updateSlot(slot.id, { playerId: value });
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select player" />
                       </SelectTrigger>
                       <SelectContent>
-                        {available.map((player) => (
-                          <SelectItem key={player.id} value={player.id}>
-                            {player.full_name} -{" "}
-                            {playerMainPosition(player) || "No main position"}
-                          </SelectItem>
-                        ))}
+                        {available.map((player) => {
+                          const risk = injuryRiskByPlayerId.get(player.id);
+                          return (
+                            <SelectItem key={player.id} value={player.id}>
+                              <span className="flex w-full items-center justify-between gap-3">
+                                <span className="min-w-0 truncate">
+                                  {player.full_name} - {playerDisplayPosition(player)}
+                                </span>
+                                <InjuryRiskBadge record={risk} />
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <Textarea
@@ -787,8 +889,13 @@ export default function CoachMatchConfigurationPage() {
                             {player.full_name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {playerMainPosition(player) || "Unassigned"} - {player.level}
+                            {playerDisplayPosition(player)} - {player.level}
                           </p>
+                          <div className="mt-2">
+                            <InjuryRiskBadge
+                              record={injuryRiskByPlayerId.get(player.id)}
+                            />
+                          </div>
                         </div>
                         <Button
                           type="button"
@@ -821,7 +928,14 @@ export default function CoachMatchConfigurationPage() {
                   return (
                     <div key={playerId} className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">{player.full_name}</p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {player.full_name}
+                          </p>
+                          <InjuryRiskBadge
+                            record={injuryRiskByPlayerId.get(player.id)}
+                          />
+                        </div>
                         <Button
                           type="button"
                           size="icon"

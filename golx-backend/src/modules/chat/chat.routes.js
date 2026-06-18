@@ -74,7 +74,7 @@ function chatRoutes(controller) {
   );
   router.delete(
     "/conversations/:id/messages/:messageId",
-    validate({ params: schema.messageParam }),
+    validate({ params: schema.messageParam, query: schema.deleteMessageQuery }),
     controller.deleteMessage,
   );
   router.patch(

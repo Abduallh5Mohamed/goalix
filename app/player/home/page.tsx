@@ -132,6 +132,19 @@ const matchTimestamp = (match: Match) => {
 const eventTimestamp = (event: CalendarEvent) =>
   Date.parse(String(event.start_datetime || "")) || 0;
 
+const uniqueEventsById = (items: CalendarEvent[]) => {
+  const byId = new Map<string, CalendarEvent>();
+
+  for (const item of items) {
+    const key = String(item.id);
+    if (!byId.has(key)) {
+      byId.set(key, item);
+    }
+  }
+
+  return Array.from(byId.values());
+};
+
 const statusVariant = (status: string): BadgeVariant => {
   if (["completed", "finished", "starter", "present"].includes(status)) return "success";
   if (["scheduled", "substitute", "reserve"].includes(status)) return "info";
@@ -260,6 +273,13 @@ function LatestEvaluation({ evaluation }: { evaluation?: PlayerEvaluationRecord 
   if (!evaluation) {
     return <EmptyState text="No coach evaluation is available yet." />;
   }
+  const notes = [
+    { label: "Strengths", value: evaluation.strengths },
+    { label: "Weaknesses", value: evaluation.weaknesses },
+    { label: "Improvement Plan", value: evaluation.improvement_plan },
+    { label: "Coach Notes", value: evaluation.coach_notes },
+    { label: "Development Notes", value: evaluation.development_notes },
+  ].filter((note) => textValue(note.value));
 
   return (
     <div className="space-y-4">
@@ -286,20 +306,18 @@ function LatestEvaluation({ evaluation }: { evaluation?: PlayerEvaluationRecord 
           progress={ratingPercent(evaluation.physical_rating)}
         />
       </div>
-      {(evaluation.strengths || evaluation.coach_notes) && (
-        <div className="rounded-lg bg-white/[0.035] p-4 text-sm text-slate-300">
-          {evaluation.strengths && (
-            <p>
-              <span className="font-medium text-white">Strengths:</span>{" "}
-              {evaluation.strengths}
-            </p>
-          )}
-          {evaluation.coach_notes && (
-            <p className="mt-2">
-              <span className="font-medium text-white">Coach notes:</span>{" "}
-              {evaluation.coach_notes}
-            </p>
-          )}
+      {notes.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {notes.map((note) => (
+            <div key={note.label} className="rounded-lg bg-white/[0.035] p-4 text-sm">
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                {note.label}
+              </p>
+              <p className="mt-2 leading-6 text-slate-300">
+                {textValue(note.value)}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -343,7 +361,7 @@ export default function PlayerHomePage() {
   const latestMatch = matches
     .filter((match) => closedStatuses.has(match.status))
     .sort((a, b) => matchTimestamp(b) - matchTimestamp(a))[0];
-  const upcomingEvents = [...events, ...trainings]
+  const upcomingEvents = uniqueEventsById([...events, ...trainings])
     .filter((event) => !closedStatuses.has(event.status))
     .sort((a, b) => eventTimestamp(a) - eventTimestamp(b))
     .slice(0, 4);

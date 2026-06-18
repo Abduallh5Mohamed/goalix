@@ -14,6 +14,7 @@ import {
   Loader2,
   MapPin,
   Phone,
+  QrCode,
   ShieldCheck,
   Trophy,
   User,
@@ -23,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
+  useGetPlayerAttendanceQrQuery,
   useGetPlayerProfileQuery,
   useGetPlayerProgressQuery,
 } from "@/lib/store/api/calendarApi";
@@ -203,9 +205,11 @@ function EmptyState({ text }: { text: string }) {
 export default function PlayerProfilePage() {
   const profileQuery = useGetPlayerProfileQuery();
   const progressQuery = useGetPlayerProgressQuery();
+  const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
 
   const profile = profileQuery.data;
   const progress = progressQuery.data;
+  const attendanceQr = attendanceQrQuery.data;
   const isLoading = profileQuery.isLoading || progressQuery.isLoading;
   const hasError = profileQuery.isError;
 
@@ -279,6 +283,55 @@ export default function PlayerProfilePage() {
     },
     { label: "BMI", value: textValue(latestMeasurement?.bmi) },
   ].filter((field) => field.value && field.value !== "Not set");
+
+  const profileNotes = [
+    { label: "Strengths", value: profileValue(profile, ["strengths"]) },
+    { label: "Weaknesses", value: profileValue(profile, ["weaknesses"]) },
+    {
+      label: "Coach Notes",
+      value: profileValue(profile, ["coach_notes", "coach notes", "coachNotes"]),
+    },
+    {
+      label: "Improvement Notes",
+      value: profileValue(profile, [
+        "improvement_notes",
+        "improvement notes",
+        "improvementNotes",
+      ]),
+    },
+    {
+      label: "Development Plan",
+      value: profileValue(profile, [
+        "development_plan",
+        "development plan",
+        "developmentPlan",
+      ]),
+    },
+    {
+      label: "Recommended Position",
+      value: profileValue(profile, [
+        "recommended_position",
+        "recommended position",
+        "recommendedPosition",
+      ]),
+    },
+    {
+      label: "Final Notes",
+      value: profileValue(profile, ["final_notes", "final notes", "coachFinalNotes"]),
+    },
+    {
+      label: "Medical Notes",
+      value: profileValue(profile, ["medical_notes", "medical notes", "medicalNotes"]),
+    },
+    {
+      label: "Injury History",
+      value: profileValue(profile, ["injury_history", "injury history", "injuryHistory"]),
+    },
+    {
+      label: "General Notes",
+      value: profileValue(profile, ["notes", "general notes"]),
+    },
+  ].filter((field) => field.value);
 
   const profileCompletion =
     profile?.profile_status === "complete" ? 100 : customFields.length ? 65 : 20;
@@ -439,7 +492,7 @@ export default function PlayerProfilePage() {
             </Card>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-3">
+          <section className="grid gap-4 xl:grid-cols-4">
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -465,6 +518,43 @@ export default function PlayerProfilePage() {
                 {academyInfo.map((item) => (
                   <InfoRow key={item.label} {...item} />
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <QrCode className="h-4 w-4 text-cyan-300" />
+                  Attendance QR
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {attendanceQrQuery.isLoading ? (
+                  <div className="flex items-center gap-2 rounded-lg bg-white/[0.035] p-4 text-sm text-slate-300">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading QR...
+                  </div>
+                ) : attendanceQr?.qrCodeDataUrl ? (
+                  <>
+                    <div className="mx-auto flex aspect-square max-w-56 items-center justify-center rounded-lg bg-white p-3">
+                      <Image
+                        src={attendanceQr.qrCodeDataUrl}
+                        alt="Attendance QR"
+                        width={220}
+                        height={220}
+                        unoptimized
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <InfoRow
+                      label="Player Code"
+                      value={attendanceQr.playerCode || profile?.player_code || null}
+                      icon={IdCard}
+                    />
+                  </>
+                ) : (
+                  <EmptyState text="Attendance QR is not available yet." />
+                )}
               </CardContent>
             </Card>
 
@@ -554,6 +644,28 @@ export default function PlayerProfilePage() {
               </CardContent>
             </Card>
           </section>
+
+          {profileNotes.length > 0 && (
+            <Card className="border-white/10 bg-white/[0.045] shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4 text-cyan-300" />
+                  Coach Profile Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {profileNotes.map((field) => (
+                    <FieldTile
+                      key={field.label}
+                      label={field.label}
+                      value={field.value}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-white/10 bg-white/[0.045] shadow-none">
             <CardHeader className="pb-3">

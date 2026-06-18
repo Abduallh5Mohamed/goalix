@@ -6,7 +6,9 @@ const {
 } = require("../../shared/errors");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { randomUUID } = require("node:crypto");
+const { createHmac, randomUUID, timingSafeEqual } = require("node:crypto");
+const QRCode = require("qrcode");
+const env = require("../../config/env");
 const {
   MODEL_VERSION: INJURY_RISK_MODEL_VERSION,
   runInjuryRiskPredictions,
@@ -29,6 +31,25 @@ const timePart = (value) =>
   value instanceof Date
     ? `${pad2(value.getHours())}:${pad2(value.getMinutes())}`
     : normalizeTime24(value);
+const timePartInTimeZone = (value = new Date(), timeZone = DEFAULT_TIME_ZONE) => {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      hourCycle: "h23",
+    }).formatToParts(value);
+    const byType = Object.fromEntries(
+      parts
+        .filter((part) => part.type !== "literal")
+        .map((part) => [part.type, part.value]),
+    );
+    return `${pad2(byType.hour)}:${pad2(byType.minute)}`;
+  } catch {
+    return timePart(value);
+  }
+};
 const sanitizeFileName = (value = "assignment-file") => {
   let decoded = String(value || "assignment-file");
   try {
@@ -110,13 +131,26 @@ const matchAutoFinishAt = (match) => {
   return finishAt;
 };
 const matchNoShowDeleteAt = (match) => {
-  return matchKickoffAt(match);
+  return matchAutoFinishAt(match);
+};
+const ensureMatchKickoffIsFuture = (data) => {
+  const kickOffAt = matchKickoffAt({
+    match_date: data.matchDate,
+    match_time: data.matchTime,
+  });
+  if (!Number.isFinite(kickOffAt.getTime())) {
+    throw new BadRequestError("Choose a valid match date and time");
+  }
+  if (kickOffAt <= new Date()) {
+    throw new BadRequestError("Match date and time must be in the future");
+  }
 };
 const isGoalkeeperPosition = (position) => {
   const normalized = String(position || "").trim().toLowerCase();
   return normalized === "gk" || normalized.includes("goalkeeper");
 };
-const DEFAULT_MATCH_DAY_UNLOCK_MINUTES = 5;
+const ATTENDANCE_QR_WINDOW_MINUTES = 15;
+const DEFAULT_MATCH_DAY_UNLOCK_MINUTES = 15;
 const academyMatchDayUnlockMinutes = (academySettings) => {
   const raw =
     academySettings?.matchDayOpenMinutesBeforeKickoff ??
@@ -189,6 +223,29 @@ const optionValue = (label, value) =>
     .replace(/^_+|_+$/g, "");
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const QR_ATTENDANCE_TYPE = "goalix_player_attendance";
+const QR_ATTENDANCE_VERSION = 1;
+const attendanceQrSignature = ({ academyId, playerId, playerCode }) =>
+  createHmac("sha256", env.JWT_SECRET)
+    .update(
+      [
+        QR_ATTENDANCE_TYPE,
+        QR_ATTENDANCE_VERSION,
+        academyId,
+        playerId,
+        playerCode || "",
+      ].join(":"),
+    )
+    .digest("hex");
+const safeSignatureEqual = (actual, expected) => {
+  const actualBuffer = Buffer.from(String(actual || ""), "hex");
+  const expectedBuffer = Buffer.from(String(expected || ""), "hex");
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    actualBuffer.length > 0 &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  );
+};
 
 class CalendarService {
   constructor(
@@ -1021,6 +1078,129 @@ class CalendarService {
     );
   }
 
+  async _notifyMatchQrReminderIfDue(academyId, match, trx = this.repo.db) {
+    if (!match || !["scheduled", "postponed"].includes(match.status)) return false;
+    if (match.match_status && match.match_status !== "scheduled") return false;
+    const kickOffAt = matchKickoffAt(match);
+    const now = new Date();
+    const reminderStart = addMinutes(kickOffAt, -ATTENDANCE_QR_WINDOW_MINUTES);
+    if (now < reminderStart || now >= kickOffAt) return false;
+
+    const existing = await trx("notification_inbox")
+      .where("type", "match")
+      .whereRaw("data->>'source' = ?", ["attendance_qr_match_reminder"])
+      .whereRaw("data->>'matchId' = ?", [String(match.id)])
+      .first("id");
+    if (existing) return false;
+
+    const recipients = await this._matchSquadRecipients(match.id);
+    const userIds = [
+      ...recipients.players.map((row) => row.user_id),
+      ...recipients.parents.map((row) => row.user_id),
+    ];
+    if (!userIds.length) return false;
+
+    await this._notifyUsers(
+      userIds,
+      "Match attendance QR is ready",
+      `${match.opponent_name} starts in about ${ATTENDANCE_QR_WINDOW_MINUTES} minutes. Open your matches page for fast QR attendance.`,
+      "match",
+      {
+        source: "attendance_qr_match_reminder",
+        matchId: match.id,
+        opponentName: match.opponent_name,
+        startsAt: kickOffAt.toISOString(),
+      },
+      trx,
+    );
+    return true;
+  }
+
+  async _trainingReminderRecipients(event, academyId) {
+    const participants = await this._trainingParticipants(event, academyId);
+    const playerRows = participants
+      .filter((player) => player.user_id)
+      .map((player) => ({ user_id: player.user_id, player_id: player.id }));
+    const parents = participants.length
+      ? await this.repo
+          .db("auth_users")
+          .whereIn(
+            "linked_player_id",
+            participants.map((player) => player.id),
+          )
+          .where("role", "parent")
+          .whereNull("deleted_at")
+          .select("id as user_id", "linked_player_id as player_id")
+      : [];
+    return { players: playerRows, parents };
+  }
+
+  async _notifyTrainingQrReminderIfDue(academyId, event, trx = this.repo.db) {
+    if (!event || event.event_type !== "training" || event.status !== "scheduled") {
+      return false;
+    }
+    const startsAt = trainingStartsAt(event);
+    const now = new Date();
+    const reminderStart = addMinutes(startsAt, -ATTENDANCE_QR_WINDOW_MINUTES);
+    if (now < reminderStart || now >= startsAt) return false;
+
+    const existing = await trx("notification_inbox")
+      .where("type", "training")
+      .whereRaw("data->>'source' = ?", ["attendance_qr_training_reminder"])
+      .whereRaw("data->>'eventId' = ?", [String(event.id)])
+      .first("id");
+    if (existing) return false;
+
+    const recipients = await this._trainingReminderRecipients(event, academyId);
+    const userIds = [
+      ...recipients.players.map((row) => row.user_id),
+      ...recipients.parents.map((row) => row.user_id),
+    ];
+    if (!userIds.length) return false;
+
+    await this._notifyUsers(
+      userIds,
+      "Training attendance QR is ready",
+      `${event.title} starts in about ${ATTENDANCE_QR_WINDOW_MINUTES} minutes. Open your training page for fast QR attendance.`,
+      "training",
+      {
+        source: "attendance_qr_training_reminder",
+        eventId: event.id,
+        startsAt: startsAt.toISOString(),
+      },
+      trx,
+    );
+    return true;
+  }
+
+  async _notifyPlayerAttendanceCheckedIn(
+    player,
+    title,
+    body,
+    type,
+    data = {},
+    trx = this.repo.db,
+  ) {
+    const parents = await trx("auth_users")
+      .where("linked_player_id", player.id)
+      .where("role", "parent")
+      .whereNull("deleted_at")
+      .select("id as user_id");
+    const userIds = [
+      player.user_id,
+      ...parents.map((row) => row.user_id),
+    ].filter(Boolean);
+    if (!userIds.length) return [];
+    return this._notifyUsers(
+      userIds,
+      title,
+      body,
+      type,
+      { source: "attendance_qr_checked_in", ...data },
+      trx,
+    );
+  }
+
   _matchDayWindowOpen(match) {
     return matchDayUnlockAt(match, match.academy_settings) <= new Date();
   }
@@ -1127,9 +1307,7 @@ class CalendarService {
       });
     const stoppedByIncident = new Set(
       (match.incidents || [])
-        .filter((incident) =>
-          ["red_card", "injury"].includes(incident.incident_type),
-        )
+        .filter((incident) => incident.incident_type === "red_card")
         .map((incident) => incident.player_id),
     );
     yellowCounts.forEach((count, playerId) => {
@@ -1260,7 +1438,7 @@ class CalendarService {
         }
         return;
       }
-      if (!["red_card", "injury"].includes(event.incident.incident_type)) {
+      if (event.incident.incident_type !== "red_card") {
         return;
       }
       stopPlayer(event.incident.player_id, event.minute);
@@ -1683,6 +1861,125 @@ class CalendarService {
     return notifiedCount;
   }
 
+  async notifyDueAttendanceQrReminders() {
+    const now = new Date();
+    const windowStart = addMinutes(now, -1);
+    const windowEnd = addMinutes(now, ATTENDANCE_QR_WINDOW_MINUTES);
+    const [matches, trainings] = await Promise.all([
+      this.repo
+        .db("matches as m")
+        .leftJoin("calendar_events as ce", "m.event_id", "ce.id")
+        .whereNull("m.deleted_at")
+        .whereIn("m.status", ["scheduled", "postponed"])
+        .where("m.match_status", "scheduled")
+        .whereRaw(
+          "(m.match_date::date + m.match_time::time) BETWEEN ? AND ?",
+          [windowStart, windowEnd],
+        )
+        .select(
+          "m.id",
+          "m.status",
+          "m.match_status",
+          "m.match_date",
+          "m.match_time",
+          "m.opponent_name",
+          this.repo.db.raw(
+            "COALESCE(ce.academy_id, (SELECT ab.academy_id FROM academy_groups ag JOIN academy_branches ab ON ag.branch_id = ab.id WHERE ag.id = COALESCE(m.team_id, m.age_group_id) LIMIT 1)) as academy_id",
+          ),
+        ),
+      this.repo
+        .db("calendar_events")
+        .where({
+          event_type: "training",
+          status: "scheduled",
+        })
+        .whereNull("deleted_at")
+        .whereBetween("start_datetime", [windowStart, windowEnd])
+        .select("*"),
+    ]);
+
+    let notifiedCount = 0;
+    for (const match of matches) {
+      if (!match.academy_id) continue;
+      const notified = await this._notifyMatchQrReminderIfDue(
+        match.academy_id,
+        match,
+      );
+      if (notified) notifiedCount += 1;
+    }
+    for (const training of trainings) {
+      const event = await this.repo.findEventById(
+        training.id,
+        training.academy_id,
+      );
+      const notified = await this._notifyTrainingQrReminderIfDue(
+        training.academy_id,
+        event,
+      );
+      if (notified) notifiedCount += 1;
+    }
+    return notifiedCount;
+  }
+
+  async notifyDueMonthlyMeasurementReminders() {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const coaches = await this.repo
+      .db("coach_profiles as cp")
+      .join("auth_users as au", "cp.user_id", "au.id")
+      .whereNull("cp.deleted_at")
+      .whereNull("au.deleted_at")
+      .where("au.is_active", true)
+      .select("cp.id", "cp.academy_id", "cp.user_id", "cp.full_name");
+
+    let notifiedCount = 0;
+    for (const coach of coaches) {
+      const existing = await this.repo
+        .db("notification_inbox")
+        .where("user_id", coach.user_id)
+        .whereRaw("data->>'source' = ?", ["monthly_measurement_reminder"])
+        .whereRaw("data->>'month' = ?", [monthKey])
+        .first("id");
+      if (existing) continue;
+
+      const missing = await this.repo
+        .db("player_group_assignments as pga")
+        .join("coach_group_assignments as cga", "cga.group_id", "pga.group_id")
+        .join("player_profiles as pp", "pp.id", "pga.player_id")
+        .where("cga.coach_id", coach.id)
+        .whereNull("pga.left_at")
+        .whereNull("pp.deleted_at")
+        .whereNotExists(function measuredThisMonth() {
+          this.select(1)
+            .from("player_measurements as pm")
+            .whereRaw("pm.player_id = pp.id")
+            .where("pm.measured_at", ">=", monthStart)
+            .where("pm.measured_at", "<", monthEnd);
+        })
+        .countDistinct("pp.id as count")
+        .first();
+      const missingCount = Number(missing?.count || 0);
+      if (!missingCount) continue;
+
+      await this._notifyUsers(
+        [coach.user_id],
+        "Monthly measurements due",
+        `${missingCount} player${missingCount === 1 ? "" : "s"} still need measurements for ${monthKey}.`,
+        "measurement",
+        {
+          source: "monthly_measurement_reminder",
+          month: monthKey,
+          missingCount,
+          href: "/coach/measurements",
+        },
+      );
+      notifiedCount += 1;
+    }
+    return notifiedCount;
+  }
+
   _matchGroupIds(data) {
     return uniq([...(data.groupIds || []), data.teamId, data.ageGroupId]);
   }
@@ -2058,6 +2355,7 @@ class CalendarService {
   }
 
   async adminCreateMatch(academyId, adminUserId, data) {
+    ensureMatchKickoffIsFuture(data);
     const { groupIds, birthYearIds } = await this._resolveAdminMatchTargets(
       academyId,
       data,
@@ -2255,6 +2553,15 @@ class CalendarService {
       : [];
     const previousAttendanceOccurredAt =
       shouldRefreshAttendance ? this._matchAttendanceOccurredAt(match) : null;
+    if (
+      match.match_status === "scheduled" &&
+      (data.matchDate !== undefined || data.matchTime !== undefined)
+    ) {
+      ensureMatchKickoffIsFuture({
+        matchDate: data.matchDate !== undefined ? data.matchDate : match.match_date,
+        matchTime: data.matchTime !== undefined ? data.matchTime : match.match_time,
+      });
+    }
 
     await this.repo.db.transaction(async (trx) => {
       const updateData = {};
@@ -2375,6 +2682,7 @@ class CalendarService {
     if (match.match_status !== "scheduled") {
       throw new BadRequestError("Started matches cannot be postponed");
     }
+    ensureMatchKickoffIsFuture(data);
 
     const groupIds = await this.repo.getMatchGroupIds(matchId);
     const birthYearIds = await this.repo.getMatchBirthYearIds(matchId);
@@ -2595,7 +2903,8 @@ class CalendarService {
 
   async coachListInjuryRiskPainDiscomfort(userId, academyId) {
     const coach = await this._getCoach(userId, academyId);
-    const players = await this.repo.findCoachScopedPlayers(coach.id, academyId);
+    const scopedPlayers = await this.repo.findCoachScopedPlayers(coach.id, academyId);
+    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
     const { rows } = await this.repo.db.raw(`
       SELECT
         date_trunc('week', current_date)::date::text AS week_start,
@@ -2630,7 +2939,7 @@ class CalendarService {
         id: pain?.id || null,
         player_id: player.id,
         player_name: player.full_name,
-        position: player.position || null,
+        position: player.injury_risk_position,
         group_id: player.group_id || null,
         week_start: pain?.week_start || week.week_start,
         week_end: pain?.week_end || week.week_end,
@@ -2717,6 +3026,7 @@ class CalendarService {
       position:
         inputRow.position_category ||
         inputRow.main_position ||
+        player.main_position ||
         player.position ||
         "Midfielder",
       attendance_rate: attendanceRate > 1 ? attendanceRate / 100 : attendanceRate,
@@ -2738,6 +3048,39 @@ class CalendarService {
     return this.repo.findCoachScopedPlayers(coach.id, academyId);
   }
 
+  async _injuryRiskPlayersWithMainPosition(players) {
+    const customByPlayer = await this._playerCustomProfilesByPlayer(
+      players.map((player) => player.id),
+    );
+    const normalizeKey = (value) =>
+      String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    const mainPositionFor = (playerId) => {
+      const profile = customByPlayer.get(playerId) || [];
+      const field = profile.find(
+        (item) =>
+          normalizeKey(item.key) === "main_position" ||
+          normalizeKey(item.label) === "main_position",
+      );
+      if (field?.value === null || field?.value === undefined) return null;
+      if (Array.isArray(field.value)) {
+        return field.value.filter(Boolean).join(", ") || null;
+      }
+      return String(field.value).trim() || null;
+    };
+
+    return players.map((player) => {
+      const mainPosition = mainPositionFor(player.id);
+      return {
+        ...player,
+        main_position: mainPosition,
+        injury_risk_position: mainPosition || player.position || null,
+      };
+    });
+  }
+
   async _injuryRiskInputRows(academyId, playerIds) {
     if (!playerIds.length) return [];
     return this.repo
@@ -2748,7 +3091,8 @@ class CalendarService {
 
   async coachListInjuryRiskPredictions(userId, academyId) {
     const coach = await this._getCoach(userId, academyId);
-    const players = await this._coachScopedInjuryRiskPlayers(coach, academyId);
+    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(coach, academyId);
+    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
     const playerIds = players.map((player) => player.id);
     if (!playerIds.length) return [];
 
@@ -2769,7 +3113,7 @@ class CalendarService {
       return {
         player_id: player.id,
         player_name: player.full_name,
-        position: player.position || null,
+        position: player.injury_risk_position,
         group_id: player.group_id || null,
         analysis_id: analysis?.id || null,
         input: analysis?.input_data || null,
@@ -2782,7 +3126,8 @@ class CalendarService {
 
   async coachRunInjuryRiskModel(userId, academyId) {
     const coach = await this._getCoach(userId, academyId);
-    const players = await this._coachScopedInjuryRiskPlayers(coach, academyId);
+    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(coach, academyId);
+    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
     const playerIds = players.map((player) => player.id);
     if (!playerIds.length) return [];
 
@@ -2834,7 +3179,7 @@ class CalendarService {
       return {
         player_id: player.id,
         player_name: player.full_name,
-        position: player.position || null,
+        position: player.injury_risk_position,
         group_id: player.group_id || null,
         analysis_id: analysis?.id || null,
         input: modelInputsByPlayer.get(player.id) || null,
@@ -3880,6 +4225,198 @@ class CalendarService {
     );
   }
 
+  _parseAttendanceQrPayload(data = {}) {
+    const rawPayload =
+      typeof data.payload === "string" ? data.payload.trim() : "";
+    let parsed = null;
+    if (rawPayload) {
+      try {
+        parsed = JSON.parse(rawPayload);
+      } catch {
+        parsed = null;
+      }
+    }
+
+    const source =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : data;
+    const playerId =
+      source.playerId || source.player_id || source.id || data.playerId || null;
+    const playerCode =
+      source.playerCode ||
+      source.player_code ||
+      source.code ||
+      data.playerCode ||
+      null;
+    const username = source.username || data.username || null;
+
+    if (rawPayload && !parsed && uuidPattern.test(rawPayload)) {
+      return { playerId: rawPayload, playerCode: null, username: null, signed: false };
+    }
+    if (rawPayload && !parsed && rawPayload.toUpperCase().startsWith("PLY-")) {
+      return { playerId: null, playerCode: rawPayload, username: null, signed: false };
+    }
+    if (rawPayload && !parsed) {
+      return { playerId: null, playerCode: null, username: rawPayload, signed: false };
+    }
+
+    const signed = source.type === QR_ATTENDANCE_TYPE || Boolean(source.sig);
+    return {
+      playerId: playerId ? String(playerId).trim() : null,
+      playerCode: playerCode ? String(playerCode).trim() : null,
+      username: username ? String(username).trim() : null,
+      signature: source.sig ? String(source.sig).trim() : null,
+      academyId: source.academyId || source.academy_id || null,
+      type: source.type || null,
+      version: source.v || source.version || null,
+      signed,
+    };
+  }
+
+  _buildAttendanceQrPayload({ academyId, player }) {
+    const playerCode = player.player_code || null;
+    const payload = {
+      type: QR_ATTENDANCE_TYPE,
+      v: QR_ATTENDANCE_VERSION,
+      academyId,
+      playerId: player.id,
+      playerCode,
+      username: player.username || null,
+      sig: attendanceQrSignature({
+        academyId,
+        playerId: player.id,
+        playerCode,
+      }),
+    };
+    return JSON.stringify(payload);
+  }
+
+  async _resolveAttendanceQrPlayer(academyId, data) {
+    const parsed = this._parseAttendanceQrPayload(data);
+    if (!parsed.playerId && !parsed.playerCode && !parsed.username) {
+      throw new BadRequestError("QR payload does not identify a player");
+    }
+    if (parsed.signed && parsed.type !== QR_ATTENDANCE_TYPE) {
+      throw new BadRequestError("QR payload is not a Goalix attendance QR");
+    }
+    if (
+      parsed.signed &&
+      parsed.version &&
+      Number(parsed.version) !== QR_ATTENDANCE_VERSION
+    ) {
+      throw new BadRequestError("QR payload version is not supported");
+    }
+    if (parsed.signed && parsed.academyId && parsed.academyId !== academyId) {
+      throw new ForbiddenError("QR player belongs to another academy");
+    }
+
+    const playerQuery = this.repo
+      .db("player_profiles as pp")
+      .leftJoin("auth_users as au", "pp.user_id", "au.id")
+      .where("pp.academy_id", academyId)
+      .whereNull("pp.deleted_at")
+      .select(
+        "pp.id",
+        "pp.full_name",
+        "pp.player_code",
+        "pp.user_id",
+        "au.username",
+      );
+
+    if (parsed.playerId) playerQuery.where("pp.id", parsed.playerId);
+    if (parsed.playerCode) playerQuery.where("pp.player_code", parsed.playerCode);
+    if (!parsed.playerId && !parsed.playerCode && parsed.username) {
+      playerQuery.where("au.username", parsed.username);
+    }
+
+    const player = await playerQuery.first();
+    if (!player) throw new NotFoundError("QR player");
+
+    if (parsed.signed) {
+      const expected = attendanceQrSignature({
+        academyId,
+        playerId: player.id,
+        playerCode: player.player_code || null,
+      });
+      if (!safeSignatureEqual(parsed.signature, expected)) {
+        throw new BadRequestError("QR signature is invalid");
+      }
+    }
+
+    return player;
+  }
+
+  async coachScanEventAttendanceQr(userId, academyId, eventId, data) {
+    const coach = await this._getCoach(userId, academyId);
+    const { event, groupIds, birthYearIds, playerIds } =
+      await this._ensureCoachCanAccessEvent(
+        coach,
+        academyId,
+        eventId,
+        "can_take_attendance",
+      );
+    this._ensureTrainingEventOpen(event);
+
+    const player = await this._resolveAttendanceQrPlayer(academyId, data);
+    await this._ensurePlayersInEventTargets(
+      [player.id],
+      { groupIds, birthYearIds, directPlayerIds: playerIds },
+      academyId,
+    );
+
+    const existing = await this.repo
+      .db("event_attendance")
+      .where({ event_id: eventId, player_id: player.id })
+      .first();
+    const arrivalTime = timePartInTimeZone(new Date());
+    const [attendance] = await this.repo
+      .db("event_attendance")
+      .insert({
+        event_id: eventId,
+        player_id: player.id,
+        status: "present",
+        arrival_time: arrivalTime,
+        marked_by_coach_id: coach.id,
+        reason: null,
+        notes: "QR scan",
+      })
+      .onConflict(["event_id", "player_id"])
+      .merge({
+        status: "present",
+        arrival_time: arrivalTime,
+        marked_by_coach_id: coach.id,
+        reason: null,
+        notes: this.repo.db.raw("excluded.notes"),
+        updated_at: new Date(),
+      })
+      .returning("*");
+
+    await this._refreshInjuryRiskMonthlyAttendance(
+      academyId,
+      [player.id],
+      event.start_datetime,
+    );
+    if (existing?.status !== "present") {
+      await this._notifyPlayerAttendanceCheckedIn(
+        player,
+        "Training attendance recorded",
+        `You are checked in for ${event.title}.`,
+        "attendance",
+        { eventId },
+      );
+    }
+
+    return {
+      playerId: player.id,
+      playerName: player.full_name,
+      status: attendance.status,
+      arrivalTime: attendance.arrival_time,
+      alreadyMarked: existing?.status === "present",
+      attendance,
+    };
+  }
+
   async coachUpsertEventAttendance(userId, academyId, eventId, records) {
     const coach = await this._getCoach(userId, academyId);
     const { event, groupIds, birthYearIds, playerIds } = await this._ensureCoachCanAccessEvent(
@@ -4191,6 +4728,41 @@ class CalendarService {
     const scoreOrZero = (value) => {
       const score = clampScore(value);
       return score === null ? 0 : score;
+    };
+    const parseDateKey = (value) => {
+      const [year, month, day] = String(value || "").split("-").map(Number);
+      if (!year || !month || !day) return null;
+      return new Date(Date.UTC(year, month - 1, day));
+    };
+    const dateKey = (value) => value.toISOString().slice(0, 10);
+    const addDaysKey = (value, days) => {
+      const date = parseDateKey(value);
+      if (!date) return null;
+      date.setUTCDate(date.getUTCDate() + days);
+      return dateKey(date);
+    };
+    const weekEndKey = (weekStart) => addDaysKey(weekStart, 6);
+    const buildContinuousWeekKeys = (keys, latestWeekKey) => {
+      const sortedKeys = [...new Set(keys.filter(Boolean).map(String))].sort();
+      if (latestWeekKey && !sortedKeys.includes(latestWeekKey)) {
+        sortedKeys.push(latestWeekKey);
+        sortedKeys.sort();
+      }
+      const firstKey = sortedKeys[0];
+      const lastKey = sortedKeys[sortedKeys.length - 1];
+      const firstDate = parseDateKey(firstKey);
+      const lastDate = parseDateKey(lastKey);
+      if (!firstDate || !lastDate) return sortedKeys;
+
+      const output = [];
+      for (
+        const cursor = new Date(firstDate);
+        cursor.getTime() <= lastDate.getTime();
+        cursor.setUTCDate(cursor.getUTCDate() + 7)
+      ) {
+        output.push(dateKey(cursor));
+      }
+      return output;
     };
     const ratingToScore = (value) => {
       const numeric = numberOrNull(value);
@@ -4936,11 +5508,42 @@ class CalendarService {
       acc.get(weekKey).push(row);
       return acc;
     }, new Map());
+    const { rows: currentWeekRows } = await this.repo.db.raw(
+      "SELECT date_trunc('week', now())::date::text AS week_start",
+    );
+    const currentWeekStart = currentWeekRows[0]?.week_start || null;
+    const carryForwardRow = (previous, weekKey) => ({
+      ...previous,
+      id: `${weekKey}:${previous.player_id}`,
+      week_start: weekKey,
+      week_end: weekEndKey(weekKey),
+      match_evaluation_count: 0,
+      training_evaluation_count: 0,
+      daily_ai_input_count: 0,
+      shots_on_target: 0,
+      key_passes: 0,
+      goals: 0,
+      assists: 0,
+      duels: 0,
+      defensive_tackles: 0,
+      interceptions: 0,
+      saves: 0,
+      clean_sheets: 0,
+      handling_errors: 0,
+      attendance_record_count: 0,
+      attendance_attended_count: 0,
+      carry_forward: true,
+      carried_from_week_start: previous.week_start,
+    });
     const rankedRows = [];
     const previousByPlayer = new Map();
-    [...rowsByWeek.keys()].sort().forEach((weekKey) => {
-      const weekRows = rowsByWeek
-        .get(weekKey)
+    buildContinuousWeekKeys([...rowsByWeek.keys()], currentWeekStart).forEach((weekKey) => {
+      const actualRows = rowsByWeek.get(weekKey) || [];
+      const actualPlayerIds = new Set(actualRows.map((row) => row.player_id));
+      const carriedRows = [...previousByPlayer.values()]
+        .filter((row) => !actualPlayerIds.has(row.player_id))
+        .map((row) => carryForwardRow(row, weekKey));
+      const weekRows = [...actualRows, ...carriedRows]
         .sort((a, b) => scoreOrZero(b.weekly_score) - scoreOrZero(a.weekly_score));
       weekRows.forEach((row, index) => {
         const rank = index + 1;
@@ -4993,8 +5596,10 @@ class CalendarService {
     const rows = rankedRows
       .map((row) => {
         const modelResult = modelResultById.get(row.id);
-        const weeklyScore = clampScore(modelResult?.weekly_score) ?? row.weekly_score;
-        const grade = modelResult?.grade || row.grade;
+        const weeklyScore = row.carry_forward
+          ? row.weekly_score
+          : clampScore(modelResult?.weekly_score) ?? row.weekly_score;
+        const grade = row.carry_forward ? row.grade : modelResult?.grade || row.grade;
         const predictedNextScore = clampScore(modelResult?.predicted_next_score);
         const error = modelResult?.error || modelError || null;
         return {
@@ -5011,6 +5616,8 @@ class CalendarService {
             trend: row.trend,
             rank: row.rank,
             predicted_next_score: predictedNextScore,
+            carry_forward: Boolean(row.carry_forward),
+            carried_from_week_start: row.carried_from_week_start || null,
           },
         };
       })
@@ -5019,6 +5626,27 @@ class CalendarService {
         if (weekSort) return weekSort;
         return Number(a.rank || 0) - Number(b.rank || 0);
       });
+
+    const latestGradeByPlayer = new Map();
+    rows.forEach((row) => {
+      if (
+        !latestGradeByPlayer.has(row.player_id) &&
+        ["A", "B", "C", "D", "F"].includes(row.grade)
+      ) {
+        latestGradeByPlayer.set(row.player_id, row.grade);
+      }
+    });
+    await Promise.all(
+      [...latestGradeByPlayer].map(([playerId, grade]) =>
+        this.repo.db("player_profiles")
+          .where({ id: playerId, academy_id: academyId })
+          .whereNull("deleted_at")
+          .where((query) => {
+            query.whereNull("level").orWhereNot("level", grade);
+          })
+          .update({ level: grade, updated_at: new Date() }),
+      ),
+    );
 
     await this._notifyCoachWeeklyRankingReady(coach, rows);
 
@@ -6079,6 +6707,81 @@ class CalendarService {
     return result;
   }
 
+  async coachScanMatchAttendanceQr(userId, academyId, matchId, data) {
+    const coach = await this._getCoach(userId, academyId);
+    const { match, groupIds, birthYearIds } =
+      await this._ensureCoachCanAccessMatch(
+        coach,
+        academyId,
+        matchId,
+        "can_take_attendance",
+      );
+    this._ensureMatchDayReady(match);
+
+    const player = await this._resolveAttendanceQrPlayer(academyId, data);
+    const squadPlayer = await this.repo
+      .db("match_squads")
+      .where({ match_id: matchId, player_id: player.id })
+      .first();
+    if (!squadPlayer) {
+      throw new ForbiddenError("Player is not in this match squad");
+    }
+    if (groupIds.length || birthYearIds.length) {
+      await this._ensurePlayersInMatchTargets(
+        [player.id],
+        groupIds,
+        birthYearIds,
+        academyId,
+      );
+    }
+
+    const existing = await this.repo
+      .db("match_attendance")
+      .where({ match_id: matchId, player_id: player.id })
+      .first();
+    const [attendance] = await this.repo
+      .db("match_attendance")
+      .insert({
+        match_id: matchId,
+        player_id: player.id,
+        status: "present",
+        marked_by_coach_id: coach.id,
+        notes: "QR scan",
+      })
+      .onConflict(["match_id", "player_id"])
+      .merge({
+        status: "present",
+        marked_by_coach_id: coach.id,
+        notes: this.repo.db.raw("excluded.notes"),
+        updated_at: new Date(),
+      })
+      .returning("*");
+
+    await this._syncMatchMinutes(matchId, academyId, coach.id);
+    await this._refreshInjuryRiskMonthlyAttendance(
+      academyId,
+      [player.id],
+      match.finished_at || match.match_date,
+    );
+    if (existing?.status !== "present") {
+      await this._notifyPlayerAttendanceCheckedIn(
+        player,
+        "Match attendance recorded",
+        `You are checked in for ${match.opponent_name}.`,
+        "attendance",
+        { matchId },
+      );
+    }
+
+    return {
+      playerId: player.id,
+      playerName: player.full_name,
+      status: attendance.status,
+      alreadyMarked: existing?.status === "present",
+      attendance,
+    };
+  }
+
   async _matchSquadPositionByPlayer(matchId, match) {
     if (match?.squad?.length) {
       return new Map(
@@ -6600,17 +7303,31 @@ class CalendarService {
       .map((event) => event.id);
     if (!trainingEventIds.length) return result;
 
-    const trainingRows = await this.repo
-      .db("training_sessions")
-      .whereIn("event_id", trainingEventIds);
+    const [trainingRows, attendanceRows] = await Promise.all([
+      this.repo
+        .db("training_sessions")
+        .whereIn("event_id", trainingEventIds),
+      this.repo
+        .db("event_attendance as ea")
+        .join("player_profiles as pp", "ea.player_id", "pp.id")
+        .whereIn("ea.event_id", trainingEventIds)
+        .where("ea.player_id", playerId)
+        .select("ea.*", this.repo.db.raw("pp.full_name as player_name")),
+    ]);
     const trainingByEvent = new Map(
       trainingRows.map((row) => [row.event_id, row]),
+    );
+    const attendanceByEvent = new Map(
+      attendanceRows.map((row) => [row.event_id, row]),
     );
     return {
       ...result,
       data: result.data.map((event) => ({
         ...event,
         training: trainingByEvent.get(event.id) || null,
+        attendance: attendanceByEvent.has(event.id)
+          ? [attendanceByEvent.get(event.id)]
+          : [],
       })),
     };
   }
@@ -6644,19 +7361,89 @@ class CalendarService {
       .first();
     if (!player) throw new NotFoundError("Player", currentPlayer.id);
 
-    const customByPlayer = await this._playerCustomProfilesByPlayer([player.id]);
-    const latestMeasurement = await this.repo
-      .db("player_measurements")
-      .where({ player_id: player.id })
-      .orderBy("measured_at", "desc")
-      .first();
+    const [
+      customByPlayer,
+      latestMeasurement,
+      latestTrainingSummary,
+      latestCoachRating,
+      healthProfile,
+    ] = await Promise.all([
+      this._playerCustomProfilesByPlayer([player.id]),
+      this.repo
+        .db("player_measurements")
+        .where({ player_id: player.id })
+        .orderBy("measured_at", "desc")
+        .first(),
+      this.repo
+        .db("player_training_summaries")
+        .where({ player_id: player.id })
+        .orderBy("recorded_at", "desc")
+        .first(),
+      this.repo
+        .db("evaluation_coach_ratings")
+        .where({ player_id: player.id })
+        .orderBy("eval_date", "desc")
+        .first(),
+      this.repo
+        .db("player_health_profiles")
+        .where({ player_id: player.id })
+        .first(),
+    ]);
 
     return {
       ...player,
       latestMeasurement: latestMeasurement || null,
+      latestTrainingSummary: latestTrainingSummary || null,
+      latestCoachRating: latestCoachRating || null,
+      healthProfile: healthProfile || null,
       height_cm: latestMeasurement?.height_cm || null,
       weight_kg: latestMeasurement?.weight_kg || null,
+      coach_notes: latestTrainingSummary?.coach_notes || null,
+      improvement_notes: latestTrainingSummary?.improvement_notes || null,
+      strengths: latestCoachRating?.strengths || null,
+      weaknesses: latestCoachRating?.weaknesses || null,
+      development_plan: latestCoachRating?.development_plan || null,
+      final_notes: latestCoachRating?.final_notes || latestCoachRating?.notes || null,
+      recommended_position: latestCoachRating?.recommended_position || null,
+      medical_notes: healthProfile?.medical_notes || null,
+      injury_history: healthProfile?.injury_history || null,
       customProfile: customByPlayer.get(player.id) || [],
+    };
+  }
+
+  async playerGetAttendanceQr(userId, academyId) {
+    const currentPlayer = await this._getPlayer(userId, academyId);
+    const player = await this.repo
+      .db("player_profiles as pp")
+      .leftJoin("auth_users as au", "pp.user_id", "au.id")
+      .where("pp.id", currentPlayer.id)
+      .where("pp.academy_id", academyId)
+      .whereNull("pp.deleted_at")
+      .select("pp.id", "pp.full_name", "pp.player_code", "au.username")
+      .first();
+    if (!player) throw new NotFoundError("Player", currentPlayer.id);
+
+    const payload =
+      player.player_code ||
+      player.username ||
+      this._buildAttendanceQrPayload({ academyId, player });
+    const qrCodeDataUrl = await QRCode.toDataURL(payload, {
+      errorCorrectionLevel: "H",
+      margin: 3,
+      width: 420,
+      color: {
+        dark: "#0f172a",
+        light: "#ffffff",
+      },
+    });
+
+    return {
+      playerId: player.id,
+      playerName: player.full_name,
+      playerCode: player.player_code || null,
+      username: player.username || null,
+      payload,
+      qrCodeDataUrl,
     };
   }
 
@@ -6797,8 +7584,46 @@ class CalendarService {
     const page = Number(filters.page || 1);
     const limit = Number(filters.limit || 50);
     const db = this.repo.db;
+    const player = await db("player_profiles")
+      .where({ id: playerId, academy_id: academyId })
+      .whereNull("deleted_at")
+      .first();
+    if (!player) throw new NotFoundError("Player", playerId);
 
-    const [trainingRows, matchRows] = await Promise.all([
+    const [groupRows, birthYearRows] = await Promise.all([
+      this.repo.findPlayerGroups(player.id),
+      this.repo.findBirthYearsForPlayer(player),
+    ]);
+    const groupIds = groupRows.map((row) => row.group_id);
+    const birthYearIds = birthYearRows.map((row) => row.id);
+
+    const visiblePastTrainingsQuery = this.repo
+      .eventListQuery(academyId, {
+        eventType: "training",
+        groupIds,
+        birthYearIds,
+        playerIds: [player.id],
+      })
+      .whereNot("ce.visibility", "coaches_only")
+      .whereNotIn("ce.status", ["cancelled", "postponed"])
+      .whereRaw("ce.start_datetime <= CURRENT_TIMESTAMP");
+    const visiblePastMatchesQuery = this._configuredMatchQueryForPlayer(
+      academyId,
+      {},
+      { playerId: player.id, groupIds, birthYearIds },
+    )?.andWhere((scope) => {
+      scope
+        .where("m.match_status", "finished")
+        .orWhere("m.status", "completed")
+        .orWhereRaw("m.match_date <= CURRENT_DATE");
+    });
+
+    const [
+      trainingRows,
+      matchRows,
+      visiblePastTrainings,
+      visiblePastMatches,
+    ] = await Promise.all([
       db("event_attendance as ea")
         .join("calendar_events as ce", "ea.event_id", "ce.id")
         .where("ea.player_id", playerId)
@@ -6851,9 +7676,77 @@ class CalendarService {
             "(m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time)) as sort_datetime",
           ),
         ),
+      visiblePastTrainingsQuery
+        .clone()
+        .clearOrder()
+        .select(db.raw("ce.start_datetime as sort_datetime")),
+      visiblePastMatchesQuery
+        ? visiblePastMatchesQuery
+            .clone()
+            .clearOrder()
+            .select(
+              db.raw(
+                "(m.match_date::timestamp + COALESCE(m.match_time, '00:00:00'::time)) as sort_datetime",
+              ),
+            )
+        : Promise.resolve([]),
     ]);
 
-    const rows = [...trainingRows, ...matchRows].sort((a, b) => {
+    const attendedTrainingEventIds = new Set(
+      trainingRows.map((row) => String(row.event_id)),
+    );
+    const attendedMatchIds = new Set(matchRows.map((row) => String(row.match_id)));
+    const syntheticTrainingRows = visiblePastTrainings
+      .filter((event) => !attendedTrainingEventIds.has(String(event.id)))
+      .map((event) => ({
+        record_type: "training",
+        id: `training-missing:${event.id}`,
+        source_id: null,
+        event_id: event.id,
+        player_id: playerId,
+        status: "absent",
+        arrival_time: null,
+        reason: null,
+        notes: "No attendance was recorded for this scheduled training.",
+        title: event.title,
+        event_type: event.event_type,
+        start_datetime: event.start_datetime,
+        location: event.location,
+        sort_datetime: event.sort_datetime || event.start_datetime,
+        inferred_absence: true,
+      }));
+    const syntheticMatchRows = visiblePastMatches
+      .filter((match) => !attendedMatchIds.has(String(match.id)))
+      .map((match) => ({
+        record_type: "match",
+        id: `match-missing:${match.id}`,
+        source_id: null,
+        match_id: match.id,
+        player_id: playerId,
+        status: "absent",
+        notes: "No attendance was recorded for this scheduled match.",
+        opponent_name: match.opponent_name,
+        match_date: match.match_date,
+        match_time: match.match_time,
+        location: match.location,
+        event_type: "match",
+        title: `Match vs ${match.opponent_name}`,
+        start_datetime:
+          match.start_datetime ||
+          `${match.match_date}T${String(match.match_time || "00:00:00").slice(0, 8)}`,
+        sort_datetime:
+          match.sort_datetime ||
+          match.start_datetime ||
+          `${match.match_date}T${String(match.match_time || "00:00:00").slice(0, 8)}`,
+        inferred_absence: true,
+      }));
+
+    const rows = [
+      ...trainingRows,
+      ...matchRows,
+      ...syntheticTrainingRows,
+      ...syntheticMatchRows,
+    ].sort((a, b) => {
       const aTime = Date.parse(String(a.sort_datetime || ""));
       const bTime = Date.parse(String(b.sort_datetime || ""));
       return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
@@ -7158,6 +8051,9 @@ class CalendarService {
       playerId: row.player_id,
       notes: row.notes || "",
       submittedAt: row.submitted_at,
+      reviewStatus: row.review_status || "pending",
+      coachComment: row.coach_comment || "",
+      reviewedAt: row.reviewed_at || null,
       files: (row.files || []).map((file) => this._shapePlayerAssignmentFile(file)),
     };
   }
@@ -7198,19 +8094,42 @@ class CalendarService {
     const offset = (page - 1) * limit;
     const db = this.repo.db;
     const [{ today }] = await db.raw("SELECT current_date::text AS today").then((result) => result.rows);
-    const groupRows = await this.repo.findPlayerGroups(player.id);
+    const [groupRows, birthYearRows] = await Promise.all([
+      this.repo.findPlayerGroups(player.id),
+      this.repo.findBirthYearsForPlayer(player),
+    ]);
     const groupIds = groupRows.map((row) => row.group_id);
+    const birthYearIds = birthYearRows.map((row) => row.id);
 
     const [dailyInput, assignmentRows] = await Promise.all([
       db("player_daily_ai_inputs")
         .where({ academy_id: academyId, player_id: player.id, input_date: today })
         .first(),
-      groupIds.length
+      groupIds.length || birthYearIds.length
         ? db("player_assignments as pa")
             .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
             .join("coach_profiles as cp", "pa.created_by_coach_id", "cp.id")
             .where("pa.academy_id", academyId)
-            .whereIn("pag.group_id", groupIds)
+            .where((targetScope) => {
+              if (groupIds.length) {
+                targetScope.orWhere((groupScope) => {
+                  groupScope
+                    .where((typeScope) => {
+                      typeScope.whereNull("pa.target_type").orWhere("pa.target_type", "group");
+                    })
+                    .whereIn("pag.group_id", groupIds);
+                });
+              }
+              if (birthYearIds.length) {
+                targetScope.orWhereExists((existsQuery) => {
+                  existsQuery
+                    .select(db.raw("1"))
+                    .from("player_assignment_birth_years as paby")
+                    .whereRaw("paby.assignment_id = pa.id")
+                    .whereIn("paby.birth_year_id", birthYearIds);
+                });
+              }
+            })
             .whereNull("pa.deleted_at")
             .where("pa.status", "active")
             .where((scope) => {
@@ -7309,15 +8228,38 @@ class CalendarService {
   }
 
   async _getVisiblePlayerAssignment(player, academyId, assignmentId) {
-    const groupRows = await this.repo.findPlayerGroups(player.id);
+    const [groupRows, birthYearRows] = await Promise.all([
+      this.repo.findPlayerGroups(player.id),
+      this.repo.findBirthYearsForPlayer(player),
+    ]);
     const groupIds = groupRows.map((row) => row.group_id);
-    if (!groupIds.length) return null;
+    const birthYearIds = birthYearRows.map((row) => row.id);
+    if (!groupIds.length && !birthYearIds.length) return null;
     return this.repo
       .db("player_assignments as pa")
       .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
       .where("pa.id", assignmentId)
       .where("pa.academy_id", academyId)
-      .whereIn("pag.group_id", groupIds)
+      .where((targetScope) => {
+        if (groupIds.length) {
+          targetScope.orWhere((groupScope) => {
+            groupScope
+              .where((typeScope) => {
+                typeScope.whereNull("pa.target_type").orWhere("pa.target_type", "group");
+              })
+              .whereIn("pag.group_id", groupIds);
+          });
+        }
+        if (birthYearIds.length) {
+          targetScope.orWhereExists((existsQuery) => {
+            existsQuery
+              .select(this.repo.db.raw("1"))
+              .from("player_assignment_birth_years as paby")
+              .whereRaw("paby.assignment_id = pa.id")
+              .whereIn("paby.birth_year_id", birthYearIds);
+          });
+        }
+      })
       .whereNull("pa.deleted_at")
       .where("pa.status", "active")
       .select("pa.*")
@@ -7331,6 +8273,16 @@ class CalendarService {
     if (assignment.open_at && new Date(assignment.open_at) > new Date()) {
       throw new BadRequestError("Assignment is not open yet.");
     }
+    const existingSubmission = await this.repo.db("player_assignment_submissions")
+      .where({ assignment_id: assignmentId, player_id: player.id })
+      .first();
+    if (existingSubmission?.review_status === "approved") {
+      throw new BadRequestError("Assignment has already been accepted by the coach.");
+    }
+    const canResubmitRejected = existingSubmission?.review_status === "rejected";
+    if (assignment.due_at && new Date(assignment.due_at) < new Date() && !canResubmitRejected) {
+      throw new BadRequestError("Assignment deadline has passed.");
+    }
     const files = data.files || [];
     if (!files.length) throw new BadRequestError("At least one file is required.");
 
@@ -7342,12 +8294,22 @@ class CalendarService {
           submitted_by_user_id: userId,
           notes: data.notes || null,
           submitted_at: new Date(),
+          review_status: "pending",
+          coach_comment: null,
+          reviewed_by_coach_id: null,
+          reviewed_by_user_id: null,
+          reviewed_at: null,
         })
         .onConflict(["assignment_id", "player_id"])
         .merge({
           submitted_by_user_id: userId,
           notes: data.notes || null,
           submitted_at: new Date(),
+          review_status: "pending",
+          coach_comment: null,
+          reviewed_by_coach_id: null,
+          reviewed_by_user_id: null,
+          reviewed_at: null,
           updated_at: new Date(),
         })
         .returning("*");

@@ -195,7 +195,7 @@ export default function PlayersPage() {
             variant={
               row.level === "A"
                 ? "success"
-                : row.level === "B"
+                : row.level === "B" || row.level === "C"
                   ? "warning"
                   : "destructive"
             }
@@ -213,7 +213,7 @@ export default function PlayersPage() {
           <div className="flex items-center gap-1.5">
             {row.level === "A" ? (
               <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-            ) : row.level === "C" ? (
+            ) : row.level === "D" || row.level === "F" ? (
               <TrendingDown className="h-3.5 w-3.5 text-red-400" />
             ) : (
               <Minus className="h-3.5 w-3.5 text-amber-400" />
@@ -221,7 +221,7 @@ export default function PlayersPage() {
             <span className="text-xs font-medium text-muted-foreground">
               {row.level === "A"
                 ? "Improving"
-                : row.level === "C"
+                : row.level === "D" || row.level === "F"
                   ? "Declining"
                   : "Stable"}
             </span>

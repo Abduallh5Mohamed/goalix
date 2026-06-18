@@ -38,6 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
+import { useRealtimeNotifications } from "@/lib/hooks/useRealtimeNotifications";
 import { getNotificationHref } from "@/lib/notifications";
 import {
   useGetNotificationsQuery,
@@ -1129,9 +1130,11 @@ export function DashboardFrame({
   role: UserRole;
   children: React.ReactNode;
 }) {
+  useRealtimeNotifications();
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useCurrentUser();
+  const authState = useCurrentUser();
+  const { user } = authState;
   const { logout } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
   const nav = NAV_ITEMS[role] as NavItem[];
@@ -1260,14 +1263,24 @@ export function DashboardFrame({
     return () => observer.disconnect();
   }, [language, pathname]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsEnabled =
+    authState.isAuthenticated && authState.role === role;
   const {
     data: notificationsData,
     isLoading: notificationsLoading,
     isError: notificationsError,
     refetch: refetchNotifications,
-  } = useGetNotificationsQuery(undefined, { pollingInterval: 60000 });
+  } = useGetNotificationsQuery(undefined, {
+    skip: !notificationsEnabled,
+    pollingInterval: 10000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
   const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
-    pollingInterval: 60000,
+    skip: !notificationsEnabled,
+    pollingInterval: 10000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
   const [markNotificationRead] = useMarkNotificationReadMutation();
   const [markAllNotificationsRead, markAllNotificationsReadState] = useMarkAllNotificationsReadMutation();
@@ -1434,7 +1447,10 @@ export function DashboardFrame({
                       <button
                         type="button"
                         aria-label={t("Refresh notifications")}
-                        onClick={() => refetchNotifications()}
+                        disabled={!notificationsEnabled}
+                        onClick={() => {
+                          if (notificationsEnabled) refetchNotifications();
+                        }}
                       >
                         <RefreshCw size={14} />
                       </button>

@@ -25,10 +25,12 @@ const {
     coachAccessSchema,
     assignmentQuerySchema,
     playerAssignmentQuerySchema,
+    playerAssignmentSubmissionParam,
     createCoachAssignmentSchema,
     submitCoachAssignmentSchema,
     playerAssignmentSchema,
     updatePlayerAssignmentSchema,
+    reviewPlayerAssignmentSubmissionSchema,
 } = require('./coaches.schema');
 
 function coachesRoutes(controller) {
@@ -90,7 +92,9 @@ function coachesRoutes(controller) {
     router.get('/me/player-assignments', restrictTo('coach'), validate({ query: playerAssignmentQuerySchema }), controller.getMePlayerAssignments);
     router.post('/me/player-assignments', restrictTo('coach'), validate({ body: playerAssignmentSchema }), controller.createMePlayerAssignment);
     router.patch('/me/player-assignments/:assignmentId', restrictTo('coach'), validate({ params: assignmentParam, body: updatePlayerAssignmentSchema }), controller.updateMePlayerAssignment);
+    router.delete('/me/player-assignments/:assignmentId', restrictTo('coach'), validate({ params: assignmentParam }), controller.deleteMePlayerAssignment);
     router.get('/me/player-assignments/:assignmentId/submissions', restrictTo('coach'), validate({ params: assignmentParam }), controller.getMePlayerAssignmentSubmissions);
+    router.patch('/me/player-assignments/:assignmentId/submissions/:submissionId/review', restrictTo('coach'), validate({ params: playerAssignmentSubmissionParam, body: reviewPlayerAssignmentSubmissionSchema }), controller.reviewMePlayerAssignmentSubmission);
     router.get('/me/daily-ai-inputs', restrictTo('coach'), controller.getMeDailyAiInputs);
 
     router.get('/assignments', rbac('manage_coaches'), validate({ query: assignmentQuerySchema }), controller.listAssignments);

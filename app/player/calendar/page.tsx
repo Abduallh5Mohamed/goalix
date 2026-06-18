@@ -179,15 +179,27 @@ function MatchReminder({ match }: { match: Match }) {
             </div>
           </div>
           {(squad?.player_instruction || match.tactics?.tactical_notes) && (
-            <div className="rounded-lg bg-white/[0.035] p-3">
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Reminder Notes
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-200">
-                {squad?.player_instruction ||
-                  match.tactics?.tactical_notes ||
-                  "No notes yet."}
-              </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {squad?.player_instruction && (
+                <div className="rounded-lg bg-cyan-400/10 p-3">
+                  <p className="text-xs font-semibold uppercase text-cyan-200">
+                    Your Instructions
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    {squad.player_instruction}
+                  </p>
+                </div>
+              )}
+              {match.tactics?.tactical_notes && (
+                <div className="rounded-lg bg-lime-400/10 p-3">
+                  <p className="text-xs font-semibold uppercase text-lime-200">
+                    Tactical Notes
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">
+                    {match.tactics.tactical_notes}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -18,6 +18,8 @@ export default function PlayerProgressReportPage() {
     A: players.filter((p) => p.level === "A").length,
     B: players.filter((p) => p.level === "B").length,
     C: players.filter((p) => p.level === "C").length,
+    D: players.filter((p) => p.level === "D").length,
+    F: players.filter((p) => p.level === "F").length,
   };
 
   return (
@@ -37,7 +39,7 @@ export default function PlayerProgressReportPage() {
           </Button>
         }
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
         <Card className="border-emerald-500/20 bg-emerald-500/5">
           <CardContent className="flex items-center gap-4 p-4">
             <div>
@@ -54,11 +56,27 @@ export default function PlayerProgressReportPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="border-amber-500/20 bg-amber-500/5">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div>
+              <p className="text-2xl font-bold text-amber-400">{levelCounts.C}</p>
+              <p className="text-sm text-muted-foreground">Level C</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-500/20 bg-orange-500/5">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div>
+              <p className="text-2xl font-bold text-orange-400">{levelCounts.D}</p>
+              <p className="text-sm text-muted-foreground">Level D</p>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="border-red-500/20 bg-red-500/5">
           <CardContent className="flex items-center gap-4 p-4">
             <div>
-              <p className="text-2xl font-bold text-red-400">{levelCounts.C}</p>
-              <p className="text-sm text-muted-foreground">Level C</p>
+              <p className="text-2xl font-bold text-red-400">{levelCounts.F}</p>
+              <p className="text-sm text-muted-foreground">Level F</p>
             </div>
           </CardContent>
         </Card>
@@ -75,7 +93,7 @@ export default function PlayerProgressReportPage() {
                   <p className="font-medium text-sm">{player.full_name}</p>
                   <p className="text-xs text-muted-foreground">{player.position ?? "No position"}</p>
                 </div>
-                <Badge variant={player.level === "A" ? "success" : player.level === "B" ? "warning" : "destructive"}>
+                <Badge variant={player.level === "A" ? "success" : player.level === "B" || player.level === "C" ? "warning" : "destructive"}>
                   {player.level ?? "\u2014"}
                 </Badge>
               </div>

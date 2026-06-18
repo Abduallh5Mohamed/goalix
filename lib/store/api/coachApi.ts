@@ -69,6 +69,7 @@ export interface CoachPlayer {
   height: number;
   weight: number;
   sprintSpeed: number;
+  stamina?: number;
   flexibility: number;
   attendanceRate: number;
   performanceScore: number;
@@ -216,6 +217,7 @@ export interface MeasurementInput {
     stamina?: number;
     flexibility?: number;
     notes?: string;
+    measuredAt?: string;
   }[];
 }
 
@@ -300,6 +302,9 @@ export interface PlayerAssignmentSubmission {
   playerName: string | null;
   notes: string;
   submittedAt: string;
+  reviewStatus: "pending" | "approved" | "rejected";
+  coachComment: string;
+  reviewedAt: string | null;
   files: PlayerAssignmentFile[];
 }
 
@@ -312,11 +317,13 @@ export interface CoachPlayerAssignment {
   description: string;
   openAt: string | null;
   dueAt: string | null;
+  targetType: "group" | "birth_year";
   status: "active" | "closed" | "cancelled";
   acceptedFileTypes: Array<"pdf" | "word" | "image">;
   createdAt: string;
   updatedAt: string;
   groups: PlayerAssignmentGroup[];
+  birthYears: Array<{ id: string; label: string; fromYear: number; toYear: number }>;
   submissionCount: number;
   submissions: PlayerAssignmentSubmission[];
 }
@@ -326,7 +333,9 @@ export interface PlayerAssignmentInput {
   description?: string;
   openAt?: string;
   dueAt?: string;
+  targetType?: "group" | "birth_year";
   groupIds: string[];
+  birthYearIds?: string[];
 }
 
 export interface UpdatePlayerAssignmentInput {
@@ -334,6 +343,13 @@ export interface UpdatePlayerAssignmentInput {
   body: Partial<PlayerAssignmentInput> & {
     status?: "active" | "closed" | "cancelled";
   };
+}
+
+export interface ReviewPlayerAssignmentSubmissionInput {
+  assignmentId: string;
+  submissionId: string;
+  status: "approved" | "rejected";
+  comment?: string;
 }
 
 export interface CoachDailyAiInput {
@@ -601,6 +617,17 @@ export const coachApi = createApi({
       transformResponse: (res: { data: CoachPlayerAssignment }) => res.data,
       invalidatesTags: ["PlayerAssignments"],
     }),
+    deleteMyPlayerAssignment: builder.mutation<
+      { id: string; deleted: boolean },
+      string
+    >({
+      query: (assignmentId) => ({
+        url: `/coaches/me/player-assignments/${assignmentId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: { id: string; deleted: boolean } }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
+    }),
     getPlayerAssignmentSubmissions: builder.query<
       PlayerAssignmentSubmission[],
       string
@@ -610,6 +637,18 @@ export const coachApi = createApi({
       transformResponse: (res: { data: PlayerAssignmentSubmission[] }) =>
         res.data,
       providesTags: ["PlayerAssignments"],
+    }),
+    reviewPlayerAssignmentSubmission: builder.mutation<
+      PlayerAssignmentSubmission,
+      ReviewPlayerAssignmentSubmissionInput
+    >({
+      query: ({ assignmentId, submissionId, status, comment }) => ({
+        url: `/coaches/me/player-assignments/${assignmentId}/submissions/${submissionId}/review`,
+        method: "PATCH",
+        body: { status, comment },
+      }),
+      transformResponse: (res: { data: PlayerAssignmentSubmission }) => res.data,
+      invalidatesTags: ["PlayerAssignments"],
     }),
     getCoachDailyAiInputs: builder.query<CoachDailyAiSummary, void>({
       query: () => "/coaches/me/daily-ai-inputs",
@@ -642,6 +681,8 @@ export const {
   useGetMyPlayerAssignmentsQuery,
   useCreateMyPlayerAssignmentMutation,
   useUpdateMyPlayerAssignmentMutation,
+  useDeleteMyPlayerAssignmentMutation,
   useGetPlayerAssignmentSubmissionsQuery,
+  useReviewPlayerAssignmentSubmissionMutation,
   useGetCoachDailyAiInputsQuery,
 } = coachApi;
