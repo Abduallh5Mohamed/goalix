@@ -47,7 +47,7 @@ export default function CoachReportPage() {
                 {
                   label: "Rating",
                   data: coaches.map((c) => c.rating ?? 0),
-                  backgroundColor: "#22d3ee",
+                  backgroundColor: "#2d9ad5",
                 },
               ]}
               height={300}

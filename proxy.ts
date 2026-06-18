@@ -69,7 +69,6 @@ export async function proxy(request: NextRequest) {
   const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));

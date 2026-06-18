@@ -25,7 +25,13 @@ const S = {
   dim: "#94a3b8",
 };
 
-const navLinks = ["AI in Sport", "Industries", "AI Solutions", "Company", "Resources"];
+const navLinks = [
+  { label: "AI in Sport", href: "#ai-in-sport" },
+  { label: "How GOALIX Works", href: "#how-goalix-works" },
+  { label: "Product Suite", href: "#product-suite" },
+  { label: "Clubs & Coaches", href: "#clubs-coaches" },
+  { label: "Ecosystem", href: "#goalix-ecosystem" },
+];
 
 const testDashboardLinks = [
   { label: "Admin Dashboard", href: ROLE_ROUTES.admin, border: "rgba(163,230,53,0.55)" },
@@ -40,6 +46,7 @@ export default function HeroSection() {
   return (
     <>
     <div
+      id="ai-in-sport"
       className="gx-hero"
       style={{
         background: S.bg,
@@ -74,7 +81,7 @@ export default function HeroSection() {
           <div className="gx-hero-links" style={{ display: "flex", gap: 36 }}>
             {navLinks.map((link, index) => (
               <div
-                key={link}
+                key={link.href}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -84,7 +91,7 @@ export default function HeroSection() {
                 }}
               >
                 <a
-                  href="#"
+                  href={link.href}
                   style={{
                     fontSize: 14,
                     color: index === 0 ? "#cfff04" : "#e2e8f0",
@@ -96,7 +103,7 @@ export default function HeroSection() {
                     padding: "8px 0",
                   }}
                 >
-                  {link}
+                  {link.label}
                   {index > 0 && (
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M1 1L5 5L9 1" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -370,7 +377,7 @@ const mvpCards = [
 function GoalixAddedSections() {
   return (
     <main className="goalix-additions">
-      <section className="gx-section gx-work">
+      <section id="how-goalix-works" className="gx-section gx-work">
         <div className="gx-copy">
           <span className="gx-label">How GOALIX Works</span>
           <h2>
@@ -400,7 +407,7 @@ function GoalixAddedSections() {
         </div>
       </section>
 
-      <section className="gx-section gx-mvp">
+      <section id="product-suite" className="gx-section gx-mvp">
         <div className="gx-copy">
           <span className="gx-label">Product Suite</span>
           <h2>
@@ -425,7 +432,7 @@ function GoalixAddedSections() {
         </button>
       </section>
 
-      <section className="gx-club">
+      <section id="clubs-coaches" className="gx-club">
         <div className="gx-club-copy">
           <span className="gx-label">Trusted By Clubs & Coaches</span>
           <h2>
@@ -451,7 +458,7 @@ function GoalixAddedSections() {
         </div>
       </section>
 
-      <section className="gx-section gx-ecosystem">
+      <section id="goalix-ecosystem" className="gx-section gx-ecosystem">
         <div className="gx-copy">
           <span className="gx-label">The GOALIX Ecosystem</span>
           <h2>Gear. Data. Performance.</h2>
@@ -471,7 +478,7 @@ function GoalixAddedSections() {
         </div>
       </section>
 
-      <section className="gx-final">
+      <section id="goalix-cta" className="gx-final">
         <div>
           <h2>Ready To Elevate Your Game?</h2>
           <p>Start your journey with Goalix products today.</p>
@@ -586,4 +593,3 @@ function StatIcon({ type, color }: { type: string; color: string }) {
     </svg>
   );
 }
-

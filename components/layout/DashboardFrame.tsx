@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Menu,
   Moon,
   MessageSquare,
   RefreshCw,
@@ -97,6 +98,56 @@ const arCopy: Record<string, string> = {
   Help: "المساعدة",
   Logout: "تسجيل الخروج",
   Messages: "الرسائل",
+  Chat: "المحادثة",
+  Chats: "المحادثات",
+  Contacts: "جهات الاتصال",
+  Contact: "جهة اتصال",
+  Admin: "المدير",
+  "Admin session": "حصة مع الإدارة",
+  "Admin Session": "حصة مع الإدارة",
+  Coach: "المدرب",
+  Player: "اللاعب",
+  Parent: "ولي الأمر",
+  Admins: "المديرون",
+  Parents: "أولياء الأمور",
+  "Head coach": "المدرب الرئيسي",
+  "Assistant coach": "المدرب المساعد",
+  "Goalkeeper coach": "مدرب حراس المرمى",
+  "Fitness coach": "مدرب اللياقة",
+  "Sign in again to use chat.": "سجل الدخول مرة أخرى لاستخدام المحادثات.",
+  "No chats match your search.": "لا توجد محادثات تطابق البحث.",
+  "No chats yet.": "لا توجد محادثات بعد.",
+  "Select a chat": "اختر محادثة",
+  "No messages yet.": "لا توجد رسائل بعد.",
+  "No chat selected.": "لم يتم اختيار محادثة.",
+  "No contacts.": "لا توجد جهات اتصال.",
+  "Close session": "إغلاق الحصة",
+  "Session closed.": "الحصة مغلقة.",
+  "Conversation closed": "المحادثة مغلقة",
+  "This conversation is closed.": "هذه المحادثة مغلقة.",
+  closed: "مغلق",
+  open: "مفتوح",
+  You: "أنت",
+  User: "مستخدم",
+  Read: "مقروء",
+  Delivered: "تم التسليم",
+  edited: "تم التعديل",
+  "Edit message": "تعديل الرسالة",
+  "Delete message": "حذف الرسالة",
+  "Editing message": "جاري تعديل الرسالة",
+  "Attach image": "إرفاق صورة",
+  "Chat image": "صورة المحادثة",
+  Image: "صورة",
+  Message: "اكتب رسالة",
+  Send: "إرسال",
+  "Chat request failed": "تعذر تنفيذ طلب المحادثة.",
+  "Unable to load chat": "تعذر تحميل المحادثات.",
+  "Unable to load messages": "تعذر تحميل الرسائل.",
+  "Unable to open chat": "تعذر فتح المحادثة.",
+  "Unable to close session": "تعذر إغلاق الحصة.",
+  "Unable to send message": "تعذر إرسال الرسالة.",
+  "Unable to delete message": "تعذر حذف الرسالة.",
+  "Live chat connection failed": "فشل اتصال المحادثة المباشر.",
   Notifications: "الإشعارات",
   "Search players, sessions, matches...": "ابحث عن لاعبين أو حصص أو مباريات...",
   "Goalix AI Coach": "مدرب Goalix الذكي",
@@ -164,6 +215,13 @@ const arCopy: Record<string, string> = {
   Profile: "الملف الشخصي",
   Performance: "الأداء",
   Ranking: "الترتيب",
+  "My Ranking": "ترتيبي",
+  "Your Rank": "ترتيبك",
+  "Group Leaderboard": "ترتيب المجموعة",
+  "Rankings in your group": "الترتيب داخل مجموعتك",
+  "Loading rankings...": "جاري تحميل الترتيب...",
+  "No backend ranking snapshot is available for your group yet.": "لا توجد لقطة ترتيب متاحة لمجموعتك حتى الآن.",
+  Points: "النقاط",
   "Progress Chart": "مخطط التقدم",
   "My Plan": "خطتي",
   "My Training Plan": "خطة تدريبي",
@@ -201,6 +259,31 @@ const arCopy: Record<string, string> = {
   "40 min": "40 دقيقة",
   Child: "الطفل",
   Status: "الحالة",
+  "Status Breakdown": "تفصيل الحالة",
+  "Status Distribution": "توزيع الحالة",
+  "Payment Status": "حالة الدفع",
+  "Payment Status Distribution": "توزيع حالة الدفع",
+  "Payment Breakdown": "تفصيل المدفوعات",
+  "Revenue by Status": "الإيرادات حسب الحالة",
+  "Attendance Overview": "نظرة عامة على الحضور",
+  "Attendance by Group": "الحضور حسب المجموعة",
+  "Attendance Records": "سجلات الحضور",
+  "Attendance Rate": "معدل الحضور",
+  "Overall Rate": "المعدل العام",
+  "Total Sessions": "إجمالي الحصص",
+  "Latest Status": "آخر حالة",
+  Breakdown: "التفصيل",
+  Records: "السجلات",
+  Rate: "المعدل",
+  "No group data available.": "لا توجد بيانات مجموعات متاحة.",
+  "No attendance statuses have been recorded yet.": "لم يتم تسجيل حالات حضور حتى الآن.",
+  "No training or match attendance has been recorded for you yet.": "لم يتم تسجيل حضور تدريب أو مباريات لك حتى الآن.",
+  "No records": "لا توجد سجلات",
+  "Nothing recorded yet": "لم يتم تسجيل شيء بعد",
+  "Training records": "سجلات التدريب",
+  "Match records": "سجلات المباريات",
+  "recorded sessions attended": "حصص مسجلة تم حضورها",
+  "Your recorded training and match attendance from the academy database.": "حضورك المسجل في التدريبات والمباريات من قاعدة بيانات الأكاديمية.",
   "Pay Now": "ادفع الآن",
   "Welcome back, Admin": "أهلا بعودتك، المدير",
   "Welcome back, Coach": "أهلا بعودتك، المدرب",
@@ -565,7 +648,11 @@ const fallbackArTerms: Record<string, string> = {
   "Late": "متأخر",
   "Excused": "بعذر",
   "Paid": "مدفوع",
+  paid: "مدفوع",
   "Unpaid": "غير مدفوع",
+  unpaid: "غير مدفوع",
+  pending: "قيد الانتظار",
+  overdue: "متأخر",
   "Valid": "صالح",
   "Expired": "منتهي",
   "High": "مرتفع",
@@ -1041,6 +1128,45 @@ function translateDynamicLabel(label: string, language: DashboardLanguage): stri
   const fractionDoneMatch = label.match(/^(\d+\s*\/\s*\d+)\sDone$/i);
   if (fractionDoneMatch) return `${fractionDoneMatch[1]} ${arCopy.Done}`;
 
+  const rankingsInMatch = label.match(/^Rankings in\s+(.+)$/i);
+  if (rankingsInMatch) return `الترتيب داخل ${translate(rankingsInMatch[1], language)}`;
+
+  const rankedMatchesMatch = label.match(/^(\d+)\s+(?:ranked\s+matches?|matches?\s+ranked)$/i);
+  if (rankedMatchesMatch) {
+    const count = Number(rankedMatchesMatch[1]);
+    return count === 1 ? "مباراة واحدة في الترتيب" : `${rankedMatchesMatch[1]} مباريات في الترتيب`;
+  }
+
+  const recordsCountMatch = label.match(/^(\d+)\s+records?$/i);
+  if (recordsCountMatch) {
+    const count = Number(recordsCountMatch[1]);
+    return count === 1 ? "سجل واحد" : `${recordsCountMatch[1]} سجلات`;
+  }
+
+  const trainingRecordsMatch = label.match(/^(\d+)\s+training records?$/i);
+  if (trainingRecordsMatch) {
+    const count = Number(trainingRecordsMatch[1]);
+    return count === 1 ? "سجل تدريب واحد" : `${trainingRecordsMatch[1]} سجلات تدريب`;
+  }
+
+  const matchRecordsMatch = label.match(/^(\d+)\s+match records?$/i);
+  if (matchRecordsMatch) {
+    const count = Number(matchRecordsMatch[1]);
+    return count === 1 ? "سجل مباراة واحد" : `${matchRecordsMatch[1]} سجلات مباريات`;
+  }
+
+  const recordedSessionsAttendedMatch = label.match(/^(\d+)\s*\/\s*(\d+)\s+recorded sessions attended$/i);
+  if (recordedSessionsAttendedMatch) return `${recordedSessionsAttendedMatch[1]}/${recordedSessionsAttendedMatch[2]} حصص مسجلة تم حضورها`;
+
+  const showingDatabaseRecordsMatch = label.match(/^Showing\s+(\d+)\s+of\s+(\d+)\s+database records$/i);
+  if (showingDatabaseRecordsMatch) return `يعرض ${showingDatabaseRecordsMatch[1]} من ${showingDatabaseRecordsMatch[2]} سجلات قاعدة البيانات`;
+
+  const subscriptionsCountMatch = label.match(/^(\d+)\s+subscriptions?$/i);
+  if (subscriptionsCountMatch) {
+    const count = Number(subscriptionsCountMatch[1]);
+    return count === 1 ? "اشتراك واحد" : `${subscriptionsCountMatch[1]} اشتراكات`;
+  }
+
   const sessionCountMatch = label.match(/^(\d+)\s+sessions?$/i);
   if (sessionCountMatch) return `${sessionCountMatch[1]} ${Number(sessionCountMatch[1]) === 1 ? "حصة" : "حصص"}`;
 
@@ -1143,6 +1269,7 @@ export function DashboardFrame({
   const [theme, setTheme] = useState<DashboardTheme>("light");
   const [settingsReady, setSettingsReady] = useState(false);
   const [compactNav, setCompactNav] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const t = useMemo(() => (label: string) => translate(label, language), [language]);
 
@@ -1176,9 +1303,14 @@ export function DashboardFrame({
   }, []);
 
   useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!settingsReady) return;
     window.localStorage.setItem("goalix-dashboard-language", language);
     document.documentElement.dataset.goalixDashboardLanguage = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.querySelector(".goalix-dashboard-viewport")?.setAttribute("data-dashboard-language", language);
   }, [language, settingsReady]);
 
@@ -1288,23 +1420,105 @@ export function DashboardFrame({
   const unreadCount = typeof unreadCountFromApi === "number"
     ? unreadCountFromApi
     : notifications.filter((item) => !item.is_read).length;
+  const mobileNavToggleId = `goalix-mobile-nav-toggle-${role}`;
+
+  const toggleMobileNav = () => {
+    setMobileNavOpen((current) => !current);
+  };
+
+  const closeMobileNav = () => {
+    setMobileNavOpen(false);
+    const toggle = document.getElementById(mobileNavToggleId) as HTMLInputElement | null;
+    if (toggle) toggle.checked = false;
+  };
 
   return (
     <div
       className={`goalix-reference-frame goalix-reference-${role}`}
       data-dashboard-theme={theme}
       data-dashboard-language={language}
-      dir="ltr"
+      dir={language === "ar" ? "rtl" : "ltr"}
       lang={language}
     >
-      <aside className="goalix-reference-sidebar">
-        <Link href={ROLE_ROUTES[role]} className="goalix-reference-brand" aria-label="Goalix dashboard home">
+      <input
+        id={mobileNavToggleId}
+        className="goalix-mobile-nav-checkbox"
+        type="checkbox"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <header className="goalix-mobile-header">
+        <label
+          htmlFor={mobileNavToggleId}
+          role="button"
+          tabIndex={0}
+          className="goalix-mobile-menu-button"
+          aria-label={t("Menu")}
+          aria-expanded={mobileNavOpen}
+          onClick={toggleMobileNav}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            const toggle = document.getElementById(mobileNavToggleId) as HTMLInputElement | null;
+            if (toggle) toggle.checked = !toggle.checked;
+            toggleMobileNav();
+          }}
+        >
+          <Menu size={18} />
+        </label>
+        <Link href={ROLE_ROUTES[role]} className="goalix-mobile-logo" aria-label="Goalix dashboard home">
+          <span className="goalix-mobile-logo-mark">G</span>
+          <strong>GOALIX</strong>
+        </Link>
+        <div className="goalix-mobile-header-actions">
+          <Link href={`/${role}/notifications`} className="goalix-mobile-notification" aria-label={t("Notifications")}>
+            <Bell size={18} />
+            {unreadCount > 0 && <span />}
+          </Link>
+          <div className="goalix-mobile-avatar" aria-label={user?.fullName || t(roleLabels[role])}>
+            {getInitials(user?.fullName || role)}
+          </div>
+        </div>
+      </header>
+
+      <label
+        htmlFor={mobileNavToggleId}
+        className="goalix-mobile-nav-backdrop"
+        aria-label={t("Close menu")}
+        onClick={() => setMobileNavOpen(false)}
+      />
+
+      <aside className={cn("goalix-reference-sidebar", mobileNavOpen && "is-mobile-open")}>
+        <Link
+          href={ROLE_ROUTES[role]}
+          className="goalix-reference-brand"
+          aria-label="Goalix dashboard home"
+          onClick={closeMobileNav}
+        >
           <span className="goalix-reference-mark">G</span>
           <span>
             <strong>Goalix</strong>
             <small>{t(roleLabels[role])}</small>
           </span>
         </Link>
+
+        <div className="goalix-mobile-drawer-tools">
+          <button
+            type="button"
+            aria-label={language === "ar" ? t("English") : t("Arabic")}
+            onClick={() => setLanguage((current) => (current === "ar" ? "en" : "ar"))}
+          >
+            {language === "ar" ? "EN" : "AR"}
+          </button>
+          <button
+            type="button"
+            aria-label={theme === "dark" ? t("Light theme") : t("Dark theme")}
+            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            <span>{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
+          </button>
+        </div>
 
         <div className="goalix-reference-menu-label">{t("Menu")}</div>
         <nav className="goalix-reference-nav">
@@ -1323,7 +1537,10 @@ export function DashboardFrame({
                     aria-label={t(item.label)}
                     title={t(item.label)}
                     onClick={() => {
-                      if (compactNav) {
+                      const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
+
+                      if (compactNav && !mobileNavOpen && !isMobileViewport) {
+                        closeMobileNav();
                         router.push(firstHref(item));
                         return;
                       }
@@ -1341,7 +1558,12 @@ export function DashboardFrame({
                       const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
 
                       return (
-                        <Link key={child.href} href={child.href} className={cn("goalix-reference-subnav-link", childActive && "is-active")}>
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn("goalix-reference-subnav-link", childActive && "is-active")}
+                          onClick={closeMobileNav}
+                        >
                           {t(child.label)}
                         </Link>
                       );
@@ -1358,6 +1580,7 @@ export function DashboardFrame({
                 className={cn("goalix-reference-nav-item", active && "is-active")}
                 aria-label={t(item.label)}
                 title={t(item.label)}
+                onClick={closeMobileNav}
               >
                 <Icon size={17} />
                 <span>{t(item.label)}</span>
@@ -1368,11 +1591,15 @@ export function DashboardFrame({
 
         <div className="goalix-reference-menu-label">{t("General")}</div>
         <div className="goalix-reference-nav">
-          <Link href={role === "admin" ? "/admin/settings" : ROLE_ROUTES[role]} className="goalix-reference-nav-item">
+          <Link
+            href={role === "admin" ? "/admin/settings" : ROLE_ROUTES[role]}
+            className="goalix-reference-nav-item"
+            onClick={closeMobileNav}
+          >
             <Settings size={17} />
             <span>{t("Settings")}</span>
           </Link>
-          <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item">
+          <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item" onClick={closeMobileNav}>
             <HelpCircle size={17} />
             <span>{t("Help")}</span>
           </Link>
