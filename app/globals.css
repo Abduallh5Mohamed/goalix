@@ -8926,4 +8926,15 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
     position: relative !important;
     z-index: 2 !important;
   }
+
+  .goalix-login-top-actions button:only-child {
+    min-width: 118px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border: 0 !important;
+    border-radius: 11px !important;
+    color: #ffffff !important;
+    background: linear-gradient(90deg, #9dff00 0%, #22c55e 40%, #00d4ff 100%) !important;
+    box-shadow: 0 12px 28px rgba(0, 212, 255, 0.18), 0 10px 28px rgba(157, 255, 0, 0.16) !important;
+  }
 }

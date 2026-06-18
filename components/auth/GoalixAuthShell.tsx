@@ -84,15 +84,9 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         <div className="goalix-login-top-actions" style={{ display: "flex", gap: 16 }}>
           <button
             onClick={() => router.push("/login")}
-            style={{ background: "transparent", border: "1.5px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "7px 20px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "'Inter',sans-serif" }}
-          >
-            Log in
-          </button>
-          <button
-            onClick={() => router.push("/signup")}
             style={{ background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)", border: "none", borderRadius: 12, padding: "7px 22px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "'Inter',sans-serif" }}
           >
-            Get Started
+            Log in
             <ArrowRight size={15} />
           </button>
         </div>
@@ -117,43 +111,6 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           </div>
         </div>
 
-        {/* Team Performance floating card */}
-        <div className="goalix-login-perf-card">
-          <div className="goalix-login-perf-header">
-            <span>Team Performance</span>
-            <svg className="goalix-login-perf-chart" viewBox="0 0 80 32" fill="none">
-              <polyline points="0,28 12,22 24,25 36,14 48,18 60,8 72,12 80,4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-              </linearGradient>
-              <path d="M0,28 12,22 24,25 36,14 48,18 60,8 72,12 80,4 L80,32 L0,32 Z" fill="url(#chartGrad)" />
-            </svg>
-          </div>
-          <div className="goalix-login-perf-score">
-            {/* Circular ring around the score */}
-            <div className="goalix-login-perf-ring">
-              <svg viewBox="0 0 64 64" fill="none">
-                <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
-                <circle cx="32" cy="32" r="28" stroke="url(#ringGrad)" strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray="176" strokeDashoffset="32" transform="rotate(-90 32 32)" />
-                <defs>
-                  <linearGradient id="ringGrad" x1="0" y1="0" x2="64" y2="64">
-                    <stop stopColor="#22c55e" />
-                    <stop offset="1" stopColor="#06b6d4" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <strong>82</strong>
-            </div>
-            <div>
-              <span className="goalix-login-perf-dot" />
-              <small>Performance</small>
-              <em>Excellent</em>
-            </div>
-          </div>
-        </div>
-
         {/* GOALIX G badge + soccer ball */}
         <div className="goalix-login-brand-cluster" aria-hidden="true">
           <div className="goalix-login-g-badge">
@@ -161,17 +118,6 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           </div>
           <div className="goalix-login-soccer-ball">
             <div className="goalix-login-ball-3d" />
-          </div>
-        </div>
-
-        {/* Heatmap floating card */}
-        <div className="goalix-login-heatmap-card" aria-hidden="true">
-          <span className="goalix-login-heatmap-label">Heatmap</span>
-          <div className="goalix-login-heatmap-field">
-            <span className="goalix-login-heatmap-spot goalix-login-heatmap-spot-1" />
-            <span className="goalix-login-heatmap-spot goalix-login-heatmap-spot-2" />
-            <span className="goalix-login-heatmap-spot goalix-login-heatmap-spot-3" />
-            <span className="goalix-login-heatmap-spot goalix-login-heatmap-spot-4" />
           </div>
         </div>
 
