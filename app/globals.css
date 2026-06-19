@@ -8938,3 +8938,87 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
     box-shadow: 0 12px 28px rgba(0, 212, 255, 0.18), 0 10px 28px rgba(157, 255, 0, 0.16) !important;
   }
 }
+
+/* Final dashboard scrolling pass: keep the design fixed, make sidebar/content scrollable. */
+.goalix-dashboard-viewport {
+  min-height: 100dvh !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+@media (min-width: 761px) {
+  .goalix-dashboard-viewport > .relative,
+  .goalix-dashboard-viewport > .relative > main {
+    min-height: 100dvh !important;
+  }
+
+  .goalix-dashboard-viewport > .relative > main {
+    display: block !important;
+  }
+
+  .goalix-reference-frame {
+    height: calc(100dvh - 32px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 32px) !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .goalix-reference-sidebar,
+  .goalix-reference-main {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .goalix-reference-sidebar {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable both-edges;
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .goalix-reference-main {
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+    padding-bottom: max(26px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .goalix-reference-content {
+    min-height: 0 !important;
+    padding-bottom: max(40px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .goalix-reference-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 90 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .goalix-dashboard-viewport {
+    overflow-y: auto !important;
+  }
+
+  .goalix-reference-frame {
+    min-height: calc(100dvh - 12px) !important;
+  }
+
+  .goalix-reference-sidebar.is-mobile-open {
+    max-height: calc(100dvh - 20px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .goalix-reference-main,
+  .goalix-reference-content {
+    min-height: 0 !important;
+  }
+}
