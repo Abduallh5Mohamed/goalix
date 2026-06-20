@@ -310,7 +310,7 @@ class AuthService {
         await this.repo.revokeAccessSessionByJti(userId, accessJti, 'logout');
 
         // Also remove from Redis if cached (best-effort)
-        try { await this.redis.del(`golx:auth:refresh:${userId}`); } catch { /* Redis unavailable */ }
+        try { await this.redis.del(`goalix:auth:refresh:${userId}`); } catch { /* Redis unavailable */ }
 
         // Audit log
         await this.repo.createAuditLog({
@@ -329,7 +329,7 @@ class AuthService {
     // ─── Logout All Devices ─────────────────────────────────────────────
     async logoutAllDevices(userId, ip, userAgent) {
         await this.repo.revokeAllUserTokens(userId);
-        try { await this.redis.del(`golx:auth:refresh:${userId}`); } catch { /* */ }
+        try { await this.redis.del(`goalix:auth:refresh:${userId}`); } catch { /* */ }
 
         await this.repo.createAuditLog({
             user_id: userId,
@@ -364,7 +364,7 @@ class AuthService {
             // Revoke ALL tokens for this user as a security measure.
             logger.warn(`Refresh token reuse detected for userId=${decoded.userId} — revoking all tokens`);
             await this.repo.revokeAllUserTokens(decoded.userId);
-            try { await this.redis.del(`golx:auth:refresh:${decoded.userId}`); } catch { /* */ }
+            try { await this.redis.del(`goalix:auth:refresh:${decoded.userId}`); } catch { /* */ }
 
             await this.repo.createAuditLog({
                 user_id: decoded.userId,
@@ -482,7 +482,7 @@ class AuthService {
         // Cache in Redis for quick lookup (best-effort)
         try {
             await this.redis.set(
-                `golx:auth:refresh:${user.id}`,
+                `goalix:auth:refresh:${user.id}`,
                 tokenHash,
                 'EX',
                 7 * 24 * 60 * 60,

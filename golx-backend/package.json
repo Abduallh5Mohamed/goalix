@@ -1,7 +1,7 @@
 {
-    "name": "golx-backend",
+    "name": "goalix-backend",
     "version": "1.0.0",
-    "description": "GOLX Sports Academy Platform — Backend API",
+    "description": "GOALIX Sports Academy Platform — Backend API",
     "main": "src/server.js",
     "scripts": {
         "start": "node src/server.js",

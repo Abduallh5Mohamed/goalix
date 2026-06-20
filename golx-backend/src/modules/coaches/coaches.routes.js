@@ -8,6 +8,7 @@ const { BadRequestError } = require('../../shared/errors');
 const {
     uuidParam,
     groupParam,
+    coachGroupQuery,
     sessionParam,
     createCoachSchema,
     updateCoachSchema,
@@ -77,7 +78,7 @@ function coachesRoutes(controller) {
     router.get('/me/groups', restrictTo('coach'), controller.getMeGroups);
     router.post('/me/groups', restrictTo('coach'), validate({ body: createCoachGroupSchema }), controller.createMeGroup);
     router.post('/me/birth-years', restrictTo('coach'), validate({ body: createCoachBirthYearSchema }), controller.createMeBirthYear);
-    router.get('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam }), controller.getMeGroup);
+    router.get('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam, query: coachGroupQuery }), controller.getMeGroup);
     router.patch('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam, body: updateCoachGroupSchema }), controller.updateMeGroup);
     router.delete('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam }), controller.deleteMeGroup);
     router.get('/me/sessions', restrictTo('coach'), validate({ query: coachSessionsQuery }), controller.getMeSessions);

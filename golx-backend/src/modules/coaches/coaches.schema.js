@@ -2,6 +2,12 @@ const { z } = require("zod");
 
 const uuidParam = z.object({ id: z.string().uuid() });
 const groupParam = z.object({ groupId: z.string().uuid() });
+const coachGroupQuery = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+});
 const sessionParam = z.object({ sessionId: z.string().uuid() });
 const assignmentParam = z.object({ assignmentId: z.string().uuid() });
 const playerAssignmentSubmissionParam = assignmentParam.extend({ submissionId: z.string().uuid() });
@@ -166,9 +172,9 @@ const coachMeasurementsSchema = z.object({
         playerId: z.string().uuid(),
         heightCm: z.number().positive().max(250).optional(),
         weightKg: z.number().positive().max(200).optional(),
-        sprintSpeed: z.number().positive().optional(),
-        stamina: z.number().min(0).max(100).optional(),
-        flexibility: z.number().min(0).max(100).optional(),
+        sprintSpeed: z.number().positive().max(10).optional(),
+        stamina: z.number().min(0).max(10).optional(),
+        flexibility: z.number().min(0).max(10).optional(),
         notes: z.string().max(500).optional(),
         measuredAt: z.string().date().optional(),
       }),
@@ -344,6 +350,7 @@ const reviewPlayerAssignmentSubmissionSchema = z.object({
 module.exports = {
   uuidParam,
   groupParam,
+  coachGroupQuery,
   sessionParam,
   assignmentParam,
   playerAssignmentSubmissionParam,

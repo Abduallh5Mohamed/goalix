@@ -27,6 +27,7 @@ import {
   X,
   LogOut,
   MessageSquare,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,6 +53,7 @@ const iconMap: Record<string, React.ElementType> = {
   Bell,
   BrainCircuit,
   Cake,
+  Settings,
 };
 
 interface PortalSidebarProps {

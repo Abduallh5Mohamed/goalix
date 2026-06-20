@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 export const GOALIX_CHART_COLORS = [
   "#2d9ad5",
-  "#51b848",
-  "#b2d23b",
-  "#087f83",
+  "#7bea28",
+  "#b6ff00",
+  "#2ee8c9",
   "#071b2c",
   "#75d6e8",
   "#8ed36e",

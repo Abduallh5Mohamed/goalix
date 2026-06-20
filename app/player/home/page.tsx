@@ -74,6 +74,22 @@ const percent = (value: unknown) => {
 
 const ratingPercent = (value: unknown) => percent((numberValue(value) ?? 0) * 10);
 
+const averageKnown = (values: unknown[]) => {
+  const numbers = values
+    .map(numberValue)
+    .filter((value): value is number => value !== null);
+  if (!numbers.length) return null;
+  return numbers.reduce((total, value) => total + value, 0) / numbers.length;
+};
+
+const firstKnown = (...values: unknown[]) => {
+  for (const value of values) {
+    const numeric = numberValue(value);
+    if (numeric !== null) return numeric;
+  }
+  return null;
+};
+
 const titleCase = (value: string | null | undefined) =>
   (value || "Not set")
     .replace(/_/g, " ")
@@ -152,6 +168,38 @@ const statusVariant = (status: string): BadgeVariant => {
   if (["cancelled", "absent", "injured"].includes(status)) return "destructive";
   return "secondary";
 };
+
+const trainingTechnicalRating = (evaluation: PlayerEvaluationRecord) =>
+  firstKnown(
+    evaluation.technical_rating,
+    averageKnown([
+      evaluation.ball_control_rating,
+      evaluation.passing_accuracy_rating,
+      evaluation.shooting_rating,
+      evaluation.dribbling_rating,
+      evaluation.receiving_under_pressure_rating,
+    ]),
+  );
+
+const trainingPhysicalRating = (evaluation: PlayerEvaluationRecord) =>
+  firstKnown(
+    evaluation.physical_rating,
+    averageKnown([
+      evaluation.speed_rating,
+      evaluation.endurance_rating,
+      evaluation.strength_rating,
+      evaluation.agility_rating,
+    ]),
+  );
+
+const latestMatchEvaluation = (matches: Match[]) =>
+  matches
+    .flatMap((match) =>
+      (match.stats ?? [])
+        .filter((stats) => numberValue(stats.performance_rating) !== null)
+        .map((stats) => ({ match, stats })),
+    )
+    .sort((a, b) => matchTimestamp(b.match) - matchTimestamp(a.match))[0];
 
 function EmptyState({ text }: { text: string }) {
   return (
@@ -256,54 +304,115 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 function EventRow({ event }: { event: CalendarEvent }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4">
+  const content = (
+    <>
       <div>
         <p className="font-medium text-white">{event.title}</p>
         <p className="mt-1 text-sm text-slate-400">
           {formatDate(event.start_datetime)} | {formatTime12(event.start_datetime)}
         </p>
       </div>
-      <Badge variant={statusVariant(event.status)}>{titleCase(event.status)}</Badge>
+      <div className="flex items-center gap-2">
+        <Badge variant={statusVariant(event.status)}>{titleCase(event.status)}</Badge>
+        {event.event_type === "training" && (
+          <ChevronRight className="h-4 w-4 text-slate-500" />
+        )}
+      </div>
+    </>
+  );
+
+  if (event.event_type === "training") {
+    return (
+      <Link
+        href={`/player/training/${event.id}`}
+        className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4 transition hover:border-cyan-300/30 hover:bg-white/[0.055]"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4">
+      {content}
     </div>
   );
 }
 
-function LatestEvaluation({ evaluation }: { evaluation?: PlayerEvaluationRecord }) {
-  if (!evaluation) {
+function LatestEvaluation({
+  trainingEvaluation,
+  matchEvaluation,
+}: {
+  trainingEvaluation?: PlayerEvaluationRecord;
+  matchEvaluation?: { match: Match; stats: MatchPlayerStats };
+}) {
+  const latestTrainingAt = trainingEvaluation
+    ? Date.parse(String(trainingEvaluation.start_datetime || ""))
+    : 0;
+  const latestMatchAt = matchEvaluation ? matchTimestamp(matchEvaluation.match) : 0;
+  const useMatch = Boolean(matchEvaluation && latestMatchAt >= latestTrainingAt);
+  const evaluation = trainingEvaluation;
+
+  if (!evaluation && !matchEvaluation) {
     return <EmptyState text="No coach evaluation is available yet." />;
   }
-  const notes = [
-    { label: "Strengths", value: evaluation.strengths },
-    { label: "Weaknesses", value: evaluation.weaknesses },
-    { label: "Improvement Plan", value: evaluation.improvement_plan },
-    { label: "Coach Notes", value: evaluation.coach_notes },
-    { label: "Development Notes", value: evaluation.development_notes },
-  ].filter((note) => textValue(note.value));
+  const overall = useMatch
+    ? matchEvaluation?.stats.performance_rating
+    : evaluation?.overall_rating;
+  const technical = useMatch
+    ? matchEvaluation?.stats.technical_rating
+    : evaluation
+      ? trainingTechnicalRating(evaluation)
+      : null;
+  const physical = useMatch
+    ? matchEvaluation?.stats.physical_rating
+    : evaluation
+      ? trainingPhysicalRating(evaluation)
+      : null;
+  const notes = useMatch
+    ? [
+        { label: "Strengths", value: matchEvaluation?.stats.strengths },
+        { label: "Weaknesses", value: matchEvaluation?.stats.weaknesses },
+        {
+          label: "Improvement Plan",
+          value: matchEvaluation?.stats.improvement_plan,
+        },
+        { label: "Coach Notes", value: matchEvaluation?.stats.coach_notes },
+      ].filter((note) => textValue(note.value))
+    : [
+        { label: "Strengths", value: evaluation?.strengths },
+        { label: "Weaknesses", value: evaluation?.weaknesses },
+        { label: "Improvement Plan", value: evaluation?.improvement_plan },
+        { label: "Coach Notes", value: evaluation?.coach_notes },
+        { label: "Development Notes", value: evaluation?.development_notes },
+      ].filter((note) => textValue(note.value));
 
   return (
     <div className="space-y-4">
+      <Badge variant={useMatch ? "info" : "secondary"}>
+        {useMatch ? "Latest match evaluation" : "Latest training evaluation"}
+      </Badge>
       <div className="grid gap-3 sm:grid-cols-3">
         <KpiCard
           label="Overall"
-          value={formatRating(evaluation.overall_rating)}
-          detail="Latest training evaluation"
+          value={formatRating(overall)}
+          detail={useMatch ? "Published match evaluation" : "Published training evaluation"}
           icon={Star}
-          progress={ratingPercent(evaluation.overall_rating)}
+          progress={ratingPercent(overall)}
         />
         <KpiCard
           label="Technical"
-          value={formatRating(evaluation.technical_rating)}
+          value={formatRating(technical)}
           detail="Ball work and execution"
           icon={Goal}
-          progress={ratingPercent(evaluation.technical_rating)}
+          progress={ratingPercent(technical)}
         />
         <KpiCard
           label="Physical"
-          value={formatRating(evaluation.physical_rating)}
+          value={formatRating(physical)}
           detail="Fitness and intensity"
           icon={ShieldCheck}
-          progress={ratingPercent(evaluation.physical_rating)}
+          progress={ratingPercent(physical)}
         />
       </div>
       {notes.length > 0 && (
@@ -372,6 +481,7 @@ export default function PlayerHomePage() {
         Date.parse(String(b.start_datetime || "")) -
         Date.parse(String(a.start_datetime || "")),
     )[0];
+  const latestMatchFeedback = latestMatchEvaluation(matches);
 
   const isLoading =
     profileQuery.isLoading ||
@@ -394,6 +504,13 @@ export default function PlayerHomePage() {
         breadcrumbs={[{ label: "Home" }]}
         actions={
           <div className="hidden gap-2 sm:flex">
+            <Link
+              href="/player/settings"
+              className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]"
+            >
+              Settings
+              <ChevronRight className="h-4 w-4" />
+            </Link>
             <Link
               href="/player/matches"
               className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]"
@@ -445,11 +562,11 @@ export default function PlayerHomePage() {
               icon={Trophy}
             />
             <KpiCard
-              label="Weekly Minutes"
-              value={formatNumber(progress?.weeklyMinutesPlayed)}
-              detail={`${formatNumber(progress?.weeklyMatchesPlayed)} match entries this week`}
+              label="Monthly Minutes"
+              value={formatNumber(progress?.monthlyMinutesPlayed)}
+              detail={`${formatNumber(progress?.monthlyMatchesPlayed)} match entries this month`}
               icon={Clock}
-              progress={percent(Number(progress?.weeklyMinutesPlayed ?? 0) / 0.9)}
+              progress={percent(Number(progress?.monthlyMinutesPlayed ?? 0) / 0.9)}
             />
             <KpiCard
               label="Goals / Assists"
@@ -532,7 +649,10 @@ export default function PlayerHomePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <LatestEvaluation evaluation={latestEvaluation} />
+                <LatestEvaluation
+                  trainingEvaluation={latestEvaluation}
+                  matchEvaluation={latestMatchFeedback}
+                />
               </CardContent>
             </Card>
           </section>

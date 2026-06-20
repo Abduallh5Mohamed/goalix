@@ -137,6 +137,13 @@ const camelToSnake = (value: string) =>
 const toNumber = (value: string) =>
   value === "" || Number.isNaN(Number(value)) ? undefined : Number(value);
 
+const clampRatingInput = (value: string) => {
+  if (value === "") return "";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "";
+  return String(Math.max(0, Math.min(10, numeric)));
+};
+
 const isGoalkeeperPosition = (position?: string | null) => {
   const normalized = String(position ?? "").trim().toLowerCase();
   return normalized === "gk" || normalized.includes("goalkeeper");
@@ -188,6 +195,7 @@ export default function MatchEvaluationPage() {
   );
   const [pageError, setPageError] = useState("");
   const [lockedAfterSave, setLockedAfterSave] = useState(false);
+  const [savedDraft, setSavedDraft] = useState(false);
   const [nowMs, setNowMs] = useState(0);
   const allOptionFields = useMemo(
     () =>
@@ -290,56 +298,77 @@ export default function MatchEvaluationPage() {
       ...prev,
       [playerId]: { ...(prev[playerId] ?? {}), [key]: value },
     }));
+    setSavedDraft(false);
   };
 
-  const handleSave = async () => {
+  const buildEvaluationRecords = () =>
+    evaluationPlayers.map((player) => {
+      const stat = statsByPlayer.get(player.player_id);
+      const draft = drafts[player.player_id] ?? {};
+      const isGoalkeeper = isGoalkeeperPosition(player.effective_position);
+      const payloadOptionFields = isGoalkeeper
+        ? allOptionFields
+        : allOptionFields.filter((field) => field.key !== "saves");
+      return {
+        playerId: player.player_id,
+        minutesPlayed: stat?.minutes_played ?? 0,
+        goals: stat?.goals ?? 0,
+        assists: stat?.assists ?? 0,
+        tackles: stat?.tackles ?? 0,
+        yellowCards: stat?.yellow_cards ?? 0,
+        redCards: stat?.red_cards ?? 0,
+        passesCompleted: stat?.passes_completed ?? 0,
+        shotsTotal: stat?.shots_total ?? 0,
+        duelsLost: stat?.duels_lost ?? 0,
+        saves: isGoalkeeper ? (stat?.saves ?? 0) : 0,
+        performanceRating: toNumber(
+          clampRatingInput(rawStatValue(stat, "performanceRating", draft)),
+        ),
+        ...Object.fromEntries(
+          payloadOptionFields.map((field) => [
+            field.key,
+            toNumber(optionStatValue(stat, field, draft)),
+          ]),
+        ),
+        ...Object.fromEntries(
+          textFields.map(([key]) => [
+            key,
+            draft[key] ?? rawStatValue(stat, key, draft),
+          ]),
+        ),
+      };
+    });
+
+  const handleSaveDraft = async () => {
+    if (!match || evaluationsLocked || !matchFinished) return;
+    setPageError("");
+    try {
+      await saveStats({
+        matchId,
+        finalize: false,
+        records: buildEvaluationRecords(),
+      }).unwrap();
+      setSavedDraft(true);
+      setDrafts({});
+    } catch {
+      setPageError("Could not save match evaluations.");
+    }
+  };
+
+  const handlePublish = async () => {
     if (!match || evaluationsLocked || !matchFinished) return;
     setPageError("");
     try {
       await saveStats({
         matchId,
         finalize: true,
-        records: evaluationPlayers.map((player) => {
-          const stat = statsByPlayer.get(player.player_id);
-          const draft = drafts[player.player_id] ?? {};
-          const isGoalkeeper = isGoalkeeperPosition(player.effective_position);
-          const payloadOptionFields = isGoalkeeper
-            ? allOptionFields
-            : allOptionFields.filter((field) => field.key !== "saves");
-          return {
-            playerId: player.player_id,
-            minutesPlayed: stat?.minutes_played ?? 0,
-            goals: stat?.goals ?? 0,
-            assists: stat?.assists ?? 0,
-            tackles: stat?.tackles ?? 0,
-            yellowCards: stat?.yellow_cards ?? 0,
-            redCards: stat?.red_cards ?? 0,
-            passesCompleted: stat?.passes_completed ?? 0,
-            shotsTotal: stat?.shots_total ?? 0,
-            duelsLost: stat?.duels_lost ?? 0,
-            saves: isGoalkeeper ? (stat?.saves ?? 0) : 0,
-            performanceRating: toNumber(
-              rawStatValue(stat, "performanceRating", draft),
-            ),
-            ...Object.fromEntries(
-              payloadOptionFields.map((field) => [
-                field.key,
-                toNumber(optionStatValue(stat, field, draft)),
-              ]),
-            ),
-            ...Object.fromEntries(
-              textFields.map(([key]) => [
-                key,
-                draft[key] ?? rawStatValue(stat, key, draft),
-              ]),
-            ),
-          };
-        }),
+        records: buildEvaluationRecords(),
       }).unwrap();
       setLockedAfterSave(true);
+      setSavedDraft(false);
       setDrafts({});
     } catch {
-      setPageError("Could not save match evaluations.");
+      setPageError("Could not publish match evaluations.");
     }
   };
 
@@ -381,7 +410,7 @@ export default function MatchEvaluationPage() {
                   {formatDate(match.match_date)}
                 </p>
                 <h2 className="text-xl font-semibold">
-                  GOLX {match.our_score ?? 0} - {match.opponent_score ?? 0}{" "}
+                  GOALIX {match.our_score ?? 0} - {match.opponent_score ?? 0}{" "}
                   {match.opponent_name}
                 </h2>
               </div>
@@ -419,7 +448,14 @@ export default function MatchEvaluationPage() {
           {evaluationsLocked && (
             <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
               <CheckCircle2 className="h-4 w-4" />
-              Match evaluations are saved and locked.
+              Match evaluations are published and visible to players.
+            </div>
+          )}
+
+          {savedDraft && !evaluationsLocked && (
+            <div className="flex items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+              <CheckCircle2 className="h-4 w-4" />
+              Match evaluations are saved as a draft. Publish when you want players to see them.
             </div>
           )}
 
@@ -498,7 +534,7 @@ export default function MatchEvaluationPage() {
                             updateDraft(
                               player.player_id,
                               "performanceRating",
-                              event.target.value,
+                              clampRatingInput(event.target.value),
                             )
                           }
                         />
@@ -563,7 +599,7 @@ export default function MatchEvaluationPage() {
             </Card>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             {evaluationsLocked ? (
               <Button
                 type="button"
@@ -588,19 +624,35 @@ export default function MatchEvaluationPage() {
                   : "Request Edit Access"}
               </Button>
             ) : (
-              <Button
-                type="button"
-                className="gap-2"
-                disabled={saving || !evaluationPlayers.length || !matchFinished}
-                onClick={handleSave}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Match Evaluations
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  disabled={saving || !evaluationPlayers.length || !matchFinished}
+                  onClick={handleSaveDraft}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  className="gap-2"
+                  disabled={saving || !evaluationPlayers.length || !matchFinished}
+                  onClick={handlePublish}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Publish
+                </Button>
+              </>
             )}
           </div>
         </>

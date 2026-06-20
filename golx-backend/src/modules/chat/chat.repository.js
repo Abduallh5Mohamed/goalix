@@ -50,6 +50,23 @@ class ChatRepository {
       .first();
   }
 
+  findActiveUsersByIds(userIds, academyId) {
+    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+    if (!uniqueIds.length) return [];
+    return this.db("auth_users")
+      .whereIn("id", uniqueIds)
+      .where({ academy_id: academyId, is_active: true })
+      .whereIn("role", ["admin", "coach", "player"])
+      .whereNull("deleted_at")
+      .select(
+        "id",
+        "role",
+        this.db.raw(
+          "COALESCE(username, email, phone, 'User') as name",
+        ),
+      );
+  }
+
   findAdminByUserId(userId, academyId) {
     return this.db("admin_accounts as aa")
       .join("auth_users as au", "aa.user_id", "au.id")
@@ -344,12 +361,52 @@ class ChatRepository {
       .leftJoin("coach_profiles as cp", "c.coach_id", "cp.id")
       .leftJoin("player_profiles as pp", "c.player_id", "pp.id")
       .leftJoin("auth_users as admin_user", "c.admin_user_id", "admin_user.id")
+      .leftJoin(
+        "chat_group_conversations as cgc",
+        "cgc.conversation_id",
+        "c.id",
+      )
       .select(
         "c.*",
         "cp.full_name as coach_name",
         "pp.full_name as player_name",
+        "cgc.name as group_name",
+        "cgc.created_by_user_id as group_created_by_user_id",
         this.db.raw(
           "COALESCE(admin_user.username, admin_user.email, admin_user.phone, 'Admin') as admin_name",
+        ),
+        this.db.raw(
+          `(SELECT COALESCE(array_agg(cgm.user_id::text ORDER BY cgm.created_at), ARRAY[]::text[])
+              FROM chat_group_members cgm
+             WHERE cgm.conversation_id = c.id) as group_member_user_ids`,
+        ),
+        this.db.raw(
+          `(SELECT COUNT(*)::int
+              FROM chat_group_members cgm
+             WHERE cgm.conversation_id = c.id) as group_member_count`,
+        ),
+        this.db.raw(
+          `(SELECT COALESCE(
+              json_agg(
+                json_build_object(
+                  'userId', cgm.user_id::text,
+                  'name', COALESCE(cp_member.full_name, pp_member.full_name, au_member.username, au_member.email, au_member.phone, 'User'),
+                  'role', au_member.role,
+                  'membershipRole', cgm.role
+                )
+                ORDER BY CASE WHEN cgm.role = 'owner' THEN 0 ELSE 1 END, COALESCE(cp_member.full_name, pp_member.full_name, au_member.username, au_member.email, au_member.phone, 'User')
+              ),
+              '[]'::json
+            )
+              FROM chat_group_members cgm
+              JOIN auth_users au_member ON au_member.id = cgm.user_id
+              LEFT JOIN coach_profiles cp_member
+                ON cp_member.user_id = au_member.id
+               AND cp_member.deleted_at IS NULL
+              LEFT JOIN player_profiles pp_member
+                ON pp_member.user_id = au_member.id
+               AND pp_member.deleted_at IS NULL
+             WHERE cgm.conversation_id = c.id) as group_members`,
         ),
         this.db.raw(
           `(SELECT cm.body
@@ -379,14 +436,34 @@ class ChatRepository {
       .where("c.academy_id", user.academyId)
       .where((q) => {
         if (user.role === "admin") {
-          q.whereIn("c.type", ["admin_coach", "admin_player_session"]).where(
-            "c.admin_user_id",
-            user.userId,
-          );
+          q.where((direct) => {
+            direct
+              .whereIn("c.type", ["admin_coach", "admin_player_session"])
+              .where("c.admin_user_id", user.userId);
+          }).orWhereExists(function groupMembership() {
+            this.select("cgm.conversation_id")
+              .from("chat_group_members as cgm")
+              .whereRaw("cgm.conversation_id = c.id")
+              .where("cgm.user_id", user.userId);
+          });
         } else if (user.role === "coach") {
-          q.where("c.coach_user_id", user.userId);
+          q.where("c.coach_user_id", user.userId).orWhereExists(
+            function groupMembership() {
+              this.select("cgm.conversation_id")
+                .from("chat_group_members as cgm")
+                .whereRaw("cgm.conversation_id = c.id")
+                .where("cgm.user_id", user.userId);
+            },
+          );
         } else if (user.role === "player") {
-          q.where("c.player_user_id", user.userId);
+          q.where("c.player_user_id", user.userId).orWhereExists(
+            function groupMembership() {
+              this.select("cgm.conversation_id")
+                .from("chat_group_members as cgm")
+                .whereRaw("cgm.conversation_id = c.id")
+                .where("cgm.user_id", user.userId);
+            },
+          );
         } else {
           q.whereRaw("1 = 0");
         }
@@ -416,6 +493,44 @@ class ChatRepository {
 
   async createConversation(data, trx = this.db) {
     const [row] = await trx("chat_conversations").insert(data).returning("*");
+    return this.findConversationById(row.id);
+  }
+
+  async createGroupConversation({
+    academyId,
+    name,
+    createdByUserId,
+    memberUserIds,
+  }) {
+    const uniqueMemberUserIds = [...new Set(memberUserIds.filter(Boolean))];
+    const [row] = await this.db.transaction(async (trx) => {
+      const [conversation] = await trx("chat_conversations")
+        .insert({
+          academy_id: academyId,
+          type: "chat_group",
+          status: "open",
+          opened_by_user_id: createdByUserId,
+        })
+        .returning("*");
+
+      await trx("chat_group_conversations").insert({
+        conversation_id: conversation.id,
+        name,
+        created_by_user_id: createdByUserId,
+      });
+
+      await trx("chat_group_members").insert(
+        uniqueMemberUserIds.map((userId) => ({
+          conversation_id: conversation.id,
+          user_id: userId,
+          role: userId === createdByUserId ? "owner" : "member",
+          added_by_user_id: createdByUserId,
+        })),
+      );
+
+      return [conversation];
+    });
+
     return this.findConversationById(row.id);
   }
 
@@ -585,6 +700,12 @@ class ChatRepository {
   }
 
   conversationUserIds(conversation) {
+    if (conversation.type === "chat_group") {
+      return Array.isArray(conversation.group_member_user_ids)
+        ? conversation.group_member_user_ids.filter(Boolean)
+        : [];
+    }
+
     return [
       conversation.admin_user_id,
       conversation.coach_user_id,

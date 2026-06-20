@@ -82,7 +82,7 @@ export default function CoachGroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId as string;
-  const { data, isLoading, isError } = useGetCoachGroupQuery(groupId, { skip: !groupId });
+  const { data, isLoading, isError } = useGetCoachGroupQuery({ groupId }, { skip: !groupId });
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
   const [updateGroup, { isLoading: updatingGroup }] =

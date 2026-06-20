@@ -71,6 +71,7 @@ export interface CoachPlayer {
   sprintSpeed: number;
   stamina?: number;
   flexibility: number;
+  measurementNotes: string;
   attendanceRate: number;
   performanceScore: number;
   rankInGroup: number;
@@ -192,6 +193,11 @@ export interface CoachBirthday {
 export interface CoachGroupDetail {
   group: CoachGroup;
   players: CoachPlayer[];
+}
+
+export interface CoachGroupDetailInput {
+  groupId: string;
+  month?: string;
 }
 
 export interface CoachSessionDetail {
@@ -407,8 +413,13 @@ export const coachApi = createApi({
       transformResponse: (res: { data: CoachGroup[] }) => res.data,
       providesTags: ["CoachGroups"],
     }),
-    getCoachGroup: builder.query<CoachGroupDetail, string>({
-      query: (groupId) => `/coaches/me/groups/${groupId}`,
+    getCoachGroup: builder.query<CoachGroupDetail, CoachGroupDetailInput>({
+      query: ({ groupId, month }) => {
+        const params = new URLSearchParams();
+        if (month) params.set("month", month);
+        const query = params.toString();
+        return `/coaches/me/groups/${groupId}${query ? `?${query}` : ""}`;
+      },
       transformResponse: (res: { data: CoachGroupDetail }) => res.data,
       providesTags: ["CoachGroups"],
     }),

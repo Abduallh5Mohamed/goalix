@@ -7,7 +7,7 @@ const createAcademySchema = z.object({
     logoUrl: z.string().url()
         .refine((u) => u.startsWith('https://') || u.startsWith('http://'), {
             message: 'Logo URL must use HTTP or HTTPS',
-        }).optional(),
+        }).nullable().optional(),
     address: z.string().max(500).optional(),
     phone: z.string().max(20).optional(),
     email: z.string().email().max(255).optional(),
