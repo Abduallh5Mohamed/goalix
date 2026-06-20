@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import {
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Dumbbell,
   Loader2,
@@ -155,6 +157,13 @@ export default function PlayerTrainingHistoryPage() {
                         <Star className="mr-1 h-3.5 w-3.5" />
                         Evaluation {evaluation ? formatRating(evaluation.overall_rating) : "Not published"}
                       </Badge>
+                      <Link
+                        href={`/player/training/${session.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                      >
+                        View details
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
                   </div>
                 </CardContent>

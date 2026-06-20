@@ -102,6 +102,7 @@ export default function AdminMatchesPage() {
     },
   );
   const { data: coachesRes } = useGetCoachesQuery({ limit: 100 });
+  const coaches = useMemo(() => coachesRes?.data ?? [], [coachesRes?.data]);
   const [open, setOpen] = useState(false);
   const [deleteMatchRow, setDeleteMatchRow] = useState<Match | null>(null);
   const [postponeMatchRow, setPostponeMatchRow] = useState<Match | null>(null);
@@ -126,6 +127,8 @@ export default function AdminMatchesPage() {
     refereeName: "",
     organizerNotes: "",
   });
+  const selectedCoachId =
+    form.coachId || (coaches.length === 1 ? coaches[0].id : "");
   const [formError, setFormError] = useState("");
   const [createMatch, { isLoading: creating }] = useCreateAdminMatchMutation();
   const [updateStatus] = useUpdateAdminMatchStatusMutation();
@@ -137,7 +140,7 @@ export default function AdminMatchesPage() {
     event.preventDefault();
     setFormError("");
     const payload: Record<string, unknown> = {
-      coachId: form.coachId,
+      coachId: selectedCoachId,
       opponentName: form.opponentName.trim(),
       matchType: form.matchType,
       matchDate: form.matchDate,
@@ -147,7 +150,7 @@ export default function AdminMatchesPage() {
       status: "scheduled",
     };
 
-    if (!form.coachId) {
+    if (!selectedCoachId) {
       setFormError("Select the coach who will manage this match.");
       return;
     }
@@ -272,16 +275,9 @@ export default function AdminMatchesPage() {
     useGetAdminMatchQuery(activeFinishedMatchId, {
       skip: !activeFinishedMatchId,
     });
-  const coaches = coachesRes?.data ?? [];
-
-  useEffect(() => {
-    if (!form.coachId && coaches.length === 1) {
-      setForm((previous) => ({ ...previous, coachId: coaches[0].id }));
-    }
-  }, [coaches, form.coachId]);
-
   useEffect(() => {
     if (!selectedFinishedMatchError) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFinishedMatchId("");
     refetchMatches();
   }, [refetchMatches, selectedFinishedMatchError]);
@@ -291,6 +287,7 @@ export default function AdminMatchesPage() {
       selectedFinishedMatchId &&
       !finishedMatches.some((match) => match.id === selectedFinishedMatchId)
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedFinishedMatchId("");
     }
   }, [finishedMatches, selectedFinishedMatchId]);
@@ -340,7 +337,7 @@ export default function AdminMatchesPage() {
               <div className="space-y-2">
                 <Label>Coach</Label>
                 <Select
-                  value={form.coachId}
+                  value={selectedCoachId}
                   onValueChange={(value) =>
                     setForm((p) => ({
                       ...p,
@@ -472,7 +469,7 @@ export default function AdminMatchesPage() {
                 type="submit"
                 disabled={
                   creating ||
-                  !form.coachId ||
+                  !selectedCoachId ||
                   !form.opponentName.trim() ||
                   !form.matchDate ||
                   !form.matchTime ||

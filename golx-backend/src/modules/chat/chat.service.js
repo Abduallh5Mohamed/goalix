@@ -34,6 +34,14 @@ class ChatService {
   }
 
   _targetFor(conversation, viewer) {
+    if (conversation.type === "chat_group") {
+      return {
+        type: "group",
+        name: conversation.group_name || "Chat group",
+        memberCount: Number(conversation.group_member_count || 0),
+      };
+    }
+
     if (conversation.type === "admin_coach") {
       return viewer.role === "coach"
         ? {
@@ -99,15 +107,57 @@ class ChatService {
       return (
         ["admin_coach", "admin_player_session"].includes(conversation.type) &&
         conversation.admin_user_id === user.userId
+      ) || (
+        conversation.type === "chat_group" &&
+        Array.isArray(conversation.group_member_user_ids) &&
+        conversation.group_member_user_ids.includes(user.userId)
       );
     }
     if (user.role === "coach") {
-      return conversation.coach_user_id === user.userId;
+      return (
+        conversation.coach_user_id === user.userId ||
+        (
+          conversation.type === "chat_group" &&
+          Array.isArray(conversation.group_member_user_ids) &&
+          conversation.group_member_user_ids.includes(user.userId)
+        )
+      );
     }
     if (user.role === "player") {
-      return conversation.player_user_id === user.userId;
+      return (
+        conversation.player_user_id === user.userId ||
+        (
+          conversation.type === "chat_group" &&
+          Array.isArray(conversation.group_member_user_ids) &&
+          conversation.group_member_user_ids.includes(user.userId)
+        )
+      );
     }
     return false;
+  }
+
+  async _allowedGroupMemberUserIds(user) {
+    if (user.role === "admin") {
+      const contacts = await this.repo.listAdminContacts(user.academyId);
+      return new Set([
+        user.userId,
+        ...(contacts.coaches || []).map((contact) => contact.user_id),
+        ...(contacts.players || []).map((contact) => contact.user_id),
+      ]);
+    }
+
+    if (user.role === "coach") {
+      const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+      if (!coach) throw new NotFoundError("Coach profile");
+      const contacts = await this.repo.listCoachContacts(coach.id, user.academyId);
+      return new Set([
+        user.userId,
+        ...(contacts.admins || []).map((contact) => contact.user_id),
+        ...(contacts.players || []).map((contact) => contact.user_id),
+      ]);
+    }
+
+    throw new ForbiddenError("Only admins and coaches can create chat groups");
   }
 
   async _assertCurrentCoachPlayerAccess(conversation) {
@@ -162,6 +212,55 @@ class ChatService {
 
   async createConversation(user, data) {
     this._assertChatRole(user);
+
+    if (data.type === "chat_group") {
+      if (!["admin", "coach"].includes(user.role)) {
+        throw new ForbiddenError("Only admins and coaches can create chat groups");
+      }
+
+      const groupName = String(data.groupName || "").trim();
+      if (groupName.length < 2) {
+        throw new BadRequestError("Group name is required");
+      }
+
+      const requestedMemberUserIds = [
+        ...new Set((data.memberUserIds || []).filter((id) => id !== user.userId)),
+      ];
+      const allowedUserIds = await this._allowedGroupMemberUserIds(user);
+      const blockedUserIds = requestedMemberUserIds.filter(
+        (userId) => !allowedUserIds.has(userId),
+      );
+      if (blockedUserIds.length) {
+        throw new ForbiddenError(
+          "You can only add people available in your chat contacts",
+        );
+      }
+
+      const activeUsers = await this.repo.findActiveUsersByIds(
+        [user.userId, ...requestedMemberUserIds],
+        user.academyId,
+      );
+      const activeUserIds = new Set(activeUsers.map((member) => member.id));
+      const missingUserIds = requestedMemberUserIds.filter(
+        (userId) => !activeUserIds.has(userId),
+      );
+      if (missingUserIds.length) {
+        throw new NotFoundError("Chat group member");
+      }
+
+      const memberUserIds = [user.userId, ...requestedMemberUserIds];
+      if (memberUserIds.length < 2) {
+        throw new BadRequestError("Choose at least one group member");
+      }
+
+      const conversation = await this.repo.createGroupConversation({
+        academyId: user.academyId,
+        name: groupName,
+        createdByUserId: user.userId,
+        memberUserIds,
+      });
+      return this._decorateConversation(conversation, user);
+    }
 
     if (data.type === "admin_coach") {
       if (user.role === "admin") {

@@ -101,12 +101,12 @@ class AttendanceService {
             });
         } else if (status === 'completed') {
             // Release lock
-            await this.redis.del(`golx:attendance:lock:${sessionId}`);
+            await this.redis.del(`goalix:attendance:lock:${sessionId}`);
             eventBus.publish(ATTENDANCE_EVENTS.SESSION_COMPLETED, {
                 sessionId, groupId: session.group_id, coachId: session.coach_id,
             });
         } else if (status === 'cancelled') {
-            await this.redis.del(`golx:attendance:lock:${sessionId}`);
+            await this.redis.del(`goalix:attendance:lock:${sessionId}`);
             eventBus.publish(ATTENDANCE_EVENTS.SESSION_CANCELLED, { sessionId });
         }
 
@@ -123,7 +123,7 @@ class AttendanceService {
         }
 
         // Acquire lock in Redis (prevent concurrent marking) — skip if Redis unavailable
-        const lockKey = `golx:attendance:lock:${sessionId}`;
+        const lockKey = `goalix:attendance:lock:${sessionId}`;
         try {
             const lockAcquired = await this.redis.set(lockKey, coachId, 'EX', 7200, 'NX');
             if (!lockAcquired) {

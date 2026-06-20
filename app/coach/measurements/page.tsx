@@ -46,18 +46,26 @@ const fields: {
   key: Exclude<MeasurementKey, "notes">;
   label: string;
   placeholder: string;
+  min?: number;
+  max?: number;
 }[] = [
   { key: "heightCm", label: "Height (cm)", placeholder: "152" },
   { key: "weightKg", label: "Weight (kg)", placeholder: "42" },
-  { key: "sprintSpeed", label: "Sprint (s)", placeholder: "7.0" },
-  { key: "stamina", label: "Endurance", placeholder: "85" },
-  { key: "flexibility", label: "Flexibility", placeholder: "75" },
+  { key: "sprintSpeed", label: "Sprint (s)", placeholder: "7.0", min: 0, max: 10 },
+  { key: "stamina", label: "Endurance (/10)", placeholder: "8.5", min: 0, max: 10 },
+  { key: "flexibility", label: "Flexibility (/10)", placeholder: "7.5", min: 0, max: 10 },
 ];
 
 const toNumber = (value: string) => {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const toTenPointValue = (value: number | undefined) => {
+  if (!value) return "";
+  const normalized = value > 10 ? value / 10 : value;
+  return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
 };
 
 export default function CoachMeasurementsPage() {
@@ -70,10 +78,10 @@ export default function CoachMeasurementsPage() {
   );
   const selectedGroup = selectedGroupId || groups[0]?.id || "";
   const { data: groupDetail, isFetching: loadingPlayers } = useGetCoachGroupQuery(
-    selectedGroup,
+    { groupId: selectedGroup, month: measurementMonth },
     { skip: !selectedGroup }
   );
-  const players = groupDetail?.players ?? [];
+  const players = useMemo(() => groupDetail?.players ?? [], [groupDetail?.players]);
   const visiblePlayers = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return players;
@@ -99,9 +107,10 @@ export default function CoachMeasurementsPage() {
       ...emptyDraft,
       heightCm: player.height ? String(player.height) : "",
       weightKg: player.weight ? String(player.weight) : "",
-      sprintSpeed: player.sprintSpeed ? String(player.sprintSpeed) : "",
-      stamina: player.stamina ? String(player.stamina) : "",
-      flexibility: player.flexibility ? String(player.flexibility) : "",
+      sprintSpeed: toTenPointValue(player.sprintSpeed),
+      stamina: toTenPointValue(player.stamina),
+      flexibility: toTenPointValue(player.flexibility),
+      notes: player.measurementNotes || "",
     };
   };
 
@@ -218,7 +227,11 @@ export default function CoachMeasurementsPage() {
               id="measurement-month"
               type="month"
               value={measurementMonth}
-              onChange={(event) => setMeasurementMonth(event.target.value)}
+              onChange={(event) => {
+                setMeasurementMonth(event.target.value);
+                setMeasurements({});
+                setSaved(false);
+              }}
             />
           </div>
 
@@ -284,9 +297,9 @@ export default function CoachMeasurementsPage() {
                     <Ruler className="h-3.5 w-3.5" />
                     <span>
                       Latest: {player.height || "--"}cm / {player.weight || "--"}kg
-                      {player.sprintSpeed ? ` / ${player.sprintSpeed}s` : ""}
-                      {player.stamina ? ` / End ${player.stamina}` : ""}
-                      {player.flexibility ? ` / Flex ${player.flexibility}` : ""}
+                      {player.sprintSpeed ? ` / ${toTenPointValue(player.sprintSpeed)}s` : ""}
+                      {player.stamina ? ` / End ${toTenPointValue(player.stamina)}` : ""}
+                      {player.flexibility ? ` / Flex ${toTenPointValue(player.flexibility)}` : ""}
                     </span>
                   </div>
                 </div>
@@ -301,6 +314,8 @@ export default function CoachMeasurementsPage() {
                       <Input
                         type="number"
                         step="0.1"
+                        min={field.min}
+                        max={field.max}
                         placeholder={field.placeholder}
                         value={draft[field.key]}
                         onChange={(event) =>
@@ -349,7 +364,7 @@ export default function CoachMeasurementsPage() {
             size="lg"
             onClick={handleSave}
             disabled={isSaving || !hasDrafts}
-            className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            className={saved ? "bg-lime-300 text-slate-950 hover:bg-lime-200" : ""}
           >
             {isSaving ? (
               <>

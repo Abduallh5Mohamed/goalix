@@ -69,7 +69,7 @@ export default function CoachNewEvaluationPage() {
   const selectedGroup = selectedGroupId || groups[0]?.id || "";
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const { data: groupDetail, isFetching: loadingPlayers } = useGetCoachGroupQuery(
-    selectedGroup,
+    { groupId: selectedGroup },
     { skip: !selectedGroup }
   );
   const players = groupDetail?.players ?? [];
@@ -296,7 +296,7 @@ export default function CoachNewEvaluationPage() {
               size="lg"
               onClick={handleSave}
               disabled={!canSubmit}
-              className={saved ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              className={saved ? "bg-lime-300 text-slate-950 hover:bg-lime-200" : ""}
             >
               {isSaving ? (
                 <>

@@ -80,7 +80,7 @@ export default function ParentChildMeasurementsPage() {
           <CardContent>
             <LineChart
               labels={weightData.map((d) => d.label)}
-              datasets={[{ label: "Weight (kg)", data: weightData.map((d) => d.value), color: "#51b848" }]}
+              datasets={[{ label: "Weight (kg)", data: weightData.map((d) => d.value), color: "#7bea28" }]}
               height={250}
             />
           </CardContent>

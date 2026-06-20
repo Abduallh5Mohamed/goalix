@@ -8,15 +8,15 @@ import {
   EyeOff,
   Loader2,
   Lock,
-  Mail,
   ShieldCheck,
+  User,
 } from "lucide-react";
 import { GoalixAuthShell } from "@/components/auth/GoalixAuthShell";
 import { useAuth } from "@/lib/auth/auth-context";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -25,16 +25,16 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Please enter your email and password.");
+    if (!username.trim() || !password) {
+      setError("Please enter your username and password.");
       return;
     }
     setError("");
     setIsLoading(true);
     try {
-      await login(email.trim(), password, "player");
+      await login(username.trim(), password, "player");
     } catch {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid username or password. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -49,18 +49,18 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="goalix-login-form">
-          {/* Email Field */}
+          {/* Username Field */}
           <div className="goalix-login-field">
-            <label htmlFor="email">Email address</label>
+            <label htmlFor="username">UserName</label>
             <div className="goalix-login-input-wrapper">
-              <Mail size={18} aria-hidden="true" />
+              <User size={18} aria-hidden="true" />
               <input
-                id="email"
-                type="email"
-                placeholder="youremail@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                id="username"
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
                 required
               />
             </div>

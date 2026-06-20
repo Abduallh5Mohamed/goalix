@@ -279,7 +279,7 @@ export function FinishedMatchDetails({
               <div>
                 <p className="font-medium">
                   {goal.team === "our"
-                    ? goal.scorer_player_name || "GOLX goal"
+                    ? goal.scorer_player_name || "GOALIX goal"
                     : `${match.opponent_name} goal`}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -290,7 +290,7 @@ export function FinishedMatchDetails({
                 </p>
               </div>
               <Badge variant={goal.team === "our" ? "success" : "secondary"}>
-                {goal.team === "our" ? "GOLX" : "opponent"}
+                {goal.team === "our" ? "GOALIX" : "opponent"}
               </Badge>
             </div>
           ))}

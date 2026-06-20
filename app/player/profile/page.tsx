@@ -479,13 +479,13 @@ export default function PlayerProfilePage() {
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Weekly Minutes
+                  Monthly Minutes
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-amber-100">
-                  {numberText(progress?.weeklyMinutesPlayed)}
+                  {numberText(progress?.monthlyMinutesPlayed)}
                 </p>
                 <Progress
-                  value={progressValue(progress?.weeklyMinutesPlayed, 1 / 0.9)}
+                  value={progressValue(progress?.monthlyMinutesPlayed, 1 / 0.9)}
                   className="mt-3 h-1.5 bg-slate-800"
                 />
               </CardContent>
