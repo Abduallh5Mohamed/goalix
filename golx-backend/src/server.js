@@ -22,7 +22,7 @@ async function main() {
     }
 
     const server = app.listen(env.PORT, env.HOST, () => {
-        logger.info(`GOLX API running on ${env.HOST}:${env.PORT} [${env.NODE_ENV}]`);
+        logger.info(`GOALIX API running on ${env.HOST}:${env.PORT} [${env.NODE_ENV}]`);
     });
 
     const io = setupChatSocket(server, app.locals.services.chatService);

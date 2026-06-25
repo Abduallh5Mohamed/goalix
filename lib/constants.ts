@@ -35,15 +35,15 @@ export const PAYMENT_STATUS_CONFIG = {
 };
 
 export const ATTENDANCE_STATUS_CONFIG = {
-  present: { label: "Present", color: "#51b848" },
+  present: { label: "Present", color: "#7bea28" },
   absent: { label: "Absent", color: "#2d9ad5" },
-  late: { label: "Late", color: "#b2d23b" },
-  excused: { label: "Excused", color: "#087f83" },
+  late: { label: "Late", color: "#b6ff00" },
+  excused: { label: "Excused", color: "#2ee8c9" },
 };
 
 export const TREND_CONFIG = {
-  improving: { label: "Improving", icon: "↑", color: "#51b848" },
-  stable: { label: "Stable", icon: "→", color: "#b2d23b" },
+  improving: { label: "Improving", icon: "↑", color: "#7bea28" },
+  stable: { label: "Stable", icon: "→", color: "#b6ff00" },
   declining: { label: "Declining", icon: "↓", color: "#2d9ad5" },
 };
 
@@ -177,6 +177,7 @@ export const NAV_ITEMS = {
     },
     { label: "Player Options", href: "/coach/player-options", icon: "Star" },
     { label: "Rankings", href: "/coach/rankings", icon: "Trophy" },
+    { label: "Settings", href: "/coach/settings", icon: "Settings" },
   ],
   player: [
     { label: "Home", href: "/player/home", icon: "Home" },
@@ -211,6 +212,7 @@ export const NAV_ITEMS = {
       ],
     },
     { label: "Attendance", href: "/player/attendance", icon: "ClipboardCheck" },
+    { label: "Settings", href: "/player/settings", icon: "Settings" },
   ],
   parent: [
     { label: "Home", href: "/parent/home", icon: "Home" },

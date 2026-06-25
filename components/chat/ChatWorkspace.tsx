@@ -10,10 +10,12 @@ import {
   Loader2,
   Lock,
   MessageSquare,
+  Plus,
   Search,
   Send,
   Shield,
   Trash2,
+  UserPlus,
   UserRound,
   Users,
   X,
@@ -153,11 +155,22 @@ type ChatCopy = Record<keyof typeof copy.en, string>;
 
 type ChatRole = "admin" | "coach" | "player" | "parent";
 type ContactType = "admin" | "coach" | "player" | "parent";
+function getSocketBaseUrl() {
+  if (API_BASE) return API_BASE;
+  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") {
+    return API_BASE;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:3000`;
+}
+
+type ChatRole = "admin" | "coach" | "player";
+type ContactType = "admin" | "coach" | "player";
 type ConversationType =
   | "admin_coach"
   | "coach_player"
   | "admin_player_session"
   | "parent_coach";
+  | "chat_group";
 
 type Contact = {
   type: ContactType;
@@ -167,6 +180,13 @@ type Contact = {
   player_name?: string | null;
   name: string;
   subtitle?: string | null;
+};
+
+type GroupMember = {
+  userId: string;
+  name: string;
+  role: ChatRole;
+  membershipRole: "owner" | "member";
 };
 
 type Conversation = {
@@ -181,14 +201,18 @@ type Conversation = {
   player_id?: string | null;
   target: {
     type: "admin" | "coach" | "player" | "parent";
+    type: "admin" | "coach" | "player" | "group";
     id?: string | null;
     userId?: string | null;
     name: string;
+    memberCount?: number | null;
   };
   context?: {
     playerId: string;
     playerName: string;
   } | null;
+  group_member_count?: number | null;
+  group_members?: GroupMember[];
   canSend: boolean;
   canClose: boolean;
   last_message_at?: string | null;
@@ -286,6 +310,30 @@ function conversationLabel(conversation: Conversation, t: ChatCopy) {
       : t.familyChat;
   }
   return t.coach;
+function groupMemberNames(conversation: Conversation) {
+  return (conversation.group_members || [])
+    .map((member) => member.name)
+    .filter(Boolean);
+}
+
+function groupMembersPreview(conversation: Conversation) {
+  const names = groupMemberNames(conversation);
+  if (!names.length) {
+    const memberCount =
+      conversation.target.memberCount ?? conversation.group_member_count ?? null;
+    return memberCount ? `${memberCount} members` : "Group chat";
+  }
+
+  return `${names.slice(0, 6).join(", ")}${names.length > 6 ? ", ..." : ""}`;
+}
+
+function conversationLabel(conversation: Conversation) {
+  if (conversation.type === "chat_group") {
+    return groupMembersPreview(conversation);
+  }
+  if (conversation.type === "admin_player_session") return "Admin session";
+  if (conversation.type === "admin_coach") return "Admin";
+  return "Coach";
 }
 
 function formatContactSubtitle(subtitle: string | null | undefined, t: ChatCopy) {
@@ -367,6 +415,12 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [connectionWarning, setConnectionWarning] = useState("");
+  const [groupComposerOpen, setGroupComposerOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[]>([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const selectedRef = useRef<string | null>(null);
   const readMarkingRef = useRef<string | null>(null);
@@ -465,6 +519,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setConversations([]);
       setMessages([]);
       setSelectedId(null);
+      setConnectionWarning("");
       return;
     }
     void load();
@@ -472,13 +527,16 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const socket = io(API_BASE, {
+    const socket = io(getSocketBaseUrl(), {
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
     });
     socketRef.current = socket;
 
+    socket.on("connect", () => {
+      setConnectionWarning("");
+    });
     socket.on("chat:message", upsertMessage);
     socket.on("chat:message_updated", upsertMessage);
     socket.on("chat:message_deleted", handleMessageDeleted);
@@ -490,7 +548,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       void loadConversations();
     });
     socket.on("connect_error", () => {
-      setError("Live chat connection failed");
+      setConnectionWarning("Live chat connection failed");
     });
 
     return () => {
@@ -569,6 +627,68 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     );
   }, [conversations, query, t]);
 
+  const groupCandidateContacts = useMemo(() => {
+    if (role !== "coach") return [];
+    const byUserId = new Map<string, Contact>();
+    [...(contacts.admins || []), ...(contacts.players || [])].forEach((contact) => {
+      if (!contact.user_id || contact.user_id === user?.id) return;
+      byUserId.set(contact.user_id, contact);
+    });
+    return [...byUserId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [contacts.admins, contacts.players, role, user?.id]);
+
+  const toggleGroupMember = useCallback((userId: string) => {
+    setGroupMemberUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((item) => item !== userId)
+        : [...current, userId],
+    );
+  }, []);
+
+  const resetGroupComposer = useCallback(() => {
+    setGroupComposerOpen(false);
+    setGroupName("");
+    setGroupMemberUserIds([]);
+    setCreatingGroup(false);
+  }, []);
+
+  async function createChatGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (role !== "coach" || creatingGroup) return;
+    if (!groupName.trim()) {
+      setError("Group name is required");
+      return;
+    }
+    if (!groupMemberUserIds.length) {
+      setError("Choose at least one group member");
+      return;
+    }
+
+    setCreatingGroup(true);
+    setError("");
+    try {
+      const conversation = await apiJson<Conversation>("/conversations", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "chat_group",
+          groupName: groupName.trim(),
+          memberUserIds: groupMemberUserIds,
+        }),
+      });
+      upsertConversation(conversation);
+      setSelectedId(conversation.id);
+      setGroupDetailsOpen(true);
+      setEditingMessage(null);
+      setBody("");
+      setImage(null);
+      resetGroupComposer();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create group");
+    } finally {
+      setCreatingGroup(false);
+    }
+  }
+
   async function openConversation(contact: Contact) {
     setError("");
     try {
@@ -604,6 +724,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       });
       upsertConversation(conversation);
       setSelectedId(conversation.id);
+      setGroupDetailsOpen(false);
       setEditingMessage(null);
       setBody("");
       setImage(null);
@@ -717,6 +838,16 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     }
   }
 
+  const selectedIsGroup = selected?.type === "chat_group";
+  const selectedGroupMembers = selectedIsGroup
+    ? selected.group_members || []
+    : [];
+  const selectedGroupPreview = selectedIsGroup
+    ? groupMembersPreview(selected)
+    : selected
+      ? conversationLabel(selected)
+      : "";
+
   if (!isAuthenticated) {
     return (
       <div className="goalix-chat-empty-auth">
@@ -737,7 +868,10 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           {filteredConversations.map((conversation) => (
             <button
               key={conversation.id}
-              onClick={() => setSelectedId(conversation.id)}
+              onClick={() => {
+                setSelectedId(conversation.id);
+                setGroupDetailsOpen(false);
+              }}
               className={cn(
                 "goalix-chat-list-card",
                 selectedId === conversation.id && "is-active",
@@ -793,8 +927,50 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       {t.about} {selected.context.playerName}
                     </span>
                   )}
+              <button
+                type="button"
+                className={cn(
+                  "goalix-chat-thread-profile",
+                  selectedIsGroup && "is-clickable",
+                )}
+                onClick={() => {
+                  if (selectedIsGroup) {
+                    setGroupDetailsOpen((current) => !current);
+                  }
+                }}
+                disabled={!selectedIsGroup}
+                aria-expanded={selectedIsGroup ? groupDetailsOpen : undefined}
+              >
+                <Avatar className="goalix-chat-avatar is-thread">
+                  <AvatarFallback>
+                    {getInitials(selected.target.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="goalix-chat-thread-title">
+                  <h2>{selected.target.name}</h2>
+                  <div>
+                    <Badge
+                      variant={selected.status === "open" ? "success" : "secondary"}
+                      className="goalix-chat-status-badge"
+                    >
+                      {selected.status}
+                    </Badge>
+                    <span>{selectedGroupPreview}</span>
+                  </div>
                 </div>
-              </div>
+              </button>
+              {selectedIsGroup && (
+                <button
+                  type="button"
+                  className="goalix-chat-members-toggle"
+                  onClick={() => setGroupDetailsOpen((current) => !current)}
+                  aria-label="Show group members"
+                  aria-expanded={groupDetailsOpen}
+                  title="Show group members"
+                >
+                  <Users className="h-4 w-4" />
+                </button>
+              )}
               {selected.canClose && (
                 <Button
                   type="button"
@@ -811,6 +987,50 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             <span className="goalix-chat-muted">{t.selectChat}</span>
           )}
         </div>
+
+        {selectedIsGroup && groupDetailsOpen && (
+          <div className="goalix-chat-group-details">
+            <div className="goalix-chat-group-details-head">
+              <div>
+                <strong>Group members</strong>
+                <span>{selectedGroupMembers.length} members</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGroupDetailsOpen(false)}
+                title="Close members"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="goalix-chat-group-details-list">
+              {selectedGroupMembers.map((member) => (
+                <div
+                  key={member.userId}
+                  className="goalix-chat-group-details-member"
+                >
+                  <Avatar className="goalix-chat-avatar is-contact">
+                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="goalix-chat-list-copy">
+                    <span className="goalix-chat-list-title">
+                      {member.name}
+                    </span>
+                    <span className="goalix-chat-list-subtitle">
+                      {formatContactSubtitle(member.role)}
+                      {member.membershipRole === "owner" ? " | Owner" : ""}
+                    </span>
+                  </span>
+                </div>
+              ))}
+              {selectedGroupMembers.length === 0 && (
+                <div className="goalix-chat-empty-state is-compact">
+                  No members found.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="goalix-chat-messages">
           {messagesLoading && (
@@ -936,6 +1156,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               {error}
             </div>
           )}
+          {connectionWarning && (
+            <div className="goalix-chat-alert is-warning">
+              {connectionWarning}
+            </div>
+          )}
           {selected?.status === "closed" && (
             <div className="goalix-chat-alert">
               <Lock className="h-4 w-4" />
@@ -1027,6 +1252,115 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             />
           </div>
         </div>
+        {role === "coach" && (
+          <div className="goalix-chat-group-maker">
+            {!groupComposerOpen ? (
+              <Button
+                type="button"
+                size="sm"
+                className="goalix-chat-new-group-button"
+                onClick={() => setGroupComposerOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                New group
+              </Button>
+            ) : (
+              <form onSubmit={createChatGroup} className="goalix-chat-group-form">
+                <div className="goalix-chat-group-form-head">
+                  <div>
+                    <strong>New chat group</strong>
+                    <span>{groupMemberUserIds.length} selected</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetGroupComposer}
+                    title="Close group creator"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <Input
+                  value={groupName}
+                  onChange={(event) => setGroupName(event.target.value)}
+                  maxLength={120}
+                  placeholder="Group name"
+                  className="goalix-chat-group-input"
+                />
+                <div className="goalix-chat-group-member-list">
+                  {groupCandidateContacts.map((contact) => {
+                    const selectedMember = groupMemberUserIds.includes(
+                      contact.user_id,
+                    );
+                    return (
+                      <label
+                        key={`${contact.type}-${contact.user_id}`}
+                        className={cn(
+                          "goalix-chat-group-member",
+                          selectedMember && "is-selected",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMember}
+                          onChange={() => toggleGroupMember(contact.user_id)}
+                        />
+                        <Avatar className="goalix-chat-avatar is-contact">
+                          <AvatarFallback>
+                            {getInitials(contact.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="goalix-chat-list-copy">
+                          <span className="goalix-chat-list-title">
+                            {contact.name}
+                          </span>
+                          {contact.subtitle && (
+                            <span className="goalix-chat-list-subtitle">
+                              {formatContactSubtitle(contact.subtitle)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="goalix-chat-group-check">
+                          {selectedMember && <Check className="h-3.5 w-3.5" />}
+                        </span>
+                      </label>
+                    );
+                  })}
+                  {groupCandidateContacts.length === 0 && (
+                    <div className="goalix-chat-empty-state is-compact">
+                      No people available.
+                    </div>
+                  )}
+                </div>
+                <div className="goalix-chat-group-actions">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={resetGroupComposer}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={
+                      creatingGroup ||
+                      !groupName.trim() ||
+                      groupMemberUserIds.length === 0
+                    }
+                  >
+                    {creatingGroup ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    Create
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
         <div className="goalix-chat-scroll">
           {role === "admin" && (
             <ContactSection

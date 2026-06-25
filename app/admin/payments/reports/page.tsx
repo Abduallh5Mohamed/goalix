@@ -61,7 +61,7 @@ export default function PaymentReportsPage() {
               <DoughnutChart
                 labels={overview.map((o) => o.status)}
                 data={overview.map((o) => Number(o.count))}
-                colors={["#51b848", "#b2d23b", "#2d9ad5", "#087f83"]}
+                colors={["#7bea28", "#b6ff00", "#2d9ad5", "#2ee8c9"]}
                 height={260}
               />
             ) : (

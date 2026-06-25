@@ -30,7 +30,7 @@ interface LineChartProps {
   labels: string[];
   datasets: {
     label: string;
-    data: number[];
+    data: Array<number | null>;
     color?: string;
     fill?: boolean;
     borderColor?: string;

@@ -640,6 +640,64 @@ export interface AcademyInfo {
   settings: Record<string, unknown> | null;
 }
 
+export type AcademyUpdateInput = Partial<
+  Omit<AcademyInfo, "id" | "logo_url">
+> & {
+  logoUrl?: string | null;
+};
+
+export interface AdminPermission {
+  id: string;
+  code: string;
+  resource: string;
+  action: string;
+  scope: "system" | "academy" | "branch" | "team" | "self";
+  description: string | null;
+  isSystem: boolean;
+}
+
+export interface AdminPermissionGroup {
+  id: string | null;
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  permissions: AdminPermission[];
+}
+
+export interface AdminRolePermissionAssignment {
+  permissionId: string;
+  denied: boolean;
+}
+
+export interface AdminRole {
+  id: string;
+  academyId: string | null;
+  code: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  isActive: boolean;
+  priority: number;
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+  permissionAssignments: AdminRolePermissionAssignment[];
+}
+
+export interface AdminAccessControl {
+  permissionGroups: AdminPermissionGroup[];
+  roles: AdminRole[];
+}
+
+export interface AdminRoleInput {
+  name: string;
+  code: string;
+  description?: string | null;
+  isActive?: boolean;
+  permissionIds: string[];
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 export const adminApi = createApi({
   reducerPath: "adminApi",
@@ -660,6 +718,7 @@ export const adminApi = createApi({
     "Groups",
     "CurrentUser",
     "Academy",
+    "AccessControl",
   ],
   endpoints: (builder) => ({
     // ── Players ──────────────────────────────────────────────────────────
@@ -1160,6 +1219,38 @@ export const adminApi = createApi({
       transformResponse: (res: { data: AssignmentFileInput }) => res.data,
     }),
 
+    // ── Admin settings / access control ─────────────────────────────────
+    getAdminAccessControl: builder.query<AdminAccessControl, void>({
+      query: () => "/admin/settings/access-control",
+      transformResponse: (res: { data: AdminAccessControl }) => res.data,
+      providesTags: ["AccessControl"],
+    }),
+
+    createAdminRole: builder.mutation<AdminRole, AdminRoleInput>({
+      query: (body) => ({ url: "/admin/settings/roles", method: "POST", body }),
+      transformResponse: (res: { data: AdminRole }) => res.data,
+      invalidatesTags: ["AccessControl"],
+    }),
+
+    updateAdminRole: builder.mutation<
+      AdminRole,
+      { id: string; body: Partial<AdminRoleInput> }
+    >({
+      query: ({ id, body }) => ({
+        url: `/admin/settings/roles/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: { data: AdminRole }) => res.data,
+      invalidatesTags: ["AccessControl"],
+    }),
+
+    deleteAdminRole: builder.mutation<{ message: string }, string>({
+      query: (id) => ({ url: `/admin/settings/roles/${id}`, method: "DELETE" }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["AccessControl"],
+    }),
+
     // ── Academy info ─────────────────────────────────────────────────────
     getAcademy: builder.query<AcademyInfo, void>({
       query: () => "/academy",
@@ -1167,7 +1258,7 @@ export const adminApi = createApi({
       providesTags: ["Academy"],
     }),
 
-    updateAcademy: builder.mutation<AcademyInfo, Partial<AcademyInfo>>({
+    updateAcademy: builder.mutation<AcademyInfo, AcademyUpdateInput>({
       query: (body) => ({ url: "/academy", method: "PUT", body }),
       transformResponse: (res: { data: AcademyInfo }) => res.data,
       invalidatesTags: ["Academy"],
@@ -1257,6 +1348,10 @@ export const {
   useGetCoachAssignmentsQuery,
   useCreateCoachAssignmentMutation,
   useUploadCoachAssignmentFileMutation,
+  useGetAdminAccessControlQuery,
+  useCreateAdminRoleMutation,
+  useUpdateAdminRoleMutation,
+  useDeleteAdminRoleMutation,
   useGetAcademyQuery,
   useUpdateAcademyMutation,
   useGetCurrentUserQuery,

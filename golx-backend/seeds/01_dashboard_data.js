@@ -1,5 +1,5 @@
 /**
- * Seed: Full dashboard data for GOLX Academy
+ * Seed: Full dashboard data for GOALIX Academy
  * Run: npx knex seed:run --specific=01_dashboard_data.js
  */
 const bcrypt = require('bcrypt');
@@ -76,7 +76,7 @@ exports.seed = async function (knex) {
     await knex('auth_users').insert([
         {
             id: IDs.admin,
-            email: 'admin@golix.com',
+            email: 'admin@goalix.com',
             password_hash: pw,
             role: 'admin',
             is_active: true,
@@ -84,7 +84,7 @@ exports.seed = async function (knex) {
         },
         {
             id: IDs.coach1,
-            email: 'coach1@golx.com',
+            email: 'coach1@goalix.com',
             password_hash: pw,
             role: 'coach',
             is_active: true,
@@ -95,7 +95,7 @@ exports.seed = async function (knex) {
     // ── 2. ACADEMY ───────────────────────────────────────────────────────────
     await knex('academy_academies').insert({
         id: IDs.academy,
-        name: 'GOLX Football Academy',
+        name: 'GOALIX Football Academy',
         owner_user_id: IDs.admin,
         settings: JSON.stringify({ currency: 'EGP', timezone: 'Africa/Cairo' }),
     });
@@ -139,9 +139,9 @@ exports.seed = async function (knex) {
 
     // ── 7. COACH AUTH USERS ──────────────────────────────────────────────────
     await knex('auth_users').insert([
-        { id: IDs.coachUser2, email: 'coach2@golx.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
-        { id: IDs.coachUser3, email: 'coach3@golx.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
-        { id: IDs.coachUser4, email: 'coach4@golx.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
+        { id: IDs.coachUser2, email: 'coach2@goalix.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
+        { id: IDs.coachUser3, email: 'coach3@goalix.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
+        { id: IDs.coachUser4, email: 'coach4@goalix.com', password_hash: pw, role: 'coach', academy_id: IDs.academy, is_verified: true },
     ]);
 
     // ── 8. COACH PROFILES ────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ exports.seed = async function (knex) {
 
     const playerUserRows = playerUserIds.map((uid, i) => ({
         id: uid,
-        email: `player${i + 1}@golx.com`,
+        email: `player${i + 1}@goalix.com`,
         password_hash: pw,
         role: 'player',
         academy_id: IDs.academy,
@@ -397,7 +397,7 @@ exports.seed = async function (knex) {
     ]);
 
     console.log('✅ Seed complete:');
-    console.log(`   Academy: GOLX Football Academy (${IDs.academy})`);
+    console.log(`   Academy: GOALIX Football Academy (${IDs.academy})`);
     console.log(`   Branches: 3 | Birth Years: 8 | Groups: 6`);
     console.log(`   Coaches: 4 | Players: ${PLAYER_COUNT}`);
     console.log(`   Attendance sessions: ${sessionRows.length} | Marks: ${markRows.length}`);

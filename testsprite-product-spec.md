@@ -39,29 +39,29 @@ All seeded test users below use the same password:
 Admin account:
 
 - API login endpoint: POST /api/v1/auth/admin-login
-- Identifier/email: admin@golix.com
+- Identifier/email: admin@goalix.com
 - Dashboard API: GET /api/v1/admin/dashboard
 
 Coach account:
 
 - API login endpoint: POST /api/v1/auth/admin-login
-- Identifier/email: coach1@golx.com
-- Alternative coach emails: coach2@golx.com, coach3@golx.com, coach4@golx.com
+- Identifier/email: coach1@goalix.com
+- Alternative coach emails: coach2@goalix.com, coach3@goalix.com, coach4@goalix.com
 - Coach dashboard API: GET /api/v1/coaches/me/dashboard
 
 Player account:
 
 - API login endpoint: POST /api/v1/auth/login
-- Identifier/email: player1@golx.com
-- Alternative player emails: player2@golx.com, player3@golx.com, player4@golx.com
+- Identifier/email: player1@goalix.com
+- Alternative player emails: player2@goalix.com, player3@goalix.com, player4@goalix.com
 - Player profile API: GET /api/v1/player/profile
 - Player progress API: GET /api/v1/player/progress
 
 Login request bodies for API tests:
 
-- Admin: `{ "email": "admin@golix.com", "password": "Admin@123456" }`
-- Coach: `{ "email": "coach1@golx.com", "password": "Admin@123456" }`
-- Player: `{ "email": "player1@golx.com", "password": "Admin@123456", "role": "player" }`
+- Admin: `{ "email": "admin@goalix.com", "password": "Admin@123456" }`
+- Coach: `{ "email": "coach1@goalix.com", "password": "Admin@123456" }`
+- Player: `{ "email": "player1@goalix.com", "password": "Admin@123456", "role": "player" }`
 
 Authentication is cookie-based. API tests should use `requests.Session` or an
 equivalent cookie jar. API tests may also use the returned access token as

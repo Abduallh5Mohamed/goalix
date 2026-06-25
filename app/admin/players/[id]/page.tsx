@@ -123,7 +123,7 @@ export default function PlayerProfilePage({ params }: { params: Promise<{ id: st
                     labels={measurements.map((m) => formatDate(m.measured_at))}
                     datasets={[
                       { label: "Height (cm)", data: measurements.map((m) => Number(m.height_cm) || 0), borderColor: "#2d9ad5", backgroundColor: "rgba(45,154,213,0.12)" },
-                      { label: "Weight (kg)", data: measurements.map((m) => Number(m.weight_kg) || 0), borderColor: "#51b848", backgroundColor: "rgba(81,184,72,0.12)" },
+                      { label: "Weight (kg)", data: measurements.map((m) => Number(m.weight_kg) || 0), borderColor: "#7bea28", backgroundColor: "rgba(123,234,40,0.12)" },
                     ]}
                     height={280}
                   />

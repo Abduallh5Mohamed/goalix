@@ -118,7 +118,7 @@ export default function PaymentsOverviewPage() {
             <DoughnutChart
               labels={["Paid", "Pending", "Overdue"]}
               data={[paidCount, pendingCount, overdueCount]}
-              colors={["#51b848", "#b2d23b", "#2d9ad5"]}
+              colors={["#7bea28", "#b6ff00", "#2d9ad5"]}
               height={220}
               centerValue={`${paidCount}`}
               centerLabel="Paid"

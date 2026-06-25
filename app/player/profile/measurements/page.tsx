@@ -9,7 +9,6 @@ import {
   useGetPlayerMeasurementsQuery,
   type PlayerMeasurement,
 } from "@/lib/store/api/adminApi";
-import { formatDate } from "@/lib/utils";
 
 type MeasurementWithExtras = PlayerMeasurement &
   Record<string, string | number | null | undefined>;
@@ -28,6 +27,18 @@ const measuredAt = (measurement: MeasurementWithExtras) =>
   (measurement.measuredAt as string | undefined) ??
   (measurement.date as string | undefined) ??
   "";
+
+const monthKey = (value: string) => value.slice(0, 7);
+
+const formatMonth = (value: string) => {
+  const key = monthKey(value);
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return value || "Unknown month";
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+};
 
 const metricValue = (
   measurement: MeasurementWithExtras | null | undefined,
@@ -66,9 +77,17 @@ export default function PlayerMeasurementsPage() {
     { playerId: playerId ?? "", limit: 100 },
     { skip: !playerId },
   );
-  const measurements = ((measurementsQuery.data?.data ?? []) as MeasurementWithExtras[])
+  const measurementRows = ((measurementsQuery.data?.data ?? []) as MeasurementWithExtras[])
     .slice()
     .sort((a, b) => measuredAt(a).localeCompare(measuredAt(b)));
+  const measurements = Array.from(
+    measurementRows
+      .reduce((byMonth, measurement) => {
+        byMonth.set(monthKey(measuredAt(measurement)), measurement);
+        return byMonth;
+      }, new Map<string, MeasurementWithExtras>())
+      .values(),
+  );
   const latest = measurements[measurements.length - 1] ?? null;
   const previous = measurements.length > 1 ? measurements[measurements.length - 2] : null;
   const isLoading = profileQuery.isLoading || measurementsQuery.isLoading;
@@ -84,7 +103,7 @@ export default function PlayerMeasurementsPage() {
     color,
     points: measurements
       .map((measurement) => ({
-        label: formatDate(measuredAt(measurement)).split(",")[0],
+        label: formatMonth(measuredAt(measurement)),
         value: metricValue(measurement, keys),
       }))
       .filter((point): point is { label: string; value: number } => point.value !== null),
@@ -103,14 +122,14 @@ export default function PlayerMeasurementsPage() {
       keys: ["weight_kg", "weightKg", "weight"],
       unit: "kg",
       color: "text-lime-200",
-      chartColor: "#51b848",
+      chartColor: "#7bea28",
     },
     {
       label: "Sprint Speed",
       keys: ["sprint_speed", "sprintSpeed"],
       unit: "s",
       color: "text-amber-200",
-      chartColor: "#b2d23b",
+      chartColor: "#b6ff00",
       inverseBetter: true,
     },
     {
@@ -118,7 +137,7 @@ export default function PlayerMeasurementsPage() {
       keys: ["endurance", "stamina"],
       unit: "/10",
       color: "text-violet-200",
-      chartColor: "#087f83",
+      chartColor: "#2ee8c9",
     },
     {
       label: "Flexibility",
@@ -232,7 +251,7 @@ export default function PlayerMeasurementsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/10 text-left text-slate-400">
-                      <th className="pb-3 pr-4">Date</th>
+                      <th className="pb-3 pr-4">Month</th>
                       {metrics.map((metric) => (
                         <th key={metric.label} className="pb-3 pr-4">
                           {metric.label}
@@ -251,7 +270,7 @@ export default function PlayerMeasurementsPage() {
                           className="border-b border-white/10 last:border-0"
                         >
                           <td className="py-3 pr-4">
-                            {formatDate(measuredAt(measurement))}
+                            {formatMonth(measuredAt(measurement))}
                           </td>
                           {metrics.map((metric) => {
                             const value = metricValue(measurement, metric.keys);

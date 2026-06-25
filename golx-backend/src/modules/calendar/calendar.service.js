@@ -1538,6 +1538,31 @@ class CalendarService {
       throw new BadRequestError("Training session has not started yet");
   }
 
+  _ensureTrainingEventCanReceiveAttendance(event, records = []) {
+    if (event.status === "cancelled")
+      throw new BadRequestError("Cancelled events cannot be changed");
+    if (event.status === "postponed")
+      throw new BadRequestError("Postponed events cannot be changed");
+    if (trainingStartsAt(event) > new Date())
+      throw new BadRequestError("Training session has not started yet");
+
+    const closed =
+      event.status === "completed" ||
+      event.status === "finished" ||
+      trainingEndsAt(event) <= new Date();
+    if (!closed) return;
+
+    const missingManualTime = records.find(
+      (record) =>
+        ["present", "late"].includes(record.status) && !record.arrivalTime,
+    );
+    if (missingManualTime) {
+      throw new BadRequestError(
+        "Manual arrival time is required after training is closed",
+      );
+    }
+  }
+
   _ensureTrainingEventCanReceiveEvaluation(event) {
     if (event.status === "cancelled")
       throw new BadRequestError("Cancelled events cannot be evaluated");
@@ -4430,7 +4455,7 @@ class CalendarService {
       eventId,
       "can_take_attendance",
     );
-    this._ensureTrainingEventOpen(event);
+    this._ensureTrainingEventCanReceiveAttendance(event, records);
     await this._ensurePlayersInEventTargets(
       records.map((record) => record.playerId),
       { groupIds, birthYearIds, directPlayerIds: playerIds },
@@ -4485,7 +4510,9 @@ class CalendarService {
       eventId,
       "can_take_attendance",
     );
-    this._ensureTrainingEventOpen(event);
+    this._ensureTrainingEventCanReceiveAttendance(event, [
+      { playerId, status: data.status, arrivalTime: data.arrivalTime },
+    ]);
     await this._ensurePlayersInEventTargets(
       [playerId],
       { groupIds, birthYearIds, directPlayerIds: playerIds },
@@ -7822,6 +7849,8 @@ class CalendarService {
       })
       .whereNot("ce.visibility", "coaches_only")
       .whereNotIn("ce.status", ["cancelled", "postponed"])
+      .whereRaw("ce.start_datetime >= date_trunc('month', CURRENT_DATE)")
+      .whereRaw("ce.start_datetime < date_trunc('month', CURRENT_DATE) + interval '1 month'")
       .whereRaw("ce.start_datetime <= CURRENT_TIMESTAMP");
     const visiblePastMatchesQuery = this._configuredMatchQueryForPlayer(
       academyId,
@@ -7832,7 +7861,9 @@ class CalendarService {
         .where("m.match_status", "finished")
         .orWhere("m.status", "completed")
         .orWhereRaw("m.match_date <= CURRENT_DATE");
-    });
+    })
+      .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+      .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date");
 
     const [
       trainingAttendance,
@@ -7843,7 +7874,7 @@ class CalendarService {
       evaluations,
       matchRatings,
       stats,
-      weeklyMinutes,
+      monthlyMinutes,
     ] = await Promise.all([
         this.repo
           .db("event_attendance as ea")
@@ -7853,6 +7884,8 @@ class CalendarService {
           .where("ce.event_type", "training")
           .whereNull("ce.deleted_at")
           .whereNot("ce.status", "cancelled")
+          .whereRaw("ce.start_datetime >= date_trunc('month', CURRENT_DATE)")
+          .whereRaw("ce.start_datetime < date_trunc('month', CURRENT_DATE) + interval '1 month'")
           .select(
             this.repo.db.raw("COUNT(*)::int as total"),
             this.repo.db.raw(
@@ -7869,6 +7902,8 @@ class CalendarService {
           .whereNull("ce.deleted_at")
           .whereNot("m.status", "cancelled")
           .whereNot("m.match_status", "cancelled")
+          .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+          .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date")
           .select(
             this.repo.db.raw("COUNT(*)::int as total"),
             this.repo.db.raw(
@@ -7890,6 +7925,8 @@ class CalendarService {
           .whereNull("ce.deleted_at")
           .whereNot("m.status", "cancelled")
           .whereNot("m.match_status", "cancelled")
+          .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+          .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date")
           .count("ms.id as count")
           .first(),
         countRows(visiblePastTrainingsQuery),
@@ -7902,7 +7939,12 @@ class CalendarService {
           .where("pee.visibility", "player_and_parent")
           .whereNull("ce.deleted_at")
           .whereNot("ce.status", "cancelled")
-          .avg("pee.overall_rating as average")
+          .whereRaw("ce.start_datetime >= date_trunc('month', CURRENT_DATE)")
+          .whereRaw("ce.start_datetime < date_trunc('month', CURRENT_DATE) + interval '1 month'")
+          .select(
+            this.repo.db.raw("AVG(pee.overall_rating) as average"),
+            this.repo.db.raw("COUNT(pee.overall_rating)::int as count"),
+          )
           .first(),
         this.repo
           .db("match_player_stats as mps")
@@ -7914,7 +7956,12 @@ class CalendarService {
           .whereNot("m.status", "cancelled")
           .whereNot("m.match_status", "cancelled")
           .whereNotNull("m.evaluations_finalized_at")
-          .avg("mps.performance_rating as average")
+          .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+          .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date")
+          .select(
+            this.repo.db.raw("AVG(mps.performance_rating) as average"),
+            this.repo.db.raw("COUNT(mps.performance_rating)::int as count"),
+          )
           .first(),
         this.repo
           .db("match_player_stats as mps")
@@ -7926,6 +7973,8 @@ class CalendarService {
           .whereNot("m.status", "cancelled")
           .whereNot("m.match_status", "cancelled")
           .whereNotNull("m.evaluations_finalized_at")
+          .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+          .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date")
           .sum({
             goals: "mps.goals",
             assists: "mps.assists",
@@ -7943,13 +7992,13 @@ class CalendarService {
           .whereNot("m.status", "cancelled")
           .whereNot("m.match_status", "cancelled")
           .whereNotNull("m.evaluations_finalized_at")
-          .whereRaw("m.match_date >= (CURRENT_DATE - INTERVAL '7 days')::date")
-          .whereRaw("m.match_date <= CURRENT_DATE")
+          .whereRaw("m.match_date >= date_trunc('month', CURRENT_DATE)::date")
+          .whereRaw("m.match_date < (date_trunc('month', CURRENT_DATE) + interval '1 month')::date")
           .select(
             this.repo.db.raw("COALESCE(SUM(mps.minutes_played), 0)::int as minutes"),
             this.repo.db.raw("COUNT(*) FILTER (WHERE mps.minutes_played > 0)::int as matches"),
-            this.repo.db.raw("(CURRENT_DATE - INTERVAL '7 days')::date as week_start"),
-            this.repo.db.raw("CURRENT_DATE::date as week_end"),
+            this.repo.db.raw("date_trunc('month', CURRENT_DATE)::date as month_start"),
+            this.repo.db.raw("(date_trunc('month', CURRENT_DATE) + interval '1 month' - interval '1 day')::date as month_end"),
           )
           .first(),
       ]);
@@ -7973,6 +8022,16 @@ class CalendarService {
     );
     const total = trainingTotal + matchTotal;
     const attended = trainingAttended + matchAttended;
+    const trainingRatingCount = Number(evaluations?.count || 0);
+    const matchRatingCount = Number(matchRatings?.count || 0);
+    const trainingRatingAverage = Number(evaluations?.average || 0);
+    const matchRatingAverage = Number(matchRatings?.average || 0);
+    const ratingCount = trainingRatingCount + matchRatingCount;
+    const averageOverallRating = ratingCount
+      ? (trainingRatingAverage * trainingRatingCount +
+          matchRatingAverage * matchRatingCount) /
+        ratingCount
+      : 0;
     return {
       playerId: player.id,
       playerName: player.full_name,
@@ -7988,14 +8047,19 @@ class CalendarService {
       matchesPlayed,
       matchesAttended: matchAttended,
       matchesRecorded: matchTotal,
-      averageTrainingRating: Number(evaluations?.average || 0),
-      averageMatchRating: Number(matchRatings?.average || 0),
+      averageOverallRating,
+      averageTrainingRating: trainingRatingAverage,
+      averageMatchRating: matchRatingAverage,
       goals: Number(stats?.goals || 0),
       assists: Number(stats?.assists || 0),
-      weeklyMinutesPlayed: Number(weeklyMinutes?.minutes || 0),
-      weeklyMatchesPlayed: Number(weeklyMinutes?.matches || 0),
-      weekStart: weeklyMinutes?.week_start || null,
-      weekEnd: weeklyMinutes?.week_end || null,
+      monthlyMinutesPlayed: Number(monthlyMinutes?.minutes || 0),
+      monthlyMatchesPlayed: Number(monthlyMinutes?.matches || 0),
+      monthStart: monthlyMinutes?.month_start || null,
+      monthEnd: monthlyMinutes?.month_end || null,
+      weeklyMinutesPlayed: Number(monthlyMinutes?.minutes || 0),
+      weeklyMatchesPlayed: Number(monthlyMinutes?.matches || 0),
+      weekStart: monthlyMinutes?.month_start || null,
+      weekEnd: monthlyMinutes?.month_end || null,
       disciplineRecord: {
         yellowCards: Number(stats?.yellow_cards || 0),
         redCards: Number(stats?.red_cards || 0),

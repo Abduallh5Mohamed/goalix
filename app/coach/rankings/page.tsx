@@ -906,6 +906,7 @@ export default function CoachRankingsPage() {
 
   useEffect(() => {
     if (!defaultWeek) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (selectedWeek) setSelectedWeek("");
       return;
     }

@@ -1186,7 +1186,7 @@ export default function CoachMatchDayPage() {
                 <CardContent className="space-y-4">
                   <div className="rounded-md border border-border/40 bg-muted/10 p-4 text-center">
                     <p className="text-xs text-muted-foreground">
-                      GOLX vs {match.opponent_name}
+                      GOALIX vs {match.opponent_name}
                     </p>
                     <p className="mt-1 text-4xl font-semibold">{scoreLine}</p>
                   </div>
@@ -1211,7 +1211,7 @@ export default function CoachMatchDayPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="our">GOLX</SelectItem>
+                          <SelectItem value="our">GOALIX</SelectItem>
                           <SelectItem value="opponent">
                             {match.opponent_name}
                           </SelectItem>
@@ -1332,7 +1332,7 @@ export default function CoachMatchDayPage() {
                         <div>
                           <p className="font-medium">
                             {goal.team === "our"
-                              ? goal.scorer_player_name || "GOLX goal"
+                              ? goal.scorer_player_name || "GOALIX goal"
                               : `${match.opponent_name} goal`}
                           </p>
                           <p className="text-xs text-muted-foreground">

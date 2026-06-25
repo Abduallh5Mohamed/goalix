@@ -18,7 +18,7 @@ const envSchema = z.object({
     JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
     // BullMQ
-    BULLMQ_PREFIX: z.string().default('golx'),
+    BULLMQ_PREFIX: z.string().default('goalix'),
 
     // CORS
     CORS_ORIGINS: z.string().default('http://localhost:3001'),
@@ -39,7 +39,7 @@ const envSchema = z.object({
     ADMIN_LOCKOUT_DURATION_MINUTES: z.coerce.number().default(30),
 
     // TOTP 2FA
-    TOTP_ISSUER: z.string().default('GOLX Academy'),
+    TOTP_ISSUER: z.string().default('GOALIX Academy'),
 
     // Admin Login Rate Limit
     ADMIN_AUTH_RATE_LIMIT_MAX: z.coerce.number().default(5),

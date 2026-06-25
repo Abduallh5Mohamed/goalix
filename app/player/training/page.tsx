@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import {
   Activity,
   CalendarClock,
   CheckCircle2,
+  ChevronRight,
   ClipboardList,
   Clock,
   Dumbbell,
@@ -253,7 +255,10 @@ export default function PlayerTrainingPage() {
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
-  const evaluationsQuery = useGetPlayerEvaluationsQuery();
+  const evaluationsQuery = useGetPlayerEvaluationsQuery(undefined, {
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
   const attendanceQuery = useGetPlayerAttendanceQuery(undefined, {
     pollingInterval: 5000,
     refetchOnFocus: true,
@@ -433,6 +438,16 @@ export default function PlayerTrainingPage() {
                           icon={Dumbbell}
                         />
                       </div>
+
+                      <div className="mt-4 flex justify-end">
+                        <Link
+                          href={`/player/training/${event.id}`}
+                          className="inline-flex items-center gap-2 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                        >
+                          View details
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -481,9 +496,18 @@ export default function PlayerTrainingPage() {
                             {formatTime12(event.start_datetime)}
                           </p>
                         </div>
-                        <Badge variant={statusVariant(event.status)}>
-                          {titleCase(event.status)}
-                        </Badge>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Badge variant={statusVariant(event.status)}>
+                            {titleCase(event.status)}
+                          </Badge>
+                          <Link
+                            href={`/player/training/${event.id}`}
+                            className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-slate-100 transition hover:bg-white/[0.08]"
+                          >
+                            View details
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -526,6 +550,13 @@ export default function PlayerTrainingPage() {
                           <Badge variant="outline">
                             Fatigue {formatRating(evaluation.fatigue_rating)}
                           </Badge>
+                          <Link
+                            href={`/player/training/${evaluation.event_id}`}
+                            className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                          >
+                            View details
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Link>
                         </div>
                       </div>
                     </div>

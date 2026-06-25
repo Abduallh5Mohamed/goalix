@@ -9,11 +9,14 @@ const createConversationSchema = z
       "coach_player",
       "admin_player_session",
       "parent_coach",
+      "chat_group",
     ]),
     adminUserId: uuid.optional(),
     coachId: uuid.optional(),
     parentUserId: uuid.optional(),
     playerId: uuid.optional(),
+    groupName: z.string().trim().min(2).max(120).optional(),
+    memberUserIds: z.array(uuid).max(80).optional().default([]),
   })
   .superRefine((data, ctx) => {
     if (data.type === "admin_coach" && !data.coachId && !data.adminUserId) {
@@ -50,6 +53,19 @@ const createConversationSchema = z
           code: z.ZodIssueCode.custom,
           path: ["coachId"],
           message: "coachId or parentUserId is required for parent-coach chat",
+    if (data.type === "chat_group") {
+      if (!data.groupName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groupName"],
+          message: "Group name is required",
+        });
+      }
+      if (!data.memberUserIds?.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["memberUserIds"],
+          message: "Choose at least one group member",
         });
       }
     }

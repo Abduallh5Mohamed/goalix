@@ -35,7 +35,7 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password, role);
     } catch {
-      setError("Invalid username, password, or role. Please try again.");
+      setError("Invalid username, password. Please try again.");
     } finally {
       setIsLoading(false);
     }

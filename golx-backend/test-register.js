@@ -1,5 +1,5 @@
 const http = require('http');
-const data = JSON.stringify({ email: 'coach1@golx.com', password: 'Admin@123456', role: 'coach' });
+const data = JSON.stringify({ email: 'coach1@goalix.com', password: 'Admin@123456', role: 'coach' });
 const options = {
     hostname: 'localhost',
     port: 3001,
