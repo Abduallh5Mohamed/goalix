@@ -129,6 +129,13 @@ const nowTime = () => {
 const toNumberOrUndefined = (value: string) =>
   value === "" ? undefined : Number(value);
 
+const clampRatingInput = (value: string) => {
+  if (value === "") return "";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "";
+  return String(Math.max(0, Math.min(10, numeric)));
+};
+
 const evaluationVisibility = (player: TrainingParticipant) =>
   player.evaluation?.visibility ?? "private";
 
@@ -161,6 +168,14 @@ const playerMainPosition = (
 const WARNING_BEFORE_END_MS = 5 * 60 * 1000;
 const FINAL_AUTOSAVE_BEFORE_END_MS = 10 * 1000;
 const MAX_EXTENSION_MINUTES = 60;
+const COACH_EVALUATION_MODE_KEY = "goalix-coach-training-evaluation-mode";
+
+const initialEvaluationMode = (): "all" | "search" => {
+  if (typeof window === "undefined") return "all";
+  return window.localStorage.getItem(COACH_EVALUATION_MODE_KEY) === "search"
+    ? "search"
+    : "all";
+};
 
 export default function CoachTrainingEventPage() {
   const params = useParams<{ eventId: string }>();
@@ -184,7 +199,8 @@ export default function CoachTrainingEventPage() {
   const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>(
     {},
   );
-  const [evaluationMode, setEvaluationMode] = useState<"all" | "search">("all");
+  const [evaluationMode, setEvaluationMode] =
+    useState<"all" | "search">(initialEvaluationMode);
   const [evaluationSearch, setEvaluationSearch] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [pageError, setPageError] = useState("");
@@ -219,6 +235,12 @@ export default function CoachTrainingEventPage() {
     warningWindowOpen && warningDismissedEndKey !== trainingEndKey,
   );
   const evaluationEditable = Boolean(
+    event &&
+      event.status !== "cancelled" &&
+      event.status !== "postponed" &&
+      nowMs >= trainingStartMs,
+  );
+  const attendanceEditable = Boolean(
     event &&
       event.status !== "cancelled" &&
       event.status !== "postponed" &&
@@ -260,12 +282,42 @@ export default function CoachTrainingEventPage() {
     attendedPlayers.length && publishedEvaluationCount === attendedPlayers.length,
   );
 
+  useEffect(() => {
+    window.localStorage.setItem(COACH_EVALUATION_MODE_KEY, evaluationMode);
+  }, [evaluationMode]);
+
+  useEffect(() => {
+    const syncCoachSettings = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const mode = (event.detail as { evaluationMode?: string }).evaluationMode;
+      if (mode === "all" || mode === "search") {
+        setEvaluationMode(mode);
+        if (mode === "all") setSelectedPlayerId("");
+      }
+    };
+
+    window.addEventListener("goalix-coach-settings-changed", syncCoachSettings);
+    return () =>
+      window.removeEventListener(
+        "goalix-coach-settings-changed",
+        syncCoachSettings,
+      );
+  }, []);
+
   const saveAttendance = async (
     player: TrainingParticipant,
     status: "present" | "late" | "absent" | "injured",
   ) => {
-    if (!trainingOpen) {
-      setPageError("Training is only open during its scheduled time.");
+    if (!attendanceEditable) {
+      setPageError("Attendance can be changed after the training starts.");
+      return;
+    }
+    const manualArrivalTime =
+      arrivalTimes[player.id] || player.attendance?.arrival_time?.slice(0, 5) || "";
+    if (trainingClosed && ["present", "late"].includes(status) && !manualArrivalTime) {
+      setPageError(
+        "Add a manual arrival time before marking attendance after training is closed.",
+      );
       return;
     }
     setPageError("");
@@ -278,7 +330,9 @@ export default function CoachTrainingEventPage() {
             status,
             arrivalTime:
               status === "present" || status === "late"
-                ? arrivalTimes[player.id] || nowTime()
+                ? trainingOpen
+                  ? arrivalTimes[player.id] || nowTime()
+                  : manualArrivalTime
                 : undefined,
           },
         ],
@@ -345,7 +399,7 @@ export default function CoachTrainingEventPage() {
             ...Object.fromEntries(
               ratingFields.map(([key]) => [
                 key,
-                toNumberOrUndefined(getValue(key)),
+                toNumberOrUndefined(clampRatingInput(getValue(key))),
               ]),
             ),
             strengths: draft.strengths ?? player.evaluation?.strengths ?? "",
@@ -392,7 +446,7 @@ export default function CoachTrainingEventPage() {
               ratingFields.map(([key]) => [
                 key,
                 toNumberOrUndefined(
-                  draft[key] ?? fieldValue(player, key),
+                  clampRatingInput(draft[key] ?? fieldValue(player, key)),
                 ),
               ]),
             ),
@@ -587,7 +641,7 @@ export default function CoachTrainingEventPage() {
                 </p>
                 <p className="mt-1">
                   {trainingClosed
-                    ? "Attendance is locked. Evaluations can still be saved and published."
+                    ? "Attendance can still be corrected manually. Add an arrival time for present or late players."
                     : `Open window: ${formatTime12(event.start_datetime)} - ${formatTime12(event.end_datetime)}`}
                 </p>
               </div>
@@ -637,7 +691,7 @@ export default function CoachTrainingEventPage() {
                   </div>
                   <Input
                     type="time"
-                    disabled={!trainingOpen}
+                    disabled={!attendanceEditable}
                     value={
                       arrivalTimes[player.id] ??
                       player.attendance?.arrival_time?.slice(0, 5) ??
@@ -654,7 +708,7 @@ export default function CoachTrainingEventPage() {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={savingAttendance || !trainingOpen}
+                      disabled={savingAttendance || !attendanceEditable}
                       onClick={() => saveAttendance(player, "present")}
                     >
                       <Check className="h-4 w-4" />
@@ -663,7 +717,7 @@ export default function CoachTrainingEventPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={savingAttendance || !trainingOpen}
+                      disabled={savingAttendance || !attendanceEditable}
                       onClick={() => saveAttendance(player, "late")}
                     >
                       <Clock className="h-4 w-4" />
@@ -672,7 +726,7 @@ export default function CoachTrainingEventPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={savingAttendance || !trainingOpen}
+                      disabled={savingAttendance || !attendanceEditable}
                       onClick={() => saveAttendance(player, "absent")}
                     >
                       <X className="h-4 w-4" />
@@ -734,7 +788,7 @@ export default function CoachTrainingEventPage() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    Publish All
+                    Publish Training Evaluations
                   </Button>
                   <Button
                     type="button"
@@ -908,7 +962,7 @@ export default function CoachTrainingEventPage() {
                             ...prev,
                             [player.id]: {
                               ...(prev[player.id] ?? {}),
-                              overallRating: event.target.value,
+                              overallRating: clampRatingInput(event.target.value),
                             },
                           }))
                         }

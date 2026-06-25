@@ -113,7 +113,21 @@ class CoachesRepository extends BaseRepository {
         return groups.find((group) => group.id === groupId) || null;
     }
 
-    async findCoachPlayers(coachId, academyId, groupId) {
+    async findCoachPlayers(coachId, academyId, groupId, { measurementMonth } = {}) {
+        const measurementMonthStart = measurementMonth ? `${measurementMonth}-01` : null;
+        const measurementColumn = (column, alias) => {
+            const monthFilter = measurementMonthStart
+                ? "AND pm.measured_at >= ?::date AND pm.measured_at < (?::date + interval '1 month')"
+                : "";
+            const bindings = measurementMonthStart
+                ? [measurementMonthStart, measurementMonthStart]
+                : [];
+            return this.db.raw(
+                `(SELECT pm.${column} FROM player_measurements pm WHERE pm.player_id = pp.id ${monthFilter} ORDER BY pm.measured_at DESC LIMIT 1) as ${alias}`,
+                bindings,
+            );
+        };
+
         return this.db('player_group_assignments as pga')
             .join('player_profiles as pp', 'pga.player_id', 'pp.id')
             .join('academy_groups as ag', 'pga.group_id', 'ag.id')
@@ -182,11 +196,12 @@ class CoachesRepository extends BaseRepository {
                 'ab.id as branch_id',
                 'ab.name as branch_name',
                 this.db.raw("COALESCE(EXTRACT(YEAR FROM age(CURRENT_DATE, pp.date_of_birth))::int, 0) as age"),
-                this.db.raw("(SELECT pm.height_cm FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as height"),
-                this.db.raw("(SELECT pm.weight_kg FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as weight"),
-                this.db.raw("(SELECT pm.sprint_speed FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as sprint_speed"),
-                this.db.raw("(SELECT pm.stamina FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as stamina"),
-                this.db.raw("(SELECT pm.flexibility FROM player_measurements pm WHERE pm.player_id = pp.id ORDER BY pm.measured_at DESC LIMIT 1) as flexibility"),
+                measurementColumn('height_cm', 'height'),
+                measurementColumn('weight_kg', 'weight'),
+                measurementColumn('sprint_speed', 'sprint_speed'),
+                measurementColumn('stamina', 'stamina'),
+                measurementColumn('flexibility', 'flexibility'),
+                measurementColumn('notes', 'measurement_notes'),
                 this.db.raw(`
                     COALESCE((
                         SELECT ROUND(

@@ -56,7 +56,7 @@ export default function AttendanceReportPage() {
                 {
                   label: "Attendance %",
                   data: overview.byGroup.map((g) => g.rate),
-                  backgroundColor: "#51b848",
+                  backgroundColor: "#7bea28",
                 },
               ]}
               height={280}

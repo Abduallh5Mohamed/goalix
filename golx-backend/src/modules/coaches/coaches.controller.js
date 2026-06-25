@@ -65,7 +65,9 @@ class CoachesController {
 
     getMeGroup = async (req, res, next) => {
         try {
-            const data = await this.service.getMyGroupDetail(req.user.userId, req.user.academyId, req.params.groupId);
+            const data = await this.service.getMyGroupDetail(req.user.userId, req.user.academyId, req.params.groupId, {
+                month: req.query.month,
+            });
             res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
     };

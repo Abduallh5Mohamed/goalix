@@ -167,7 +167,7 @@ export default function RegistrationsPage() {
                                         </Button>
                                         <Button
                                             size="sm"
-                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            className="bg-lime-300 text-slate-950 hover:bg-lime-200"
                                             onClick={() => handleApprove(reg.id)}
                                             disabled={isApproving || isRejecting}
                                         >

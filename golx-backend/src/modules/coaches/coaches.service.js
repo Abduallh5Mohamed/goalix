@@ -146,6 +146,9 @@ class CoachesService {
             sprintSpeed: toNumber(player.sprint_speed),
             stamina: toNumber(player.stamina),
             flexibility: toNumber(player.flexibility),
+            measurementNotes: player.measurement_notes === 'Monthly coach measurement'
+                ? ''
+                : player.measurement_notes || '',
             attendanceRate: toNumber(player.attendance_rate),
             performanceScore: toNumber(player.performance_score),
             rankInGroup: Number(player.rank_in_group || index + 1),
@@ -209,11 +212,13 @@ class CoachesService {
         return this.academyService.createBirthYear(data, academyId);
     }
 
-    async getMyGroupDetail(userId, academyId, groupId) {
+    async getMyGroupDetail(userId, academyId, groupId, options = {}) {
         const coach = await this._getCurrentCoach(userId, academyId);
         const [group, players] = await Promise.all([
             this.repo.findCoachGroupDetailed(coach.id, academyId, groupId),
-            this.repo.findCoachPlayers(coach.id, academyId, groupId),
+            this.repo.findCoachPlayers(coach.id, academyId, groupId, {
+                measurementMonth: options.month,
+            }),
         ]);
         if (!group) throw new NotFoundError('Group', groupId);
 

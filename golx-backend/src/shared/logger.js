@@ -7,7 +7,7 @@ const logger = pino({
         env.NODE_ENV !== 'production'
             ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
             : undefined,
-    base: { service: 'golx-api' },
+    base: { service: 'goalix-api' },
     serializers: pino.stdSerializers,
     redact: ['req.headers.authorization', 'req.headers.cookie'],
 });

@@ -27,6 +27,55 @@ class AdminController {
         }
     };
 
+    getAccessControl = async (req, res, next) => {
+        try {
+            const data = await this.service.getAccessControl(req.user.academyId || null);
+            res.json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    createRole = async (req, res, next) => {
+        try {
+            const role = await this.service.createRole(
+                req.user.academyId || null,
+                req.user.userId,
+                req.body,
+            );
+            res.status(201).json(ApiResponse.success(role));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    updateRole = async (req, res, next) => {
+        try {
+            const role = await this.service.updateRole(
+                req.params.id,
+                req.user.academyId || null,
+                req.user.userId,
+                req.body,
+            );
+            res.json(ApiResponse.success(role));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    deleteRole = async (req, res, next) => {
+        try {
+            const result = await this.service.deleteRole(
+                req.params.id,
+                req.user.academyId || null,
+                req.user.userId,
+            );
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
     approveRegistration = async (req, res, next) => {
         try {
             const result = await this.service.approveRegistration(req.params.id, req.user.userId, req.ip, req.get('user-agent'));

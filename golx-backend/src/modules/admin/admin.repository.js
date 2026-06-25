@@ -1,4 +1,5 @@
 const BaseRepository = require('../../shared/base.repository');
+const { BadRequestError } = require('../../shared/errors');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
 
 class AdminRepository extends BaseRepository {
@@ -147,14 +148,19 @@ class AdminRepository extends BaseRepository {
             SELECT
                 mr.m,
                 to_char(mr.month_start, 'Mon YYYY') AS label,
-                COALESCE(SUM(pi.amount), 0) AS value
+                COALESCE(SUM(
+                    CASE
+                        WHEN :academyId::uuid IS NULL OR pp.academy_id = :academyId
+                        THEN pi.amount
+                        ELSE 0
+                    END
+                ), 0) AS value
             FROM month_ranges mr
             LEFT JOIN payment_invoices pi
                 ON date_trunc('month', pi.paid_at) = mr.month_start
                 AND pi.status = 'paid'
             LEFT JOIN payment_subscriptions ps ON pi.subscription_id = ps.id
             LEFT JOIN player_profiles pp ON ps.player_id = pp.id
-                AND (:academyId::uuid IS NULL OR pp.academy_id = :academyId)
             GROUP BY mr.m, mr.month_start
             ORDER BY mr.m DESC
         `, { academyId });
@@ -167,24 +173,324 @@ class AdminRepository extends BaseRepository {
 
     // ─── Top Players (last ranking snapshot) ────────────────────────────
     async getTopPlayers(academyId, limit = 5) {
-        return this.db
-            .select(
-                'pp.id',
-                'pp.full_name as fullName',
-                'rs.total_score as totalScore',
-                'rs.rank',
-                'rs.period',
-            )
-            .from(this.db.raw(`(
-                SELECT DISTINCT ON (rs.player_id)
-                    rs.id, rs.player_id, rs.total_score, rs.rank, rs.period
+        const rows = await this.db.raw(`
+            WITH scoped_rankings AS (
+                SELECT
+                    pp.id,
+                    pp.full_name,
+                    rs.total_score,
+                    rs.rank,
+                    rs.period,
+                    rs.calculated_at
                 FROM ranking_snapshots rs
-                ORDER BY rs.player_id, rs.calculated_at DESC
-            ) AS rs`))
-            .join('player_profiles as pp', 'rs.player_id', 'pp.id')
-            .modify((b) => { if (academyId) b.where('pp.academy_id', academyId); })
-            .orderBy('rs.total_score', 'desc')
-            .limit(limit);
+                JOIN player_profiles pp ON rs.player_id = pp.id
+                WHERE pp.deleted_at IS NULL
+                  AND (:academyId::uuid IS NULL OR pp.academy_id = :academyId)
+            ),
+            latest_period AS (
+                SELECT period
+                FROM scoped_rankings
+                ORDER BY calculated_at DESC NULLS LAST, period DESC
+                LIMIT 1
+            ),
+            latest_rankings AS (
+                SELECT
+                    sr.*,
+                    COALESCE(
+                        sr.rank::int,
+                        ROW_NUMBER() OVER (
+                            ORDER BY sr.total_score DESC NULLS LAST, sr.full_name ASC
+                        )::int
+                    ) AS display_rank
+                FROM scoped_rankings sr
+                JOIN latest_period lp ON lp.period = sr.period
+            )
+            SELECT
+                id,
+                full_name AS "fullName",
+                total_score AS "totalScore",
+                display_rank AS rank,
+                period
+            FROM latest_rankings
+            ORDER BY display_rank ASC, total_score DESC NULLS LAST
+            LIMIT :limit
+        `, { academyId, limit });
+
+        return rows.rows.map((row) => ({
+            ...row,
+            totalScore: Number(row.totalScore || 0),
+            rank: Number(row.rank || 0),
+        }));
+    }
+
+    async getWeeklyMatches(academyId) {
+        const rows = await this.db.raw(`
+            WITH days AS (
+                SELECT generate_series(
+                    date_trunc('week', current_date)::date,
+                    (date_trunc('week', current_date)::date + interval '6 days')::date,
+                    interval '1 day'
+                )::date AS day_date
+            )
+            SELECT
+                d.day_date::text AS date,
+                to_char(d.day_date, 'Dy') AS "dayLabel",
+                to_char(d.day_date, 'DD Mon') AS "dateLabel",
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'id', m.id::text,
+                            'opponentName', m.opponent_name,
+                            'matchTime', to_char(m.match_time, 'HH24:MI'),
+                            'venueType', m.venue_type::text,
+                            'status', m.status::text,
+                            'matchStatus', m.match_status::text,
+                            'ourScore', m.our_score,
+                            'opponentScore', m.opponent_score,
+                            'played', (
+                                m.status::text IN ('completed', 'finished')
+                                OR m.match_status::text = 'finished'
+                            )
+                        )
+                        ORDER BY m.match_time ASC
+                    ) FILTER (WHERE m.id IS NOT NULL),
+                    '[]'::json
+                ) AS matches
+            FROM days d
+            LEFT JOIN matches m
+              ON m.match_date = d.day_date
+             AND m.deleted_at IS NULL
+             AND m.status::text <> 'cancelled'
+             AND (
+                :academyId::uuid IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM calendar_events ce
+                    WHERE ce.id = m.event_id
+                      AND ce.academy_id = :academyId
+                      AND ce.deleted_at IS NULL
+                )
+             )
+            GROUP BY d.day_date
+            ORDER BY d.day_date ASC
+        `, { academyId });
+
+        return rows.rows;
+    }
+
+    // ─── Access Control Settings ────────────────────────────────────────
+    async getAccessControl(academyId) {
+        const db = this.db;
+        const [permissionRows, roleRows] = await Promise.all([
+            this.db('iam_permissions as p')
+                .leftJoin('iam_permission_groups as pg', 'p.group_id', 'pg.id')
+                .select(
+                    'p.id',
+                    'p.code',
+                    'p.resource',
+                    'p.action',
+                    'p.scope',
+                    'p.description',
+                    'p.is_system as isSystem',
+                    'pg.id as groupId',
+                    'pg.code as groupCode',
+                    'pg.name as groupName',
+                    'pg.description as groupDescription',
+                    'pg.sort_order as groupSortOrder',
+                )
+                .orderBy('pg.sort_order', 'asc')
+                .orderBy('p.resource', 'asc')
+                .orderBy('p.action', 'asc'),
+            this.db('iam_roles as r')
+                .leftJoin('iam_user_roles as ur', function joinAssignments() {
+                    this.on('ur.role_id', '=', 'r.id')
+                        .andOn('ur.academy_id', '=', db.raw('?', [academyId]))
+                        .andOnNull('ur.revoked_at')
+                        .andOn(function activeAssignment() {
+                            this.onNull('ur.expires_at').orOn('ur.expires_at', '>', db.raw('now()'));
+                        });
+                })
+                .whereNull('r.deleted_at')
+                .where(function scopedRoles() {
+                    this.whereNull('r.academy_id').orWhere('r.academy_id', academyId);
+                })
+                .select(
+                    'r.id',
+                    'r.academy_id as academyId',
+                    'r.code',
+                    'r.name',
+                    'r.description',
+                    'r.is_system as isSystem',
+                    'r.is_active as isActive',
+                    'r.priority',
+                    'r.created_at as createdAt',
+                    'r.updated_at as updatedAt',
+                    this.db.raw('COUNT(DISTINCT ur.user_id)::int as "userCount"'),
+                )
+                .groupBy('r.id')
+                .orderBy('r.is_system', 'desc')
+                .orderBy('r.priority', 'asc')
+                .orderBy('r.name', 'asc'),
+        ]);
+
+        const permissionsByRole = await this.db('iam_role_permissions as rp')
+            .join('iam_roles as r', 'rp.role_id', 'r.id')
+            .whereNull('r.deleted_at')
+            .where(function scopedRoles() {
+                this.whereNull('r.academy_id').orWhere('r.academy_id', academyId);
+            })
+            .select(
+                'rp.role_id as roleId',
+                'rp.permission_id as permissionId',
+                'rp.denied',
+            );
+
+        const permissionMap = permissionsByRole.reduce((acc, row) => {
+            if (!acc.has(row.roleId)) acc.set(row.roleId, []);
+            acc.get(row.roleId).push({
+                permissionId: row.permissionId,
+                denied: Boolean(row.denied),
+            });
+            return acc;
+        }, new Map());
+
+        const groups = new Map();
+        for (const row of permissionRows) {
+            const groupKey = row.groupId || 'ungrouped';
+            if (!groups.has(groupKey)) {
+                groups.set(groupKey, {
+                    id: row.groupId,
+                    code: row.groupCode || 'ungrouped',
+                    name: row.groupName || 'Ungrouped',
+                    description: row.groupDescription || null,
+                    sortOrder: Number(row.groupSortOrder || 999),
+                    permissions: [],
+                });
+            }
+
+            groups.get(groupKey).permissions.push({
+                id: row.id,
+                code: row.code,
+                resource: row.resource,
+                action: row.action,
+                scope: row.scope,
+                description: row.description,
+                isSystem: Boolean(row.isSystem),
+            });
+        }
+
+        return {
+            permissionGroups: Array.from(groups.values()),
+            roles: roleRows.map((role) => ({
+                ...role,
+                isSystem: Boolean(role.isSystem),
+                isActive: Boolean(role.isActive),
+                userCount: Number(role.userCount || 0),
+                permissionAssignments: permissionMap.get(role.id) || [],
+            })),
+        };
+    }
+
+    async createAcademyRole(academyId, userId, data) {
+        return this.db.transaction(async (trx) => {
+            const [role] = await trx('iam_roles')
+                .insert({
+                    academy_id: academyId,
+                    code: data.code,
+                    name: data.name,
+                    description: data.description || null,
+                    is_system: false,
+                    is_active: data.isActive !== undefined ? data.isActive : true,
+                    priority: 100,
+                    created_by: userId,
+                    updated_by: userId,
+                })
+                .returning('*');
+
+            await this.replaceRolePermissions(role.id, data.permissionIds || [], userId, trx);
+            return role;
+        });
+    }
+
+    async findAcademyEditableRole(roleId, academyId) {
+        return this.db('iam_roles')
+            .where({ id: roleId, academy_id: academyId, is_system: false })
+            .whereNull('deleted_at')
+            .first();
+    }
+
+    async updateAcademyRole(roleId, academyId, userId, data) {
+        return this.db.transaction(async (trx) => {
+            const role = await trx('iam_roles')
+                .where({ id: roleId, academy_id: academyId, is_system: false })
+                .whereNull('deleted_at')
+                .forUpdate()
+                .first();
+            if (!role) return null;
+
+            const updateData = {};
+            if (data.name !== undefined) updateData.name = data.name;
+            if (data.code !== undefined) updateData.code = data.code;
+            if (data.description !== undefined) updateData.description = data.description || null;
+            if (data.isActive !== undefined) updateData.is_active = data.isActive;
+
+            let updated = role;
+            if (Object.keys(updateData).length) {
+                [updated] = await trx('iam_roles')
+                    .where({ id: roleId })
+                    .update({
+                        ...updateData,
+                        updated_by: userId,
+                        updated_at: new Date(),
+                    })
+                    .returning('*');
+            }
+
+            if (data.permissionIds !== undefined) {
+                await this.replaceRolePermissions(roleId, data.permissionIds, userId, trx);
+            }
+
+            return updated;
+        });
+    }
+
+    async softDeleteAcademyRole(roleId, academyId, userId) {
+        const [row] = await this.db('iam_roles')
+            .where({ id: roleId, academy_id: academyId, is_system: false })
+            .whereNull('deleted_at')
+            .update({
+                deleted_at: new Date(),
+                deleted_by: userId,
+                is_active: false,
+                updated_by: userId,
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async replaceRolePermissions(roleId, permissionIds, userId, trx = this.db) {
+        const uniqueIds = [...new Set(permissionIds || [])];
+        if (uniqueIds.length) {
+            const existingRows = await trx('iam_permissions').whereIn('id', uniqueIds).select('id');
+            const existingIds = new Set(existingRows.map((row) => row.id));
+            const missingIds = uniqueIds.filter((id) => !existingIds.has(id));
+            if (missingIds.length) {
+                throw new BadRequestError('One or more selected permissions no longer exist');
+            }
+        }
+
+        await trx('iam_role_permissions').where({ role_id: roleId }).del();
+        if (!uniqueIds.length) return;
+
+        await trx('iam_role_permissions').insert(
+            uniqueIds.map((permissionId) => ({
+                role_id: roleId,
+                permission_id: permissionId,
+                denied: false,
+                granted_by: userId,
+            })),
+        );
     }
 
     // ─── Recent Admin Notifications ──────────────────────────────────────

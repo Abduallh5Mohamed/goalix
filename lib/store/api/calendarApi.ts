@@ -488,10 +488,15 @@ export interface PlayerProgress {
   matchesPlayed: number;
   matchesAttended?: number;
   matchesRecorded?: number;
+  averageOverallRating?: number;
   averageTrainingRating: number;
   averageMatchRating: number;
   goals: number;
   assists: number;
+  monthlyMinutesPlayed: number;
+  monthlyMatchesPlayed: number;
+  monthStart: string | null;
+  monthEnd: string | null;
   weeklyMinutesPlayed: number;
   weeklyMatchesPlayed: number;
   weekStart: string | null;
@@ -1519,7 +1524,7 @@ export const calendarApi = createApi({
         body: { records },
       }),
       transformResponse: (res: { data: TrainingEvaluation[] }) => res.data,
-      invalidatesTags: ["CalendarEvents"],
+      invalidatesTags: ["CalendarEvents", "Notifications"],
     }),
     getCoachMatches: builder.query<PaginatedResponse<Match>, void>({
       query: () => "/coach/matches?limit=100",
@@ -1765,7 +1770,7 @@ export const calendarApi = createApi({
         body: { records, finalize },
       }),
       transformResponse: (res: { data: MatchPlayerStats[] }) => res.data,
-      invalidatesTags: ["Matches"],
+      invalidatesTags: ["Matches", "CalendarEvents"],
     }),
     createFriendlyRequest: builder.mutation<
       FriendlyMatchRequest,

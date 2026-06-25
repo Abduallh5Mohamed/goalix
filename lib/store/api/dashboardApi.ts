@@ -34,12 +34,32 @@ export interface RecentAlert {
     createdAt: string;
 }
 
+export interface WeeklyMatch {
+    id: string;
+    opponentName: string;
+    matchTime: string | null;
+    venueType: string | null;
+    status: string | null;
+    matchStatus: string | null;
+    ourScore: number | null;
+    opponentScore: number | null;
+    played: boolean;
+}
+
+export interface WeeklyMatchDay {
+    date: string;
+    dayLabel: string;
+    dateLabel: string;
+    matches: WeeklyMatch[];
+}
+
 export interface DashboardData {
     kpis: DashboardKPIs;
     attendanceTrend: ChartPoint[];
     revenueTrend: ChartPoint[];
     topPlayers: TopPlayer[];
     recentAlerts: RecentAlert[];
+    weeklyMatches: WeeklyMatchDay[];
 }
 
 export interface PlayerListItem {
