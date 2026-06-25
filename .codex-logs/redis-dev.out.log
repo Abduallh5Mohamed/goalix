@@ -1,0 +1,80 @@
+
+> goalix@0.1.0 predev
+> npm run free:dev-ports
+
+
+> goalix@0.1.0 free:dev-ports
+> node scripts/free-dev-ports.js
+
+
+> goalix@0.1.0 dev
+> concurrently -n "backend,frontend" -c "bgBlue,bgGreen" "npm run dev:backend" "npm run dev:frontend"
+
+[backend] 
+[backend] > goalix@0.1.0 dev:backend
+[backend] > cd golx-backend && npm run dev
+[backend] 
+[frontend] 
+[frontend] > goalix@0.1.0 dev:frontend
+[frontend] > next dev --webpack -H 0.0.0.0 -p 3001
+[frontend] 
+[backend] 
+[backend] > golx-backend@1.0.0 dev
+[backend] > nodemon src/server.js
+[backend] 
+[backend] [33m[nodemon] 3.1.14[39m
+[backend] [33m[nodemon] to restart at any time, enter `rs`[39m
+[backend] [33m[nodemon] watching path(s): *.*[39m
+[backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[frontend] ▲ Next.js 16.2.6 (webpack)
+[frontend] - Local:         http://localhost:3001
+[frontend] - Network:       http://0.0.0.0:3001
+[frontend] ✓ Ready in 852ms
+[frontend] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[frontend]  We detected multiple lockfiles and selected the directory of C:\Users\abdua\OneDrive\سطح المكتب\Goalix\package-lock.json as the root directory.
+[frontend]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[frontend]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[frontend]  Detected additional lockfiles: 
+[frontend]    * C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\package-lock.json
+[frontend] 
+[backend] [2026-06-25 20:32:00.813 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:32:00.831 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:32:00.839 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:32:00.896 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[frontend] 
+[backend] [2026-06-25 20:32:30.940 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [2026-06-25 20:33:34.189 +0300] [32mINFO[39m (deliver-notification): [36mNotifications worker: processing[39m
+[backend]     service: "golx-api"
+[backend]     jobId: "1"
+[backend] [2026-06-25 20:33:34.190 +0300] [32mINFO[39m: [36mDelivering notification[39m
+[backend]     service: "golx-api"
+[backend]     notificationId: "e2e-redis-check"
+[backend]     channel: "in_app"
+[backend]     userId: "e2e-user"
+[backend] [2026-06-25 20:33:34.190 +0300] [32mINFO[39m: [36mNotifications worker: completed[39m
+[backend]     service: "golx-api"
+[backend]     jobId: "1"
+[backend] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[frontend] [?25h
+[frontend] npm run dev:frontend exited with code 1

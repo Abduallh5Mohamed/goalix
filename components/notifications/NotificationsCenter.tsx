@@ -21,8 +21,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getNotificationHref } from "@/lib/notifications";
+import {
+  getNotificationHref,
+  getNotificationTypeLabel,
+  localizeNotification,
+} from "@/lib/notifications";
 import { useCurrentUser } from "@/lib/auth/auth-context";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   useGetNotificationsQuery,
   useGetUnreadNotificationsCountQuery,
@@ -70,6 +75,33 @@ const roleHome: Record<UserRole, string> = {
   parent: "/parent/home",
 };
 
+const copy = {
+  en: {
+    title: "Notifications",
+    unread: (count: number) => `${count} unread notification${count === 1 ? "" : "s"}`,
+    home: "Home",
+    markAllRead: "Mark all read",
+    all: "All",
+    unreadTab: "Unread",
+    read: "Read",
+    failed: "Failed to load notifications.",
+    retry: "Retry",
+    noNotifications: "No notifications",
+  },
+  ar: {
+    title: "الإشعارات",
+    unread: (count: number) => `${count} إشعار غير مقروء`,
+    home: "الرئيسية",
+    markAllRead: "تحديد الكل كمقروء",
+    all: "الكل",
+    unreadTab: "غير المقروء",
+    read: "مقروء",
+    failed: "تعذر تحميل الإشعارات.",
+    retry: "إعادة المحاولة",
+    noNotifications: "لا توجد إشعارات",
+  },
+} as const;
+
 function matchesFilter(notification: NotificationRow, filter: string) {
   if (filter === "unread") return !notification.is_read;
   if (filter === "read") return notification.is_read;
@@ -78,6 +110,9 @@ function matchesFilter(notification: NotificationRow, filter: string) {
 
 export function NotificationsCenter({ role }: { role: UserRole }) {
   const [filter, setFilter] = useState("all");
+  const language = useDashboardLanguage();
+  const t = copy[language];
+  const locale = language === "ar" ? "ar-EG" : "en-US";
   const authState = useCurrentUser();
   const notificationsEnabled =
     authState.isAuthenticated && authState.role === role;
@@ -119,7 +154,7 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <Bell className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-muted-foreground">Failed to load notifications.</p>
+        <p className="text-muted-foreground">{t.failed}</p>
         <Button
           variant="outline"
           disabled={!notificationsEnabled}
@@ -129,20 +164,20 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
           className="gap-1.5"
         >
           <RefreshCw className="h-4 w-4" />
-          Retry
+          {t.retry}
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        title="Notifications"
-        description={`${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
+        title={t.title}
+        description={t.unread(unreadCount)}
         breadcrumbs={[
-          { label: "Home", href: roleHome[role] },
-          { label: "Notifications" },
+          { label: t.home, href: roleHome[role] },
+          { label: t.title },
         ]}
         actions={
           unreadCount > 0 ? (
@@ -153,7 +188,7 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
               disabled={markAllReadState.isLoading}
             >
               <CheckCheck className="h-4 w-4" />
-              Mark all read
+              {t.markAllRead}
             </Button>
           ) : null
         }
@@ -162,9 +197,9 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList className="bg-muted/30">
-            <TabsTrigger value="all">All ({notifications.length})</TabsTrigger>
-            <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
-            <TabsTrigger value="read">Read ({Math.max(notifications.length - unreadCount, 0)})</TabsTrigger>
+            <TabsTrigger value="all">{t.all} ({notifications.length})</TabsTrigger>
+            <TabsTrigger value="unread">{t.unreadTab} ({unreadCount})</TabsTrigger>
+            <TabsTrigger value="read">{t.read} ({Math.max(notifications.length - unreadCount, 0)})</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -175,6 +210,7 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
             filtered.map((notification) => {
               const Icon = typeIcons[notification.type] || Bell;
               const iconColor = typeColors[notification.type] || typeColors.info;
+              const localized = localizeNotification(notification, language);
 
               return (
                 <Card
@@ -199,10 +235,10 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <h4 className={cn("text-sm leading-tight", notification.is_read ? "font-medium text-muted-foreground" : "font-semibold")}>
-                            {notification.title}
+                            {localized.title}
                           </h4>
                           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                            {notification.body}
+                            {localized.body}
                           </p>
                         </div>
                         {!notification.is_read && (
@@ -211,10 +247,10 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
                       </div>
                       <div className="mt-2 flex items-center gap-3">
                         <span className="text-[10px] text-muted-foreground">
-                          {formatDateTime(notification.created_at)}
+                          {formatDateTime(notification.created_at, locale)}
                         </span>
                         <Badge variant="outline" className="px-1.5 py-0 text-[10px] capitalize">
-                          {notification.type}
+                          {getNotificationTypeLabel(notification.type, language)}
                         </Badge>
                       </div>
                     </Link>
@@ -226,7 +262,7 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
                         className="h-8 shrink-0 px-2 text-xs"
                         onClick={() => markRead(notification.id)}
                       >
-                        Read
+                        {t.read}
                       </Button>
                     )}
                   </CardContent>
@@ -237,7 +273,7 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
             <Card className="border-border/30 bg-card">
               <CardContent className="flex flex-col items-center gap-3 p-12">
                 <Bell className="h-12 w-12 text-muted-foreground/30" />
-                <p className="text-muted-foreground">No notifications</p>
+                <p className="text-muted-foreground">{t.noNotifications}</p>
               </CardContent>
             </Card>
           )}

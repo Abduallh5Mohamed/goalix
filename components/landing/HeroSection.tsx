@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -26,11 +27,11 @@ const S = {
 };
 
 const navLinks = [
-  { label: "AI in Sport", href: "#ai-in-sport" },
-  { label: "How GOALIX Works", href: "#how-goalix-works" },
-  { label: "Product Suite", href: "#product-suite" },
-  { label: "Clubs & Coaches", href: "#clubs-coaches" },
-  { label: "Ecosystem", href: "#goalix-ecosystem" },
+  { label: "AI in Sport", id: "ai-in-sport" },
+  { label: "How GOALIX Works", id: "how-goalix-works" },
+  { label: "Product Suite", id: "product-suite" },
+  { label: "Clubs & Coaches", id: "clubs-coaches" },
+  { label: "Ecosystem", id: "goalix-ecosystem" },
 ];
 
 const testDashboardLinks = [
@@ -42,6 +43,32 @@ const testDashboardLinks = [
 
 export default function HeroSection() {
   const router = useRouter();
+  const [activeSection, setActiveSection] = useState(navLinks[0].id);
+
+  useEffect(() => {
+    const syncActiveSection = () => {
+      const activationLine = window.scrollY + Math.min(140, window.innerHeight * 0.25);
+      let currentSection = navLinks[0].id;
+
+      navLinks.forEach((link) => {
+        const section = document.getElementById(link.id);
+        if (section && section.offsetTop <= activationLine) {
+          currentSection = link.id;
+        }
+      });
+
+      setActiveSection((current) => current === currentSection ? current : currentSection);
+    };
+
+    syncActiveSection();
+    window.addEventListener("scroll", syncActiveSection, { passive: true });
+    window.addEventListener("resize", syncActiveSection);
+
+    return () => {
+      window.removeEventListener("scroll", syncActiveSection);
+      window.removeEventListener("resize", syncActiveSection);
+    };
+  }, []);
 
   return (
     <>
@@ -79,9 +106,12 @@ export default function HeroSection() {
             style={{ width: "auto", height: "auto", objectFit: "contain" }}
           />
           <div className="gx-hero-links" style={{ display: "flex", gap: 36 }}>
-            {navLinks.map((link, index) => (
-              <div
-                key={link.href}
+            {navLinks.map((link, index) => {
+              const isActive = activeSection === link.id;
+
+              return (
+                <div
+                key={link.id}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -91,42 +121,56 @@ export default function HeroSection() {
                 }}
               >
                 <a
-                  href={link.href}
+                  className="gx-section-nav-link"
+                  href={`#${link.id}`}
+                  aria-current={isActive ? "location" : undefined}
                   style={{
                     fontSize: 14,
-                    color: index === 0 ? "#cfff04" : "#e2e8f0",
+                    color: isActive ? "#cfff04" : "#e2e8f0",
                     textDecoration: "none",
-                    fontWeight: index === 0 ? 600 : 400,
+                    fontWeight: isActive ? 600 : 400,
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                     padding: "8px 0",
+                    transition: "color 220ms ease, opacity 220ms ease",
                   }}
                 >
                   {link.label}
                   {index > 0 && (
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M1 1L5 5L9 1" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M1 1L5 5L9 1"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </a>
-                {index === 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: -2,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      width: "100%",
-                    }}
-                  >
-                    <div style={{ width: "120%", height: 1, background: "linear-gradient(90deg, transparent, #cfff04, transparent)", opacity: 0.7 }} />
-                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#cfff04", marginTop: 4, boxShadow: "0 0 6px #cfff04" }} />
-                  </div>
-                )}
+                <div
+                  className="gx-section-nav-marker"
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    bottom: -2,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    width: "100%",
+                    opacity: isActive ? 1 : 0,
+                    transform: isActive ? "translateY(0)" : "translateY(-3px)",
+                    transition: "opacity 220ms ease, transform 220ms ease",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <div style={{ width: "120%", height: 1, background: "linear-gradient(90deg, transparent, #cfff04, transparent)", opacity: 0.7 }} />
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#cfff04", marginTop: 4, boxShadow: "0 0 6px #cfff04" }} />
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

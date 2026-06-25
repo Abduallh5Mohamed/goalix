@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Provider } from "react-redux";
 import { store } from "./store";
-import { loginSuccess, logout } from "./slices/authSlice";
+import { authInitialized, loginSuccess, logout } from "./slices/authSlice";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
@@ -33,23 +33,24 @@ function mapApiUser(apiUser: Record<string, unknown>) {
 
 /** Rehydrates auth state from the httpOnly refresh cookie only. */
 function SessionRefresher() {
-  const ran = useRef(false);
-
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
 
-    if (!hasAuthSessionMarker()) {
-      store.dispatch(logout());
-      return;
-    }
+    const restoreSession = async () => {
+      if (!hasAuthSessionMarker()) {
+        window.clearTimeout(timeout);
+        store.dispatch(authInitialized());
+        return;
+      }
 
-    fetch(`${API_BASE}/api/v1/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          signal: controller.signal,
+        });
+        const json = response.ok ? await response.json() : null;
         const apiUser = json?.data?.user as Record<string, unknown> | undefined;
         if (!apiUser) {
           forgetAuthSession();
@@ -60,11 +61,21 @@ function SessionRefresher() {
         const user = mapApiUser(apiUser);
         rememberAuthSession();
         store.dispatch(loginSuccess({ user, role: user.role }));
-      })
-      .catch(() => {
+      } catch {
         forgetAuthSession();
         store.dispatch(logout());
-      });
+      } finally {
+        window.clearTimeout(timeout);
+        store.dispatch(authInitialized());
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   return null;

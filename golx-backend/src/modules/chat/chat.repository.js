@@ -43,6 +43,64 @@ class ChatRepository {
       .first();
   }
 
+  findParentByUserId(userId, academyId) {
+    return this.db("auth_users")
+      .where({ id: userId, academy_id: academyId, role: "parent", is_active: true })
+      .whereNull("deleted_at")
+      .first();
+  }
+
+  async findParentLinkedPlayers(parentUserId, academyId) {
+    const linkRows = await this.db("parent_player_links as ppl")
+      .join("player_profiles as pp", "ppl.player_id", "pp.id")
+      .leftJoin("player_group_assignments as pga", function joinCurrentGroup() {
+        this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
+      })
+      .leftJoin("academy_groups as ag", "pga.group_id", "ag.id")
+      .where("ppl.parent_user_id", parentUserId)
+      .where("ppl.academy_id", academyId)
+      .where("pp.academy_id", academyId)
+      .whereNull("ppl.deleted_at")
+      .whereNull("pp.deleted_at")
+      .select(
+        "pp.*",
+        "ppl.relation",
+        "ppl.is_primary",
+        "ppl.can_message_coach",
+        "ag.name as group_name",
+      )
+      .orderBy("ppl.is_primary", "desc")
+      .orderBy("pp.full_name", "asc");
+
+    if (linkRows.length) {
+      return linkRows.filter((row) => row.can_message_coach !== false);
+    }
+
+    return this.db("auth_users as au")
+      .join("player_profiles as pp", "au.linked_player_id", "pp.id")
+      .leftJoin("player_group_assignments as pga", function joinCurrentGroup() {
+        this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
+      })
+      .leftJoin("academy_groups as ag", "pga.group_id", "ag.id")
+      .where("au.id", parentUserId)
+      .where("au.role", "parent")
+      .where("pp.academy_id", academyId)
+      .whereNull("au.deleted_at")
+      .whereNull("pp.deleted_at")
+      .select(
+        "pp.*",
+        this.db.raw("'guardian' as relation"),
+        this.db.raw("true as is_primary"),
+        this.db.raw("true as can_message_coach"),
+        "ag.name as group_name",
+      );
+  }
+
+  async findParentLinkedPlayer(parentUserId, playerId, academyId) {
+    const players = await this.findParentLinkedPlayers(parentUserId, academyId);
+    return players.find((player) => player.id === playerId) || null;
+  }
+
   findUserById(userId) {
     return this.db("auth_users")
       .where({ id: userId, is_active: true })
@@ -134,6 +192,35 @@ class ChatRepository {
         requireUser: true,
       }),
     ]);
+    const playerIds = players.map((player) => player.id);
+    const parents = playerIds.length
+      ? await this.db("parent_player_links as ppl")
+          .join("auth_users as au", "ppl.parent_user_id", "au.id")
+          .join("player_profiles as pp", "ppl.player_id", "pp.id")
+          .whereIn("ppl.player_id", playerIds)
+          .where("ppl.academy_id", academyId)
+          .where("ppl.can_message_coach", true)
+          .where("au.role", "parent")
+          .where("au.is_active", true)
+          .whereNull("ppl.deleted_at")
+          .whereNull("au.deleted_at")
+          .whereNull("pp.deleted_at")
+          .distinctOn("au.id", "pp.id")
+          .select(
+            this.db.raw("'parent' as type"),
+            "au.id",
+            "au.id as user_id",
+            "pp.id as player_id",
+            "pp.full_name as player_name",
+            this.db.raw(
+              "COALESCE(au.username, au.email, au.phone, 'Parent') as name",
+            ),
+            this.db.raw("CONCAT('Parent of ', pp.full_name) as subtitle"),
+          )
+          .orderBy("au.id")
+          .orderBy("pp.id")
+          .orderBy("name", "asc")
+      : [];
     return {
       admins,
       players: players.map((player) => ({
@@ -143,6 +230,7 @@ class ChatRepository {
         name: player.full_name,
         subtitle: player.position || player.group_name || null,
       })),
+      parents,
     };
   }
 
@@ -156,6 +244,44 @@ class ChatRepository {
         name: coach.full_name,
         subtitle: coach.specialization || null,
       })),
+    };
+  }
+
+  async listParentContacts(parentUserId, academyId) {
+    const children = await this.findParentLinkedPlayers(parentUserId, academyId);
+    const coachContacts = [];
+    for (const child of children) {
+      const coaches = await this.findCoachesForPlayer(child, academyId);
+      coaches.forEach((coach) => {
+        coachContacts.push({
+          type: "coach",
+          id: coach.id,
+          user_id: coach.user_id,
+          player_id: child.id,
+          player_name: child.full_name,
+          name: coach.full_name,
+          subtitle: `${coach.specialization || "Coach"} - ${child.full_name}`,
+        });
+      });
+    }
+
+    const byCoachAndChild = new Map();
+    coachContacts.forEach((contact) => {
+      const key = `${contact.user_id}:${contact.player_id}`;
+      if (!byCoachAndChild.has(key)) byCoachAndChild.set(key, contact);
+    });
+
+    return {
+      children: children.map((child) => ({
+        type: "player",
+        id: child.id,
+        user_id: child.user_id,
+        name: child.full_name,
+        subtitle: child.position || child.group_name || null,
+      })),
+      coaches: [...byCoachAndChild.values()].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     };
   }
 
@@ -344,12 +470,16 @@ class ChatRepository {
       .leftJoin("coach_profiles as cp", "c.coach_id", "cp.id")
       .leftJoin("player_profiles as pp", "c.player_id", "pp.id")
       .leftJoin("auth_users as admin_user", "c.admin_user_id", "admin_user.id")
+      .leftJoin("auth_users as parent_user", "c.parent_user_id", "parent_user.id")
       .select(
         "c.*",
         "cp.full_name as coach_name",
         "pp.full_name as player_name",
         this.db.raw(
           "COALESCE(admin_user.username, admin_user.email, admin_user.phone, 'Admin') as admin_name",
+        ),
+        this.db.raw(
+          "COALESCE(parent_user.username, parent_user.email, parent_user.phone, 'Parent') as parent_name",
         ),
         this.db.raw(
           `(SELECT cm.body
@@ -387,6 +517,8 @@ class ChatRepository {
           q.where("c.coach_user_id", user.userId);
         } else if (user.role === "player") {
           q.where("c.player_user_id", user.userId);
+        } else if (user.role === "parent") {
+          q.where("c.parent_user_id", user.userId);
         } else {
           q.whereRaw("1 = 0");
         }
@@ -410,6 +542,8 @@ class ChatRepository {
         if (filters.adminUserId) q.where("c.admin_user_id", filters.adminUserId);
         if (filters.coachUserId) q.where("c.coach_user_id", filters.coachUserId);
         if (filters.playerUserId) q.where("c.player_user_id", filters.playerUserId);
+        if (filters.parentUserId) q.where("c.parent_user_id", filters.parentUserId);
+        if (filters.playerId) q.where("c.player_id", filters.playerId);
       })
       .first();
   }
@@ -589,6 +723,7 @@ class ChatRepository {
       conversation.admin_user_id,
       conversation.coach_user_id,
       conversation.player_user_id,
+      conversation.parent_user_id,
     ].filter(Boolean);
   }
 

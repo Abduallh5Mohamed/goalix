@@ -226,15 +226,63 @@ class PlayersRepository extends BaseRepository {
 
     // ─── Parent-Player link (stubs — no parent_players table) ──────────
     async findChildrenByParent(parentUserId) {
-        return [];
+        const linked = await this.db('parent_player_links as ppl')
+            .join('player_profiles as pp', 'ppl.player_id', 'pp.id')
+            .where('ppl.parent_user_id', parentUserId)
+            .whereNull('ppl.deleted_at')
+            .whereNull('pp.deleted_at')
+            .select('pp.*', 'ppl.relation', 'ppl.is_primary');
+
+        const legacy = await this.db('auth_users as au')
+            .join('player_profiles as pp', 'au.linked_player_id', 'pp.id')
+            .where('au.id', parentUserId)
+            .where('au.role', 'parent')
+            .whereNull('au.deleted_at')
+            .whereNull('pp.deleted_at')
+            .select('pp.*', this.db.raw("'guardian' as relation"), this.db.raw('true as is_primary'));
+
+        const byId = new Map();
+        [...linked, ...legacy].forEach((row) => {
+            if (!byId.has(row.id)) byId.set(row.id, row);
+        });
+        return [...byId.values()];
     }
 
     async linkParentToPlayer(parentUserId, playerId) {
-        return null;
+        const player = await this.findPlayerSummary(playerId);
+        if (!player) return null;
+        const [row] = await this.db('parent_player_links')
+            .insert({
+                academy_id: player.academy_id,
+                parent_user_id: parentUserId,
+                player_id: playerId,
+                relation: 'guardian',
+                is_primary: true,
+                can_view_progress: true,
+                can_view_payments: true,
+                can_message_coach: true,
+                created_by_user_id: parentUserId,
+            })
+            .onConflict(this.db.raw('(parent_user_id, player_id) where deleted_at is null'))
+            .ignore()
+            .returning('*');
+        return row || this.db('parent_player_links')
+            .where({ parent_user_id: parentUserId, player_id: playerId })
+            .whereNull('deleted_at')
+            .first();
     }
 
     async isParentOfPlayer(parentUserId, playerId) {
-        return false;
+        const link = await this.db('parent_player_links')
+            .where({ parent_user_id: parentUserId, player_id: playerId })
+            .whereNull('deleted_at')
+            .first();
+        if (link) return true;
+        const legacy = await this.db('auth_users')
+            .where({ id: parentUserId, role: 'parent', linked_player_id: playerId })
+            .whereNull('deleted_at')
+            .first();
+        return Boolean(legacy);
     }
 
     async findBranchByIdAndAcademy(branchId, academyId) {

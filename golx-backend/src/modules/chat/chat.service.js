@@ -28,8 +28,10 @@ class ChatService {
   }
 
   _assertChatRole(user) {
-    if (!["admin", "coach", "player"].includes(user.role)) {
-      throw new ForbiddenError("Chat is available for admins, coaches, and players");
+    if (!["admin", "coach", "player", "parent"].includes(user.role)) {
+      throw new ForbiddenError(
+        "Chat is available for admins, coaches, players, and parents",
+      );
     }
   }
 
@@ -65,6 +67,21 @@ class ChatService {
           };
     }
 
+    if (conversation.type === "parent_coach") {
+      return viewer.role === "parent"
+        ? {
+            type: "coach",
+            id: conversation.coach_id,
+            userId: conversation.coach_user_id,
+            name: conversation.coach_name || "Coach",
+          }
+        : {
+            type: "parent",
+            userId: conversation.parent_user_id,
+            name: conversation.parent_name || "Parent",
+          };
+    }
+
     return viewer.role === "player"
       ? {
           type: "admin",
@@ -83,6 +100,12 @@ class ChatService {
     return {
       ...conversation,
       target: this._targetFor(conversation, viewer),
+      context: conversation.player_id
+        ? {
+            playerId: conversation.player_id,
+            playerName: conversation.player_name || "Player",
+          }
+        : null,
       canSend: conversation.status === "open",
       canClose:
         viewer.role === "admin" &&
@@ -107,11 +130,14 @@ class ChatService {
     if (user.role === "player") {
       return conversation.player_user_id === user.userId;
     }
+    if (user.role === "parent") {
+      return conversation.parent_user_id === user.userId;
+    }
     return false;
   }
 
   async _assertCurrentCoachPlayerAccess(conversation) {
-    if (conversation.type !== "coach_player") return;
+    if (!["coach_player", "parent_coach"].includes(conversation.type)) return;
     const player = await this.repo.findCoachScopedPlayerById(
       conversation.coach_id,
       conversation.academy_id,
@@ -144,9 +170,22 @@ class ChatService {
       return this.repo.listCoachContacts(coach.id, user.academyId);
     }
 
-    const player = await this.repo.findPlayerByUserId(user.userId, user.academyId);
-    if (!player) throw new NotFoundError("Player profile");
-    return this.repo.listPlayerContacts(player, user.academyId);
+    if (user.role === "player") {
+      const player = await this.repo.findPlayerByUserId(
+        user.userId,
+        user.academyId,
+      );
+      if (!player) throw new NotFoundError("Player profile");
+      return this.repo.listPlayerContacts(player, user.academyId);
+    }
+
+    return this.listParentContacts(user);
+  }
+
+  async listParentContacts(user) {
+    const parent = await this.repo.findParentByUserId(user.userId, user.academyId);
+    if (!parent) throw new NotFoundError("Parent profile");
+    return this.repo.listParentContacts(user.userId, user.academyId);
   }
 
   async listConversations(user) {
@@ -220,6 +259,113 @@ class ChatService {
       }
 
       throw new ForbiddenError("Players cannot open admin chats");
+    }
+
+    if (data.type === "parent_coach") {
+      if (!data.playerId) {
+        throw new BadRequestError("playerId is required for parent-coach chat");
+      }
+
+      if (user.role === "parent") {
+        if (!data.coachId) {
+          throw new BadRequestError("coachId is required for parent-coach chat");
+        }
+        const parent = await this.repo.findParentByUserId(
+          user.userId,
+          user.academyId,
+        );
+        if (!parent) throw new NotFoundError("Parent profile");
+        const player = await this.repo.findParentLinkedPlayer(
+          user.userId,
+          data.playerId,
+          user.academyId,
+        );
+        if (!player) {
+          throw new ForbiddenError("Parent can only chat about linked children");
+        }
+        const coach = await this.repo.findCoachById(data.coachId, user.academyId);
+        if (!coach?.user_id) throw new NotFoundError("Coach", data.coachId);
+        const accessiblePlayer = await this.repo.findCoachScopedPlayerById(
+          coach.id,
+          user.academyId,
+          player.id,
+        );
+        if (!accessiblePlayer) {
+          throw new ForbiddenError("This coach cannot access your child");
+        }
+        const existing = await this.repo.findOpenConversation({
+          academyId: user.academyId,
+          type: "parent_coach",
+          parentUserId: user.userId,
+          coachUserId: coach.user_id,
+          playerId: player.id,
+        });
+        if (existing) return this._decorateConversation(existing, user);
+        const conversation = await this.repo.createConversation({
+          academy_id: user.academyId,
+          type: "parent_coach",
+          status: "open",
+          parent_user_id: user.userId,
+          coach_user_id: coach.user_id,
+          coach_id: coach.id,
+          player_id: player.id,
+          opened_by_user_id: user.userId,
+        });
+        return this._decorateConversation(conversation, user);
+      }
+
+      if (user.role === "coach") {
+        if (!data.parentUserId) {
+          throw new BadRequestError("parentUserId is required for coach-parent chat");
+        }
+        const coach = await this.repo.findCoachByUserId(
+          user.userId,
+          user.academyId,
+        );
+        if (!coach) throw new NotFoundError("Coach profile");
+        const parent = await this.repo.findParentByUserId(
+          data.parentUserId,
+          user.academyId,
+        );
+        if (!parent) throw new NotFoundError("Parent", data.parentUserId);
+        const player = await this.repo.findParentLinkedPlayer(
+          data.parentUserId,
+          data.playerId,
+          user.academyId,
+        );
+        if (!player) {
+          throw new ForbiddenError("Parent is not linked to this player");
+        }
+        const accessiblePlayer = await this.repo.findCoachScopedPlayerById(
+          coach.id,
+          user.academyId,
+          player.id,
+        );
+        if (!accessiblePlayer) {
+          throw new ForbiddenError("Coach cannot access this player");
+        }
+        const existing = await this.repo.findOpenConversation({
+          academyId: user.academyId,
+          type: "parent_coach",
+          parentUserId: parent.id,
+          coachUserId: user.userId,
+          playerId: player.id,
+        });
+        if (existing) return this._decorateConversation(existing, user);
+        const conversation = await this.repo.createConversation({
+          academy_id: user.academyId,
+          type: "parent_coach",
+          status: "open",
+          parent_user_id: parent.id,
+          coach_user_id: user.userId,
+          coach_id: coach.id,
+          player_id: player.id,
+          opened_by_user_id: user.userId,
+        });
+        return this._decorateConversation(conversation, user);
+      }
+
+      throw new ForbiddenError("Parent-coach chat is only for parents and coaches");
     }
 
     if (data.type === "admin_player_session") {

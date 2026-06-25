@@ -6,6 +6,7 @@ interface AuthState {
   role: UserRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
 }
 
 const initialState: AuthState = {
@@ -13,6 +14,7 @@ const initialState: AuthState = {
   role: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitialized: false,
 };
 
 const authSlice = createSlice({
@@ -27,8 +29,14 @@ const authSlice = createSlice({
       state.role = action.payload.role;
       state.isAuthenticated = true;
       state.isLoading = false;
+      state.isInitialized = true;
     },
     loginFailure(state) {
+      state.isLoading = false;
+      state.isInitialized = true;
+    },
+    authInitialized(state) {
+      state.isInitialized = true;
       state.isLoading = false;
     },
     logout(state) {
@@ -36,6 +44,7 @@ const authSlice = createSlice({
       state.role = null;
       state.isAuthenticated = false;
       state.isLoading = false;
+      state.isInitialized = true;
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (state.user) {
@@ -45,6 +54,13 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateUser } =
+export const {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+  authInitialized,
+  logout,
+  updateUser,
+} =
   authSlice.actions;
 export default authSlice.reducer;
