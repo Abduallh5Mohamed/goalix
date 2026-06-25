@@ -389,16 +389,30 @@ class CalendarService {
   }
 
   async _assertParentChild(parentUserId, childId, academyId) {
-    const parent = await this.repo.findParentLinkedPlayer(parentUserId);
-    if (!parent?.linked_player_id || parent.linked_player_id !== childId) {
+    const player = await this.repo.findParentChild(
+      parentUserId,
+      childId,
+      academyId,
+    );
+    if (!player) {
       throw new ForbiddenError("Parent can only access their linked child");
     }
-    const player = await this.repo
-      .db("player_profiles")
-      .where({ id: childId, academy_id: academyId })
-      .whereNull("deleted_at")
-      .first();
-    if (!player) throw new NotFoundError("Player", childId);
+    return player;
+  }
+
+  async _assertParentCanViewProgress(parentUserId, childId, academyId) {
+    const player = await this._assertParentChild(parentUserId, childId, academyId);
+    if (player.can_view_progress === false) {
+      throw new ForbiddenError("Parent cannot access progress for this child");
+    }
+    return player;
+  }
+
+  async _assertParentCanMessageCoach(parentUserId, childId, academyId) {
+    const player = await this._assertParentChild(parentUserId, childId, academyId);
+    if (player.can_message_coach === false) {
+      throw new ForbiddenError("Parent cannot contact coaches for this child");
+    }
     return player;
   }
 
@@ -808,11 +822,7 @@ class CalendarService {
         .whereIn("id", playerIds)
         .whereNotNull("user_id")
         .select("user_id");
-      const parents = await trx("auth_users")
-        .whereIn("linked_player_id", playerIds)
-        .where("role", "parent")
-        .whereNull("deleted_at")
-        .select("id as user_id");
+      const parents = await this.repo.parentUsersForPlayers(playerIds, trx);
       userIds.push(
         ...players.map((row) => row.user_id),
         ...parents.map((row) => row.user_id),
@@ -955,7 +965,7 @@ class CalendarService {
   }
 
   async _matchSquadRecipients(matchId) {
-    const [players, parents, squadCoachIds, tacticCoachIds] = await Promise.all(
+    const [players, squadPlayersForParents, squadCoachIds, tacticCoachIds] = await Promise.all(
       [
         this.repo
           .db("match_squads as ms")
@@ -964,12 +974,9 @@ class CalendarService {
           .whereNotNull("pp.user_id")
           .select("pp.user_id", "pp.id as player_id"),
         this.repo
-          .db("match_squads as ms")
-          .join("auth_users as au", "au.linked_player_id", "ms.player_id")
-          .where("ms.match_id", matchId)
-          .where("au.role", "parent")
-          .whereNull("au.deleted_at")
-          .select("au.id as user_id", "ms.player_id"),
+          .db("match_squads")
+          .where("match_id", matchId)
+          .distinct("player_id"),
         this.repo
           .db("match_squads")
           .where("match_id", matchId)
@@ -993,7 +1000,10 @@ class CalendarService {
           .whereNotNull("user_id")
           .select("user_id")
       : [];
-    return { players, parents, coaches };
+    const parentUsers = await this.repo.parentUsersForPlayers(
+      squadPlayersForParents.map((row) => row.player_id),
+    );
+    return { players, parents: parentUsers, coaches };
   }
 
   _matchPlanPayload(match) {
@@ -1122,15 +1132,9 @@ class CalendarService {
       .filter((player) => player.user_id)
       .map((player) => ({ user_id: player.user_id, player_id: player.id }));
     const parents = participants.length
-      ? await this.repo
-          .db("auth_users")
-          .whereIn(
-            "linked_player_id",
-            participants.map((player) => player.id),
-          )
-          .where("role", "parent")
-          .whereNull("deleted_at")
-          .select("id as user_id", "linked_player_id as player_id")
+      ? await this.repo.parentUsersForPlayers(
+          participants.map((player) => player.id),
+        )
       : [];
     return { players: playerRows, parents };
   }
@@ -1166,6 +1170,7 @@ class CalendarService {
       {
         source: "attendance_qr_training_reminder",
         eventId: event.id,
+        eventTitle: event.title,
         startsAt: startsAt.toISOString(),
       },
       trx,
@@ -1181,11 +1186,7 @@ class CalendarService {
     data = {},
     trx = this.repo.db,
   ) {
-    const parents = await trx("auth_users")
-      .where("linked_player_id", player.id)
-      .where("role", "parent")
-      .whereNull("deleted_at")
-      .select("id as user_id");
+    const parents = await this.repo.parentUsersForPlayers([player.id], trx);
     const userIds = [
       player.user_id,
       ...parents.map((row) => row.user_id),
@@ -1196,7 +1197,11 @@ class CalendarService {
       title,
       body,
       type,
-      { source: "attendance_qr_checked_in", ...data },
+      {
+        source: "attendance_qr_checked_in",
+        playerName: player.full_name,
+        ...data,
+      },
       trx,
     );
   }
@@ -2210,7 +2215,7 @@ class CalendarService {
         "Calendar event updated",
         event.title,
         "calendar",
-        { eventId },
+        { eventId, eventTitle: event.title },
         trx,
         true,
       );
@@ -2638,7 +2643,7 @@ class CalendarService {
         "Match updated",
         `${match.opponent_name} details changed`,
         "match",
-        { matchId },
+        { matchId, opponentName: match.opponent_name },
         trx,
         true,
       );
@@ -8368,6 +8373,243 @@ class CalendarService {
     return this._shapeDailyAiInput(row);
   }
 
+  async playerListParentNotes(userId, academyId, filters) {
+    const player = await this._getPlayer(userId, academyId);
+    return this.repo.listPlayerVisibleParentNotes(
+      academyId,
+      player.id,
+      filters,
+    );
+  }
+
+  async adminListParentLinks(academyId, filters = {}) {
+    return this.repo.listAdminParentLinks(academyId, filters);
+  }
+
+  async adminListParentAccounts(academyId, filters = {}) {
+    return this.repo.listAdminParentAccounts(academyId, filters);
+  }
+
+  async adminListLinkablePlayers(academyId, filters = {}) {
+    return this.repo.listAdminLinkablePlayers(academyId, filters);
+  }
+
+  async adminCreateParentLink(academyId, actorUserId, data) {
+    const [parent, player] = await Promise.all([
+      this.repo.findParentUser(data.parentUserId, academyId),
+      this.repo.findPlayerForParentLink(data.playerId, academyId),
+    ]);
+
+    if (!parent) throw new NotFoundError("Parent account", data.parentUserId);
+    if (!player) throw new NotFoundError("Player", data.playerId);
+
+    const existing = await this.repo.listAdminParentLinks(academyId, {
+      parentUserId: data.parentUserId,
+      playerId: data.playerId,
+      page: 1,
+      limit: 1,
+    });
+    if (existing.total > 0) {
+      throw new ConflictError("This parent is already linked to this player");
+    }
+
+    return this.repo.createParentPlayerLink({
+      academy_id: academyId,
+      parent_user_id: data.parentUserId,
+      player_id: data.playerId,
+      relation: data.relation || "guardian",
+      is_primary: Boolean(data.isPrimary),
+      can_view_progress: data.canViewProgress !== false,
+      can_view_payments: data.canViewPayments !== false,
+      can_message_coach: data.canMessageCoach !== false,
+      created_by_user_id: actorUserId,
+    });
+  }
+
+  async adminUpdateParentLink(academyId, linkId, data) {
+    const link = await this.repo.findParentPlayerLink(linkId, academyId);
+    if (!link) throw new NotFoundError("Parent link", linkId);
+
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(data, "relation")) {
+      patch.relation = data.relation || "guardian";
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "isPrimary")) {
+      patch.is_primary = Boolean(data.isPrimary);
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "canViewProgress")) {
+      patch.can_view_progress = Boolean(data.canViewProgress);
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "canViewPayments")) {
+      patch.can_view_payments = Boolean(data.canViewPayments);
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "canMessageCoach")) {
+      patch.can_message_coach = Boolean(data.canMessageCoach);
+    }
+
+    return this.repo.updateParentPlayerLink(linkId, academyId, patch);
+  }
+
+  async adminDeleteParentLink(academyId, linkId) {
+    const deleted = await this.repo.deleteParentPlayerLink(linkId, academyId);
+    if (!deleted) throw new NotFoundError("Parent link", linkId);
+    return { deleted: true, id: linkId };
+  }
+
+  _shapeParentChild(row, coaches = []) {
+    return {
+      id: row.id,
+      full_name: row.full_name,
+      player_code: row.player_code || null,
+      position: row.position || null,
+      level: row.level || null,
+      photo_url: row.photo_url || null,
+      date_of_birth: row.date_of_birth || null,
+      height_cm: row.height_cm || null,
+      weight_kg: row.weight_kg || null,
+      preferred_foot: row.preferred_foot || null,
+      profile_status: row.profile_status || null,
+      branch_id: row.branch_id || null,
+      branch_name: row.branch_name || null,
+      group_id: row.group_id || null,
+      group_name: row.group_name || null,
+      relation: row.relation || "guardian",
+      is_primary: Boolean(row.is_primary),
+      can_view_progress: row.can_view_progress !== false,
+      can_view_payments: row.can_view_payments !== false,
+      can_message_coach: row.can_message_coach !== false,
+      coaches: coaches.map((coach) => ({
+        id: coach.id,
+        user_id: coach.user_id,
+        full_name: coach.full_name,
+        specialization: coach.specialization || null,
+      })),
+    };
+  }
+
+  async parentListChildren(parentUserId, academyId) {
+    const children = await this.repo.findParentLinkedPlayers(
+      parentUserId,
+      academyId,
+    );
+    const coachesByChild = await Promise.all(
+      children.map(async (child) => [
+        child.id,
+        await this.repo.findCoachesForPlayer(child, academyId),
+      ]),
+    );
+    const coachMap = new Map(coachesByChild);
+    return children.map((child) =>
+      this._shapeParentChild(child, coachMap.get(child.id) || []),
+    );
+  }
+
+  async parentDashboard(parentUserId, academyId, childId = null) {
+    const rawChildren = await this.repo.findParentLinkedPlayers(
+      parentUserId,
+      academyId,
+    );
+    const selectedRaw = childId
+      ? rawChildren.find((child) => child.id === childId)
+      : rawChildren.find((child) => child.is_primary) || rawChildren[0] || null;
+
+    if (childId && !selectedRaw) {
+      throw new ForbiddenError("Parent can only access their linked child");
+    }
+    if (!selectedRaw) {
+      return {
+        children: [],
+        selectedChild: null,
+        progress: null,
+        calendarEvents: { data: [], total: 0, page: 1, totalPages: 1 },
+        trainings: { data: [], total: 0, page: 1, totalPages: 1 },
+        matches: { data: [], total: 0, page: 1, totalPages: 1 },
+        attendance: { data: [], total: 0, page: 1, totalPages: 1 },
+        evaluations: { data: [], total: 0, page: 1, totalPages: 1 },
+        notes: { data: [], total: 0, page: 1, totalPages: 1 },
+        coaches: [],
+        payments: null,
+        weeklyReport: null,
+      };
+    }
+
+    const selectedChildId = selectedRaw.id;
+    const coachesByChild = await Promise.all(
+      rawChildren.map(async (child) => [
+        child.id,
+        await this.repo.findCoachesForPlayer(child, academyId),
+      ]),
+    );
+    const coachMap = new Map(coachesByChild);
+    const selectedCoaches = coachMap.get(selectedChildId) || [];
+    const canViewProgress = selectedRaw.can_view_progress !== false;
+
+    const [
+      progress,
+      calendarEvents,
+      trainings,
+      matches,
+      attendance,
+      evaluations,
+      notes,
+      payments,
+      weeklyReport,
+    ] = await Promise.all([
+      canViewProgress
+        ? this.playerProgress(parentUserId, academyId, selectedChildId)
+        : Promise.resolve(null),
+      this.parentListCalendarEvents(parentUserId, academyId, selectedChildId, {
+        page: 1,
+        limit: 8,
+      }),
+      this.parentListTrainings(parentUserId, academyId, selectedChildId, {
+        page: 1,
+        limit: 5,
+      }),
+      this.parentListMatches(parentUserId, academyId, selectedChildId, {
+        page: 1,
+        limit: 5,
+      }),
+      this.parentAttendanceHistory(parentUserId, academyId, selectedChildId, {
+        page: 1,
+        limit: 8,
+      }),
+      canViewProgress
+        ? this.parentEvaluations(parentUserId, academyId, selectedChildId, {
+            page: 1,
+            limit: 5,
+          })
+        : Promise.resolve({ data: [], total: 0, page: 1, totalPages: 1 }),
+      this.parentListNotes(parentUserId, academyId, selectedChildId, {
+        page: 1,
+        limit: 5,
+      }),
+      selectedRaw.can_view_payments === false
+        ? Promise.resolve(null)
+        : this.repo.parentPaymentSummary(academyId, selectedChildId),
+      canViewProgress
+        ? this.parentWeeklyReport(parentUserId, academyId, selectedChildId)
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      children: rawChildren.map((child) =>
+        this._shapeParentChild(child, coachMap.get(child.id) || []),
+      ),
+      selectedChild: this._shapeParentChild(selectedRaw, selectedCoaches),
+      progress,
+      calendarEvents,
+      trainings,
+      matches,
+      attendance,
+      evaluations,
+      notes,
+      coaches: selectedCoaches,
+      payments,
+      weeklyReport,
+    };
+  }
+
   async parentListCalendarEvents(parentUserId, academyId, childId, filters) {
     await this._assertParentChild(parentUserId, childId, academyId);
     return this._playerVisibleEvents(childId, academyId, filters);
@@ -8400,6 +8642,7 @@ class CalendarService {
 
   async parentGetMatch(parentUserId, academyId, childId, matchId) {
     const player = await this._assertParentChild(parentUserId, childId, academyId);
+    const canViewProgress = player.can_view_progress !== false;
     const { query: visibleMatchesQuery } = await this._playerVisibleMatchQuery(
       player,
       academyId,
@@ -8414,7 +8657,7 @@ class CalendarService {
     return {
       ...match,
       squad: (match.squad || []).filter((row) => row.player_id === childId),
-      stats: match.evaluations_finalized_at
+      stats: canViewProgress && match.evaluations_finalized_at
         ? (match.stats || []).filter((row) => row.player_id === childId)
         : [],
       attendance: (match.attendance || []).filter(
@@ -8427,6 +8670,7 @@ class CalendarService {
   }
 
   async parentGetMatchStats(parentUserId, academyId, childId, matchId) {
+    await this._assertParentCanViewProgress(parentUserId, childId, academyId);
     const match = await this.parentGetMatch(parentUserId, academyId, childId, matchId);
     if (!match.evaluations_finalized_at) {
       return null;
@@ -8443,7 +8687,7 @@ class CalendarService {
   }
 
   async parentEvaluations(parentUserId, academyId, childId, filters) {
-    await this._assertParentChild(parentUserId, childId, academyId);
+    await this._assertParentCanViewProgress(parentUserId, childId, academyId);
     const query = this.repo
       .db("player_event_evaluations as pee")
       .join("calendar_events as ce", "pee.event_id", "ce.id")
@@ -8455,6 +8699,242 @@ class CalendarService {
       .select("pee.*", "ce.title", "ce.event_type", "ce.start_datetime")
       .orderBy("ce.start_datetime", "desc");
     return this.repo.paginate(query, filters, "pee.id");
+  }
+
+  async parentMeasurements(parentUserId, academyId, childId, filters) {
+    await this._assertParentCanViewProgress(parentUserId, childId, academyId);
+    return this.repo.listParentPlayerMeasurements(academyId, childId, filters);
+  }
+
+  async parentProgress(parentUserId, academyId, childId) {
+    await this._assertParentCanViewProgress(parentUserId, childId, academyId);
+    return this.playerProgress(parentUserId, academyId, childId);
+  }
+
+  async parentPayments(parentUserId, academyId, childId) {
+    const player = await this._assertParentChild(parentUserId, childId, academyId);
+    if (player.can_view_payments === false) {
+      throw new ForbiddenError("Parent cannot access payments for this child");
+    }
+    return this.repo.parentPaymentSummary(academyId, childId);
+  }
+
+  async parentWeeklyReport(parentUserId, academyId, childId) {
+    await this._assertParentCanViewProgress(parentUserId, childId, academyId);
+    const [progress, attendance, evaluations, matches, trainings, notes] =
+      await Promise.all([
+        this.playerProgress(parentUserId, academyId, childId),
+        this.parentAttendanceHistory(parentUserId, academyId, childId, {
+          page: 1,
+          limit: 20,
+        }),
+        this.parentEvaluations(parentUserId, academyId, childId, {
+          page: 1,
+          limit: 5,
+        }),
+        this.parentListMatches(parentUserId, academyId, childId, {
+          page: 1,
+          limit: 3,
+        }),
+        this.parentListTrainings(parentUserId, academyId, childId, {
+          page: 1,
+          limit: 5,
+        }),
+        this.parentListNotes(parentUserId, academyId, childId, {
+          page: 1,
+          limit: 3,
+        }),
+      ]);
+
+    const attendanceRecords = attendance.data || [];
+    const attended = attendanceRecords.filter((row) =>
+      ["present", "late"].includes(row.status),
+    ).length;
+    const attendanceRate = attendanceRecords.length
+      ? Math.round((attended / attendanceRecords.length) * 100)
+      : progress?.attendancePercentage ?? 0;
+    const latestEvaluation = evaluations.data?.[0] || null;
+
+    const highlights = [
+      `${attendanceRate}% attendance across recent sessions and matches`,
+      latestEvaluation
+        ? `Latest visible coach rating: ${latestEvaluation.overall_rating || latestEvaluation.rating || "-"}`
+        : "No new coach evaluation published yet",
+      `${matches.total || matches.data?.length || 0} visible match record(s) available`,
+    ];
+
+    const actionItems = [];
+    if (attendanceRate < 85) {
+      actionItems.push("Review attendance consistency with the coach");
+    }
+    if (!latestEvaluation) {
+      actionItems.push("Ask the coach when the next evaluation will be published");
+    }
+    if ((notes.data || []).some((note) => note.status === "new")) {
+      actionItems.push("Follow up on open parent notes");
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      progress,
+      attendanceRate,
+      latestEvaluation,
+      upcomingTrainings: trainings.data || [],
+      recentMatches: matches.data || [],
+      recentNotes: notes.data || [],
+      highlights,
+      actionItems: actionItems.length
+        ? actionItems
+        : ["Keep the same routine and monitor next week changes"],
+    };
+  }
+
+  async parentListNotes(parentUserId, academyId, childId, filters) {
+    await this._assertParentChild(parentUserId, childId, academyId);
+    const result = await this.repo.listParentPlayerNotesForParent(
+      parentUserId,
+      academyId,
+      childId,
+      filters,
+    );
+    return {
+      ...result,
+      data: result.data.map((note) =>
+        note.visibility === "coach_only"
+          ? { ...note, coach_response: null }
+          : note,
+      ),
+    };
+  }
+
+  async parentCreateNote(parentUserId, academyId, childId, data) {
+    const player = await this._assertParentCanMessageCoach(
+      parentUserId,
+      childId,
+      academyId,
+    );
+    let coachUserId = data.coachUserId || null;
+    let coaches = [];
+    if (coachUserId) {
+      coaches = await this.repo.findCoachesForPlayer(player, academyId);
+      if (!coaches.some((coach) => coach.user_id === coachUserId)) {
+        throw new ForbiddenError("Selected coach cannot access this child");
+      }
+    } else {
+      coaches = await this.repo.findCoachesForPlayer(player, academyId);
+    }
+    const note = await this.repo.createParentPlayerNote({
+      academy_id: academyId,
+      parent_user_id: parentUserId,
+      player_id: childId,
+      coach_user_id: coachUserId,
+      category: data.category || "general",
+      title: data.title || null,
+      body: data.body,
+      visibility: data.visibility || "parent_and_coach",
+      status: "new",
+    });
+
+    const targetCoachUserIds = coachUserId
+      ? [coachUserId]
+      : coaches.map((coach) => coach.user_id);
+    await this._notifyUsers(
+      targetCoachUserIds,
+      "New parent note",
+      `${note.parent_name || "A parent"} sent a note about ${player.full_name}.`,
+      "parent_note_created",
+      {
+        href: "/coach/parent-notes",
+        noteId: note.id,
+        playerId: childId,
+        playerName: player.full_name,
+        parentName: note.parent_name || null,
+      },
+    );
+
+    return note;
+  }
+
+  async coachListParentNotes(user, filters) {
+    const coach = await this._getCoach(user.userId, user.academyId);
+    return this.repo.listCoachParentNotes(coach.id, user.academyId, {
+      ...filters,
+      coachUserId: user.userId,
+    });
+  }
+
+  async coachRespondParentNote(user, noteId, data) {
+    const coach = await this._getCoach(user.userId, user.academyId);
+    const note = await this.repo.findParentNoteById(noteId, user.academyId);
+    if (!note) throw new NotFoundError("Parent note", noteId);
+    if (note.coach_user_id && note.coach_user_id !== user.userId) {
+      throw new ForbiddenError("This parent note is assigned to another coach");
+    }
+    const [player] = await this.repo.findCoachScopedPlayersByIds(
+      coach.id,
+      user.academyId,
+      [note.player_id],
+    );
+    if (!player) {
+      throw new ForbiddenError("Coach cannot access this parent note");
+    }
+
+    const hasResponse = Object.prototype.hasOwnProperty.call(
+      data,
+      "coachResponse",
+    );
+    const updated = await this.repo.updateParentNoteResponse(noteId, user.academyId, {
+      status: data.status || (hasResponse ? "reviewed" : note.status),
+      visibility: data.visibility || note.visibility,
+      coach_response: hasResponse ? data.coachResponse || null : note.coach_response,
+      coach_user_id: user.userId,
+      responded_by_user_id: hasResponse ? user.userId : note.responded_by_user_id,
+      responded_at: hasResponse ? new Date() : note.responded_at,
+    });
+    if (hasResponse) {
+      const visibleToPlayer = ["player_and_parent", "family"].includes(
+        updated.visibility,
+      );
+      const playerUser = visibleToPlayer
+        ? await this.repo
+            .db("player_profiles")
+            .where({
+              id: updated.player_id,
+              academy_id: user.academyId,
+            })
+            .whereNull("deleted_at")
+            .select("user_id")
+            .first()
+        : null;
+      await this._notifyUsers(
+        [note.parent_user_id],
+        "Coach replied to your note",
+        `${updated.coach_name || "Coach"} replied about ${updated.player_name || "your child"}.`,
+        "parent_note_replied",
+        {
+          href: "/parent/home",
+          noteId: updated.id,
+          playerId: updated.player_id,
+          playerName: updated.player_name || null,
+          coachName: updated.coach_name || null,
+        },
+      );
+      if (playerUser?.user_id) {
+        await this._notifyUsers(
+          [playerUser.user_id],
+          "New family coaching note",
+          `${updated.coach_name || "Coach"} shared a family note with you.`,
+          "player_family_note",
+          {
+            href: "/player/family-notes",
+            noteId: updated.id,
+            playerName: updated.player_name || null,
+            coachName: updated.coach_name || null,
+          },
+        );
+      }
+    }
+    return updated;
   }
 
   async coachCreateBasicPlayer(user, data) {

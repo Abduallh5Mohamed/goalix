@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { DashboardFrame } from "@/components/layout/DashboardFrame";
+import { DashboardAccessState } from "@/components/auth/DashboardAccessState";
 import { useCurrentUser } from "@/lib/auth/auth-context";
 import { ROLE_ROUTES } from "@/lib/constants";
 
@@ -11,19 +11,30 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-  const { isAuthenticated, role } = useCurrentUser();
+  const { isAuthenticated, isInitialized, role } = useCurrentUser();
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isInitialized) return;
 
-    if (role !== "admin") {
-      router.replace(role ? ROLE_ROUTES[role] ?? "/admin-login" : "/admin-login");
-    }
-  }, [isAuthenticated, role, router]);
+    const destination = !isAuthenticated
+      ? "/admin-login"
+      : role !== "admin"
+        ? role
+          ? ROLE_ROUTES[role]
+          : "/admin-login"
+        : null;
 
-  if (!isAuthenticated || role !== "admin") {
-    return null;
+    if (destination) window.location.replace(destination);
+  }, [isAuthenticated, isInitialized, role]);
+
+  if (!isInitialized || !isAuthenticated || role !== "admin") {
+    return (
+      <DashboardAccessState
+        initialized={isInitialized}
+        authenticated={isAuthenticated}
+        role={role}
+      />
+    );
   }
 
   return (

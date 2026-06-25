@@ -1,12 +1,42 @@
 "use client";
 
+import { useEffect } from "react";
 import { DashboardFrame } from "@/components/layout/DashboardFrame";
+import { DashboardAccessState } from "@/components/auth/DashboardAccessState";
+import { useCurrentUser } from "@/lib/auth/auth-context";
+import { ROLE_ROUTES } from "@/lib/constants";
 
 export default function ParentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated, isInitialized, role } = useCurrentUser();
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const destination = !isAuthenticated
+      ? "/login"
+      : role !== "parent"
+        ? role
+          ? ROLE_ROUTES[role]
+          : "/login"
+        : null;
+
+    if (destination) window.location.replace(destination);
+  }, [isAuthenticated, isInitialized, role]);
+
+  if (!isInitialized || !isAuthenticated || role !== "parent") {
+    return (
+      <DashboardAccessState
+        initialized={isInitialized}
+        authenticated={isAuthenticated}
+        role={role}
+      />
+    );
+  }
+
   return (
     <div className="goalix-dashboard-viewport min-h-screen">
       <div className="goalix-dashboard-ambient pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(167,139,250,0.16),transparent_34%),radial-gradient(circle_at_78%_4%,rgba(0,216,255,0.12),transparent_30%),linear-gradient(135deg,#e8ecef_0%,#f5f6f1_52%,#dfe4e7_100%)]" />

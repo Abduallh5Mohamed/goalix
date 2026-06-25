@@ -2,6 +2,7 @@ const app = require('./app');
 const env = require('./config/env');
 const logger = require('./shared/logger');
 const { connectRedis, isRedisAvailable } = require('./infrastructure/redis');
+const redisConnectionFromUrl = require('./infrastructure/redis-connection');
 const { startWorkers, stopWorkers } = require('./workers');
 const setupChatSocket = require('./realtime/chat.socket');
 
@@ -13,11 +14,7 @@ async function main() {
     const bullmqEnabled = process.env.BULLMQ_ENABLED !== 'false';
 
     if (bullmqEnabled && isRedisAvailable()) {
-        const redisConnection = {
-            host: new URL(env.REDIS_URL).hostname,
-            port: parseInt(new URL(env.REDIS_URL).port || '6379', 10),
-        };
-        workers = startWorkers(redisConnection);
+        workers = startWorkers(redisConnectionFromUrl(env.REDIS_URL));
     } else if (bullmqEnabled) {
         logger.warn('BullMQ workers not started - Redis unavailable');
     } else {

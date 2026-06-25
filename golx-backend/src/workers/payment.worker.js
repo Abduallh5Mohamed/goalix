@@ -1,4 +1,5 @@
 const { Worker } = require('bullmq');
+const env = require('../config/env');
 const logger = require('../shared/logger');
 
 /**
@@ -7,7 +8,7 @@ const logger = require('../shared/logger');
  */
 function createPaymentsWorker(redisConnection) {
     const worker = new Worker(
-        'payments',
+        `${env.BULLMQ_PREFIX}-payments`,
         async (job) => {
             logger.info({ jobId: job.id, name: job.name }, 'Payments worker: processing');
 

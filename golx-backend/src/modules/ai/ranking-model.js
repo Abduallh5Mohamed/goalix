@@ -9,10 +9,14 @@ const modelDir =
     path.resolve(__dirname, "../../../..", "Models", "Ranking Model");
 const scriptPath =
     process.env.RANKING_MODEL_SCRIPT || path.join(modelDir, "inference.py");
+const projectPython =
+    process.platform === "win32"
+        ? path.resolve(__dirname, "../../../..", ".venv", "Scripts", "python.exe")
+        : path.resolve(__dirname, "../../../..", ".venv", "bin", "python");
 const pythonBin =
     process.env.PYTHON_BIN ||
     process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "python3");
+    projectPython;
 
 function runRankingPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     return new Promise((resolve, reject) => {

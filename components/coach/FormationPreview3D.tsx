@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { getFormationSlots, type FormationSlot } from "@/lib/football/formations";
 
@@ -17,6 +17,63 @@ const SURFACE_Y = 0.1;
 const MIN_VISUAL_ROW_GAP = 0.135;
 const MAX_VISUAL_Y = 0.88;
 const MIN_VISUAL_Y = 0.23;
+
+type DashboardTheme = "light" | "dark";
+type DashboardLanguage = "en" | "ar";
+
+const formationPositionLabels: Record<string, string> = {
+  GK: "ح",
+  LB: "ظ.أ",
+  CB: "د",
+  RB: "ظ.ي",
+  CDM: "و.د",
+  LM: "و.أ",
+  CM: "و",
+  RM: "و.ي",
+  LW: "ج.أ",
+  ST: "م",
+  RW: "ج.ي",
+  CF: "ر.ح",
+};
+
+function localizeFormationPosition(label: string, language: DashboardLanguage) {
+  return language === "ar" ? formationPositionLabels[label] ?? label : label;
+}
+
+function useDashboardVisualMode() {
+  const [mode, setMode] = useState<{
+    theme: DashboardTheme;
+    language: DashboardLanguage;
+  }>({ theme: "light", language: "en" });
+
+  useEffect(() => {
+    const syncMode = () => {
+      setMode({
+        theme:
+          document.documentElement.dataset.goalixDashboardTheme === "dark"
+            ? "dark"
+            : "light",
+        language:
+          document.documentElement.dataset.goalixDashboardLanguage === "ar"
+            ? "ar"
+            : "en",
+      });
+    };
+
+    syncMode();
+    const observer = new MutationObserver(syncMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: [
+        "data-goalix-dashboard-theme",
+        "data-goalix-dashboard-language",
+      ],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  return mode;
+}
 
 function fitFontSize(context: CanvasRenderingContext2D, text: string, maxWidth: number, startSize: number, minSize: number) {
   let size = startSize;
@@ -100,37 +157,38 @@ function makeTextSprite(
   return sprite;
 }
 
-function makePitchTexture() {
+function makePitchTexture(theme: DashboardTheme) {
   const canvas = document.createElement("canvas");
   canvas.width = 1400;
   canvas.height = 880;
   const context = canvas.getContext("2d");
   if (!context) return null;
 
+  const isDark = theme === "dark";
   const gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 60, canvas.width / 2, canvas.height / 2, canvas.width * 0.75);
-  gradient.addColorStop(0, "#001728");
-  gradient.addColorStop(0.58, "#001320");
-  gradient.addColorStop(1, "#000916");
+  gradient.addColorStop(0, isDark ? "#001728" : "#d9f8e6");
+  gradient.addColorStop(0.58, isDark ? "#001320" : "#c7f0dd");
+  gradient.addColorStop(1, isDark ? "#000916" : "#f8fffb");
   context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.globalAlpha = 0.12;
+  context.globalAlpha = isDark ? 0.12 : 0.2;
   for (let y = 30; y < canvas.height; y += 34) {
-    context.fillStyle = y % 68 === 0 ? "#02314a" : "#02253a";
+    context.fillStyle = y % 68 === 0 ? (isDark ? "#02314a" : "#9bd9bd") : (isDark ? "#02253a" : "#bdebd2");
     context.fillRect(0, y, canvas.width, 1);
   }
   for (let x = 45; x < canvas.width; x += 74) {
-    context.fillStyle = "#032b43";
+    context.fillStyle = isDark ? "#032b43" : "#9adac2";
     context.fillRect(x, 0, 1, canvas.height);
   }
 
-  context.globalAlpha = 0.04;
+  context.globalAlpha = isDark ? 0.04 : 0.1;
   for (let index = 0; index < 80; index += 1) {
     const x = Math.random() * canvas.width;
     const y = Math.random() * canvas.height;
     const radius = 18 + Math.random() * 42;
     const spot = context.createRadialGradient(x, y, 0, x, y, radius);
-    spot.addColorStop(0, "#38bdf8");
+    spot.addColorStop(0, isDark ? "#38bdf8" : "#2d9ad5");
     spot.addColorStop(1, "transparent");
     context.fillStyle = spot;
     context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
@@ -143,7 +201,11 @@ function makePitchTexture() {
   return texture;
 }
 
-function makePlayerBadgeSprite(position: string, isGoalkeeper: boolean) {
+function makePlayerBadgeSprite(
+  position: string,
+  isGoalkeeper: boolean,
+  theme: DashboardTheme,
+) {
   const canvas = document.createElement("canvas");
   canvas.width = 280;
   canvas.height = 280;
@@ -151,23 +213,26 @@ function makePlayerBadgeSprite(position: string, isGoalkeeper: boolean) {
 
   if (context) {
     const center = canvas.width / 2;
-    const lime = "#bfe85a";
-    const innerColor = isGoalkeeper ? "#061d2f" : "#041427";
+    const isDark = theme === "dark";
+    const lime = isDark ? "#bfe85a" : "#0f7a45";
+    const innerColor = isDark
+      ? isGoalkeeper ? "#061d2f" : "#041427"
+      : isGoalkeeper ? "#e4fff2" : "#f4fff8";
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     const glow = context.createRadialGradient(center, center, 42, center, center, 116);
-    glow.addColorStop(0, "rgba(191, 232, 90, 0.12)");
-    glow.addColorStop(0.56, "rgba(191, 232, 90, 0.075)");
+    glow.addColorStop(0, isDark ? "rgba(191, 232, 90, 0.12)" : "rgba(15, 122, 69, 0.16)");
+    glow.addColorStop(0.56, isDark ? "rgba(191, 232, 90, 0.075)" : "rgba(45, 154, 213, 0.12)");
     glow.addColorStop(1, "rgba(200, 255, 18, 0)");
     context.fillStyle = glow;
     context.beginPath();
     context.arc(center, center, 118, 0, Math.PI * 2);
     context.fill();
 
-    context.shadowColor = "rgba(191, 232, 90, 0.42)";
+    context.shadowColor = isDark ? "rgba(191, 232, 90, 0.42)" : "rgba(15, 122, 69, 0.22)";
     context.shadowBlur = 12;
-    context.strokeStyle = "rgba(191, 232, 90, 0.78)";
+    context.strokeStyle = isDark ? "rgba(191, 232, 90, 0.78)" : "rgba(15, 122, 69, 0.78)";
     context.lineWidth = 6;
     context.lineCap = "round";
     context.beginPath();
@@ -175,25 +240,25 @@ function makePlayerBadgeSprite(position: string, isGoalkeeper: boolean) {
     context.stroke();
 
     context.shadowBlur = 0;
-    context.strokeStyle = "rgba(236, 255, 170, 0.28)";
+    context.strokeStyle = isDark ? "rgba(236, 255, 170, 0.28)" : "rgba(45, 154, 213, 0.28)";
     context.lineWidth = 2;
     context.beginPath();
     context.arc(center, center, 78, Math.PI * 0.72, Math.PI * 2.28);
     context.stroke();
 
-    context.shadowColor = "rgba(2, 6, 23, 0.85)";
+    context.shadowColor = isDark ? "rgba(2, 6, 23, 0.85)" : "rgba(15, 34, 25, 0.16)";
     context.shadowBlur = 14;
     const shell = context.createRadialGradient(center - 24, center - 32, 10, center, center, 72);
-    shell.addColorStop(0, isGoalkeeper ? "#0f4863" : "#112947");
+    shell.addColorStop(0, isDark ? (isGoalkeeper ? "#0f4863" : "#112947") : "#ffffff");
     shell.addColorStop(0.48, innerColor);
-    shell.addColorStop(1, "#010714");
+    shell.addColorStop(1, isDark ? "#010714" : "#d9f7e7");
     context.fillStyle = shell;
     context.beginPath();
     context.arc(center, center, 61, 0, Math.PI * 2);
     context.fill();
 
     context.shadowBlur = 0;
-    context.strokeStyle = "rgba(103, 232, 249, 0.34)";
+    context.strokeStyle = isDark ? "rgba(103, 232, 249, 0.34)" : "rgba(15, 122, 69, 0.26)";
     context.lineWidth = 2;
     context.beginPath();
     context.arc(center, center, 61, 0, Math.PI * 2);
@@ -213,7 +278,7 @@ function makePlayerBadgeSprite(position: string, isGoalkeeper: boolean) {
     context.font = `900 ${fontSize}px Arial`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.shadowColor = "rgba(191, 232, 90, 0.32)";
+    context.shadowColor = isDark ? "rgba(191, 232, 90, 0.32)" : "rgba(255, 255, 255, 0.55)";
     context.shadowBlur = 6;
     context.fillText(position, center, center + 4);
   }
@@ -281,14 +346,24 @@ function spreadVisualRows(slots: FormationSlot[]) {
 function makePlayerMarker(
   position: string,
   playerName: string | undefined,
-  options: { isGoalkeeper: boolean; namePlacement: "above" | "below" }
+  options: {
+    isGoalkeeper: boolean;
+    namePlacement: "above" | "below";
+    theme: DashboardTheme;
+  }
 ) {
   const group = new THREE.Group();
-  const { isGoalkeeper, namePlacement } = options;
+  const { isGoalkeeper, namePlacement, theme } = options;
+  const isDark = theme === "dark";
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.5, 48),
-    new THREE.MeshBasicMaterial({ color: "#020617", transparent: true, opacity: 0.6, depthWrite: false })
+    new THREE.MeshBasicMaterial({
+      color: isDark ? "#020617" : "#11301f",
+      transparent: true,
+      opacity: isDark ? 0.6 : 0.16,
+      depthWrite: false,
+    })
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.scale.set(1.68, 0.58, 1);
@@ -296,7 +371,7 @@ function makePlayerMarker(
   shadow.renderOrder = 4;
   group.add(shadow);
 
-  const badge = makePlayerBadgeSprite(position, isGoalkeeper);
+  const badge = makePlayerBadgeSprite(position, isGoalkeeper, theme);
   badge.scale.set(1.28, 1.28, 1);
   badge.position.set(0, 0.88, 0.02);
   group.add(badge);
@@ -307,8 +382,8 @@ function makePlayerMarker(
       height: 110,
       fontSize: 42,
       maxWidth: 360,
-      color: "#f8fafc",
-      shadow: "rgba(0, 23, 40, 0.95)",
+      color: isDark ? "#f8fafc" : "#101914",
+      shadow: isDark ? "rgba(0, 23, 40, 0.95)" : "rgba(255, 255, 255, 0.88)",
     });
     nameLabel.scale.set(1.62, 0.42, 1);
     nameLabel.position.set(0, namePlacement === "below" ? 0.22 : 1.6, namePlacement === "below" ? 0.3 : -0.16);
@@ -318,10 +393,23 @@ function makePlayerMarker(
   return group;
 }
 
-function addPitchLines(board: THREE.Group) {
-  const lineMaterial = new THREE.LineBasicMaterial({ color: "#0a3550", transparent: true, opacity: 0.95 });
-  const glowLineMaterial = new THREE.LineBasicMaterial({ color: "#082d45", transparent: true, opacity: 0.48 });
-  const zoneMaterial = new THREE.LineBasicMaterial({ color: "#0f405a", transparent: true, opacity: 0.3 });
+function addPitchLines(board: THREE.Group, theme: DashboardTheme) {
+  const isDark = theme === "dark";
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: isDark ? "#0a3550" : "#0f7a45",
+    transparent: true,
+    opacity: isDark ? 0.95 : 0.42,
+  });
+  const glowLineMaterial = new THREE.LineBasicMaterial({
+    color: isDark ? "#082d45" : "#2d9ad5",
+    transparent: true,
+    opacity: isDark ? 0.48 : 0.32,
+  });
+  const zoneMaterial = new THREE.LineBasicMaterial({
+    color: isDark ? "#0f405a" : "#51b848",
+    transparent: true,
+    opacity: isDark ? 0.3 : 0.22,
+  });
   const y = SURFACE_Y + 0.015;
   const left = -HALF_WIDTH + 0.18;
   const right = HALF_WIDTH - 0.18;
@@ -358,7 +446,11 @@ function addPitchLines(board: THREE.Group) {
 
   const centerSpot = new THREE.Mesh(
     new THREE.CircleGeometry(0.055, 24),
-    new THREE.MeshBasicMaterial({ color: "#2d5a70", transparent: true, opacity: 0.82 })
+    new THREE.MeshBasicMaterial({
+      color: isDark ? "#2d5a70" : "#0f7a45",
+      transparent: true,
+      opacity: 0.82,
+    })
   );
   centerSpot.rotation.x = -Math.PI / 2;
   centerSpot.position.set(0, y + 0.01, 0);
@@ -369,10 +461,12 @@ function addPitchLines(board: THREE.Group) {
 export function FormationPreview3D({ formation, playerNames = {} }: FormationPreview3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerNameKey = JSON.stringify(playerNames);
+  const { theme, language } = useDashboardVisualMode();
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const isDark = theme === "dark";
     const resolvedPlayerNames = JSON.parse(playerNameKey) as Record<string, string | undefined>;
 
     const width = container.clientWidth || 860;
@@ -392,18 +486,18 @@ export function FormationPreview3D({ formation, playerNames = {} }: FormationPre
     renderer.shadowMap.type = THREE.PCFShadowMap;
     container.replaceChildren(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight("#dbeafe", 1.2));
+    scene.add(new THREE.AmbientLight(isDark ? "#dbeafe" : "#ffffff", isDark ? 1.2 : 1.55));
 
-    const mainLight = new THREE.DirectionalLight("#ffffff", 1.8);
+    const mainLight = new THREE.DirectionalLight("#ffffff", isDark ? 1.8 : 1.45);
     mainLight.position.set(1.5, 8, 4.5);
     mainLight.castShadow = true;
     scene.add(mainLight);
 
-    const neonLight = new THREE.PointLight("#0e7490", 1.8, 20);
+    const neonLight = new THREE.PointLight(isDark ? "#0e7490" : "#51b848", isDark ? 1.8 : 1.15, 20);
     neonLight.position.set(0, 2.2, 0);
     scene.add(neonLight);
 
-    const rimLight = new THREE.DirectionalLight("#67e8f9", 0.85);
+    const rimLight = new THREE.DirectionalLight(isDark ? "#67e8f9" : "#2d9ad5", isDark ? 0.85 : 0.55);
     rimLight.position.set(-4, 5, -4);
     scene.add(rimLight);
 
@@ -421,22 +515,27 @@ export function FormationPreview3D({ formation, playerNames = {} }: FormationPre
 
     const boardBase = new THREE.Mesh(
       new THREE.BoxGeometry(FIELD_WIDTH + 1.05, 0.06, FIELD_LENGTH + 0.78),
-      new THREE.MeshBasicMaterial({ color: "#000d18", transparent: true, opacity: 0.62, depthWrite: false })
+      new THREE.MeshBasicMaterial({
+        color: isDark ? "#000d18" : "#ffffff",
+        transparent: true,
+        opacity: isDark ? 0.62 : 0.74,
+        depthWrite: false,
+      })
     );
     boardBase.position.y = -0.04;
     boardBase.renderOrder = 0;
     board.add(boardBase);
 
-    const pitchTexture = makePitchTexture();
+    const pitchTexture = makePitchTexture(theme);
     const pitch = new THREE.Mesh(
       new THREE.PlaneGeometry(FIELD_WIDTH, FIELD_LENGTH),
       new THREE.MeshStandardMaterial({
         map: pitchTexture ?? undefined,
-        color: "#001728",
+        color: isDark ? "#001728" : "#e8fbef",
         transparent: true,
-        opacity: 0.98,
-        roughness: 0.68,
-        metalness: 0.08,
+        opacity: isDark ? 0.98 : 0.96,
+        roughness: isDark ? 0.68 : 0.76,
+        metalness: isDark ? 0.08 : 0.02,
       })
     );
     pitch.rotation.x = -Math.PI / 2;
@@ -446,18 +545,27 @@ export function FormationPreview3D({ formation, playerNames = {} }: FormationPre
 
     const edgeGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(FIELD_WIDTH + 0.52, FIELD_LENGTH + 0.42),
-      new THREE.MeshBasicMaterial({ color: "#001728", transparent: true, opacity: 0.08, depthWrite: false })
+      new THREE.MeshBasicMaterial({
+        color: isDark ? "#001728" : "#51b848",
+        transparent: true,
+        opacity: isDark ? 0.08 : 0.06,
+        depthWrite: false,
+      })
     );
     edgeGlow.rotation.x = -Math.PI / 2;
     edgeGlow.position.y = -0.015;
     board.add(edgeGlow);
 
-    addPitchLines(board);
+    addPitchLines(board, theme);
 
     spreadVisualRows(getFormationSlots(formation)).forEach((slot) => {
       const isGoalkeeper = slot.label === "GK";
       const namePlacement = slot.line === "defense" && !isGoalkeeper ? "below" : "above";
-      const player = makePlayerMarker(slot.label, resolvedPlayerNames[slot.id], { isGoalkeeper, namePlacement });
+      const player = makePlayerMarker(
+        localizeFormationPosition(slot.label, language),
+        resolvedPlayerNames[slot.id],
+        { isGoalkeeper, namePlacement, theme },
+      );
       const position = fieldPosition(slot.x, slot.y);
       player.position.set(position.x, 0.12, position.z);
       board.add(player);
@@ -497,12 +605,12 @@ export function FormationPreview3D({ formation, playerNames = {} }: FormationPre
       pitchTexture?.dispose();
       container.replaceChildren();
     };
-  }, [formation, playerNameKey]);
+  }, [formation, language, playerNameKey, theme]);
 
   return (
     <div
       ref={containerRef}
-      className="h-[560px] min-h-[500px] overflow-hidden bg-[radial-gradient(circle_at_50%_35%,rgba(0,23,40,0.68),rgba(2,6,23,0.9)_58%,rgba(2,6,23,1)_100%)]"
+      className="goalix-formation-preview h-[560px] min-h-[500px] overflow-hidden bg-[radial-gradient(circle_at_50%_35%,rgba(226,255,238,0.78),rgba(244,250,247,0.92)_58%,rgba(255,255,255,1)_100%)] dark:bg-[radial-gradient(circle_at_50%_35%,rgba(0,23,40,0.68),rgba(2,6,23,0.9)_58%,rgba(2,6,23,1)_100%)]"
     />
   );
 }

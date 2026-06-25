@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
 import { useRealtimeNotifications } from "@/lib/hooks/useRealtimeNotifications";
-import { getNotificationHref } from "@/lib/notifications";
+import { getNotificationHref, localizeNotification } from "@/lib/notifications";
 import {
   useGetNotificationsQuery,
   useGetUnreadNotificationsCountQuery,
@@ -49,6 +49,7 @@ import {
 } from "@/lib/store/api/calendarApi";
 import type { UserRole } from "@/lib/types";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
+import { useParentSelectedChild } from "@/lib/hooks/useParentSelectedChild";
 import { cn, formatDateTime, getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -100,11 +101,139 @@ const arCopy: Record<string, string> = {
   Messages: "الرسائل",
   Chat: "المحادثة",
   Chats: "المحادثات",
-  Contacts: "جهات الاتصال",
+  "Parent Notes": "ملاحظات ولي الأمر",
+  "Family Notes": "ملاحظات الأسرة",
+  "Switch child": "تغيير اللاعب",
+  "Child Calendar": "تقويم اللاعب",
+  "Child Matches": "مباريات اللاعب",
+  "Child Performance": "أداء اللاعب",
+  "Child Attendance": "حضور اللاعب",
+  "Child Measurements": "قياسات اللاعب",
+  "Payment Status": "حالة الدفع",
+  "Payment History": "سجل المدفوعات",
+  "Pay Now": "ادفع الآن",
+  "Current Subscription": "الاشتراك الحالي",
+  "Recent Invoices": "آخر الفواتير",
+  "Payment Method": "طريقة الدفع",
+  "Card Details": "بيانات البطاقة",
+  "Mobile Wallet": "المحفظة الإلكترونية",
+  "Bank Transfer Details": "بيانات التحويل البنكي",
+  "Summary": "الملخص",
+  "Total due": "إجمالي المستحق",
+  Paid: "مدفوع",
+  "Due Date": "تاريخ الاستحقاق",
+  "Paid Date": "تاريخ الدفع",
+  "Outstanding balance": "رصيد مستحق",
+  "Review Payment": "مراجعة الدفع",
+  "No invoices yet": "لا توجد فواتير بعد",
+  "No invoices yet.": "لا توجد فواتير بعد.",
+  "No outstanding invoices. You are all caught up.": "لا توجد فواتير مستحقة. كل شيء محدث.",
+  "Payment access is not enabled for this child.": "صلاحية المدفوعات غير مفعلة لهذا اللاعب.",
+  "Payment request prepared": "تم تجهيز طلب الدفع",
+  "Final collection depends on the connected payment gateway.": "التحصيل النهائي يعتمد على بوابة الدفع المتصلة.",
+  "Secure payment gateway ready": "بوابة الدفع الآمنة جاهزة",
+  "Link parent": "ربط ولي الأمر",
+  "Create parent-player link": "إنشاء ربط ولي أمر بلاعب",
+  "Active links": "الروابط النشطة",
+  "Parent account": "حساب ولي الأمر",
+  "Relation": "صلة القرابة",
+  "Primary child": "اللاعب الأساسي",
+  "Progress": "التقدم",
+  "Coach chat": "محادثة المدرب",
+  "Link every parent account to one or more players and control exactly what each parent can see.": "اربط كل حساب ولي أمر بلاعب أو أكثر وحدد بدقة ما يمكنه رؤيته.",
+  "Search parent, player, phone...": "ابحث عن ولي أمر أو لاعب أو رقم هاتف...",
+  "No parent links yet.": "لا توجد روابط لأولياء الأمور بعد.",
+  "Loading parent links...": "جاري تحميل روابط أولياء الأمور...",
+  "Choose parent...": "اختر ولي الأمر...",
+  "Choose player...": "اختر اللاعب...",
+  "Family performance hub": "مركز متابعة الأسرة",
+  "Weekly parent report": "التقرير الأسبوعي لولي الأمر",
+  Highlights: "أبرز النقاط",
+  "Action items": "خطوات مقترحة",
+  "Height": "الطول",
+  "Weight": "الوزن",
+  "BMI": "مؤشر كتلة الجسم",
+  "Preferred Foot": "القدم المفضلة",
+  "Profile": "الملف الشخصي",
+  "Measurement History": "سجل القياسات",
+  "Measured at": "تاريخ القياس",
+  "Speed": "السرعة",
+  "Agility": "الرشاقة",
+  "No measurement history has been recorded yet.": "لم يتم تسجيل قياسات بعد.",
+  "Loading measurements...": "جاري تحميل القياسات...",
+  "Loading payments...": "جاري تحميل المدفوعات...",
+  "Loading payment history...": "جاري تحميل سجل المدفوعات...",
+  "Loading calendar...": "جاري تحميل التقويم...",
+  "Loading matches...": "جاري تحميل المباريات...",
+  "Loading performance...": "جاري تحميل الأداء...",
+  "Loading attendance...": "جاري تحميل الحضور...",
+  "No linked child found for this parent account.": "لا يوجد لاعب مرتبط بحساب ولي الأمر.",
+  "No calendar events yet.": "لا توجد أحداث في التقويم بعد.",
+  "No matches yet.": "لا توجد مباريات بعد.",
+  "No visible evaluations yet.": "لا توجد تقييمات ظاهرة بعد.",
+  "No attendance records yet.": "لا توجد سجلات حضور بعد.",
+  "Current academy profile measurements": "قياسات ملف الأكاديمية الحالية",
+  "Physical profile for your linked player.": "الملف البدني للاعب المرتبط بحسابك.",
+  "live performance overview": "نظرة مباشرة على الأداء",
+  "Performance overview for your linked player.": "نظرة على أداء اللاعب المرتبط بحسابك.",
+  "attendance record": "سجل الحضور",
+  "Attendance record for your linked player.": "سجل حضور اللاعب المرتبط بحسابك.",
+  "Training Rating": "تقييم التدريب",
+  "Match Rating": "تقييم المباراة",
+  "Goal Contributions": "المساهمات التهديفية",
+  "Score Trend": "اتجاه النتيجة",
+  "Skill Breakdown": "تفصيل المهارات",
+  "Coach Evaluations": "تقييمات المدرب",
+  "Overall Score": "النتيجة العامة",
+  "Technical": "فني",
+  "Tactical": "تكتيكي",
+  "Physical": "بدني",
+  "Mental": "ذهني",
+  "Minutes": "الدقائق",
+  "Goals": "الأهداف",
+  "Assists": "التمريرات الحاسمة",
+  "Not selected yet": "لم يتم الاختيار بعد",
+  "Training, matches, and academy events for your child.": "التدريبات والمباريات وأحداث الأكاديمية الخاصة باللاعب.",
+  "Upcoming matches, squad selection, and post-match stats.": "المباريات القادمة واختيار القائمة وإحصائيات ما بعد المباراة.",
+  "Make a payment for your child's subscription": "ادفع اشتراك اللاعب.",
+  "All past payments and invoices": "كل المدفوعات والفواتير السابقة",
+  "All invoices for": "كل فواتير",
+  "Review outstanding invoices for": "راجع الفواتير المستحقة لـ",
+  "Outstanding Invoices": "الفواتير المستحقة",
+  "Credit Card": "بطاقة ائتمان",
+  "Bank Transfer": "تحويل بنكي",
+  "Provider": "مزود الخدمة",
+  "Phone Number": "رقم الهاتف",
+  "Bank Name": "اسم البنك",
+  "Reference": "المرجع",
+  "Use the reference above so the academy can reconcile the payment quickly.": "استخدم المرجع بالأعلى حتى تتمكن الأكاديمية من مطابقة الدفع بسرعة.",
+  "Card Number": "رقم البطاقة",
+  "Expiry": "تاريخ الانتهاء",
+  "CVV": "رمز الأمان",
+  "Name on Card": "الاسم على البطاقة",
+  "Guardian name": "اسم ولي الأمر",
+  "Total": "الإجمالي",
+  "Processing...": "جاري المعالجة...",
+  "Plan": "الخطة",
+  "Amount": "المبلغ",
+  "Period": "الفترة",
+  "Status": "الحالة",
+  "Next payment": "الدفعة القادمة",
+  "Due": "مستحق",
+  "Date": "التاريخ",
+  "paid": "مدفوع",
+  "pending": "معلق",
+  "overdue": "متأخر",
+  "cancelled": "ملغي",
+  "active": "نشط",
+  "expired": "منتهي",
+Contacts: "جهات الاتصال",
   Contact: "جهة اتصال",
   Admin: "المدير",
   "Admin session": "حصة مع الإدارة",
   "Admin Session": "حصة مع الإدارة",
+  "Family chat": "محادثة الأسرة",
+  "Family chat -": "محادثة الأسرة -",
   Coach: "المدرب",
   Player: "اللاعب",
   Parent: "ولي الأمر",
@@ -212,7 +341,6 @@ const arCopy: Record<string, string> = {
   "Session Detail": "تفاصيل الحصة",
   "Match Evaluations": "تقييمات المباريات",
   Configuration: "الإعدادات",
-  Profile: "الملف الشخصي",
   Performance: "الأداء",
   Ranking: "الترتيب",
   "My Ranking": "ترتيبي",
@@ -233,7 +361,6 @@ const arCopy: Record<string, string> = {
   "Practice free kicks (50 attempts)": "تدريب الركلات الحرة (50 محاولة)",
   "Watch tactical analysis video": "مشاهدة فيديو التحليل التكتيكي",
   "Attend all scheduled sessions": "حضور كل الحصص المجدولة",
-  Technical: "فني",
   "Ball Control Drills": "تدريبات التحكم بالكرة",
   "Juggling, first touch exercises, and close control dribbling": "تنطيط الكرة، تدريبات اللمسة الأولى، والمراوغة بتحكم قريب",
   "30 min": "30 دقيقة",
@@ -245,12 +372,10 @@ const arCopy: Record<string, string> = {
   "Positional play exercises and tracking runs": "تدريبات التمركز وتتبع التحركات",
   "20 min": "20 دقيقة",
   "3x per week": "3 مرات أسبوعيا",
-  Physical: "بدني",
   "Speed & Agility": "السرعة والرشاقة",
   "Sprint drills, ladder exercises, and cone work": "تدريبات السرعة، السلم، والأقماع",
   "25 min": "25 دقيقة",
   "2x per week": "مرتان أسبوعيا",
-  Mental: "ذهني",
   "Leadership Development": "تطوير القيادة",
   "Team captain exercises, communication drills": "تدريبات قائد الفريق وتمارين التواصل",
   "15 min": "15 دقيقة",
@@ -258,10 +383,8 @@ const arCopy: Record<string, string> = {
   "Long runs, interval training, and recovery protocols": "جري طويل، تدريب متقطع، وبروتوكولات استشفاء",
   "40 min": "40 دقيقة",
   Child: "الطفل",
-  Status: "الحالة",
   "Status Breakdown": "تفصيل الحالة",
   "Status Distribution": "توزيع الحالة",
-  "Payment Status": "حالة الدفع",
   "Payment Status Distribution": "توزيع حالة الدفع",
   "Payment Breakdown": "تفصيل المدفوعات",
   "Revenue by Status": "الإيرادات حسب الحالة",
@@ -284,7 +407,6 @@ const arCopy: Record<string, string> = {
   "Match records": "سجلات المباريات",
   "recorded sessions attended": "حصص مسجلة تم حضورها",
   "Your recorded training and match attendance from the academy database.": "حضورك المسجل في التدريبات والمباريات من قاعدة بيانات الأكاديمية.",
-  "Pay Now": "ادفع الآن",
   "Welcome back, Admin": "أهلا بعودتك، المدير",
   "Welcome back, Coach": "أهلا بعودتك، المدرب",
   "Welcome back, Player": "أهلا بعودتك، اللاعب",
@@ -340,7 +462,6 @@ const arCopy: Record<string, string> = {
   Ready: "جاهز",
   Monitor: "تحت المتابعة",
   Recovery: "استشفاء",
-  Tactical: "تكتيكي",
   Intensity: "الشدة",
   "Set Pieces": "الكرات الثابتة",
   "Match Prep": "تحضير المباراة",
@@ -356,7 +477,6 @@ const arCopy: Record<string, string> = {
   "Upcoming Matches": "المباريات القادمة",
   "Quick Actions": "إجراءات سريعة",
   "Team Overview": "نظرة على الفريق",
-  "Match Rating": "تقييم المباراة",
   "Last Match": "آخر مباراة",
   "Training Readiness": "جاهزية التدريب",
   Optimal: "مثالي",
@@ -369,8 +489,6 @@ const arCopy: Record<string, string> = {
   "Chronic Load": "الحمل المزمن",
   "High Speed": "سرعة عالية",
   High: "مرتفع",
-  Goals: "الأهداف",
-  Assists: "التمريرات الحاسمة",
   "Minutes Played": "دقائق اللعب",
   "Shots on Target": "تسديدات على المرمى",
   "Pass Completion": "دقة التمرير",
@@ -392,8 +510,6 @@ const arCopy: Record<string, string> = {
   "Rest Day": "راحة",
   Winger: "جناح",
   Age: "العمر",
-  Height: "الطول",
-  Weight: "الوزن",
   Foot: "القدم",
   Left: "يسار",
   Right: "يمين",
@@ -1249,6 +1365,30 @@ function translate(label: string, language: DashboardLanguage): string {
   return next;
 }
 
+function ParentChildSwitcher({ t }: { t: (label: string) => string }) {
+  const { children, selectedChildId, setSelectedChildId, isLoading } =
+    useParentSelectedChild();
+
+  if (isLoading || children.length <= 1) return null;
+
+  return (
+    <label className="goalix-parent-child-switcher">
+      <Baby size={15} />
+      <select
+        aria-label={t("Switch child")}
+        value={selectedChildId}
+        onChange={(event) => setSelectedChildId(event.target.value)}
+      >
+        {children.map((child) => (
+          <option key={child.id} value={child.id}>
+            {child.full_name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function DashboardFrame({
   role,
   children,
@@ -1301,10 +1441,6 @@ export function DashboardFrame({
 
     return () => query.removeEventListener("change", syncCompactNav);
   }, []);
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!settingsReady) return;
@@ -1626,6 +1762,7 @@ export function DashboardFrame({
           </label>
 
           <div className="goalix-reference-top-actions">
+            {role === "parent" && <ParentChildSwitcher t={t} />}
             <div className="goalix-reference-switches">
               <button
                 type="button"
@@ -1645,9 +1782,13 @@ export function DashboardFrame({
                 <span>{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
               </button>
             </div>
-            <button type="button" className="goalix-reference-message-trigger" aria-label={t("Messages")}>
+            <Link
+              href={`/${role}/chat`}
+              className="goalix-reference-message-trigger"
+              aria-label={t("Messages")}
+            >
               <Mail size={18} />
-            </button>
+            </Link>
             <div className="goalix-reference-notifications">
               <button
                 type="button"
@@ -1700,29 +1841,38 @@ export function DashboardFrame({
                     ) : notificationsError ? (
                       <div className="goalix-reference-notification-empty">{t("Could not load notifications.")}</div>
                     ) : notifications.length ? (
-                      notifications.slice(0, 8).map((notification) => (
-                        <Link
-                          key={notification.id}
-                          href={getNotificationHref(role, notification.type, notification.data)}
-                          className={cn(
-                            "goalix-reference-notification-row",
-                            !notification.is_read && "is-unread",
-                          )}
-                          onClick={() => {
-                            setNotificationsOpen(false);
-                            if (!notification.is_read) {
-                              markNotificationRead(notification.id);
-                            }
-                          }}
-                        >
-                          <span />
-                          <div>
-                            <strong>{notification.title}</strong>
-                            <p>{notification.body}</p>
-                            <small>{formatDateTime(notification.created_at)}</small>
-                          </div>
-                        </Link>
-                      ))
+                      notifications.slice(0, 8).map((notification) => {
+                        const localized = localizeNotification(notification, language);
+
+                        return (
+                          <Link
+                            key={notification.id}
+                            href={getNotificationHref(role, notification.type, notification.data)}
+                            className={cn(
+                              "goalix-reference-notification-row",
+                              !notification.is_read && "is-unread",
+                            )}
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              if (!notification.is_read) {
+                                markNotificationRead(notification.id);
+                              }
+                            }}
+                          >
+                            <span />
+                            <div>
+                              <strong>{localized.title}</strong>
+                              <p>{localized.body}</p>
+                              <small>
+                                {formatDateTime(
+                                  notification.created_at,
+                                  language === "ar" ? "ar-EG" : "en-US",
+                                )}
+                              </small>
+                            </div>
+                          </Link>
+                        );
+                      })
                     ) : (
                       <div className="goalix-reference-notification-empty">{t("No notifications yet.")}</div>
                     )}

@@ -266,6 +266,29 @@ class AdminRepository extends BaseRepository {
                 grantedBy: reviewedBy,
             });
 
+            if (pending.role === 'parent' && pending.linked_player_id) {
+                const player = await trx('player_profiles')
+                    .where({ id: pending.linked_player_id })
+                    .whereNull('deleted_at')
+                    .first();
+                if (player) {
+                    await trx('parent_player_links')
+                        .insert({
+                            academy_id: player.academy_id || pending.academy_id,
+                            parent_user_id: user.id,
+                            player_id: pending.linked_player_id,
+                            relation: 'guardian',
+                            is_primary: true,
+                            can_view_progress: true,
+                            can_view_payments: true,
+                            can_message_coach: true,
+                            created_by_user_id: reviewedBy,
+                        })
+                        .onConflict(trx.raw('(parent_user_id, player_id) where deleted_at is null'))
+                        .ignore();
+                }
+            }
+
             // Update pending registration status
             await trx('pending_registrations').where({ id }).update({
                 status: 'approved',

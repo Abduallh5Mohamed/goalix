@@ -4,9 +4,15 @@ const uuid = z.string().uuid();
 
 const createConversationSchema = z
   .object({
-    type: z.enum(["admin_coach", "coach_player", "admin_player_session"]),
+    type: z.enum([
+      "admin_coach",
+      "coach_player",
+      "admin_player_session",
+      "parent_coach",
+    ]),
     adminUserId: uuid.optional(),
     coachId: uuid.optional(),
+    parentUserId: uuid.optional(),
     playerId: uuid.optional(),
   })
   .superRefine((data, ctx) => {
@@ -30,6 +36,22 @@ const createConversationSchema = z
         path: ["playerId"],
         message: "playerId is required for player chat",
       });
+    }
+    if (data.type === "parent_coach") {
+      if (!data.playerId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["playerId"],
+          message: "playerId is required for parent-coach chat",
+        });
+      }
+      if (!data.coachId && !data.parentUserId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["coachId"],
+          message: "coachId or parentUserId is required for parent-coach chat",
+        });
+      }
     }
   });
 

@@ -1,4 +1,5 @@
 const { Worker } = require('bullmq');
+const env = require('../config/env');
 const logger = require('../shared/logger');
 
 /**
@@ -7,7 +8,7 @@ const logger = require('../shared/logger');
  */
 function createNotificationsWorker(redisConnection) {
     const worker = new Worker(
-        'notifications',
+        `${env.BULLMQ_PREFIX}-notifications`,
         async (job) => {
             logger.info({ jobId: job.id, name: job.name }, 'Notifications worker: processing');
 
