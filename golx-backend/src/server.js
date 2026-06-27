@@ -4,6 +4,8 @@ const logger = require('./shared/logger');
 const { connectRedis, isRedisAvailable } = require('./infrastructure/redis');
 const { connectDatabase } = require('./infrastructure/database');
 const { buildRedisConnection, startWorkers, stopWorkers } = require('./workers');
+const redisConnectionFromUrl = require('./infrastructure/redis-connection');
+const { startWorkers, stopWorkers } = require('./workers');
 const setupChatSocket = require('./realtime/chat.socket');
 
 let workers = null;
@@ -20,6 +22,8 @@ async function main() {
         workers = startWorkers(buildRedisConnection(env.REDIS_URL));
     } else if (bullmqEnabled && !workersEnabled) {
         logger.info('BullMQ workers disabled in the API process');
+    if (bullmqEnabled && isRedisAvailable()) {
+        workers = startWorkers(redisConnectionFromUrl(env.REDIS_URL));
     } else if (bullmqEnabled) {
         logger.warn('BullMQ workers not started - Redis unavailable');
     } else {

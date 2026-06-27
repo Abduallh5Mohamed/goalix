@@ -41,16 +41,148 @@ const API_BASE = getApiBaseUrl();
 
 type ChatRole = "admin" | "coach" | "player";
 type ContactType = "admin" | "coach" | "player";
+import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
+
+const API_BASE = getApiBaseUrl();
+
+const copy = {
+  en: {
+    chats: "Chats",
+    contacts: "Contacts",
+    search: "Search",
+    noChatsSearch: "No chats match your search.",
+    noChats: "No chats yet.",
+    noContacts: "No contacts.",
+    selectChat: "Select a chat",
+    noMessages: "No messages yet.",
+    noChatSelected: "No chat selected.",
+    sessionClosed: "Session closed.",
+    closeSession: "Close session",
+    editingMessage: "Editing message",
+    message: "Message",
+    send: "Send",
+    save: "Save",
+    you: "You",
+    user: "User",
+    edited: "edited",
+    image: "Image",
+    signInAgain: "Sign in again to use chat.",
+    adminSession: "Admin session",
+    admin: "Admin",
+    familyChat: "Family chat",
+    coach: "Coach",
+    player: "Player",
+    parent: "Parent",
+    headCoach: "Head coach",
+    assistantCoach: "Assistant coach",
+    goalkeeperCoach: "Goalkeeper coach",
+    fitnessCoach: "Fitness coach",
+    about: "About",
+    open: "Open",
+    closed: "Closed",
+    deleteForMe: "Delete for me",
+    deleteForEveryone: "Delete for everyone",
+    attachImage: "Attach image",
+    editMessage: "Edit message",
+    deleteMessage: "Delete message",
+    coaches: "Coaches",
+    admins: "Admins",
+    players: "Players",
+    parents: "Parents",
+    imageTooLarge: "Chat image must be 8MB or smaller.",
+    deleteFailed: "Unable to delete message",
+    read: "Read",
+    delivered: "Delivered",
+    invalidImage: "Chat image must be PNG, JPG, JPEG, or WEBP.",
+    openFailed: "Unable to open chat.",
+    closeFailed: "Unable to close session.",
+    sendFailed: "Unable to send message.",
+    requestFailed: "Chat request failed.",
+    messagingDisabled: "Coach messaging is not enabled for this player.",
+  },
+  ar: {
+    chats: "المحادثات",
+    contacts: "جهات الاتصال",
+    search: "بحث",
+    noChatsSearch: "لا توجد محادثات مطابقة للبحث.",
+    noChats: "لا توجد محادثات بعد.",
+    noContacts: "لا توجد جهات اتصال.",
+    selectChat: "اختر محادثة",
+    noMessages: "لا توجد رسائل بعد.",
+    noChatSelected: "لم يتم اختيار محادثة.",
+    sessionClosed: "تم إغلاق الجلسة.",
+    closeSession: "إغلاق الجلسة",
+    editingMessage: "تعديل الرسالة",
+    message: "رسالة",
+    send: "إرسال",
+    save: "حفظ",
+    you: "أنت",
+    user: "مستخدم",
+    edited: "تم التعديل",
+    image: "صورة",
+    signInAgain: "سجل الدخول مرة أخرى لاستخدام الشات.",
+    adminSession: "جلسة الإدارة",
+    admin: "الإدارة",
+    familyChat: "محادثة الأسرة",
+    coach: "المدرب",
+    player: "اللاعب",
+    parent: "ولي الأمر",
+    headCoach: "المدرب الرئيسي",
+    assistantCoach: "المدرب المساعد",
+    goalkeeperCoach: "مدرب الحراس",
+    fitnessCoach: "مدرب اللياقة",
+    about: "بخصوص",
+    open: "مفتوحة",
+    closed: "مغلقة",
+    deleteForMe: "حذف لدي فقط",
+    deleteForEveryone: "حذف للجميع",
+    attachImage: "إرفاق صورة",
+    editMessage: "تعديل الرسالة",
+    deleteMessage: "حذف الرسالة",
+    coaches: "المدربون",
+    admins: "الإدارة",
+    players: "اللاعبون",
+    parents: "أولياء الأمور",
+    imageTooLarge: "يجب ألا تتجاوز صورة الشات 8 ميجابايت.",
+    deleteFailed: "تعذر حذف الرسالة",
+    read: "تمت القراءة",
+    delivered: "تم التسليم",
+    invalidImage: "يجب أن تكون صورة الشات بصيغة PNG أو JPG أو JPEG أو WEBP.",
+    openFailed: "تعذر فتح المحادثة.",
+    closeFailed: "تعذر إغلاق الجلسة.",
+    sendFailed: "تعذر إرسال الرسالة.",
+    requestFailed: "تعذر تنفيذ طلب المحادثة.",
+    messagingDisabled: "التواصل مع المدرب غير مفعّل لهذا اللاعب.",
+  },
+} as const;
+
+type ChatCopy = Record<keyof typeof copy.en, string>;
+
+type ChatRole = "admin" | "coach" | "player" | "parent";
+type ContactType = "admin" | "coach" | "player" | "parent";
+
+function getSocketBaseUrl() {
+  if (API_BASE) return API_BASE;
+  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") {
+    return API_BASE;
+  }
+  return `${window.location.protocol}//${window.location.hostname}:3000`;
+}
+
 type ConversationType =
   | "admin_coach"
   | "coach_player"
   | "admin_player_session"
+  | "parent_coach"
   | "chat_group";
 
 type Contact = {
   type: ContactType;
   id: string;
   user_id: string;
+  player_id?: string | null;
+  player_name?: string | null;
   name: string;
   subtitle?: string | null;
 };
@@ -69,15 +201,20 @@ type Conversation = {
   admin_user_id?: string | null;
   coach_user_id?: string | null;
   player_user_id?: string | null;
+  parent_user_id?: string | null;
   coach_id?: string | null;
   player_id?: string | null;
   target: {
-    type: "admin" | "coach" | "player" | "group";
+    type: "admin" | "coach" | "player" | "parent" | "group";
     id?: string | null;
     userId?: string | null;
     name: string;
     memberCount?: number | null;
   };
+  context?: {
+    playerId: string;
+    playerName: string;
+  } | null;
   group_member_count?: number | null;
   group_members?: GroupMember[];
   canSend: boolean;
@@ -112,6 +249,8 @@ type ContactsResponse = {
   admins?: Contact[];
   coaches?: Contact[];
   players?: Contact[];
+  parents?: Contact[];
+  children?: Contact[];
 };
 
 type ApiEnvelope<T> = {
@@ -166,6 +305,20 @@ function normalizeSearch(value: string) {
     .trim();
 }
 
+function conversationLabel(conversation: Conversation, t: ChatCopy) {
+  if (conversation.type === "chat_group") {
+    return groupMembersPreview(conversation);
+  }
+  if (conversation.type === "admin_player_session") return t.adminSession;
+  if (conversation.type === "admin_coach") return t.admin;
+  if (conversation.type === "parent_coach") {
+    return conversation.context?.playerName
+      ? `${t.familyChat} - ${conversation.context.playerName}`
+      : t.familyChat;
+  }
+  return t.coach;
+}
+
 function groupMemberNames(conversation: Conversation) {
   return (conversation.group_members || [])
     .map((member) => member.name)
@@ -183,36 +336,44 @@ function groupMembersPreview(conversation: Conversation) {
   return `${names.slice(0, 6).join(", ")}${names.length > 6 ? ", ..." : ""}`;
 }
 
-function conversationLabel(conversation: Conversation) {
-  if (conversation.type === "chat_group") {
-    return groupMembersPreview(conversation);
-  }
-  if (conversation.type === "admin_player_session") return "Admin session";
-  if (conversation.type === "admin_coach") return "Admin";
-  return "Coach";
-}
-
-function formatContactSubtitle(subtitle?: string | null) {
+function formatContactSubtitle(subtitle: string | null | undefined, t: ChatCopy) {
   if (!subtitle) return "";
 
+  const [rolePart, ...contextParts] = subtitle.split(" - ");
   const normalized = subtitle.trim().toLowerCase();
+  const normalizedRole = rolePart.trim().toLowerCase();
   const labels: Record<string, string> = {
-    admin: "Admin",
-    coach: "Coach",
-    player: "Player",
-    head_coach: "Head coach",
-    assistant_coach: "Assistant coach",
-    goalkeeper_coach: "Goalkeeper coach",
-    fitness_coach: "Fitness coach",
+    admin: t.admin,
+    coach: t.coach,
+    player: t.player,
+    parent: t.parent,
+    head_coach: t.headCoach,
+    assistant_coach: t.assistantCoach,
+    goalkeeper_coach: t.goalkeeperCoach,
+    fitness_coach: t.fitnessCoach,
   };
+
+  if (contextParts.length && labels[normalizedRole]) {
+    return `${labels[normalizedRole]} - ${contextParts.join(" - ")}`;
+  }
 
   return labels[normalized] || subtitle.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function MessageReceipt({ message }: { message: Message }) {
+function chatErrorMessage(error: unknown, t: ChatCopy, fallback: string) {
+  const message = error instanceof Error ? error.message : "";
+  if (/cannot contact coaches|can only chat about linked children/i.test(message)) {
+    return t.messagingDisabled;
+  }
+  if (/chat request failed/i.test(message)) return t.requestFailed;
+  if (t === copy.en && message) return message;
+  return message && !/^[\x00-\x7F]+$/.test(message) ? message : fallback;
+}
+
+function MessageReceipt({ message, t }: { message: Message; t: ChatCopy }) {
   if (message.read_at) {
     return (
-      <span title="Read" className="inline-flex text-cyan-300">
+      <span title={t.read} className="inline-flex text-cyan-300">
         <CheckCheck className="h-3.5 w-3.5" />
       </span>
     );
@@ -220,7 +381,7 @@ function MessageReceipt({ message }: { message: Message }) {
 
   if (message.delivered_at) {
     return (
-      <span title="Delivered" className="inline-flex text-slate-400">
+      <span title={t.delivered} className="inline-flex text-slate-400">
         <Check className="h-3.5 w-3.5" />
       </span>
     );
@@ -238,6 +399,8 @@ const allowedImageTypes = new Set([
 const maxChatImageBytes = 8 * 1024 * 1024;
 
 export function ChatWorkspace({ role }: { role: ChatRole }) {
+  const language = useDashboardLanguage();
+  const t = copy[language];
   const { user, isAuthenticated } = useCurrentUser();
   const [contacts, setContacts] = useState<ContactsResponse>({});
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -449,6 +612,8 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       admins: filter(contacts.admins),
       coaches: filter(contacts.coaches),
       players: filter(contacts.players),
+      parents: filter(contacts.parents),
+      children: filter(contacts.children),
     };
   }, [contacts, query]);
 
@@ -457,10 +622,10 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     if (!needle) return conversations;
     return conversations.filter((conversation) =>
       normalizeSearch(
-        `${conversation.target.name} ${conversation.last_message_body || ""} ${conversationLabel(conversation)}`,
+        `${conversation.target.name} ${conversation.last_message_body || ""} ${conversationLabel(conversation, t)}`,
       ).includes(needle),
     );
-  }, [conversations, query]);
+  }, [conversations, query, t]);
 
   const groupCandidateContacts = useMemo(() => {
     if (role !== "coach") return [];
@@ -538,6 +703,18 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         payload = { type: "coach_player", playerId: contact.id };
       } else if (role === "player" && contact.type === "coach") {
         payload = { type: "coach_player", coachId: contact.id };
+      } else if (role === "parent" && contact.type === "coach" && contact.player_id) {
+        payload = {
+          type: "parent_coach",
+          coachId: contact.id,
+          playerId: contact.player_id,
+        };
+      } else if (role === "coach" && contact.type === "parent" && contact.player_id) {
+        payload = {
+          type: "parent_coach",
+          parentUserId: contact.user_id,
+          playerId: contact.player_id,
+        };
       } else {
         return;
       }
@@ -552,7 +729,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setBody("");
       setImage(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to open chat");
+      setError(chatErrorMessage(err, t, t.openFailed));
     }
   }
 
@@ -566,7 +743,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       );
       upsertConversation(conversation);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to close session");
+      setError(chatErrorMessage(err, t, t.closeFailed));
     }
   }
 
@@ -607,7 +784,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setImage(null);
       if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to send message");
+      setError(chatErrorMessage(err, t, t.sendFailed));
     } finally {
       setSending(false);
     }
@@ -631,12 +808,12 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       return;
     }
     if (!allowedImageTypes.has(file.type)) {
-      setError("Chat image must be PNG, JPG, JPEG, or WEBP.");
+      setError(t.invalidImage);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
     if (file.size > maxChatImageBytes) {
-      setError("Chat image must be 8MB or smaller.");
+      setError(t.imageTooLarge);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
@@ -655,7 +832,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       );
       handleMessageDeleted(deleted);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete message");
+      setError(chatErrorMessage(err, t, t.deleteFailed));
     } finally {
       setDeletingId(null);
     }
@@ -665,26 +842,21 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const selectedGroupMembers = selectedIsGroup
     ? selected.group_members || []
     : [];
-  const selectedGroupPreview = selectedIsGroup
-    ? groupMembersPreview(selected)
-    : selected
-      ? conversationLabel(selected)
-      : "";
 
   if (!isAuthenticated) {
     return (
       <div className="goalix-chat-empty-auth">
-        Sign in again to use chat.
+        {t.signInAgain}
       </div>
     );
   }
 
   return (
-    <div className="goalix-chat-shell">
+    <div className="goalix-chat-shell" dir={language === "ar" ? "rtl" : "ltr"}>
       <aside className="goalix-chat-panel goalix-chat-conversations">
         <div className="goalix-chat-panel-head">
           <MessageSquare className="goalix-chat-head-icon" />
-          <h1>Chats</h1>
+          <h1>{t.chats}</h1>
           {loading && <Loader2 className="goalix-chat-loading" />}
         </div>
         <div className="goalix-chat-scroll">
@@ -712,7 +884,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                 </span>
                 <span className="goalix-chat-list-subtitle">
                   {conversation.last_message_body ||
-                    (conversation.last_attachment_url ? "Image" : conversationLabel(conversation))}
+                    (conversation.last_attachment_url ? t.image : conversationLabel(conversation, t))}
                 </span>
               </span>
               {conversation.status === "closed" && <Lock className="goalix-chat-lock" />}
@@ -720,7 +892,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           ))}
           {!loading && filteredConversations.length === 0 && (
             <div className="goalix-chat-empty-state">
-              {query.trim() ? "No chats match your search." : "No chats yet."}
+              {query.trim() ? t.noChatsSearch : t.noChats}
             </div>
           )}
         </div>
@@ -754,11 +926,16 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                   <div>
                     <Badge
                       variant={selected.status === "open" ? "success" : "secondary"}
-                      className="goalix-chat-status-badge"
-                    >
-                      {selected.status}
+                  className="goalix-chat-status-badge"
+                >
+                      {selected.status === "open" ? t.open : t.closed}
                     </Badge>
-                    <span>{selectedGroupPreview}</span>
+                    <span>{conversationLabel(selected, t)}</span>
+                    {selected.context?.playerName && (
+                      <span className="goalix-chat-context-pill">
+                        {t.about} {selected.context.playerName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </button>
@@ -782,12 +959,12 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                   className="goalix-chat-close-session"
                   onClick={closeSession}
                 >
-                  Close session
+                  {t.closeSession}
                 </Button>
               )}
             </>
           ) : (
-            <span className="goalix-chat-muted">Select a chat</span>
+            <span className="goalix-chat-muted">{t.selectChat}</span>
           )}
         </div>
 
@@ -820,7 +997,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       {member.name}
                     </span>
                     <span className="goalix-chat-list-subtitle">
-                      {formatContactSubtitle(member.role)}
+                      {formatContactSubtitle(member.role, t)}
                       {member.membershipRole === "owner" ? " | Owner" : ""}
                     </span>
                   </span>
@@ -843,12 +1020,12 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           )}
           {!messagesLoading && selected && messages.length === 0 && (
             <div className="goalix-chat-center">
-              No messages yet.
+              {t.noMessages}
             </div>
           )}
           {!messagesLoading && !selected && (
             <div className="goalix-chat-center">
-              No chat selected.
+              {t.noChatSelected}
             </div>
           )}
           <div className="goalix-chat-message-stack">
@@ -864,18 +1041,18 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                     className="goalix-chat-bubble"
                   >
                     <div className="goalix-chat-message-meta">
-                      <span>{mine ? "You" : message.sender_name || "User"}</span>
-                      <span>{new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      {message.edited_at && !deletedForEveryone && <span>edited</span>}
+                      <span>{mine ? t.you : message.sender_name || t.user}</span>
+                      <span>{new Date(message.created_at).toLocaleTimeString(language === "ar" ? "ar-EG" : "en-US", { hour: "2-digit", minute: "2-digit" })}</span>
+                      {message.edited_at && !deletedForEveryone && <span>{t.edited}</span>}
                       {mine && (
                         <span className="goalix-chat-message-actions">
-                          <MessageReceipt message={message} />
+                          <MessageReceipt message={message} t={t} />
                           {selected?.canSend && message.body && (
                             <button
                               type="button"
                               onClick={() => startEdit(message)}
                               className="goalix-chat-icon-button"
-                              title="Edit message"
+                              title={t.editMessage}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
@@ -889,7 +1066,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                               type="button"
                               disabled={deletingId === message.id}
                               className="goalix-chat-icon-button is-danger"
-                              title="Delete message"
+                              title={t.deleteMessage}
                             >
                               {deletingId === message.id ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -906,7 +1083,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                               className="cursor-pointer focus:bg-white/10"
                               onClick={() => deleteMessage(message, "me")}
                             >
-                              Delete for me
+                              {t.deleteForMe}
                             </DropdownMenuItem>
                             {mine && !deletedForEveryone && (
                               <>
@@ -915,7 +1092,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                                   className="cursor-pointer text-red-200 focus:bg-red-500/15 focus:text-red-100"
                                   onClick={() => deleteMessage(message, "everyone")}
                                 >
-                                  Delete for everyone
+                                  {t.deleteForEveryone}
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -938,7 +1115,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={absoluteUploadUrl(message.attachment_url)}
-                          alt={message.attachment_original_name || "Chat image"}
+                          alt={message.attachment_original_name || t.image}
                           crossOrigin="use-credentials"
                           loading="lazy"
                           decoding="async"
@@ -967,13 +1144,13 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           {selected?.status === "closed" && (
             <div className="goalix-chat-alert">
               <Lock className="h-4 w-4" />
-              Session closed.
+              {t.sessionClosed}
             </div>
           )}
           {editingMessage && (
             <div className="goalix-chat-alert is-editing">
               <Edit3 className="h-4 w-4" />
-              <span className="min-w-0 flex-1 truncate">Editing message</span>
+              <span className="min-w-0 flex-1 truncate">{t.editingMessage}</span>
               <button type="button" onClick={cancelEdit}>
                 <X className="h-4 w-4" />
               </button>
@@ -1003,7 +1180,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               disabled={!selected?.canSend || sending || Boolean(editingMessage)}
               className="goalix-chat-attach-button"
               onClick={() => fileRef.current?.click()}
-              title="Attach image"
+              title={t.attachImage}
             >
               <ImagePlus className="h-4 w-4" />
             </Button>
@@ -1014,7 +1191,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               rows={2}
               maxLength={4000}
               disabled={!selected?.canSend || sending}
-              placeholder={selected?.canSend ? "Message" : ""}
+              placeholder={selected?.canSend ? t.message : ""}
               className="goalix-chat-input"
             />
             <Button
@@ -1033,7 +1210,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {editingMessage ? "Save" : "Send"}
+              {editingMessage ? t.save : t.send}
             </Button>
           </div>
         </form>
@@ -1042,7 +1219,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       <aside className="goalix-chat-panel goalix-chat-contacts">
         <div className="goalix-chat-panel-head">
           {role === "admin" ? <Shield className="goalix-chat-head-icon" /> : role === "coach" ? <Users className="goalix-chat-head-icon" /> : <UserRound className="goalix-chat-head-icon" />}
-          <h2>Contacts</h2>
+          <h2>{t.contacts}</h2>
         </div>
         <div className="goalix-chat-search-wrap">
           <div className="goalix-chat-search">
@@ -1051,7 +1228,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="goalix-chat-search-input"
-              placeholder="Search"
+              placeholder={t.search}
             />
           </div>
         </div>
@@ -1118,7 +1295,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                           </span>
                           {contact.subtitle && (
                             <span className="goalix-chat-list-subtitle">
-                              {formatContactSubtitle(contact.subtitle)}
+                              {formatContactSubtitle(contact.subtitle, t)}
                             </span>
                           )}
                         </span>
@@ -1167,27 +1344,60 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         <div className="goalix-chat-scroll">
           {role === "admin" && (
             <ContactSection
-              title="Coaches"
+              title={t.coaches}
               contacts={filteredContacts.coaches || []}
               onOpen={openConversation}
+              t={t}
             />
           )}
           {role === "coach" && (
             <ContactSection
-              title="Admins"
+              title={t.admins}
               contacts={filteredContacts.admins || []}
               onOpen={openConversation}
+              t={t}
             />
           )}
-          <ContactSection
-            title={role === "player" ? "Coaches" : "Players"}
-            contacts={
-              role === "player"
-                ? filteredContacts.coaches || []
-                : filteredContacts.players || []
-            }
-            onOpen={openConversation}
-          />
+          {role === "coach" && (
+            <ContactSection
+              title={t.players}
+              contacts={filteredContacts.players || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
+          {role === "coach" && (
+            <ContactSection
+              title={t.parents}
+              contacts={filteredContacts.parents || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
+          {role === "player" && (
+            <ContactSection
+              title={t.coaches}
+              contacts={filteredContacts.coaches || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
+          {role === "parent" && (
+            <ContactSection
+              title={t.coaches}
+              contacts={filteredContacts.coaches || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
+          {role === "admin" && (
+            <ContactSection
+              title={t.players}
+              contacts={filteredContacts.players || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
         </div>
       </aside>
     </div>
@@ -1198,10 +1408,12 @@ function ContactSection({
   title,
   contacts,
   onOpen,
+  t,
 }: {
   title: string;
   contacts: Contact[];
   onOpen: (contact: Contact) => void;
+  t: ChatCopy;
 }) {
   return (
     <section className="goalix-chat-contact-section">
@@ -1211,7 +1423,7 @@ function ContactSection({
       <div className="goalix-chat-contact-list">
         {contacts.map((contact) => (
           <button
-            key={`${contact.type}-${contact.id}`}
+            key={`${contact.type}-${contact.id}-${contact.player_id || "direct"}`}
             onClick={() => onOpen(contact)}
             className="goalix-chat-contact-card"
           >
@@ -1226,7 +1438,7 @@ function ContactSection({
               </span>
               {contact.subtitle && (
                 <span className="goalix-chat-list-subtitle">
-                  {formatContactSubtitle(contact.subtitle)}
+                  {formatContactSubtitle(contact.subtitle, t)}
                 </span>
               )}
             </span>
@@ -1234,7 +1446,7 @@ function ContactSection({
         ))}
         {contacts.length === 0 && (
           <div className="goalix-chat-empty-state">
-            No contacts.
+            {t.noContacts}
           </div>
         )}
       </div>

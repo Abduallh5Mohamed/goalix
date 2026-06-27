@@ -125,6 +125,8 @@ const eventParam = z.object({ eventId: uuid });
 const eventPlayerParam = z.object({ eventId: uuid, playerId: uuid });
 const childParam = z.object({ childId: uuid });
 const childMatchParam = z.object({ childId: uuid, matchId: uuid });
+const parentNoteParam = z.object({ noteId: uuid });
+const parentLinkParam = z.object({ parentLinkId: uuid });
 const playerMatchParam = z.object({ id: uuid });
 const squadPlayerParam = z.object({ matchId: uuid, playerId: uuid });
 const statsPlayerParam = z.object({ matchId: uuid, playerId: uuid });
@@ -135,6 +137,64 @@ const coachGroupAssignmentParam = z.object({ id: uuid });
 const paginationQuery = z.object({
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(500).optional(),
+});
+
+const parentNoteStatusSchema = z.enum(["new", "reviewed", "resolved"]);
+const parentNoteVisibilitySchema = z.enum([
+  "coach_only",
+  "parent_and_coach",
+  "player_and_parent",
+  "family",
+]);
+const parentDashboardQuery = z.object({
+  childId: uuid.optional(),
+});
+const parentNotesQuery = paginationQuery.extend({
+  status: parentNoteStatusSchema.optional(),
+});
+const coachParentNotesQuery = parentNotesQuery.extend({
+  playerId: uuid.optional(),
+});
+const parentLinkQuery = paginationQuery.extend({
+  search: z.string().trim().max(120).optional(),
+  parentUserId: uuid.optional(),
+  playerId: uuid.optional(),
+});
+const parentLinkSchema = z.object({
+  parentUserId: uuid,
+  playerId: uuid,
+  relation: z.string().trim().min(2).max(60).optional(),
+  isPrimary: z.boolean().optional(),
+  canViewProgress: z.boolean().optional(),
+  canViewPayments: z.boolean().optional(),
+  canMessageCoach: z.boolean().optional(),
+});
+const updateParentLinkSchema = parentLinkSchema
+  .pick({
+    relation: true,
+    isPrimary: true,
+    canViewProgress: true,
+    canViewPayments: true,
+    canMessageCoach: true,
+  })
+  .partial();
+const parentNoteSchema = z.object({
+  coachUserId: uuid.optional(),
+  category: z
+    .string()
+    .trim()
+    .min(2)
+    .max(40)
+    .regex(/^[a-z0-9_-]+$/i)
+    .optional(),
+  title: z.string().trim().max(160).optional(),
+  body: z.string().trim().min(2).max(3000),
+  visibility: parentNoteVisibilitySchema.optional(),
+});
+const coachParentNoteResponseSchema = z.object({
+  status: parentNoteStatusSchema.optional(),
+  visibility: parentNoteVisibilitySchema.optional(),
+  coachResponse: z.string().trim().max(3000).optional(),
 });
 
 const evaluationEditRequestStatusSchema = z.enum([
@@ -752,6 +812,8 @@ module.exports = {
   eventPlayerParam,
   childParam,
   childMatchParam,
+  parentNoteParam,
+  parentLinkParam,
   playerMatchParam,
   squadPlayerParam,
   statsPlayerParam,
@@ -765,6 +827,14 @@ module.exports = {
   coachPlayersQuery,
   calendarFiltersQuery,
   adminMatchFiltersQuery,
+  parentDashboardQuery,
+  parentNotesQuery,
+  coachParentNotesQuery,
+  parentLinkQuery,
+  parentLinkSchema,
+  updateParentLinkSchema,
+  parentNoteSchema,
+  coachParentNoteResponseSchema,
   adminCalendarEventSchema,
   updateAdminCalendarEventSchema,
   adminMatchSchema,

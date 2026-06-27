@@ -6,6 +6,9 @@
     "free:dev-ports": "node scripts/free-dev-ports.js",
     "models:setup": "node scripts/ensure-python-models.js",
     "redis:up": "node scripts/ensure-golx-redis.js",
+    "infra:up": "docker compose -f docker-compose.dev.yml up -d redis",
+    "infra:down": "docker compose -f docker-compose.dev.yml down",
+    "infra:status": "docker compose -f docker-compose.dev.yml ps",
     "lan:setup": "powershell -ExecutionPolicy Bypass -File scripts/enable-lan-access.ps1",
     "lan:info": "node scripts/print-lan-urls.js",
     "dev": "node scripts/dev.js",
@@ -44,7 +47,7 @@
     "html5-qrcode": "^2.3.8",
     "jsqr": "^1.4.0",
     "lucide-react": "^1.7.0",
-    "next": "^16.2.6",
+    "next": "^16.2.9",
     "react": "19.2.4",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4",
@@ -59,10 +62,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.184.1",
-    "concurrently": "^9.1.2",
+    "concurrently": "^9.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.10",
+    "ws": "8.21.0"
   }
 }

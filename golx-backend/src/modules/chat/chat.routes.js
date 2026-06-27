@@ -39,7 +39,7 @@ function chatRoutes(controller) {
     });
   };
 
-  router.use(authMiddleware, restrictTo("admin", "coach", "player"));
+  router.use(authMiddleware, restrictTo("admin", "coach", "player", "parent"));
 
   router.get("/contacts", controller.listContacts);
   router.get("/conversations", controller.listConversations);

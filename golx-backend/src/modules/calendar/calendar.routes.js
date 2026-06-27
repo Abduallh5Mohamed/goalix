@@ -10,6 +10,43 @@ function adminCalendarRoutes(controller) {
   router.use(authMiddleware, rbac("access_admin_dashboard"));
 
   router.get(
+    "/parent-links",
+    validate({ query: schema.parentLinkQuery }),
+    controller.adminListParentLinks,
+  );
+  router.post(
+    "/parent-links",
+    rbac("manage_teams"),
+    validate({ body: schema.parentLinkSchema }),
+    controller.adminCreateParentLink,
+  );
+  router.patch(
+    "/parent-links/:parentLinkId",
+    rbac("manage_teams"),
+    validate({
+      params: schema.parentLinkParam,
+      body: schema.updateParentLinkSchema,
+    }),
+    controller.adminUpdateParentLink,
+  );
+  router.delete(
+    "/parent-links/:parentLinkId",
+    rbac("manage_teams"),
+    validate({ params: schema.parentLinkParam }),
+    controller.adminDeleteParentLink,
+  );
+  router.get(
+    "/parent-accounts",
+    validate({ query: schema.parentLinkQuery }),
+    controller.adminListParentAccounts,
+  );
+  router.get(
+    "/parent-linkable-players",
+    validate({ query: schema.parentLinkQuery }),
+    controller.adminListLinkablePlayers,
+  );
+
+  router.get(
     "/calendar-events",
     validate({ query: schema.calendarFiltersQuery }),
     controller.adminListCalendarEvents,
@@ -254,6 +291,19 @@ function coachCalendarRoutes(controller) {
     "/players/:id",
     validate({ params: schema.idParam }),
     controller.coachGetPlayerDetail,
+  );
+  router.get(
+    "/parent-notes",
+    validate({ query: schema.coachParentNotesQuery }),
+    controller.coachListParentNotes,
+  );
+  router.patch(
+    "/parent-notes/:noteId/respond",
+    validate({
+      params: schema.parentNoteParam,
+      body: schema.coachParentNoteResponseSchema,
+    }),
+    controller.coachRespondParentNote,
   );
   router.post(
     "/players",
@@ -594,6 +644,11 @@ function playerCalendarRoutes(controller) {
   );
   router.get("/progress", controller.playerProgress);
   router.get(
+    "/parent-notes",
+    validate({ query: schema.parentNotesQuery }),
+    controller.playerListParentNotes,
+  );
+  router.get(
     "/assignments",
     validate({ query: schema.paginationQuery }),
     controller.playerListAssignments,
@@ -624,6 +679,12 @@ function parentCalendarRoutes(controller) {
   const router = Router();
   router.use(authMiddleware, restrictTo("parent"));
 
+  router.get("/children", controller.parentListChildren);
+  router.get(
+    "/dashboard",
+    validate({ query: schema.parentDashboardQuery }),
+    controller.parentDashboard,
+  );
   router.get(
     "/children/:childId/calendar-events",
     validate({ params: schema.childParam, query: schema.calendarFiltersQuery }),
@@ -661,6 +722,31 @@ function parentCalendarRoutes(controller) {
     "/children/:childId/evaluations",
     validate({ params: schema.childParam, query: schema.paginationQuery }),
     controller.parentEvaluations,
+  );
+  router.get(
+    "/children/:childId/measurements",
+    validate({ params: schema.childParam, query: schema.paginationQuery }),
+    controller.parentMeasurements,
+  );
+  router.get(
+    "/children/:childId/payments",
+    validate({ params: schema.childParam }),
+    controller.parentPayments,
+  );
+  router.get(
+    "/children/:childId/weekly-report",
+    validate({ params: schema.childParam }),
+    controller.parentWeeklyReport,
+  );
+  router.get(
+    "/children/:childId/notes",
+    validate({ params: schema.childParam, query: schema.parentNotesQuery }),
+    controller.parentListNotes,
+  );
+  router.post(
+    "/children/:childId/notes",
+    validate({ params: schema.childParam, body: schema.parentNoteSchema }),
+    controller.parentCreateNote,
   );
   router.get(
     "/children/:childId/progress",
