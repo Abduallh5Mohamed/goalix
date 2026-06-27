@@ -41,7 +41,8 @@ export default function NotificationsPage() {
     { limit: 50 },
     {
       skip: !notificationsEnabled,
-      pollingInterval: 10000,
+      pollingInterval: 60000,
+      skipPollingIfUnfocused: true,
       refetchOnFocus: true,
       refetchOnReconnect: true,
     },

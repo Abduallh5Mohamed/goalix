@@ -740,7 +740,32 @@ export interface CoachGroup {
   can_create_training: boolean;
   can_take_attendance: boolean;
   can_evaluate_players: boolean;
+  can_record_measurements: boolean;
+  can_manage_player_assignments: boolean;
+  can_manage_players: boolean;
+  can_manage_groups: boolean;
+  can_manage_matches: boolean;
+  can_view_injury_risk: boolean;
+  can_run_injury_risk: boolean;
+  can_manage_injury_risk: boolean;
 }
+
+export type CoachPermission = keyof Pick<
+  CoachGroup,
+  | "can_create_training"
+  | "can_take_attendance"
+  | "can_evaluate_players"
+  | "can_record_measurements"
+  | "can_manage_player_assignments"
+  | "can_manage_players"
+  | "can_manage_groups"
+  | "can_manage_matches"
+  | "can_view_injury_risk"
+  | "can_run_injury_risk"
+  | "can_manage_injury_risk"
+>;
+
+export type CoachPermissions = Record<CoachPermission, boolean>;
 
 export type CustomFieldType =
   | "text"
@@ -885,6 +910,7 @@ export interface DailyAiSubmitInput {
 export const calendarApi = createApi({
   reducerPath: "calendarApi",
   baseQuery: baseQueryWithReauth,
+  keepUnusedDataFor: 300,
   tagTypes: [
     "CalendarEvents",
     "Matches",
@@ -1153,6 +1179,12 @@ export const calendarApi = createApi({
       query: () => "/coach/groups",
       transformResponse: (res: { data: CoachGroup[] }) => res.data,
       providesTags: ["CoachGroups"],
+    }),
+    getCoachPermissions: builder.query<CoachPermissions, void>({
+      query: () => "/coach/permissions",
+      transformResponse: (res: { data: CoachPermissions }) => res.data,
+      providesTags: ["CoachGroups"],
+      keepUnusedDataFor: 60,
     }),
     getCoachPlayersScoped: builder.query<
       PaginatedResponse<CoachPlayer>,
@@ -1970,6 +2002,7 @@ export const {
   useConvertFriendlyRequestMutation,
   useGetCoachCalendarEventsQuery,
   useGetCoachGroupsScopedQuery,
+  useGetCoachPermissionsQuery,
   useGetCoachPlayersScopedQuery,
   useGetCoachPlayerDetailQuery,
   useGetInjuryRiskPainDiscomfortQuery,

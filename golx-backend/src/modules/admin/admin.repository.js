@@ -2,6 +2,8 @@ const BaseRepository = require('../../shared/base.repository');
 const { BadRequestError } = require('../../shared/errors');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
 
+const PROTECTED_ROLE_CODES = new Set(['super_admin', 'academy_owner', 'player']);
+
 class AdminRepository extends BaseRepository {
     constructor(db) {
         super('auth_users', db);
@@ -64,16 +66,16 @@ class AdminRepository extends BaseRepository {
 
             // Attendance rate — last 30 days
             (() => {
-                const q = this.db('attendance_marks as am')
-                    .join('attendance_sessions as s', 'am.session_id', 's.id')
-                    .join('academy_groups as ag', 's.group_id', 'ag.id')
-                    .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
-                    .whereRaw("s.session_date >= now() - interval '30 days'")
+                const q = this.db('event_attendance as ea')
+                    .join('calendar_events as ce', 'ea.event_id', 'ce.id')
+                    .where('ce.event_type', 'training')
+                    .whereNull('ce.deleted_at')
+                    .whereRaw("ce.start_datetime >= now() - interval '30 days'")
                     .select(
                         this.db.raw('COUNT(*) as total'),
-                        this.db.raw("COUNT(*) FILTER (WHERE am.status IN ('present','late')) as attended"),
+                        this.db.raw("COUNT(*) FILTER (WHERE ea.status IN ('present','late')) as attended"),
                     );
-                return (academyId ? q.where('ab.academy_id', academyId) : q).first();
+                return (academyId ? q.where('ce.academy_id', academyId) : q).first();
             })(),
         ]);
 
@@ -108,15 +110,15 @@ class AdminRepository extends BaseRepository {
                 SELECT
                     wr.w,
                     wr.week_start,
-                    COUNT(am.id) AS total,
-                    COUNT(am.id) FILTER (WHERE am.status IN ('present','late')) AS attended
+                    COUNT(ea.id) AS total,
+                    COUNT(ea.id) FILTER (WHERE ea.status IN ('present','late')) AS attended
                 FROM week_ranges wr
-                LEFT JOIN attendance_sessions s
-                    ON s.session_date BETWEEN wr.week_start AND wr.week_end
-                LEFT JOIN academy_groups ag ON s.group_id = ag.id
-                LEFT JOIN academy_branches ab ON ag.branch_id = ab.id
-                LEFT JOIN attendance_marks am ON am.session_id = s.id
-                    AND (:academyId::uuid IS NULL OR ab.academy_id = :academyId)
+                LEFT JOIN calendar_events ce
+                    ON ce.start_datetime::date BETWEEN wr.week_start::date AND wr.week_end::date
+                   AND ce.event_type = 'training'
+                   AND ce.deleted_at IS NULL
+                   AND (:academyId::uuid IS NULL OR ce.academy_id = :academyId)
+                LEFT JOIN event_attendance ea ON ea.event_id = ce.id
                 GROUP BY wr.w, wr.week_start
             )
             SELECT
@@ -223,6 +225,435 @@ class AdminRepository extends BaseRepository {
         }));
     }
 
+    async getReportsOverview(academyId, { branchId, dateFrom, dateTo }) {
+        const scopeBranch = (query, column) => {
+            if (branchId) query.where(column, branchId);
+            return query;
+        };
+
+        const attendanceScope = () => {
+            const query = this.db('event_attendance as ea')
+                .join('calendar_events as ce', 'ea.event_id', 'ce.id')
+                .join('player_profiles as attendance_player', 'attendance_player.id', 'ea.player_id')
+                .where('ce.academy_id', academyId)
+                .where('ce.event_type', 'training')
+                .whereNull('ce.deleted_at')
+                .whereNull('attendance_player.deleted_at')
+                .whereRaw('ce.start_datetime::date BETWEEN ?::date AND ?::date', [
+                    dateFrom,
+                    dateTo,
+                ]);
+            if (branchId) query.where('attendance_player.branch_id', branchId);
+            return query;
+        };
+
+        const trainingScope = () => {
+            const query = this.db('calendar_events as ce')
+                .where('ce.academy_id', academyId)
+                .where('ce.event_type', 'training')
+                .whereNull('ce.deleted_at')
+                .whereRaw('ce.start_datetime::date BETWEEN ?::date AND ?::date', [
+                    dateFrom,
+                    dateTo,
+                ]);
+
+            if (branchId) {
+                query.where((branchScope) => {
+                    branchScope
+                        .whereExists(
+                            this.db('calendar_event_groups as target_group')
+                                .join('academy_groups as target_ag', 'target_ag.id', 'target_group.group_id')
+                                .whereRaw('target_group.event_id = ce.id')
+                                .where('target_ag.branch_id', branchId)
+                                .select(this.db.raw('1')),
+                        )
+                        .orWhereExists(
+                            this.db('calendar_event_players as target_player')
+                                .join('player_profiles as target_pp', 'target_pp.id', 'target_player.player_id')
+                                .whereRaw('target_player.event_id = ce.id')
+                                .where('target_pp.branch_id', branchId)
+                                .select(this.db.raw('1')),
+                        )
+                        .orWhereExists(
+                            this.db('calendar_event_birth_years as target_birth_year')
+                                .join(
+                                    'academy_birth_years as target_aby',
+                                    'target_aby.id',
+                                    'target_birth_year.birth_year_id',
+                                )
+                                .whereRaw('target_birth_year.event_id = ce.id')
+                                .where('target_aby.branch_id', branchId)
+                                .select(this.db.raw('1')),
+                        );
+                });
+            }
+
+            return query;
+        };
+
+        const [
+            playerSummary,
+            coachSummary,
+            sessionSummary,
+            attendanceSummary,
+            levelDistribution,
+            attendanceTrend,
+            groupPerformance,
+            coachPerformance,
+            playerProgress,
+        ] = await Promise.all([
+            scopeBranch(
+                this.db('player_profiles as pp')
+                    .where('pp.academy_id', academyId)
+                    .whereNull('pp.deleted_at')
+                    .select(
+                        this.db.raw('COUNT(*)::int as total'),
+                        this.db.raw('COUNT(*) FILTER (WHERE pp.is_active IS TRUE)::int as active'),
+                        this.db.raw(
+                            "COUNT(*) FILTER (WHERE pp.created_at::date BETWEEN ?::date AND ?::date)::int as \"newPlayers\"",
+                            [dateFrom, dateTo],
+                        ),
+                    ),
+                'pp.branch_id',
+            ).first(),
+            scopeBranch(
+                this.db('coach_profiles as cp')
+                    .where('cp.academy_id', academyId)
+                    .whereNull('cp.deleted_at')
+                    .count('cp.id as total'),
+                'cp.branch_id',
+            ).first(),
+            trainingScope()
+                .select(
+                    this.db.raw('COUNT(DISTINCT ce.id)::int as total'),
+                    this.db.raw(
+                        "COUNT(DISTINCT ce.id) FILTER (WHERE ce.status = 'finished')::int as completed",
+                    ),
+                )
+                .first(),
+            attendanceScope()
+                .select(
+                    this.db.raw('COUNT(ea.id)::int as total'),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status IN ('present', 'late'))::int as attended",
+                    ),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status = 'present')::int as present",
+                    ),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status = 'late')::int as late",
+                    ),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status = 'absent')::int as absent",
+                    ),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status = 'excused')::int as excused",
+                    ),
+                    this.db.raw(
+                        "COUNT(ea.id) FILTER (WHERE ea.status = 'injured')::int as injured",
+                    ),
+                )
+                .first(),
+            scopeBranch(
+                this.db('player_profiles as pp')
+                    .where('pp.academy_id', academyId)
+                    .whereNull('pp.deleted_at')
+                    .where('pp.is_active', true)
+                    .select(this.db.raw("COALESCE(pp.level::text, 'Unrated') as level"))
+                    .count('pp.id as count')
+                    .groupByRaw("COALESCE(pp.level::text, 'Unrated')"),
+                'pp.branch_id',
+            ).orderByRaw(
+                "CASE COALESCE(pp.level::text, 'Unrated') WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 WHEN 'D' THEN 4 WHEN 'F' THEN 5 ELSE 6 END",
+            ),
+            attendanceScope()
+                .select(
+                    this.db.raw("to_char(date_trunc('week', ce.start_datetime), 'Mon DD') as label"),
+                    this.db.raw("date_trunc('week', ce.start_datetime) as week_start"),
+                    this.db.raw(
+                        "ROUND(100.0 * COUNT(ea.id) FILTER (WHERE ea.status IN ('present', 'late')) / NULLIF(COUNT(ea.id), 0))::int as rate",
+                    ),
+                )
+                .groupByRaw("date_trunc('week', ce.start_datetime)")
+                .orderBy('week_start', 'asc'),
+            scopeBranch(
+                this.db('academy_groups as ag')
+                    .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
+                    .where('ab.academy_id', academyId)
+                    .whereNull('ag.deleted_at')
+                    .select(
+                        'ag.id',
+                        'ag.name',
+                        'ab.name as branchName',
+                        this.db.raw(`(
+                            SELECT COUNT(DISTINCT pga.player_id)::int
+                            FROM player_group_assignments pga
+                            WHERE pga.group_id = ag.id
+                              AND pga.left_at IS NULL
+                        ) as players`),
+                        this.db.raw(`(
+                            SELECT COUNT(DISTINCT ce.id)::int
+                            FROM calendar_events ce
+                            JOIN calendar_event_groups ceg ON ceg.event_id = ce.id
+                            WHERE ceg.group_id = ag.id
+                              AND ce.academy_id = ?
+                              AND ce.event_type = 'training'
+                              AND ce.deleted_at IS NULL
+                              AND ce.start_datetime::date BETWEEN ?::date AND ?::date
+                        ) as sessions`, [academyId, dateFrom, dateTo]),
+                        this.db.raw(
+                            `COALESCE((
+                                SELECT ROUND(
+                                    100.0 * COUNT(DISTINCT ea.id) FILTER (
+                                        WHERE ea.status IN ('present', 'late')
+                                    ) / NULLIF(COUNT(DISTINCT ea.id), 0)
+                                )::int
+                                FROM event_attendance ea
+                                JOIN calendar_events ce ON ce.id = ea.event_id
+                                WHERE ce.academy_id = ?
+                                  AND ce.event_type = 'training'
+                                  AND ce.deleted_at IS NULL
+                                  AND ce.start_datetime::date BETWEEN ?::date AND ?::date
+                                  AND EXISTS (
+                                      SELECT 1
+                                      FROM player_group_assignments attendance_pga
+                                      WHERE attendance_pga.player_id = ea.player_id
+                                        AND attendance_pga.group_id = ag.id
+                                        AND attendance_pga.left_at IS NULL
+                                  )
+                            ), 0) as "attendanceRate"`,
+                            [academyId, dateFrom, dateTo],
+                        ),
+                    ),
+                'ab.id',
+            )
+                .orderBy('attendanceRate', 'desc')
+                .orderBy('players', 'desc')
+                .limit(8),
+            scopeBranch(
+                this.db('coach_profiles as cp')
+                    .leftJoin('academy_branches as cb', 'cp.branch_id', 'cb.id')
+                    .leftJoin('training_sessions as ts', 'ts.coach_id', 'cp.id')
+                    .leftJoin('calendar_events as ce', (join) => {
+                        join.on('ce.id', '=', 'ts.event_id')
+                            .andOnVal('ce.event_type', '=', 'training')
+                            .andOnNull('ce.deleted_at')
+                            .andOn(
+                                this.db.raw(
+                                    'ce.start_datetime::date BETWEEN ?::date AND ?::date',
+                                    [dateFrom, dateTo],
+                                ),
+                            );
+                    })
+                    .leftJoin('event_attendance as ea', 'ea.event_id', 'ce.id')
+                    .where('cp.academy_id', academyId)
+                    .whereNull('cp.deleted_at')
+                    .select(
+                        'cp.id',
+                        'cp.full_name as name',
+                        'cp.specialization',
+                        'cp.role',
+                        'cb.name as branchName',
+                        this.db.raw(`(
+                            SELECT COUNT(DISTINCT cga.group_id)::int
+                            FROM coach_group_assignments cga
+                            WHERE cga.coach_id = cp.id
+                        ) as "groupCount"`),
+                        this.db.raw(`(
+                            SELECT COUNT(DISTINCT pga.player_id)::int
+                            FROM coach_group_assignments cga
+                            JOIN player_group_assignments pga
+                              ON pga.group_id = cga.group_id
+                             AND pga.left_at IS NULL
+                            WHERE cga.coach_id = cp.id
+                        ) as "playerCount"`),
+                        this.db.raw('COUNT(DISTINCT ce.id)::int as sessions'),
+                        this.db.raw(
+                            "COALESCE(ROUND(100.0 * COUNT(DISTINCT ea.id) FILTER (WHERE ea.status IN ('present', 'late')) / NULLIF(COUNT(DISTINCT ea.id), 0)), 0)::int as \"attendanceRate\"",
+                        ),
+                    )
+                    .groupBy(
+                        'cp.id',
+                        'cp.full_name',
+                        'cp.specialization',
+                        'cp.role',
+                        'cb.name',
+                    ),
+                'cp.branch_id',
+            )
+                .orderBy('sessions', 'desc')
+                .limit(8),
+            this.db.raw(`
+                SELECT
+                    pp.id,
+                    pp.full_name AS "fullName",
+                    pp.player_code AS "playerCode",
+                    pp.level::text AS level,
+                    COALESCE(custom_position.position, pp.position) AS position,
+                    pp.preferred_foot::text AS "preferredFoot",
+                    pp.profile_status::text AS "profileStatus",
+                    pp.is_active AS "isActive",
+                    pp.date_joined::text AS "dateJoined",
+                    ab.name AS "branchName",
+                    current_group.group_name AS "groupName",
+                    latest_measurement.measured_at::text AS "measuredAt",
+                    latest_measurement.height_cm::float AS "heightCm",
+                    latest_measurement.weight_kg::float AS "weightKg",
+                    latest_measurement.sprint_speed::float AS "sprintSpeed",
+                    latest_measurement.stamina::int AS stamina,
+                    attendance.total::int AS "attendanceTotal",
+                    attendance.attended::int AS "attendanceAttended",
+                    CASE
+                        WHEN COALESCE(attendance.total, 0) > 0
+                        THEN ROUND(100.0 * attendance.attended / attendance.total)::int
+                        ELSE 0
+                    END AS "attendanceRate"
+                FROM player_profiles pp
+                LEFT JOIN academy_branches ab ON ab.id = pp.branch_id
+                LEFT JOIN LATERAL (
+                    SELECT ag.name AS group_name
+                    FROM player_group_assignments pga
+                    JOIN academy_groups ag ON ag.id = pga.group_id
+                    WHERE pga.player_id = pp.id
+                      AND pga.left_at IS NULL
+                      AND ag.deleted_at IS NULL
+                    ORDER BY pga.joined_at DESC
+                    LIMIT 1
+                ) current_group ON true
+                LEFT JOIN LATERAL (
+                    SELECT pm.*
+                    FROM player_measurements pm
+                    WHERE pm.player_id = pp.id
+                    ORDER BY pm.measured_at DESC, pm.id DESC
+                    LIMIT 1
+                ) latest_measurement ON true
+                LEFT JOIN LATERAL (
+                    SELECT
+                        COUNT(ea.id) AS total,
+                        COUNT(ea.id) FILTER (
+                            WHERE ea.status IN ('present', 'late')
+                        ) AS attended
+                    FROM event_attendance ea
+                    JOIN calendar_events ce ON ce.id = ea.event_id
+                    WHERE ea.player_id = pp.id
+                      AND ce.academy_id = :academyId
+                      AND ce.event_type = 'training'
+                      AND ce.deleted_at IS NULL
+                      AND ce.start_datetime::date BETWEEN :dateFrom::date AND :dateTo::date
+                ) attendance ON true
+                LEFT JOIN LATERAL (
+                    SELECT COALESCE(
+                        cfo.label,
+                        cfo_text.label,
+                        pcv.value_text,
+                        pcv.value_long_text,
+                        json_options.labels
+                    ) AS position
+                    FROM player_custom_values pcv
+                    JOIN custom_fields cf ON cf.id = pcv.field_id
+                    LEFT JOIN custom_field_options cfo
+                      ON cfo.id = pcv.value_option_id
+                    LEFT JOIN custom_field_options cfo_text
+                      ON cfo_text.field_id = cf.id
+                     AND cfo_text.id::text = pcv.value_text
+                    LEFT JOIN LATERAL (
+                        SELECT string_agg(
+                            COALESCE(cfo_json.label, option_id),
+                            ', '
+                            ORDER BY option_id
+                        ) AS labels
+                        FROM jsonb_array_elements_text(
+                            CASE
+                                WHEN jsonb_typeof(pcv.value_json) = 'array'
+                                    THEN pcv.value_json
+                                WHEN jsonb_typeof(pcv.value_json) = 'string'
+                                    THEN jsonb_build_array(pcv.value_json #>> '{}')
+                                ELSE '[]'::jsonb
+                            END
+                        ) option_values(option_id)
+                        LEFT JOIN custom_field_options cfo_json
+                          ON cfo_json.field_id = cf.id
+                         AND cfo_json.id::text = option_values.option_id
+                    ) json_options ON true
+                    WHERE pcv.player_id = pp.id
+                      AND regexp_replace(
+                          lower(cf.key),
+                          '[^a-z0-9]+',
+                          '_',
+                          'g'
+                      ) = 'main_position'
+                    ORDER BY pcv.updated_at DESC NULLS LAST
+                    LIMIT 1
+                ) custom_position ON true
+                WHERE pp.academy_id = :academyId
+                  AND pp.deleted_at IS NULL
+                  AND (
+                      :branchId::uuid IS NULL
+                      OR pp.branch_id = :branchId::uuid
+                  )
+                ORDER BY pp.full_name ASC
+            `, {
+                academyId,
+                branchId,
+                dateFrom,
+                dateTo,
+            }),
+        ]);
+
+        const totalAttendance = Number(attendanceSummary?.total || 0);
+        const attended = Number(attendanceSummary?.attended || 0);
+
+        return {
+            filters: { branchId, dateFrom, dateTo },
+            summary: {
+                totalPlayers: Number(playerSummary?.total || 0),
+                activePlayers: Number(playerSummary?.active || 0),
+                newPlayers: Number(playerSummary?.newPlayers || 0),
+                totalCoaches: Number(coachSummary?.total || 0),
+                totalSessions: Number(sessionSummary?.total || 0),
+                completedSessions: Number(sessionSummary?.completed || 0),
+                attendanceRate: totalAttendance > 0
+                    ? Math.round((attended / totalAttendance) * 100)
+                    : 0,
+            },
+            attendance: {
+                total: totalAttendance,
+                present: Number(attendanceSummary?.present || 0),
+                late: Number(attendanceSummary?.late || 0),
+                absent: Number(attendanceSummary?.absent || 0),
+                excused: Number(attendanceSummary?.excused || 0),
+                injured: Number(attendanceSummary?.injured || 0),
+            },
+            levelDistribution: levelDistribution.map((row) => ({
+                level: row.level,
+                count: Number(row.count || 0),
+            })),
+            attendanceTrend: attendanceTrend.map((row) => ({
+                label: row.label,
+                rate: Number(row.rate || 0),
+            })),
+            groups: groupPerformance.map((row) => ({
+                ...row,
+                players: Number(row.players || 0),
+                sessions: Number(row.sessions || 0),
+                attendanceRate: Number(row.attendanceRate || 0),
+            })),
+            coaches: coachPerformance.map((row) => ({
+                ...row,
+                groupCount: Number(row.groupCount || 0),
+                playerCount: Number(row.playerCount || 0),
+                sessions: Number(row.sessions || 0),
+                attendanceRate: Number(row.attendanceRate || 0),
+            })),
+            players: playerProgress.rows.map((row) => ({
+                ...row,
+                attendanceTotal: Number(row.attendanceTotal || 0),
+                attendanceAttended: Number(row.attendanceAttended || 0),
+                attendanceRate: Number(row.attendanceRate || 0),
+            })),
+        };
+    }
+
     async getWeeklyMatches(academyId) {
         const rows = await this.db.raw(`
             WITH days AS (
@@ -281,7 +712,7 @@ class AdminRepository extends BaseRepository {
     // ─── Access Control Settings ────────────────────────────────────────
     async getAccessControl(academyId) {
         const db = this.db;
-        const [permissionRows, roleRows] = await Promise.all([
+        const [permissionRows, roleRows, userRows, userRoleRows] = await Promise.all([
             this.db('iam_permissions as p')
                 .leftJoin('iam_permission_groups as pg', 'p.group_id', 'pg.id')
                 .select(
@@ -331,6 +762,42 @@ class AdminRepository extends BaseRepository {
                 .orderBy('r.is_system', 'desc')
                 .orderBy('r.priority', 'asc')
                 .orderBy('r.name', 'asc'),
+            this.db('auth_users as au')
+                .leftJoin('iam_users as iu', 'iu.id', 'au.id')
+                .where('au.academy_id', academyId)
+                .whereNot('au.role', 'player')
+                .whereNull('au.deleted_at')
+                .select(
+                    'au.id',
+                    'au.email',
+                    'au.username',
+                    'au.phone',
+                    'au.role',
+                    'au.is_active as isActive',
+                    'iu.address',
+                    'iu.job_title as jobTitle',
+                    'iu.department',
+                    'iu.notes',
+                    this.db.raw('COALESCE(iu.full_name, au.username, au.email, au.phone, au.role::text) as "fullName"'),
+                )
+                .orderBy('fullName', 'asc'),
+            this.db('iam_user_roles as ur')
+                .join('iam_roles as r', 'ur.role_id', 'r.id')
+                .where('ur.academy_id', academyId)
+                .whereNull('ur.revoked_at')
+                .where(function activeAssignment() {
+                    this.whereNull('ur.expires_at').orWhere('ur.expires_at', '>', new Date());
+                })
+                .whereNull('r.deleted_at')
+                .select(
+                    'ur.id',
+                    'ur.user_id as userId',
+                    'ur.role_id as roleId',
+                    'ur.scope_branch_id as scopeBranchId',
+                    'ur.scope_group_id as scopeGroupId',
+                    'ur.granted_at as grantedAt',
+                    'ur.expires_at as expiresAt',
+                ),
         ]);
 
         const permissionsByRole = await this.db('iam_role_permissions as rp')
@@ -388,7 +855,355 @@ class AdminRepository extends BaseRepository {
                 userCount: Number(role.userCount || 0),
                 permissionAssignments: permissionMap.get(role.id) || [],
             })),
+            users: userRows.map((user) => ({
+                ...user,
+                isActive: Boolean(user.isActive),
+                roleAssignments: userRoleRows
+                    .filter((assignment) => assignment.userId === user.id)
+                    .map((assignment) => ({
+                        id: assignment.id,
+                        roleId: assignment.roleId,
+                        scopeBranchId: assignment.scopeBranchId,
+                        scopeGroupId: assignment.scopeGroupId,
+                        grantedAt: assignment.grantedAt,
+                        expiresAt: assignment.expiresAt,
+                    })),
+            })),
         };
+    }
+
+    async findAcademyUser(userId, academyId) {
+        return this.db('auth_users')
+            .where({ id: userId, academy_id: academyId })
+            .whereNull('deleted_at')
+            .first();
+    }
+
+    async findAssignableRole(roleId, academyId) {
+        return this.db('iam_roles')
+            .where({ id: roleId, is_active: true })
+            .whereNull('deleted_at')
+            .where(function scopedRole() {
+                this.whereNull('academy_id').orWhere('academy_id', academyId);
+            })
+            .first();
+    }
+
+    async findIdentityConflict({ email, phone, username }) {
+        const normalizedEmail = email ? email.toLowerCase() : null;
+        const normalizedUsername = username ? username.toLowerCase() : null;
+
+        const authUser = await this.db('auth_users')
+            .whereNull('deleted_at')
+            .where((query) => {
+                if (normalizedUsername) query.orWhereRaw('lower(username) = ?', [normalizedUsername]);
+                if (normalizedEmail) query.orWhereRaw('lower(email) = ?', [normalizedEmail]);
+                if (phone) query.orWhere('phone', phone);
+            })
+            .first('id', 'username', 'email', 'phone', 'role');
+
+        if (authUser) {
+            if (normalizedUsername && authUser.username?.toLowerCase() === normalizedUsername) {
+                return { field: 'username', value: username };
+            }
+            if (normalizedEmail && authUser.email?.toLowerCase() === normalizedEmail) {
+                return { field: 'email', value: email };
+            }
+            if (phone && authUser.phone === phone) {
+                return { field: 'phone', value: phone };
+            }
+            return { field: 'login details', value: null };
+        }
+
+        const hasIamUsers = await this.db.schema.hasTable('iam_users');
+        if (!hasIamUsers) return null;
+
+        const iamUser = await this.db('iam_users')
+            .whereNull('deleted_at')
+            .where((query) => {
+                if (normalizedUsername) query.orWhereRaw('lower(username) = ?', [normalizedUsername]);
+                if (normalizedEmail) query.orWhereRaw('lower(email) = ?', [normalizedEmail]);
+                if (phone) query.orWhere('phone', phone);
+            })
+            .first('id', 'username', 'email', 'phone');
+
+        if (!iamUser) return null;
+        if (normalizedUsername && iamUser.username?.toLowerCase() === normalizedUsername) {
+            return { field: 'username', value: username };
+        }
+        if (normalizedEmail && iamUser.email?.toLowerCase() === normalizedEmail) {
+            return { field: 'email', value: email };
+        }
+        if (phone && iamUser.phone === phone) {
+            return { field: 'phone', value: phone };
+        }
+        return { field: 'login details', value: null };
+    }
+
+    async roleHasAnyPermission(roleId, academyId, permissionCodes) {
+        const row = await this.db('iam_roles as r')
+            .join('iam_role_permissions as rp', 'rp.role_id', 'r.id')
+            .join('iam_permissions as p', 'p.id', 'rp.permission_id')
+            .where('r.id', roleId)
+            .where('r.is_active', true)
+            .whereNull('r.deleted_at')
+            .where(function scopedRole() {
+                this.whereNull('r.academy_id').orWhere('r.academy_id', academyId);
+            })
+            .where(function grantedPermission() {
+                this.where('rp.denied', false).orWhereNull('rp.denied');
+            })
+            .whereIn('p.code', permissionCodes)
+            .first('p.id');
+        return Boolean(row);
+    }
+
+    splitFullName(fullName) {
+        const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+        return {
+            firstName: parts[0] || 'User',
+            lastName: parts.slice(1).join(' ') || 'Account',
+        };
+    }
+
+    async getDefaultBranchId(academyId, trx = this.db) {
+        const branch = await trx('academy_branches')
+            .where({ academy_id: academyId })
+            .whereNull('deleted_at')
+            .orderBy('created_at', 'asc')
+            .first('id');
+        return branch?.id || null;
+    }
+
+    async createCoachProfileForAccessUser(trx, { academyId, user, fullName, email, phone, username, jobTitle }) {
+        const branchId = user.branch_id || await this.getDefaultBranchId(academyId, trx);
+        if (!branchId) {
+            throw new BadRequestError('A branch is required before creating a coach login user');
+        }
+
+        const existing = await trx('coach_profiles')
+            .where({ user_id: user.id })
+            .whereNull('deleted_at')
+            .first('id');
+        if (existing) return existing;
+
+        const { firstName, lastName } = this.splitFullName(fullName);
+        const coachRole = jobTitle || 'head_coach';
+        const [coach] = await trx('coach_profiles')
+            .insert({
+                user_id: user.id,
+                academy_id: academyId,
+                branch_id: branchId,
+                full_name: fullName,
+                first_name: firstName,
+                last_name: lastName,
+                email: email || `${username}@goalix.local`,
+                phone,
+                role: coachRole,
+                specialization: coachRole,
+            })
+            .returning('*');
+
+        return coach;
+    }
+
+    async assignExclusiveRoleToUser(trx, { academyId, roleId, targetUserId, grantedBy, targetUser: providedTargetUser }) {
+        const targetUser = providedTargetUser || await trx('auth_users')
+            .where({ id: targetUserId, academy_id: academyId })
+            .whereNull('deleted_at')
+            .first();
+        if (!targetUser) return null;
+        if (targetUser.role === 'player') {
+            throw new BadRequestError('Players are managed from the Players page and cannot be assigned here');
+        }
+
+        const role = await trx('iam_roles')
+            .where({ id: roleId, is_active: true })
+            .whereNull('deleted_at')
+            .where(function scopedRole() {
+                this.whereNull('academy_id').orWhere('academy_id', academyId);
+            })
+            .first();
+        if (!role) return null;
+        if (PROTECTED_ROLE_CODES.has(role.code)) {
+            throw new BadRequestError(`${role.name} is a protected system role and cannot be assigned from this screen`);
+        }
+
+        const iamUser = await trx('iam_users')
+            .where({ id: targetUser.id })
+            .whereNull('deleted_at')
+            .first('full_name as fullName');
+        await ensureIamForAuthUser(trx, targetUser, {
+            fullName: iamUser?.fullName,
+            grantedBy,
+            skipDefaultRole: true,
+        });
+
+        const existing = await trx('iam_user_roles')
+            .where({
+                user_id: targetUserId,
+                role_id: roleId,
+                academy_id: academyId,
+            })
+            .whereNull('scope_branch_id')
+            .whereNull('scope_group_id')
+            .whereNull('revoked_at')
+            .first();
+
+        const revokeQuery = trx('iam_user_roles')
+            .where({
+                user_id: targetUserId,
+                academy_id: academyId,
+            })
+            .whereNull('revoked_at');
+
+        if (existing) revokeQuery.whereNot('id', existing.id);
+
+        await revokeQuery.update({
+            revoked_at: trx.fn.now(),
+            revoked_by: grantedBy || null,
+            revoke_reason: 'admin_role_replaced',
+            updated_at: trx.fn.now(),
+        });
+
+        if (existing) {
+            const [updated] = await trx('iam_user_roles')
+                .where({ id: existing.id })
+                .update({
+                    expires_at: null,
+                    revoked_at: null,
+                    revoked_by: null,
+                    revoke_reason: null,
+                    updated_at: trx.fn.now(),
+                })
+                .returning('*');
+            return updated;
+        }
+
+        const [created] = await trx('iam_user_roles')
+            .insert({
+                user_id: targetUserId,
+                role_id: roleId,
+                academy_id: academyId,
+                granted_by: grantedBy || null,
+            })
+            .returning('*');
+        return created;
+    }
+
+    async createAccessUser({
+        academyId,
+        actorUserId,
+        fullName,
+        accountRole,
+        email,
+        phone,
+        username,
+        passwordHash,
+        address,
+        jobTitle,
+        department,
+        notes,
+        roleId,
+    }) {
+        return this.db.transaction(async (trx) => {
+            if (accountRole === 'player') {
+                throw new BadRequestError('Players must be created from the Players page');
+            }
+
+            const branchId = accountRole === 'coach'
+                ? await this.getDefaultBranchId(academyId, trx)
+                : null;
+            if (accountRole === 'coach' && !branchId) {
+                throw new BadRequestError('A branch is required before creating a coach login user');
+            }
+
+            const [user] = await trx('auth_users')
+                .insert({
+                    username,
+                    email: email || null,
+                    phone,
+                    password_hash: passwordHash,
+                    role: accountRole,
+                    academy_id: academyId,
+                    branch_id: branchId,
+                    is_active: true,
+                    is_verified: true,
+                })
+                .returning('*');
+
+            await ensureIamForAuthUser(trx, user, {
+                fullName,
+                grantedBy: actorUserId,
+                skipDefaultRole: true,
+                address,
+                jobTitle,
+                department,
+                notes,
+            });
+
+            if (accountRole === 'coach') {
+                await this.createCoachProfileForAccessUser(trx, {
+                    academyId,
+                    user,
+                    fullName,
+                    email,
+                    phone,
+                    username,
+                    jobTitle,
+                });
+            }
+
+            const assignment = roleId
+                ? await this.assignExclusiveRoleToUser(trx, {
+                    academyId,
+                    roleId,
+                    targetUserId: user.id,
+                    grantedBy: actorUserId,
+                    targetUser: user,
+                })
+                : null;
+
+            return { user, assignment };
+        });
+    }
+
+    async assignRoleToUser({ academyId, roleId, targetUserId, grantedBy }) {
+        return this.db.transaction(async (trx) => {
+            const targetUser = await trx('auth_users')
+                .where({ id: targetUserId, academy_id: academyId })
+                .whereNull('deleted_at')
+                .first();
+            if (!targetUser) return null;
+
+            return this.assignExclusiveRoleToUser(trx, {
+                academyId,
+                roleId,
+                targetUserId,
+                grantedBy,
+                targetUser,
+            });
+        });
+    }
+
+    async revokeRoleFromUser({ academyId, roleId, targetUserId, revokedBy }) {
+        const [revoked] = await this.db('iam_user_roles')
+            .where({
+                user_id: targetUserId,
+                role_id: roleId,
+                academy_id: academyId,
+            })
+            .whereNull('scope_branch_id')
+            .whereNull('scope_group_id')
+            .whereNull('revoked_at')
+            .update({
+                revoked_at: new Date(),
+                revoked_by: revokedBy || null,
+                revoke_reason: 'admin_role_management',
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return revoked;
     }
 
     async createAcademyRole(academyId, userId, data) {

@@ -234,15 +234,23 @@ class AuthController {
 
     me = async (req, res, next) => {
         try {
-            const user = await this.authService.repo.findById(req.user.userId);
+            const user = await this.authService.getCurrentUser(req.user.userId);
             if (!user) {
                 return res.status(404).json(ApiResponse.error('RESOURCE_NOT_FOUND', 'User not found'));
             }
-            const sanitized = this.authService._sanitizeUser(user);
             res.json(ApiResponse.success({
-                ...sanitized,
-                user: sanitized,
+                ...user,
+                user,
             }, { requestId: req.id }));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    permissions = async (req, res, next) => {
+        try {
+            const data = await this.authService.getCurrentPermissions(req.user);
+            res.json(ApiResponse.success(data, { requestId: req.id }));
         } catch (err) {
             next(err);
         }

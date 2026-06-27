@@ -1,0 +1,30 @@
+
+> goalix-backend@1.0.0 dev
+> nodemon src/server.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[2026-06-28 00:51:20.914 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+    service: "goalix-api"
+[2026-06-28 00:51:20.925 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+    service: "goalix-api"
+[2026-06-28 00:51:20.931 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+    service: "goalix-api"
+[2026-06-28 01:28:21.132 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 627.19
+    sql: "select \"id\" from \"iam_users\" where \"id\" = $1 and \"is_active\" = $2 and \"deleted_at\" is null limit $3"
+[2026-06-28 01:28:21.768 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 410.42
+    sql: "select \"p\".\"code\", \"rp\".\"denied\" from \"iam_user_roles\" as \"ur\" inner join \"iam_roles\" as \"r\" on \"ur\".\"role_id\" = \"r\".\"id\" inner join \"iam_role_permissions\" as \"rp\" on \"r\".\"id\" = \"rp\".\"role_id\" inner join \"iam_permissions\" as \"p\" on \"rp\".\"permission_id\" = \"p\".\"id\" where \"ur\".\"user_id\" = $1 and \"ur\".\"revoked_at\" is null and (\"ur\".\"expires_at\" is null or \"ur\".\"expires_at\" > $2) and \"r\".\"is_active\" = $3 and \"r\".\"deleted_at\" is null and \"ur\".\"academy_id\" = $4"
+[2026-06-28 01:28:21.862 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "42e50173-5431-4d12-bb98-b326a9071a1d"
+    method: "PUT"
+    url: "/api/v1/academy"
+    statusCode: 200
+    durationMs: 1479.78

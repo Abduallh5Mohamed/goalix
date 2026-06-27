@@ -12,6 +12,21 @@ const {
 } = require('../../shared/errors');
 const logger = require('../../shared/logger');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
+const {
+    getIamPermissionCodes,
+    legacyPermissions,
+} = require('../../shared/authorization');
+const {
+    cacheActiveSession,
+    invalidateAllUserSessions,
+    invalidateSession,
+} = require('../../shared/auth-session-cache');
+const {
+    getJsonCache,
+    setJsonCache,
+} = require('../../shared/redis-json-cache');
+
+const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 
 class AuthService {
     constructor(authRepository, redis) {
@@ -25,7 +40,7 @@ class AuthService {
         const existing = await this.repo.findByEmailOrPhone(email, phone);
         if (existing) {
             // Don't reveal that the account exists — return same success message
-            logger.info(`Signup attempt for existing email/phone: ${email}`);
+            logger.debug('Signup attempt rejected because the account already exists');
             return {
                 message: 'Registration submitted successfully. You will be notified once approved.',
                 status: 'pending',
@@ -149,7 +164,7 @@ class AuthService {
             throw new UnauthorizedError('Invalid credentials');
         }
 
-        if (user.role === 'admin' && credentialMode !== 'email') {
+        if (user.role === 'admin' && !['email', 'username'].includes(credentialMode)) {
             throw new UnauthorizedError('Invalid credentials');
         }
 
@@ -310,7 +325,12 @@ class AuthService {
         await this.repo.revokeAccessSessionByJti(userId, accessJti, 'logout');
 
         // Also remove from Redis if cached (best-effort)
-        try { await this.redis.del(`goalix:auth:refresh:${userId}`); } catch { /* Redis unavailable */ }
+        try {
+            await Promise.all([
+                this.redis.del(`goalix:auth:refresh:${userId}`),
+                invalidateSession(this.redis, userId, accessJti),
+            ]);
+        } catch { /* Redis unavailable */ }
 
         // Audit log
         await this.repo.createAuditLog({
@@ -329,7 +349,12 @@ class AuthService {
     // ─── Logout All Devices ─────────────────────────────────────────────
     async logoutAllDevices(userId, ip, userAgent) {
         await this.repo.revokeAllUserTokens(userId);
-        try { await this.redis.del(`goalix:auth:refresh:${userId}`); } catch { /* */ }
+        try {
+            await Promise.all([
+                this.redis.del(`goalix:auth:refresh:${userId}`),
+                invalidateAllUserSessions(this.redis, userId),
+            ]);
+        } catch { /* */ }
 
         await this.repo.createAuditLog({
             user_id: userId,
@@ -364,7 +389,12 @@ class AuthService {
             // Revoke ALL tokens for this user as a security measure.
             logger.warn(`Refresh token reuse detected for userId=${decoded.userId} — revoking all tokens`);
             await this.repo.revokeAllUserTokens(decoded.userId);
-            try { await this.redis.del(`goalix:auth:refresh:${decoded.userId}`); } catch { /* */ }
+            try {
+                await Promise.all([
+                    this.redis.del(`goalix:auth:refresh:${decoded.userId}`),
+                    invalidateAllUserSessions(this.redis, decoded.userId),
+                ]);
+            } catch { /* */ }
 
             await this.repo.createAuditLog({
                 user_id: decoded.userId,
@@ -379,6 +409,13 @@ class AuthService {
 
         // Revoke old token (rotation)
         await this.repo.revokeRefreshToken(storedToken.id);
+        try {
+            await invalidateSession(
+                this.redis,
+                storedToken.user_id,
+                storedToken.access_jti,
+            );
+        } catch { /* Redis unavailable */ }
 
         // Get user
         const user = await this.repo.findById(decoded.userId);
@@ -438,10 +475,56 @@ class AuthService {
 
         // Revoke all refresh tokens for security
         await this.repo.revokeAllUserTokens(resetRecord.user_id);
+        try {
+            await Promise.all([
+                this.redis.del(`goalix:auth:refresh:${resetRecord.user_id}`),
+                invalidateAllUserSessions(this.redis, resetRecord.user_id),
+            ]);
+        } catch { /* Redis unavailable */ }
 
         eventBus.publish(AUTH_EVENTS.PASSWORD_CHANGED, { userId: resetRecord.user_id });
 
         return { message: 'Password reset successful' };
+    }
+
+    async getCurrentUser(userId) {
+        const cacheKey = authUserCacheKey(userId);
+        const cached = await getJsonCache(this.redis, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const user = await this.repo.findById(userId);
+        if (!user) return null;
+
+        const sanitized = this._sanitizeUser(user);
+        await setJsonCache(this.redis, cacheKey, sanitized, env.AUTH_USER_CACHE_TTL_SECONDS);
+        return sanitized;
+    }
+
+    async getCurrentPermissions(user) {
+        const iamPermissions = await getIamPermissionCodes(user, this.repo.db);
+        if (iamPermissions) {
+            return {
+                permissions: [...iamPermissions].sort(),
+                source: 'iam',
+            };
+        }
+
+        const legacy = legacyPermissions[user.role] || [];
+        if (legacy.includes('*')) {
+            const rows = await this.repo.db('iam_permissions')
+                .whereNull('deleted_at')
+                .orderBy('code', 'asc')
+                .select('code');
+            return {
+                permissions: rows.map((row) => row.code),
+                source: 'legacy_admin',
+            };
+        }
+
+        return {
+            permissions: [...legacy].sort(),
+            source: 'legacy',
+        };
     }
 
     // ─── Private Helpers ────────────────────────────────────────────────
@@ -469,7 +552,7 @@ class AuthService {
 
         // Store refresh token hash in DB
         const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-        await this.repo.createRefreshToken({
+        const session = await this.repo.createRefreshToken({
             user_id: user.id,
             token_hash: tokenHash,
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -481,12 +564,23 @@ class AuthService {
 
         // Cache in Redis for quick lookup (best-effort)
         try {
-            await this.redis.set(
-                `goalix:auth:refresh:${user.id}`,
-                tokenHash,
-                'EX',
-                7 * 24 * 60 * 60,
-            );
+            const decodedAccessToken = jwt.decode(accessToken);
+            const sanitizedUser = this._sanitizeUser(user);
+            await Promise.all([
+                this.redis.set(
+                    `goalix:auth:refresh:${user.id}`,
+                    tokenHash,
+                    'EX',
+                    7 * 24 * 60 * 60,
+                ),
+                cacheActiveSession(this.redis, decodedAccessToken, session),
+                setJsonCache(
+                    this.redis,
+                    authUserCacheKey(user.id),
+                    sanitizedUser,
+                    env.AUTH_USER_CACHE_TTL_SECONDS,
+                ),
+            ]);
         } catch { /* Redis unavailable */ }
 
         return { accessToken, refreshToken };
@@ -525,3 +619,4 @@ class AuthService {
 }
 
 module.exports = AuthService;
+module.exports.authUserCacheKey = authUserCacheKey;

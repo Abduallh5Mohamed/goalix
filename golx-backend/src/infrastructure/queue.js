@@ -12,7 +12,8 @@ const redisConnection = {
     ...(redisUrl.protocol === 'rediss:' ? { tls: {} } : {}),
 };
 
-const bullmqEnabled = process.env.BULLMQ_ENABLED !== 'false';
+const bullmqEnabled =
+    process.env.BULLMQ_ENABLED !== 'false' && env.NODE_ENV !== 'test';
 
 const createNoopQueue = (name) => ({
     add: async (jobName) => {

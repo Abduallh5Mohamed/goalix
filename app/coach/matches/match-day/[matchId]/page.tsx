@@ -59,6 +59,7 @@ import {
   useUpdateMatchLiveStatusMutation,
   useUpsertMatchAttendanceMutation,
 } from "@/lib/store/api/calendarApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
 let clockSnapshot = 0;
@@ -98,12 +99,16 @@ const matchStartTimestamp = (match?: {
   match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0;
 
 export default function CoachMatchDayPage() {
+  const { can } = useCoachPermissions();
+  const canTakeAttendance = can("can_take_attendance");
+  const canManageMatches = can("can_manage_matches");
   const params = useParams<{ matchId: string }>();
   const router = useRouter();
   const matchId = String(params.matchId || "");
   const { data: match, isLoading, refetch } = useGetCoachMatchQuery(matchId, {
     skip: !matchId,
     pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
@@ -404,6 +409,7 @@ export default function CoachMatchDayPage() {
     );
   });
   const canStartMatch = Boolean(
+    canManageMatches &&
     match &&
       match.match_status === "scheduled" &&
       kickOffReached &&
@@ -416,11 +422,13 @@ export default function CoachMatchDayPage() {
     .join("|")}`;
   const scoreLine = `${match?.our_score ?? 0} - ${match?.opponent_score ?? 0}`;
   const canRecordGoal = Boolean(
+    canManageMatches &&
     match &&
       ["first_half", "second_half"].includes(match.match_status) &&
       (goalForm.team === "opponent" || goalForm.scorerPlayerId),
   );
   const canRecordIncident = Boolean(
+    canManageMatches &&
     match && ["first_half", "second_half"].includes(match.match_status),
   );
   const liveVisual = useMemo(() => {
@@ -480,6 +488,7 @@ export default function CoachMatchDayPage() {
     playerId: string,
     status: "present" | "absent",
   ) => {
+    if (!canTakeAttendance) return;
     setPageError("");
     try {
       await upsertAttendance({
@@ -494,6 +503,7 @@ export default function CoachMatchDayPage() {
   const changeLiveStatus = async (
     matchStatus: "first_half" | "second_half" | "finished",
   ) => {
+    if (!canManageMatches) return false;
     setPageError("");
     try {
       await updateLiveStatus({
@@ -603,6 +613,7 @@ export default function CoachMatchDayPage() {
   };
 
   const openSubstitutionDialog = (playerId: string, playerName: string) => {
+    if (!canManageMatches) return;
     setSubstitutionDialog({ outPlayerId: playerId, outPlayerName: playerName });
     setSubstitutionInPlayerId("");
     setSubstitutionReason("");
@@ -772,9 +783,10 @@ export default function CoachMatchDayPage() {
                     (incident) => incident.incident_type === "injury",
                   );
                   const canSubPlayer =
-                    currentPlayingIds.has(player.player_id) ||
-                    (injuredPlayerIds.has(player.player_id) &&
-                      !substitutedOutIds.has(player.player_id));
+                    canManageMatches &&
+                    (currentPlayingIds.has(player.player_id) ||
+                      (injuredPlayerIds.has(player.player_id) &&
+                        !substitutedOutIds.has(player.player_id)));
                   return (
                     <div
                       key={player.player_id}
@@ -837,7 +849,9 @@ export default function CoachMatchDayPage() {
                         }
                         className="gap-2"
                         disabled={
-                          savingAttendance || match.match_status === "finished"
+                          !canTakeAttendance ||
+                          savingAttendance ||
+                          match.match_status === "finished"
                         }
                         onClick={() =>
                           saveAttendance(player.player_id, "present")
@@ -856,7 +870,9 @@ export default function CoachMatchDayPage() {
                         }
                         className="gap-2"
                         disabled={
-                          savingAttendance || match.match_status === "finished"
+                          !canTakeAttendance ||
+                          savingAttendance ||
+                          match.match_status === "finished"
                         }
                         onClick={() =>
                           saveAttendance(player.player_id, "absent")
@@ -996,7 +1012,11 @@ export default function CoachMatchDayPage() {
               <QrAttendanceScanner
                 mode="match"
                 id={matchId}
-                disabled={savingAttendance || match.match_status === "finished"}
+                disabled={
+                  !canTakeAttendance ||
+                  savingAttendance ||
+                  match.match_status === "finished"
+                }
                 onScanSuccess={() => {
                   void refetch();
                 }}
@@ -1099,6 +1119,7 @@ export default function CoachMatchDayPage() {
                       type="button"
                       className="gap-2"
                       disabled={
+                        !canManageMatches ||
                         updatingLiveStatus ||
                         match.match_status !== "scheduled" ||
                         !canStartMatch
@@ -1113,6 +1134,7 @@ export default function CoachMatchDayPage() {
                       variant="outline"
                       className="gap-2"
                       disabled={
+                        !canManageMatches ||
                         updatingLiveStatus ||
                         match.match_status !== "first_half"
                       }
@@ -1126,6 +1148,7 @@ export default function CoachMatchDayPage() {
                       variant="outline"
                       className="gap-2"
                       disabled={
+                        !canManageMatches ||
                         updatingLiveStatus ||
                         !["first_half", "second_half"].includes(
                           match.match_status,
@@ -1159,6 +1182,7 @@ export default function CoachMatchDayPage() {
                             variant="ghost"
                             className="gap-2"
                             disabled={
+                              !canManageMatches ||
                               deletingSubstitution ||
                               match.match_status === "finished"
                             }
@@ -1348,7 +1372,9 @@ export default function CoachMatchDayPage() {
                           variant="ghost"
                           className="gap-2"
                           disabled={
-                            deletingGoal || match.match_status === "finished"
+                            !canManageMatches ||
+                            deletingGoal ||
+                            match.match_status === "finished"
                           }
                           onClick={() => undoGoal(goal.id)}
                         >
@@ -1528,7 +1554,7 @@ export default function CoachMatchDayPage() {
               type="button"
               variant="destructive"
               className="gap-2"
-              disabled={updatingLiveStatus}
+              disabled={!canManageMatches || updatingLiveStatus}
               onClick={confirmFinishMatch}
             >
               {updatingLiveStatus && (

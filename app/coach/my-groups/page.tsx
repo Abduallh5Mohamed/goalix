@@ -30,10 +30,13 @@ import {
   useGetCoachGroupsQuery,
 } from "@/lib/store/api/coachApi";
 import { useGetCoachPlayersScopedQuery } from "@/lib/store/api/calendarApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { Clock, ChevronRight, Loader2, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 
 export default function CoachMyGroupsPage() {
+  const { can } = useCoachPermissions();
+  const canManageGroups = can("can_manage_groups");
   const { data: myGroups = [], isLoading, isError } = useGetCoachGroupsQuery();
   const { data: birthdays = [], isLoading: loadingBirthdays } =
     useGetCoachBirthdaysQuery();
@@ -217,10 +220,12 @@ export default function CoachMyGroupsPage() {
           { label: "My Groups" },
         ]}
         actions={
-          <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Create Group
-          </Button>
+          canManageGroups ? (
+            <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Create Group
+            </Button>
+          ) : undefined
         }
       />
 

@@ -299,6 +299,13 @@ class CoachesController {
         } catch (err) { next(err); }
     };
 
+    listAccessRoles = async (_req, res, next) => {
+        try {
+            res.set('Cache-Control', 'private, max-age=300');
+            res.json(ApiResponse.success(this.service.listAssignmentRoles()));
+        } catch (err) { next(err); }
+    };
+
     getAccess = async (req, res, next) => {
         try {
             const data = await this.service.getCoachAccess(req.params.id, req.user.academyId, req.query.branchId);

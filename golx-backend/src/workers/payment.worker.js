@@ -9,31 +9,31 @@ function createPaymentsWorker(redisConnection) {
     const worker = new Worker(
         'payments',
         async (job) => {
-            logger.info({ jobId: job.id, name: job.name }, 'Payments worker: processing');
+            logger.debug({ jobId: job.id, name: job.name }, 'Payments worker: processing');
 
             switch (job.name) {
                 case 'generate-invoice': {
                     const { subscriptionId } = job.data;
                     // TODO: generate PDF invoice, store in storage, notify user
-                    logger.info({ subscriptionId }, 'Generating invoice');
+                    logger.debug({ subscriptionId }, 'Generating invoice');
                     break;
                 }
                 case 'check-expiring-subscriptions': {
                     // TODO: query expiring subs, send reminders, mark expired
-                    logger.info('Checking expiring subscriptions');
+                    logger.debug('Checking expiring subscriptions');
                     break;
                 }
                 case 'process-refund': {
                     const { paymentId, amount } = job.data;
                     // TODO: integrate with payment gateway for refund
-                    logger.info({ paymentId, amount }, 'Processing refund');
+                    logger.debug({ paymentId, amount }, 'Processing refund');
                     break;
                 }
                 default:
                     logger.warn({ name: job.name }, 'Unknown payment job');
             }
 
-            logger.info({ jobId: job.id }, 'Payments worker: completed');
+            logger.debug({ jobId: job.id }, 'Payments worker: completed');
         },
         { connection: redisConnection, concurrency: 3 }
     );

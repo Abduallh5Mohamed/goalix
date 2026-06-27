@@ -216,10 +216,248 @@ class RankingsRepository extends BaseRepository {
 
     // Monthly rankings: use the latest available period in the DB
     async findRankingsByMonthPrefix(monthPeriod, options) {
+        const monthlyFromRankingSystem = await this.findMonthlyRankingSystemRankings(monthPeriod, options);
+        if (monthlyFromRankingSystem.total > 0) return monthlyFromRankingSystem;
+
         const latestRow = await this.db('ranking_snapshots').max('period as p').first();
         const latestPeriod = latestRow ? latestRow.p : null;
         if (!latestPeriod) return { data: [], total: 0, page: options.page || 1, totalPages: 1 };
         return this.findRankings(latestPeriod, options);
+    }
+
+    async findMonthlyRankingSystemRankings(monthPeriod, { groupId, academyId, page = 1, limit = 20 } = {}) {
+        const offset = (page - 1) * limit;
+        const bindings = {
+            academyId,
+            groupId: groupId || null,
+            monthPeriod: monthPeriod || null,
+            limit,
+            offset,
+        };
+
+        const { rows } = await this.db.raw(
+            `
+            WITH scoped_players AS (
+                SELECT
+                    pp.id AS player_id,
+                    pp.full_name AS player_name,
+                    pga.group_id,
+                    ag.name AS group_name
+                FROM player_profiles pp
+                LEFT JOIN player_group_assignments pga
+                    ON pga.player_id = pp.id
+                    AND pga.left_at IS NULL
+                LEFT JOIN academy_groups ag ON ag.id = pga.group_id
+                WHERE pp.academy_id = :academyId
+                    AND pp.deleted_at IS NULL
+                    AND (:groupId::uuid IS NULL OR pga.group_id = :groupId::uuid)
+            ),
+            training_weeks AS (
+                SELECT
+                    pee.player_id,
+                    date_trunc('week', ce.start_datetime)::date AS week_start,
+                    AVG(
+                        LEAST(
+                            100,
+                            GREATEST(
+                                0,
+                                COALESCE(
+                                    pee.overall_rating,
+                                    (
+                                        COALESCE(pee.technical_rating, 0)
+                                        + COALESCE(pee.tactical_rating, 0)
+                                        + COALESCE(pee.physical_rating, 0)
+                                        + COALESCE(pee.mentality_rating, 0)
+                                    ) / NULLIF(
+                                        (CASE WHEN pee.technical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN pee.tactical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN pee.physical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN pee.mentality_rating IS NULL THEN 0 ELSE 1 END),
+                                        0
+                                    )
+                                ) * 10
+                            )
+                        )
+                    ) AS coach_score
+                FROM player_event_evaluations pee
+                JOIN calendar_events ce ON ce.id = pee.event_id
+                JOIN scoped_players sp ON sp.player_id = pee.player_id
+                WHERE ce.academy_id = :academyId
+                    AND ce.event_type = 'training'
+                    AND ce.deleted_at IS NULL
+                    AND ce.status <> 'cancelled'
+                GROUP BY pee.player_id, date_trunc('week', ce.start_datetime)::date
+            ),
+            match_weeks AS (
+                SELECT
+                    mps.player_id,
+                    date_trunc('week', m.match_date::timestamp)::date AS week_start,
+                    AVG(
+                        LEAST(
+                            100,
+                            GREATEST(
+                                0,
+                                COALESCE(
+                                    mps.performance_rating,
+                                    mps.performance_score,
+                                    (
+                                        COALESCE(mps.technical_rating, 0)
+                                        + COALESCE(mps.tactical_rating, 0)
+                                        + COALESCE(mps.physical_rating, 0)
+                                        + COALESCE(mps.mentality_rating, 0)
+                                    ) / NULLIF(
+                                        (CASE WHEN mps.technical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN mps.tactical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN mps.physical_rating IS NULL THEN 0 ELSE 1 END)
+                                        + (CASE WHEN mps.mentality_rating IS NULL THEN 0 ELSE 1 END),
+                                        0
+                                    )
+                                ) * 10
+                                + COALESCE(mps.goals, 0) * 5
+                                + COALESCE(mps.assists, 0) * 4
+                            )
+                        )
+                    ) AS match_score
+                FROM match_player_stats mps
+                JOIN matches m ON m.id = mps.match_id
+                JOIN scoped_players sp ON sp.player_id = mps.player_id
+                WHERE m.deleted_at IS NULL
+                    AND m.evaluations_finalized_at IS NOT NULL
+                    AND COALESCE(m.status::text, '') <> 'cancelled'
+                    AND COALESCE(m.match_status::text, '') <> 'cancelled'
+                GROUP BY mps.player_id, date_trunc('week', m.match_date::timestamp)::date
+            ),
+            daily_ai_weeks AS (
+                SELECT
+                    pdai.player_id,
+                    date_trunc('week', pdai.input_date::timestamp)::date AS week_start,
+                    AVG(LEAST(100, GREATEST(0, pdai.daily_ai_score))) AS weekly_ai_score
+                FROM player_daily_ai_inputs pdai
+                JOIN scoped_players sp ON sp.player_id = pdai.player_id
+                WHERE pdai.academy_id = :academyId
+                GROUP BY pdai.player_id, date_trunc('week', pdai.input_date::timestamp)::date
+            ),
+            attendance_records AS (
+                SELECT
+                    ea.player_id,
+                    date_trunc('week', ce.start_datetime)::date AS week_start,
+                    ea.status::text AS status
+                FROM event_attendance ea
+                JOIN calendar_events ce ON ce.id = ea.event_id
+                JOIN scoped_players sp ON sp.player_id = ea.player_id
+                WHERE ce.academy_id = :academyId
+                    AND ce.event_type = 'training'
+                    AND ce.deleted_at IS NULL
+                    AND ce.status <> 'cancelled'
+
+                UNION ALL
+
+                SELECT
+                    ma.player_id,
+                    date_trunc('week', m.match_date::timestamp)::date AS week_start,
+                    ma.status::text AS status
+                FROM match_attendance ma
+                JOIN matches m ON m.id = ma.match_id
+                JOIN scoped_players sp ON sp.player_id = ma.player_id
+                WHERE m.deleted_at IS NULL
+                    AND COALESCE(m.status::text, '') <> 'cancelled'
+                    AND COALESCE(m.match_status::text, '') <> 'cancelled'
+            ),
+            attendance_weeks AS (
+                SELECT
+                    player_id,
+                    week_start,
+                    (SUM(CASE WHEN status IN ('present', 'late') THEN 1 ELSE 0 END)::numeric
+                        / NULLIF(COUNT(*), 0)) * 100 AS attendance_score
+                FROM attendance_records
+                GROUP BY player_id, week_start
+            ),
+            week_keys AS (
+                SELECT player_id, week_start FROM training_weeks
+                UNION
+                SELECT player_id, week_start FROM match_weeks
+                UNION
+                SELECT player_id, week_start FROM daily_ai_weeks
+                UNION
+                SELECT player_id, week_start FROM attendance_weeks
+            ),
+            weekly_scores AS (
+                SELECT
+                    wk.player_id,
+                    wk.week_start,
+                    ROUND(
+                        (
+                            COALESCE(mw.match_score, 0) * 0.5
+                            + COALESCE(tw.coach_score, 0) * 0.25
+                            + COALESCE(aw.attendance_score, 0) * 0.15
+                            + COALESCE(daw.weekly_ai_score, 0) * 0.1
+                        )::numeric,
+                        2
+                    ) AS weekly_score
+                FROM week_keys wk
+                LEFT JOIN match_weeks mw
+                    ON mw.player_id = wk.player_id
+                    AND mw.week_start = wk.week_start
+                LEFT JOIN training_weeks tw
+                    ON tw.player_id = wk.player_id
+                    AND tw.week_start = wk.week_start
+                LEFT JOIN attendance_weeks aw
+                    ON aw.player_id = wk.player_id
+                    AND aw.week_start = wk.week_start
+                LEFT JOIN daily_ai_weeks daw
+                    ON daw.player_id = wk.player_id
+                    AND daw.week_start = wk.week_start
+            ),
+            monthly_scores AS (
+                SELECT
+                    ws.player_id,
+                    date_trunc('month', ws.week_start)::date AS month_start,
+                    ROUND(AVG(ws.weekly_score)::numeric, 2) AS total_score
+                FROM weekly_scores ws
+                WHERE (:monthPeriod::text IS NULL OR to_char(ws.week_start, 'YYYY-MM') = :monthPeriod::text)
+                GROUP BY ws.player_id, date_trunc('month', ws.week_start)::date
+            ),
+            latest_month AS (
+                SELECT COALESCE(:monthPeriod::text, MAX(to_char(month_start, 'YYYY-MM'))) AS period
+                FROM monthly_scores
+            ),
+            ranked AS (
+                SELECT
+                    CONCAT('ranking-system-monthly:', lm.period, ':', ms.player_id) AS id,
+                    ms.player_id,
+                    sp.player_name,
+                    sp.group_id,
+                    sp.group_name,
+                    ms.total_score,
+                    DENSE_RANK() OVER (ORDER BY ms.total_score DESC, sp.player_name ASC) AS rank,
+                    lm.period,
+                    (ms.month_start + INTERVAL '1 month' - INTERVAL '1 second') AS calculated_at,
+                    COUNT(*) OVER () AS total_count
+                FROM monthly_scores ms
+                JOIN latest_month lm ON to_char(ms.month_start, 'YYYY-MM') = lm.period
+                JOIN scoped_players sp ON sp.player_id = ms.player_id
+            )
+            SELECT *
+            FROM ranked
+            ORDER BY rank ASC, player_name ASC
+            LIMIT :limit OFFSET :offset
+            `,
+            bindings,
+        );
+
+        const total = Number(rows[0]?.total_count || 0);
+        const data = rows.map(({ total_count: _totalCount, total_score, rank, ...row }) => ({
+            ...row,
+            total_score: Number(total_score || 0).toFixed(2),
+            rank: Number(rank),
+        }));
+
+        return {
+            data,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit) || 1,
+        };
     }
 
     async findPlayerRankings(playerId, { page = 1, limit = 20 } = {}) {

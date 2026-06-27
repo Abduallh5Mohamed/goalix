@@ -96,6 +96,7 @@ export default function CoachMatchesPage() {
     refetch: refetchMatches,
   } = useGetCoachMatchesQuery(undefined, {
     pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });

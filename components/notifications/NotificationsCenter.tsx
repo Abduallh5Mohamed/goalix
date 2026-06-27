@@ -83,13 +83,15 @@ export function NotificationsCenter({ role }: { role: UserRole }) {
     authState.isAuthenticated && authState.role === role;
   const { data, isLoading, isError, refetch } = useGetNotificationsQuery(undefined, {
     skip: !notificationsEnabled,
-    pollingInterval: 10000,
+    pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
     skip: !notificationsEnabled,
-    pollingInterval: 10000,
+    pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });

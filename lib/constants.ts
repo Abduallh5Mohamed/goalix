@@ -89,14 +89,7 @@ export const NAV_ITEMS = {
       ],
     },
     { label: "Registrations", href: "/admin/registrations", icon: "UserPlus" },
-    {
-      label: "Attendance",
-      icon: "ClipboardCheck",
-      children: [
-        { label: "Overview", href: "/admin/attendance" },
-        { label: "Sessions", href: "/admin/attendance/sessions" },
-      ],
-    },
+    { label: "Attendance", href: "/admin/attendance", icon: "ClipboardCheck" },
     {
       label: "Rankings",
       icon: "Trophy",
@@ -127,6 +120,7 @@ export const NAV_ITEMS = {
       label: "Reports",
       icon: "BarChart3",
       children: [
+        { label: "Overview", href: "/admin/reports/s" },
         { label: "Player Progress", href: "/admin/reports/player-progress" },
         { label: "Attendance", href: "/admin/reports/attendance" },
         { label: "Coach", href: "/admin/reports/coach" },

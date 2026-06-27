@@ -59,6 +59,8 @@ import {
   type PlayerAssignmentSubmission,
   type UploadedAssignmentFile,
 } from "@/lib/store/api/coachApi";
+import { useGetCoachGroupsScopedQuery } from "@/lib/store/api/calendarApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 const fileAccept =
@@ -442,10 +444,12 @@ function SubmissionReviewCard({
   submission,
   onRequestReview,
   isReviewing,
+  canReview,
 }: {
   submission: PlayerAssignmentSubmission;
   onRequestReview: (submission: PlayerAssignmentSubmission, status: "approved" | "rejected", comment: string) => void;
   isReviewing: boolean;
+  canReview: boolean;
 }) {
   const [comment, setComment] = useState(submission.coachComment || "");
   const isPending = (submission.reviewStatus || "pending") === "pending";
@@ -498,7 +502,7 @@ function SubmissionReviewCard({
           placeholder="Write feedback for the player..."
         />
       </div>
-      {isPending && (
+      {isPending && canReview && (
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
@@ -530,10 +534,12 @@ function SubmissionList({
   submissions,
   onRequestReview,
   isReviewing,
+  canReview,
 }: {
   submissions: PlayerAssignmentSubmission[];
   onRequestReview: (submission: PlayerAssignmentSubmission, status: "approved" | "rejected", comment: string) => void;
   isReviewing: boolean;
+  canReview: boolean;
 }) {
   if (!submissions.length) {
     return <p className="text-sm text-muted-foreground">No player submissions yet.</p>;
@@ -547,6 +553,7 @@ function SubmissionList({
           submission={submission}
           onRequestReview={onRequestReview}
           isReviewing={isReviewing}
+          canReview={canReview}
         />
       ))}
     </div>
@@ -554,6 +561,8 @@ function SubmissionList({
 }
 
 export default function CoachAssignmentsPage() {
+  const { can } = useCoachPermissions();
+  const canManagePlayerAssignments = can("can_manage_player_assignments");
   const [adminSelected, setAdminSelected] = useState<CoachAssignment | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedAssignmentFile | null>(null);
   const [adminForm, setAdminForm] = useState({ coachNotes: "" });
@@ -571,6 +580,7 @@ export default function CoachAssignmentsPage() {
   const adminAssignments = useGetMyCoachAssignmentsQuery({ limit: 100 });
   const playerAssignments = useGetMyPlayerAssignmentsQuery({ limit: 100 });
   const groupsQuery = useGetCoachGroupsQuery();
+  const { data: permissionGroups = [] } = useGetCoachGroupsScopedQuery();
   const dailyAiQuery = useGetCoachDailyAiInputsQuery();
   const submissionsQuery = useGetPlayerAssignmentSubmissionsQuery(
     submissionsFor?.id ?? "",
@@ -589,7 +599,22 @@ export default function CoachAssignmentsPage() {
   const [reviewPlayerSubmission, { isLoading: isReviewingPlayerSubmission }] =
     useReviewPlayerAssignmentSubmissionMutation();
 
-  const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const manageableGroupIds = useMemo(
+    () =>
+      new Set(
+        permissionGroups
+          .filter((group) => group.can_manage_player_assignments)
+          .map((group) => group.group_id),
+      ),
+    [permissionGroups],
+  );
+  const groups = useMemo(
+    () =>
+      (groupsQuery.data ?? []).filter((group) =>
+        manageableGroupIds.has(group.id),
+      ),
+    [groupsQuery.data, manageableGroupIds],
+  );
   const birthYearTargets = useMemo(() => {
     const byId = new Map<string, { id: string; label: string; groupIds: string[] }>();
     groups.forEach((group) => {
@@ -720,7 +745,7 @@ export default function CoachAssignmentsPage() {
     {
       key: "actions",
       header: "",
-      accessor: (row) => (
+      accessor: (row) => canManagePlayerAssignments ? (
         <div className="flex justify-end gap-2">
           <Button
             size="sm"
@@ -773,9 +798,9 @@ export default function CoachAssignmentsPage() {
             Delete
           </Button>
         </div>
-      ),
+      ) : null,
     },
-  ], [birthYearTargets, groups]);
+  ], [birthYearTargets, canManagePlayerAssignments, groups]);
 
   const handleAdminFileUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -1042,10 +1067,12 @@ export default function CoachAssignmentsPage() {
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">Player Assignments</CardTitle>
-            <Button className="gap-2" onClick={openCreatePlayerDialog} disabled={!groups.length}>
-              <Plus className="h-4 w-4" />
-              New Assignment
-            </Button>
+            {canManagePlayerAssignments && (
+              <Button className="gap-2" onClick={openCreatePlayerDialog} disabled={!groups.length}>
+                <Plus className="h-4 w-4" />
+                New Assignment
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -1358,6 +1385,7 @@ export default function CoachAssignmentsPage() {
           ) : (
             <SubmissionList
               submissions={submissionsQuery.data ?? []}
+              canReview={canManagePlayerAssignments}
               onRequestReview={(submission, status, comment) =>
                 setPendingSubmissionReview({ submission, status, comment })
               }

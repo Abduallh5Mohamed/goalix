@@ -9,6 +9,11 @@ const noopRedis = {
     get: async () => null,
     set: async () => null,
     del: async () => 0,
+    incr: async () => 0,
+    expire: async () => 0,
+    sadd: async () => 0,
+    srem: async () => 0,
+    smembers: async () => [],
     quit: async () => null,
     disconnect: () => null,
 };
@@ -25,12 +30,29 @@ const redis = redisEnabled
     })
     : noopRedis;
 
-if (redisEnabled) {
-    redis.on('connect', () => logger.info('✅ Redis connected'));
-    redis.on('error', (err) => logger.warn({ err }, '⚠️  Redis unavailable — caching/locking disabled'));
-}
-
 let redisAvailable = false;
+let redisWarningShown = false;
+
+if (redisEnabled) {
+    redis.on('connect', () => {
+        const recovered = redisWarningShown;
+        redisAvailable = true;
+        redisWarningShown = false;
+        logger[recovered ? 'info' : 'debug']('Redis connected');
+    });
+    redis.on('close', () => {
+        redisAvailable = false;
+    });
+    redis.on('error', (err) => {
+        redisAvailable = false;
+        if (redisWarningShown) return;
+        redisWarningShown = true;
+        logger.warn(
+            { message: err.message, code: err.code },
+            'Redis unavailable; caching, queues, and distributed locks are disabled',
+        );
+    });
+}
 
 const connectRedis = async () => {
     if (!redisEnabled) {
@@ -39,11 +61,22 @@ const connectRedis = async () => {
         return;
     }
 
+    if (redis.status === 'ready') {
+        redisAvailable = true;
+        return;
+    }
+
     try {
         await redis.connect();
         redisAvailable = true;
     } catch (err) {
-        logger.warn({ err }, '⚠️  Redis connection failed — running without Redis');
+        if (!redisWarningShown) {
+            redisWarningShown = true;
+            logger.warn(
+                { message: err.message, code: err.code },
+                'Redis connection failed; continuing without optional Redis features',
+            );
+        }
         redisAvailable = false;
     }
 };

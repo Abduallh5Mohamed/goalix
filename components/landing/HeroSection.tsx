@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -40,8 +41,73 @@ const testDashboardLinks = [
   { label: "Parent Dashboard", href: ROLE_ROUTES.parent, border: "rgba(167,139,250,0.55)" },
 ];
 
-export default function HeroSection() {
+export type PublicAcademyProfile = {
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  socialLinks?: {
+    facebook?: string | null;
+    instagram?: string | null;
+    twitter?: string | null;
+    linkedin?: string | null;
+  } | null;
+};
+
+const socialLabels = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  twitter: "X",
+  linkedin: "LinkedIn",
+} as const;
+
+type FooterContact = { label: string; value: string; href?: string };
+type FooterSocialLink = { key: keyof typeof socialLabels; href: string; label: string };
+
+export default function HeroSection({
+  initialPublicProfile = null,
+}: {
+  initialPublicProfile?: PublicAcademyProfile | null;
+}) {
   const router = useRouter();
+  const [publicProfile, setPublicProfile] =
+    useState<PublicAcademyProfile | null>(initialPublicProfile);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/academy/public-profile", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.data) setPublicProfile(json.data);
+      })
+      .catch(() => {
+        // Keep the server-rendered footer data if the client-side refresh fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleSocialLinks = useMemo(
+    () =>
+      Object.entries(publicProfile?.socialLinks ?? {})
+        .filter((entry): entry is [keyof typeof socialLabels, string] => {
+          const [key, value] = entry;
+          return key in socialLabels && typeof value === "string" && value.trim().length > 0;
+        })
+        .map(([key, href]) => ({ key, href: href.trim(), label: socialLabels[key] })),
+    [publicProfile?.socialLinks],
+  );
+  const footerContacts = [
+    publicProfile?.email ? { label: "Email", value: publicProfile.email, href: `mailto:${publicProfile.email}` } : null,
+    publicProfile?.phone ? { label: "Phone", value: publicProfile.phone, href: `tel:${publicProfile.phone}` } : null,
+    publicProfile?.address ? { label: "Address", value: publicProfile.address } : null,
+  ].filter(Boolean) as FooterContact[];
+  const footerAcademyName =
+    typeof publicProfile?.name === "string" && publicProfile.name.trim()
+      ? publicProfile.name.trim()
+      : "";
 
   return (
     <>
@@ -73,10 +139,10 @@ export default function HeroSection() {
           <Image
             src="/Logo.png"
             alt="Goalix"
-            width={110}
-            height={32}
+            width={1536}
+            height={1024}
             priority
-            style={{ width: "auto", height: "auto", objectFit: "contain" }}
+            style={{ width: "110px", height: "auto", objectFit: "contain" }}
           />
           <div className="gx-hero-links" style={{ display: "flex", gap: 36 }}>
             {navLinks.map((link, index) => (
@@ -333,7 +399,11 @@ export default function HeroSection() {
         ))}
       </div>
     </div>
-    <GoalixAddedSections />
+    <GoalixAddedSections
+      footerAcademyName={footerAcademyName}
+      footerContacts={footerContacts}
+      visibleSocialLinks={visibleSocialLinks}
+    />
     </>
   );
 }
@@ -352,7 +422,15 @@ const mvpCards = [
   { icon: FileText, title: "Custom Reports", text: "Generate and share reports with your coaching staff." },
 ];
 
-function GoalixAddedSections() {
+function GoalixAddedSections({
+  footerAcademyName,
+  footerContacts,
+  visibleSocialLinks,
+}: {
+  footerAcademyName: string;
+  footerContacts: FooterContact[];
+  visibleSocialLinks: FooterSocialLink[];
+}) {
   return (
     <main className="goalix-additions">
       <section id="how-goalix-works" className="gx-section gx-work">
@@ -469,14 +547,43 @@ function GoalixAddedSections() {
 
       <footer className="gx-footer">
         <div className="gx-footer-brand">
-          <Image src="/Logo.png" alt="GOALIX" width={138} height={42} style={{ width: "auto", height: "auto" }} />
+          <Image src="/Logo.png" alt="GOALIX" width={1536} height={1024} style={{ width: "138px", height: "auto" }} />
+          {footerAcademyName && <h2 className="gx-footer-academy-name">{footerAcademyName}</h2>}
           <p>AI-powered football analytics platform built to win matches.</p>
-          <div className="gx-socials" aria-label="Social links">
-            <a href="#">IG</a>
-            <a href="#">X</a>
-            <a href="#">IN</a>
-            <a href="#">YT</a>
-          </div>
+          {footerContacts.length > 0 && (
+            <div className="gx-footer-contact" aria-label="Academy contact details">
+              {footerContacts.map((item) =>
+                item.href ? (
+                  <a key={item.label} href={item.href}>
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </a>
+                ) : (
+                  <p key={item.label}>
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </p>
+                ),
+              )}
+            </div>
+          )}
+          {visibleSocialLinks.length > 0 && (
+            <div className="gx-socials" aria-label="Social links">
+              {visibleSocialLinks.map((link) => (
+                <a
+                  key={link.key}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={link.label}
+                  title={link.label}
+                >
+                  <SocialIcon type={link.key} />
+                  <span>{link.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <h3>Product</h3>
@@ -525,6 +632,38 @@ function GoalixAddedSections() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function SocialIcon({ type }: { type: keyof typeof socialLabels }) {
+  if (type === "facebook") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 8.4V6.7c0-.8.4-1.2 1.3-1.2h1.5V2.9A20.6 20.6 0 0 0 14.5 2c-2.3 0-3.9 1.4-3.9 4v2.4H8v3h2.6V22H14V11.4h2.5l.4-3H14Z" />
+      </svg>
+    );
+  }
+
+  if (type === "instagram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm0 2A3.8 3.8 0 0 0 4 7.8v8.4A3.8 3.8 0 0 0 7.8 20h8.4a3.8 3.8 0 0 0 3.8-3.8V7.8A3.8 3.8 0 0 0 16.2 4H7.8Zm8.7 2.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6ZM12 7.2A4.8 4.8 0 1 1 12 16.8 4.8 4.8 0 0 1 12 7.2Zm0 2A2.8 2.8 0 1 0 12 14.8 2.8 2.8 0 0 0 12 9.2Z" />
+      </svg>
+    );
+  }
+
+  if (type === "linkedin") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6.9 8.8H3.4V21h3.5V8.8ZM5.2 3A2 2 0 1 0 5.2 7a2 2 0 0 0 0-4Zm15.4 11c0-3.3-1.8-5.4-4.6-5.4-1.9 0-3 .9-3.6 1.8V8.8H9.1V21h3.5v-6.1c0-1.9.9-3.1 2.4-3.1 1.4 0 2.1 1 2.1 3V21h3.5v-7Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M17.5 3h3.1l-6.8 7.8 8 10.2h-6.3l-4.9-6.2L5 21H1.9l7.3-8.4L1.5 3h6.4l4.4 5.6L17.5 3Zm-1.1 16.2h1.7L7 4.7H5.2l11.2 14.5Z" />
+    </svg>
   );
 }
 

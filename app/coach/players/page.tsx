@@ -47,6 +47,7 @@ import {
   useGetCoachAccessStatusQuery,
   useGetCoachBirthdaysQuery,
 } from "@/lib/store/api/coachApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { getInitials } from "@/lib/utils";
 
 const GUARDIAN_RELATIONS = [
@@ -156,6 +157,8 @@ export default function CoachPlayersPage() {
 function CoachPlayersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { can, isLoading: loadingPermissions } = useCoachPermissions();
+  const canManagePlayers = can("can_manage_players");
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
@@ -548,14 +551,16 @@ function CoachPlayersContent() {
           { label: "Players" },
         ]}
         actions={
-          <Button
-            className="gap-2"
-            disabled={!hasAssignments}
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Player
-          </Button>
+          canManagePlayers ? (
+            <Button
+              className="gap-2"
+              disabled={!hasAssignments || loadingPermissions}
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Player
+            </Button>
+          ) : undefined
         }
       />
 
@@ -1099,19 +1104,25 @@ function CoachPlayersContent() {
                     </div>
                   </div>
                   {player.profile_status !== "complete" ? (
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setCustomValues({});
-                        setCompleteError("");
-                        setCompleteId(player.id);
-                      }}
-                    >
-                      <ShieldAlert className="h-4 w-4" />
-                      Complete profile
-                    </Button>
+                    canManagePlayers ? (
+                      <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCustomValues({});
+                          setCompleteError("");
+                          setCompleteId(player.id);
+                        }}
+                      >
+                        <ShieldAlert className="h-4 w-4" />
+                        Complete profile
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Profile completion requires player management permission
+                      </span>
+                    )
                   ) : (
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2 text-sm text-emerald-400">

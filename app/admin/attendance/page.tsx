@@ -8,9 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FileDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGetAttendanceOverviewQuery } from "@/lib/store/api/adminApi";
+import Link from "next/link";
 
 export default function AttendanceOverviewPage() {
-  const { data, isLoading, isError, refetch } = useGetAttendanceOverviewQuery();
+  const { data, isLoading, isError, refetch } = useGetAttendanceOverviewQuery(
+    undefined,
+    { refetchOnMountOrArgChange: 30 },
+  );
 
   if (isLoading) {
     return (
@@ -35,12 +39,13 @@ export default function AttendanceOverviewPage() {
   }
 
   const {
-    totalSessions = 0,
+    totalTrainings = 0,
     avgRate = 0,
     presentCount = 0,
     absentCount = 0,
     lateCount = 0,
     excusedCount = 0,
+    injuredCount = 0,
     byGroup = [],
   } = data ?? {};
 
@@ -50,26 +55,32 @@ export default function AttendanceOverviewPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Attendance Overview"
-        description="Monitor attendance rates across all branches and groups."
+        description="Live training attendance from the academy database."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
           { label: "Attendance" },
           { label: "Overview" },
         ]}
         actions={
-          <Button variant="outline" className="gap-1.5">
-            <FileDown className="h-4 w-4" />
-            Export Report
+          <Button asChild variant="outline" className="gap-1.5">
+            <Link href="/admin/reports/attendance">
+              <FileDown className="h-4 w-4" />
+              Open Report
+            </Link>
           </Button>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatsCard label="Overall Rate" value={`${overallRate}%`} icon="ClipboardCheck" />
-        <StatsCard label="Total Sessions" value={totalSessions} icon="Calendar" />
+        <StatsCard label="Total Trainings" value={totalTrainings} icon="Calendar" />
         <StatsCard label="Present" value={presentCount} icon="UserCheck" />
         <StatsCard label="Absent" value={absentCount} icon="AlertTriangle" />
-        <StatsCard label="Late / Excused" value={lateCount + excusedCount} icon="Users" />
+        <StatsCard
+          label="Late / Excused / Injured"
+          value={lateCount + excusedCount + injuredCount}
+          icon="Users"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -83,7 +94,7 @@ export default function AttendanceOverviewPage() {
             ) : (
               <div className="space-y-3">
                 {byGroup.map((group) => (
-                  <div key={group.groupName} className="flex items-center gap-3">
+                  <div key={group.groupId} className="flex items-center gap-3">
                     <span className="w-32 truncate text-sm">{group.groupName}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                       <div
@@ -108,9 +119,15 @@ export default function AttendanceOverviewPage() {
           </CardHeader>
           <CardContent>
             <DoughnutChart
-              labels={["Present", "Absent", "Late", "Excused"]}
-              data={[presentCount, absentCount, lateCount, excusedCount]}
-              colors={["#7bea28", "#2d9ad5", "#b6ff00", "#2ee8c9"]}
+              labels={["Present", "Absent", "Late", "Excused", "Injured"]}
+              data={[
+                presentCount,
+                absentCount,
+                lateCount,
+                excusedCount,
+                injuredCount,
+              ]}
+              colors={["#7bea28", "#2d9ad5", "#b6ff00", "#2ee8c9", "#fb7185"]}
               height={240}
               centerValue={`${overallRate}%`}
               centerLabel="Rate"

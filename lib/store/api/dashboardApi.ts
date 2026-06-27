@@ -71,11 +71,85 @@ export interface PlayerListItem {
     created_at: string;
 }
 
+export interface ReportsOverview {
+    filters: {
+        branchId: string | null;
+        dateFrom: string;
+        dateTo: string;
+    };
+    summary: {
+        totalPlayers: number;
+        activePlayers: number;
+        newPlayers: number;
+        totalCoaches: number;
+        totalSessions: number;
+        completedSessions: number;
+        attendanceRate: number;
+    };
+    attendance: {
+        total: number;
+        present: number;
+        late: number;
+        absent: number;
+        excused: number;
+        injured: number;
+    };
+    levelDistribution: Array<{ level: string; count: number }>;
+    attendanceTrend: Array<{ label: string; rate: number }>;
+    groups: Array<{
+        id: string;
+        name: string;
+        branchName: string;
+        players: number;
+        sessions: number;
+        attendanceRate: number;
+    }>;
+    coaches: Array<{
+        id: string;
+        name: string;
+        specialization: string | null;
+        role: string | null;
+        branchName: string | null;
+        groupCount: number;
+        playerCount: number;
+        sessions: number;
+        attendanceRate: number;
+    }>;
+    players: Array<{
+        id: string;
+        fullName: string;
+        playerCode: string | null;
+        level: "A" | "B" | "C" | "D" | "F" | null;
+        position: string | null;
+        preferredFoot: string | null;
+        profileStatus: "complete" | "incomplete" | null;
+        isActive: boolean;
+        dateJoined: string | null;
+        branchName: string | null;
+        groupName: string | null;
+        measuredAt: string | null;
+        heightCm: number | null;
+        weightKg: number | null;
+        sprintSpeed: number | null;
+        stamina: number | null;
+        attendanceTotal: number;
+        attendanceAttended: number;
+        attendanceRate: number;
+    }>;
+}
+
+export interface ReportsOverviewFilters {
+    branchId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export const dashboardApi = createApi({
     reducerPath: "dashboardApi",
     baseQuery: baseQueryWithReauth,
+    keepUnusedDataFor: 300,
     tagTypes: ["Dashboard", "Players"],
     endpoints: (builder) => ({
         getDashboard: builder.query<DashboardData, void>({
@@ -88,7 +162,19 @@ export const dashboardApi = createApi({
             transformResponse: (res: { data: PlayerListItem[] }) => res.data,
             providesTags: ["Players"],
         }),
+        getReportsOverview: builder.query<ReportsOverview, ReportsOverviewFilters>({
+            query: (filters) => ({
+                url: "/admin/reports/overview",
+                params: filters,
+            }),
+            transformResponse: (res: { data: ReportsOverview }) => res.data,
+            providesTags: ["Dashboard"],
+        }),
     }),
 });
 
-export const { useGetDashboardQuery, useGetRecentPlayersQuery } = dashboardApi;
+export const {
+    useGetDashboardQuery,
+    useGetRecentPlayersQuery,
+    useGetReportsOverviewQuery,
+} = dashboardApi;

@@ -25,6 +25,12 @@ async function ensureIamForAuthUser(dbOrTrx, authUser, options = {}) {
         || authUser.phone
         || `${authUser.role || 'user'} account`;
 
+    const profileFields = {};
+    if (options.address !== undefined) profileFields.address = options.address || null;
+    if (options.jobTitle !== undefined) profileFields.job_title = options.jobTitle || null;
+    if (options.department !== undefined) profileFields.department = options.department || null;
+    if (options.notes !== undefined) profileFields.notes = options.notes || null;
+
     await dbOrTrx('iam_users')
         .insert({
             id: authUser.id,
@@ -44,6 +50,7 @@ async function ensureIamForAuthUser(dbOrTrx, authUser, options = {}) {
             last_login_at: authUser.last_login_at || null,
             created_at: authUser.created_at || dbOrTrx.fn.now(),
             updated_at: dbOrTrx.fn.now(),
+            ...profileFields,
         })
         .onConflict('id')
         .merge({
@@ -62,6 +69,7 @@ async function ensureIamForAuthUser(dbOrTrx, authUser, options = {}) {
             locked_until: authUser.locked_until || null,
             last_login_at: authUser.last_login_at || null,
             updated_at: dbOrTrx.fn.now(),
+            ...profileFields,
         });
 
     if (authUser.academy_id && await hasTable(dbOrTrx, 'iam_user_academies')) {
@@ -82,7 +90,7 @@ async function ensureIamForAuthUser(dbOrTrx, authUser, options = {}) {
             });
     }
 
-    if (authUser.academy_id && await hasTable(dbOrTrx, 'iam_roles') && await hasTable(dbOrTrx, 'iam_user_roles')) {
+    if (!options.skipDefaultRole && authUser.academy_id && await hasTable(dbOrTrx, 'iam_roles') && await hasTable(dbOrTrx, 'iam_user_roles')) {
         const roleCode = options.roleCode || LEGACY_ROLE_TO_SYSTEM_ROLE[authUser.role];
         const role = roleCode
             ? await dbOrTrx('iam_roles')

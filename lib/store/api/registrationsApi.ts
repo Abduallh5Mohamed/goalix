@@ -18,6 +18,7 @@ export interface RegistrationRecord {
 export const registrationsApi = createApi({
     reducerPath: "registrationsApi",
     baseQuery: baseQueryWithReauth,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         getPendingRegistrations: builder.query<{ data: RegistrationRecord[] }, string | undefined>({
             query: (status) =>

@@ -28,6 +28,7 @@ const delay = (ms: number = 300) =>
 export const academyApi = createApi({
   reducerPath: "academyApi",
   baseQuery: fakeBaseQuery(),
+  keepUnusedDataFor: 300,
   tagTypes: [
     "Branch",
     "BirthYear",

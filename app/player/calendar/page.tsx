@@ -216,6 +216,7 @@ export default function PlayerCalendarPage() {
   const eventsQuery = useGetPlayerCalendarEventsQuery();
   const matchesQuery = useGetPlayerMatchesQuery(undefined, {
     pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });

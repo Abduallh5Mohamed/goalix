@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+const pool = {
+    min: Number(process.env.DB_POOL_MIN || 2),
+    max: Number(process.env.DB_POOL_MAX || 40),
+};
+
 module.exports = {
     development: {
         client: 'pg',
@@ -11,7 +16,7 @@ module.exports = {
         seeds: {
             directory: './seeds',
         },
-        pool: { min: 2, max: 10 },
+        pool,
     },
 
     test: {
@@ -24,7 +29,7 @@ module.exports = {
         seeds: {
             directory: './seeds',
         },
-        pool: { min: 1, max: 5 },
+        pool: { min: 1, max: Math.min(pool.max, 5) },
     },
 
     production: {
@@ -38,8 +43,7 @@ module.exports = {
             tableName: 'knex_migrations',
         },
         pool: {
-            min: 2,
-            max: 10,
+            ...pool,
             acquireTimeoutMillis: 10000,
             idleTimeoutMillis: 30000,
         },

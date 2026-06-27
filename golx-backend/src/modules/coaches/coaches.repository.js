@@ -1,4 +1,5 @@
 const BaseRepository = require('../../shared/base.repository');
+const { PERMISSION_COLUMNS } = require('./coach-assignment-roles');
 
 class CoachesRepository extends BaseRepository {
     constructor(db) {
@@ -24,10 +25,41 @@ class CoachesRepository extends BaseRepository {
                 'auth_users.is_active',
                 'branch.name as branch_name',
                 this.db.raw(`COALESCE((
-                    SELECT json_agg(jsonb_build_object('id', ab2.id, 'name', ab2.name))
-                    FROM coach_branch_assignments cba
-                    JOIN academy_branches ab2 ON cba.branch_id = ab2.id
-                    WHERE cba.coach_id = coach_profiles.id
+                    SELECT json_agg(jsonb_build_object(
+                        'id', ab2.id,
+                        'name', ab2.name,
+                        'role', COALESCE(
+                            car.role,
+                            (
+                                SELECT cga.role
+                                FROM coach_group_assignments cga
+                                JOIN academy_groups ag ON ag.id = cga.group_id
+                                WHERE cga.coach_id = coach_profiles.id
+                                  AND ag.branch_id = ab2.id
+                                ORDER BY cga.assigned_at DESC
+                                LIMIT 1
+                            ),
+                            'assistant_coach'
+                        )
+                    ) ORDER BY ab2.name)
+                    FROM academy_branches ab2
+                    LEFT JOIN coach_branch_access_rules car
+                      ON car.coach_id = coach_profiles.id
+                     AND car.branch_id = ab2.id
+                    WHERE ab2.academy_id = coach_profiles.academy_id
+                      AND ab2.deleted_at IS NULL
+                      AND (
+                        car.id IS NOT NULL
+                        OR EXISTS (
+                            SELECT 1
+                            FROM coach_group_assignments cga_access
+                            JOIN academy_groups ag_access
+                              ON ag_access.id = cga_access.group_id
+                            WHERE cga_access.coach_id = coach_profiles.id
+                              AND ag_access.branch_id = ab2.id
+                              AND ag_access.deleted_at IS NULL
+                        )
+                      )
                 ), '[]') as branches`),
             )
             .orderBy('coach_profiles.created_at', 'desc')
@@ -436,13 +468,46 @@ class CoachesRepository extends BaseRepository {
             .select('*');
     }
 
-    async assignGroup(coachId, groupId, role = 'head') {
+    async assignGroup(coachId, groupId, role = 'assistant_coach', permissions = {}) {
         const [row] = await this.db('coach_group_assignments')
-            .insert({ coach_id: coachId, group_id: groupId, role, assigned_at: new Date() })
+            .insert({
+                coach_id: coachId,
+                group_id: groupId,
+                role,
+                ...permissions,
+                assigned_at: new Date(),
+            })
             .onConflict(['coach_id', 'group_id'])
-            .merge({ role, assigned_at: new Date() })
+            .merge({ role, ...permissions, assigned_at: new Date() })
             .returning('*');
         return row;
+    }
+
+    async findCoachPermissionScopes(coachId, academyId, permission) {
+        if (!PERMISSION_COLUMNS.includes(permission)) {
+            throw new Error(`Unsupported coach assignment permission: ${permission}`);
+        }
+
+        const [groups, branches] = await Promise.all([
+            this.db('coach_group_assignments as cga')
+                .join('academy_groups as ag', 'cga.group_id', 'ag.id')
+                .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
+                .where('cga.coach_id', coachId)
+                .where('ab.academy_id', academyId)
+                .where(`cga.${permission}`, true)
+                .whereNull('ag.deleted_at')
+                .whereNull('ab.deleted_at')
+                .select('ag.id as group_id', 'ag.branch_id'),
+            this.db('coach_branch_access_rules as car')
+                .join('academy_branches as ab', 'car.branch_id', 'ab.id')
+                .where('car.coach_id', coachId)
+                .where('ab.academy_id', academyId)
+                .where(`car.${permission}`, true)
+                .whereNull('ab.deleted_at')
+                .select('car.branch_id'),
+        ]);
+
+        return { groups, branches };
     }
 
     async updateCoachBranch(coachId, branchId) {
@@ -640,6 +705,7 @@ class CoachesRepository extends BaseRepository {
                     all_groups: data.allGroups,
                     all_birth_years: data.allBirthYears,
                     role: data.role,
+                    ...data.permissions,
                     assigned_by_admin_id: data.assignedBy,
                     assigned_at: now,
                     created_at: now,
@@ -651,6 +717,7 @@ class CoachesRepository extends BaseRepository {
                     all_groups: data.allGroups,
                     all_birth_years: data.allBirthYears,
                     role: data.role,
+                    ...data.permissions,
                     assigned_by_admin_id: data.assignedBy,
                     updated_at: now,
                 })
@@ -687,10 +754,11 @@ class CoachesRepository extends BaseRepository {
                         coach_id: coachId,
                         group_id: groupId,
                         role: data.role,
+                        ...data.permissions,
                         assigned_at: now,
                     })))
                     .onConflict(['coach_id', 'group_id'])
-                    .merge({ role: data.role, assigned_at: now });
+                    .merge({ role: data.role, ...data.permissions, assigned_at: now });
             }
 
             await trx('coach_branch_assignments')
@@ -764,7 +832,14 @@ class CoachesRepository extends BaseRepository {
                 .modify((q) => {
                     if (branchId) q.where('ab.id', branchId);
                 })
-                .select('ab.id as branch_id', 'ag.id', 'ag.name', 'cga.role', 'cga.assigned_at')
+                .select(
+                    'ab.id as branch_id',
+                    'ag.id',
+                    'ag.name',
+                    'cga.role',
+                    'cga.assigned_at',
+                    ...PERMISSION_COLUMNS.map((column) => `cga.${column}`),
+                )
                 .orderBy('ag.name', 'asc'),
         ]);
 

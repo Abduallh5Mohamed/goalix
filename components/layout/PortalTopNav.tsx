@@ -213,6 +213,7 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
 export function PortalTopNav({ role }: { role: UserRole }) {
   useRealtimeNotifications();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const authState = useCurrentUser();
   const { user } = authState;
   const { logout } = useAuth();
@@ -220,8 +221,9 @@ export function PortalTopNav({ role }: { role: UserRole }) {
   const notificationsEnabled =
     authState.isAuthenticated && authState.role === role;
   const { data: notificationsData } = useGetNotificationsQuery(undefined, {
-    skip: !notificationsEnabled,
-    pollingInterval: 10000,
+    skip: !notificationsEnabled || !notificationsOpen,
+    pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
@@ -229,7 +231,8 @@ export function PortalTopNav({ role }: { role: UserRole }) {
     undefined,
     {
       skip: !notificationsEnabled,
-      pollingInterval: 10000,
+      pollingInterval: 60000,
+      skipPollingIfUnfocused: true,
       refetchOnFocus: true,
       refetchOnReconnect: true,
     },
@@ -250,7 +253,7 @@ export function PortalTopNav({ role }: { role: UserRole }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <DropdownMenu>
+          <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
             <DropdownMenuTrigger asChild>
               <button className="relative hidden h-11 w-11 place-items-center rounded-full border border-[#2b4661] bg-white/[0.03] text-slate-100 transition hover:border-cyan-300/45 hover:text-cyan-200 sm:grid">
                 <Bell className="h-5 w-5" />

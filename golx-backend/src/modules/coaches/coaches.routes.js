@@ -102,6 +102,7 @@ function coachesRoutes(controller) {
     router.post('/assignments/upload', rbacAny('manage_coaches', 'access_coach_dashboard'), assignmentUpload, controller.uploadAssignmentFile);
     router.post('/assignments', rbac('manage_coaches'), validate({ body: createCoachAssignmentSchema }), controller.createAssignment);
     router.get('/assignments/:assignmentId', rbac('manage_coaches'), validate({ params: assignmentParam }), controller.getAssignment);
+    router.get('/access-roles', rbac('manage_coaches'), controller.listAccessRoles);
 
     router.get('/', rbac('coaches:read'), controller.list);
     router.post('/images', rbac('manage_coaches'), handleCoachImageUpload, controller.uploadCoachImage);

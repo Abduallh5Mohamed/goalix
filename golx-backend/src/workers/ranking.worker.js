@@ -9,8 +9,8 @@ function createRankingsWorker(redisConnection) {
     const worker = new Worker(
         'rankings',
         async (job) => {
-            const { type, academyId, branchId, weekStart, monthStart } = job.data;
-            logger.info({ jobId: job.id, type }, 'Rankings worker: processing');
+            const { type } = job.data;
+            logger.debug({ jobId: job.id, type }, 'Rankings worker: processing');
 
             // TODO: implement actual ranking algorithm
             // 1. Fetch all players for academy/branch
@@ -19,7 +19,7 @@ function createRankingsWorker(redisConnection) {
             // 4. Upsert rankings table
             // 5. Publish event
 
-            logger.info({ jobId: job.id, type }, 'Rankings worker: completed');
+            logger.debug({ jobId: job.id, type }, 'Rankings worker: completed');
         },
         { connection: redisConnection, concurrency: 2 }
     );

@@ -6,9 +6,7 @@ import { useCurrentUser } from "@/lib/auth/auth-context";
 import { adminApi } from "@/lib/store/api/adminApi";
 import { calendarApi } from "@/lib/store/api/calendarApi";
 import { useAppDispatch } from "@/lib/store/hooks";
-import { getApiBaseUrl } from "@/lib/api/baseUrl";
-
-const API_BASE = getApiBaseUrl();
+import { getSocketBaseUrl } from "@/lib/api/baseUrl";
 
 export function useRealtimeNotifications(enabled = true) {
   const dispatch = useAppDispatch();
@@ -17,7 +15,7 @@ export function useRealtimeNotifications(enabled = true) {
   useEffect(() => {
     if (!enabled || !isAuthenticated) return;
 
-    const socket = io(API_BASE, {
+    const socket = io(getSocketBaseUrl(), {
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnectionAttempts: 10,

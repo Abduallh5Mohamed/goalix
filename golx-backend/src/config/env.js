@@ -1,15 +1,30 @@
 const { z } = require('zod');
 
+const optionalBoolean = z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional();
+
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
     PORT: z.coerce.number().default(3000),
     HOST: z.string().default('0.0.0.0'),
 
     // Database
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    DB_POOL_MIN: z.coerce.number().int().min(0).default(2),
+    DB_POOL_MAX: z.coerce.number().int().min(1).default(40),
 
     // Redis
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+    AUTH_SESSION_CACHE_TTL_SECONDS: z.coerce.number().int().min(30).default(900),
+    AUTH_SESSION_LAST_SEEN_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(300),
+    AUTH_SESSION_LAST_SEEN_JITTER_SECONDS: z.coerce.number().int().min(0).default(60),
+    AUTH_USER_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).default(120),
+    ACADEMY_BRANCHES_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).default(120),
+    NOTIFICATION_UNREAD_COUNT_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(30),
+    CHAT_CONVERSATIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(15),
 
     // JWT
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
@@ -19,6 +34,9 @@ const envSchema = z.object({
 
     // BullMQ
     BULLMQ_PREFIX: z.string().default('goalix'),
+    BULLMQ_WORKERS_ENABLED: optionalBoolean,
+    BACKGROUND_AUTOMATIONS_ENABLED: optionalBoolean,
+    INJURY_RISK_AUTOMATION_ENABLED: optionalBoolean,
 
     // CORS
     CORS_ORIGINS: z.string().default('http://localhost:3001'),
@@ -47,6 +65,17 @@ const envSchema = z.object({
 
     // Cookie signing secret
     COOKIE_SECRET: z.string().min(32).default('change-this-to-a-random-32-char-secret-in-production'),
+
+    // HTTP server
+    HTTP_LISTEN_BACKLOG: z.coerce.number().int().min(128).default(8192),
+    HTTP_KEEP_ALIVE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(65000),
+    HTTP_HEADERS_TIMEOUT_MS: z.coerce.number().int().min(2000).default(66000),
+    HTTP_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).default(120000),
+
+    // Observability
+    SLOW_QUERY_LOG_MS: z.coerce.number().int().min(0).default(250),
+    SLOW_QUERY_SQL_MAX_CHARS: z.coerce.number().int().min(200).default(2000),
+    SLOW_REQUEST_LOG_MS: z.coerce.number().int().min(0).default(1000),
 });
 
 let env;

@@ -8,9 +8,9 @@ const createAcademySchema = z.object({
         .refine((u) => u.startsWith('https://') || u.startsWith('http://'), {
             message: 'Logo URL must use HTTP or HTTPS',
         }).nullable().optional(),
-    address: z.string().max(500).optional(),
-    phone: z.string().max(20).optional(),
-    email: z.string().email().max(255).optional(),
+    address: z.string().max(500).nullable().optional(),
+    phone: z.string().max(20).nullable().optional(),
+    email: z.string().email().max(255).nullable().optional(),
     settings: z.record(z.unknown()).optional(),
 });
 

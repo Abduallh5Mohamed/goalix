@@ -1,11 +1,18 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const env = require("../../config/env");
+const { redis } = require("../../infrastructure/redis");
 const {
   BadRequestError,
   ForbiddenError,
   NotFoundError,
 } = require("../../shared/errors");
+const {
+  deleteCacheKeys,
+  getJsonCache,
+  setJsonCache,
+} = require("../../shared/redis-json-cache");
 
 const chatImageTypes = {
   "image/png": ".png",
@@ -13,6 +20,8 @@ const chatImageTypes = {
   "image/jpg": ".jpg",
   "image/webp": ".webp",
 };
+
+const conversationsCacheKey = (userId) => `goalix:chat:${userId}:conversations:v1`;
 
 function sanitizeFileName(name) {
   return String(name || "chat-image")
@@ -201,8 +210,23 @@ class ChatService {
 
   async listConversations(user) {
     this._assertChatRole(user);
+    const cacheKey = conversationsCacheKey(user.userId);
+    const cached = await getJsonCache(redis, cacheKey);
+    if (cached !== undefined) return cached;
+
     const rows = await this.repo.listConversationsForUser(user);
-    return rows.map((row) => this._decorateConversation(row, user));
+    const conversations = rows.map((row) => this._decorateConversation(row, user));
+    await setJsonCache(redis, cacheKey, conversations, env.CHAT_CONVERSATIONS_CACHE_TTL_SECONDS);
+    return conversations;
+  }
+
+  async _invalidateConversationCaches(userIds) {
+    await deleteCacheKeys(redis, userIds.map(conversationsCacheKey));
+  }
+
+  async _decorateNewConversation(conversation, user) {
+    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+    return this._decorateConversation(conversation, user);
   }
 
   async getConversation(user, conversationId) {
@@ -259,7 +283,7 @@ class ChatService {
         createdByUserId: user.userId,
         memberUserIds,
       });
-      return this._decorateConversation(conversation, user);
+      return this._decorateNewConversation(conversation, user);
     }
 
     if (data.type === "admin_coach") {
@@ -285,7 +309,7 @@ class ChatService {
           coach_id: coach.id,
           opened_by_user_id: user.userId,
         });
-        return this._decorateConversation(conversation, user);
+        return this._decorateNewConversation(conversation, user);
       }
 
       if (user.role === "coach") {
@@ -315,7 +339,7 @@ class ChatService {
           coach_id: coach.id,
           opened_by_user_id: user.userId,
         });
-        return this._decorateConversation(conversation, user);
+        return this._decorateNewConversation(conversation, user);
       }
 
       throw new ForbiddenError("Players cannot open admin chats");
@@ -343,7 +367,7 @@ class ChatService {
         player_id: player.id,
         opened_by_user_id: user.userId,
       });
-      return this._decorateConversation(conversation, user);
+      return this._decorateNewConversation(conversation, user);
     }
 
     if (data.type !== "coach_player") {
@@ -376,7 +400,7 @@ class ChatService {
         player_id: player.id,
         opened_by_user_id: user.userId,
       });
-      return this._decorateConversation(conversation, user);
+      return this._decorateNewConversation(conversation, user);
     }
 
     if (user.role === "player") {
@@ -409,7 +433,7 @@ class ChatService {
         player_id: player.id,
         opened_by_user_id: user.userId,
       });
-      return this._decorateConversation(conversation, user);
+      return this._decorateNewConversation(conversation, user);
     }
 
     throw new ForbiddenError("Admins must open an admin-player session for players");
@@ -424,6 +448,7 @@ class ChatService {
       return this._decorateConversation(conversation, user);
     }
     const closed = await this.repo.closeConversation(conversationId, user.userId);
+    await this._invalidateConversationCaches(this.repo.conversationUserIds(closed));
     return this._decorateConversation(closed, user);
   }
 
@@ -472,6 +497,7 @@ class ChatService {
       attachmentSize: attachment?.sizeBytes,
     });
     const updatedConversation = await this.repo.findConversationById(conversation.id);
+    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
     return {
       message,
       conversation: this._decorateConversation(updatedConversation, user),
@@ -502,6 +528,7 @@ class ChatService {
     const updatedConversation = await this.repo.findConversationById(
       conversation.id,
     );
+    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
 
     return {
       message: updated,
@@ -525,6 +552,7 @@ class ChatService {
 
     if (scope === "me") {
       await this.repo.hideMessageForUser(messageId, user.userId);
+      await this._invalidateConversationCaches([user.userId]);
       return {
         message: {
           id: message.id,
@@ -547,6 +575,7 @@ class ChatService {
     const updatedConversation = await this.repo.refreshConversationLastMessageAt(
       conversation.id,
     );
+    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
     return {
       message: deletedMessage,
       conversation: this._decorateConversation(updatedConversation, user),
@@ -602,3 +631,4 @@ class ChatService {
 }
 
 module.exports = ChatService;
+module.exports.conversationsCacheKey = conversationsCacheKey;

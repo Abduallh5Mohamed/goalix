@@ -1,8 +1,15 @@
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const db = require('../infrastructure/database');
+const { redis } = require('../infrastructure/redis');
 const { UnauthorizedError } = require('../shared/errors');
 const { createAbility } = require('../shared/authorization');
+const logger = require('../shared/logger');
+const {
+    cacheActiveSession,
+    getCachedSession,
+    markSessionSeen,
+} = require('../shared/auth-session-cache');
 
 const readAccessToken = (req) => {
     const authHeader = req.headers.authorization;
@@ -17,6 +24,30 @@ const assertActiveAccessSession = async (decoded) => {
         throw new UnauthorizedError('Session missing');
     }
 
+    let cachedSession = null;
+    try {
+        cachedSession = await getCachedSession(redis, decoded.userId, decoded.jti);
+    } catch {
+        // Redis is an optimization. PostgreSQL remains the source of truth.
+    }
+
+    if (cachedSession) {
+        try {
+            if (await markSessionSeen(redis, decoded, cachedSession)) {
+                db('auth_refresh_tokens')
+                    .where({ id: cachedSession.sessionId, is_revoked: false })
+                    .update({ last_seen_at: new Date() })
+                    .catch((err) => logger.warn(
+                        { err, sessionId: cachedSession.sessionId },
+                        'Failed to update throttled session activity',
+                    ));
+            }
+        } catch {
+            // Activity tracking must never block an otherwise valid request.
+        }
+        return;
+    }
+
     const session = await db('auth_refresh_tokens')
         .where({
             user_id: decoded.userId,
@@ -24,15 +55,29 @@ const assertActiveAccessSession = async (decoded) => {
             is_revoked: false,
         })
         .where('expires_at', '>', new Date())
-        .first();
+        .first('id', 'expires_at', 'last_seen_at');
 
     if (!session) {
         throw new UnauthorizedError('Session revoked');
     }
 
-    await db('auth_refresh_tokens')
-        .where({ id: session.id })
-        .update({ last_seen_at: new Date() });
+    try {
+        await cacheActiveSession(redis, decoded, session);
+    } catch {
+        const lastSeenAt = session.last_seen_at
+            ? new Date(session.last_seen_at).getTime()
+            : 0;
+        const staleAfterMs = env.AUTH_SESSION_LAST_SEEN_INTERVAL_SECONDS * 1000;
+        if (Date.now() - lastSeenAt >= staleAfterMs) {
+            db('auth_refresh_tokens')
+                .where({ id: session.id, is_revoked: false })
+                .update({ last_seen_at: new Date() })
+                .catch((err) => logger.warn(
+                    { err, sessionId: session.id },
+                    'Failed to update fallback session activity',
+                ));
+        }
+    }
 };
 
 const assertActiveAdminAccount = async (decoded) => {

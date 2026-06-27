@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+function getApiUrl() {
+  return (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
+}
+
 function securityHeaders(nonce: string, requestHost?: string) {
   const isDev = process.env.NODE_ENV === "development";
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+  const apiUrl = getApiUrl();
   let apiHttpOrigin = "http://localhost:3000";
   let apiWsOrigin = "ws://localhost:3000";
 
@@ -65,18 +69,29 @@ function securityHeaders(nonce: string, requestHost?: string) {
 
 export async function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
+  const pathname = request.nextUrl.pathname;
   const requestHost = request.headers.get("host")?.split(":")[0] || request.nextUrl.hostname;
   const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const isBackendRequest =
+    pathname.startsWith("/uploads/");
+
+  const response = isBackendRequest
+    ? NextResponse.rewrite(
+        new URL(`${pathname}${request.nextUrl.search}`, getApiUrl()),
+        { request: { headers: requestHeaders } },
+      )
+    : NextResponse.next({ request: { headers: requestHeaders } });
+
   Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
   return response;
 }
 
 export const config = {
   matcher: [
+    "/uploads/:path*",
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
       missing: [

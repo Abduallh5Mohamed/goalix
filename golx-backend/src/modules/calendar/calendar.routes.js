@@ -238,6 +238,7 @@ function coachCalendarRoutes(controller) {
     validate({ query: schema.calendarFiltersQuery }),
     controller.coachListCalendarEvents,
   );
+  router.get("/permissions", controller.coachGetPermissions);
   router.get("/groups", controller.coachListGroups);
   router.get(
     "/groups/:id/players",

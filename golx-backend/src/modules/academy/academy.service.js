@@ -1,5 +1,13 @@
 const eventBus = require('../../events/eventBus');
 const ACADEMY_EVENTS = require('./academy.events');
+const env = require('../../config/env');
+const { redis } = require('../../infrastructure/redis');
+const {
+    bumpCacheVersion,
+    getCacheVersion,
+    getJsonCache,
+    setJsonCache,
+} = require('../../shared/redis-json-cache');
 const { NotFoundError, ForbiddenError, BadRequestError, ConflictError } = require('../../shared/errors');
 
 const normalizeLabel = (value) => String(value || '')
@@ -13,6 +21,11 @@ const deriveLabel = (label, fromYear, toYear) => {
     return `${fromYear}-${toYear}`;
 };
 
+const branchesVersionKey = (academyId) => `goalix:academy:${academyId}:branches:v`;
+const branchesCacheKey = (academyId, version, { page = 1, limit = 20 } = {}) => (
+    `goalix:academy:${academyId}:branches:v${version}:p${page}:l${limit}`
+);
+
 class AcademyService {
     constructor(academyRepository) {
         this.repo = academyRepository;
@@ -23,6 +36,32 @@ class AcademyService {
         const academy = await this.repo.findById(academyId);
         if (!academy) throw new NotFoundError('Academy', academyId);
         return academy;
+    }
+
+    async getPublicAcademyProfile() {
+        const academy = await this.repo.findPublicAcademyProfile();
+        if (!academy) throw new NotFoundError('Academy profile');
+
+        const settings = academy.settings && typeof academy.settings === 'object'
+            ? academy.settings
+            : {};
+        const socialLinks = settings.socialLinks && typeof settings.socialLinks === 'object'
+            ? settings.socialLinks
+            : {};
+
+        return {
+            name: academy.name,
+            email: academy.email || null,
+            phone: academy.phone || null,
+            address: academy.address || null,
+            logoUrl: academy.logo_url || null,
+            socialLinks: {
+                facebook: typeof socialLinks.facebook === 'string' ? socialLinks.facebook : '',
+                instagram: typeof socialLinks.instagram === 'string' ? socialLinks.instagram : '',
+                twitter: typeof socialLinks.twitter === 'string' ? socialLinks.twitter : '',
+                linkedin: typeof socialLinks.linkedin === 'string' ? socialLinks.linkedin : '',
+            },
+        };
     }
 
     async updateAcademy(academyId, data) {
@@ -46,7 +85,15 @@ class AcademyService {
         if (actor?.role === 'coach') {
             return this.repo.findBranchesForCoachUser(actor.userId, academyId, pagination);
         }
-        return this.repo.findBranches(academyId, pagination);
+
+        const version = await getCacheVersion(redis, branchesVersionKey(academyId));
+        const cacheKey = branchesCacheKey(academyId, version, pagination);
+        const cached = await getJsonCache(redis, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const result = await this.repo.findBranches(academyId, pagination);
+        await setJsonCache(redis, cacheKey, result, env.ACADEMY_BRANCHES_CACHE_TTL_SECONDS);
+        return result;
     }
 
     async getBranch(id, academyId) {
@@ -72,6 +119,7 @@ class AcademyService {
             academyId,
             name: branch.name,
         });
+        await bumpCacheVersion(redis, branchesVersionKey(academyId));
 
         return branch;
     }
@@ -90,6 +138,7 @@ class AcademyService {
         const updated = await this.repo.updateBranch(id, updateData);
 
         eventBus.publish(ACADEMY_EVENTS.BRANCH_UPDATED, { branchId: id, academyId });
+        await bumpCacheVersion(redis, branchesVersionKey(academyId));
         return updated;
     }
 
@@ -97,13 +146,23 @@ class AcademyService {
         const branch = await this.repo.findBranchById(id);
         if (!branch || (academyId && branch.academy_id !== academyId)) throw new NotFoundError('Branch', id);
 
-        const hasRelations = await this.repo.branchHasActiveRelations(id);
-        if (hasRelations) {
-            throw new BadRequestError('Cannot delete a branch with active birth years, groups, coaches, players, sessions, or matches');
+        const activeRelations = await this.repo.getBranchActiveRelations(id);
+        if (activeRelations.length > 0) {
+            throw new BadRequestError(
+                'Cannot delete this branch because it has active related data.',
+                [
+                    {
+                        reason: 'BRANCH_HAS_ACTIVE_RELATIONS',
+                        blockers: activeRelations,
+                        solution: 'Move or delete the related birth years, groups, coaches, players, attendance sessions, and matches first. If you only want to hide the branch, mark it inactive instead of deleting it.',
+                    },
+                ],
+            );
         }
 
         await this.repo.softDeleteBranch(id);
         eventBus.publish(ACADEMY_EVENTS.BRANCH_DELETED, { branchId: id, academyId });
+        await bumpCacheVersion(redis, branchesVersionKey(academyId));
     }
 
     // ─── Groups ─────────────────────────────────────────────────────────
