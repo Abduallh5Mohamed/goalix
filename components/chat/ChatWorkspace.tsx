@@ -155,6 +155,7 @@ type ChatCopy = Record<keyof typeof copy.en, string>;
 
 type ChatRole = "admin" | "coach" | "player" | "parent";
 type ContactType = "admin" | "coach" | "player" | "parent";
+
 function getSocketBaseUrl() {
   if (API_BASE) return API_BASE;
   if (typeof window === "undefined" || process.env.NODE_ENV !== "development") {
@@ -163,13 +164,11 @@ function getSocketBaseUrl() {
   return `${window.location.protocol}//${window.location.hostname}:3000`;
 }
 
-type ChatRole = "admin" | "coach" | "player";
-type ContactType = "admin" | "coach" | "player";
 type ConversationType =
   | "admin_coach"
   | "coach_player"
   | "admin_player_session"
-  | "parent_coach";
+  | "parent_coach"
   | "chat_group";
 
 type Contact = {
@@ -200,8 +199,7 @@ type Conversation = {
   coach_id?: string | null;
   player_id?: string | null;
   target: {
-    type: "admin" | "coach" | "player" | "parent";
-    type: "admin" | "coach" | "player" | "group";
+    type: "admin" | "coach" | "player" | "parent" | "group";
     id?: string | null;
     userId?: string | null;
     name: string;
@@ -302,6 +300,9 @@ function normalizeSearch(value: string) {
 }
 
 function conversationLabel(conversation: Conversation, t: ChatCopy) {
+  if (conversation.type === "chat_group") {
+    return groupMembersPreview(conversation);
+  }
   if (conversation.type === "admin_player_session") return t.adminSession;
   if (conversation.type === "admin_coach") return t.admin;
   if (conversation.type === "parent_coach") {
@@ -310,6 +311,8 @@ function conversationLabel(conversation: Conversation, t: ChatCopy) {
       : t.familyChat;
   }
   return t.coach;
+}
+
 function groupMemberNames(conversation: Conversation) {
   return (conversation.group_members || [])
     .map((member) => member.name)
@@ -325,15 +328,6 @@ function groupMembersPreview(conversation: Conversation) {
   }
 
   return `${names.slice(0, 6).join(", ")}${names.length > 6 ? ", ..." : ""}`;
-}
-
-function conversationLabel(conversation: Conversation) {
-  if (conversation.type === "chat_group") {
-    return groupMembersPreview(conversation);
-  }
-  if (conversation.type === "admin_player_session") return "Admin session";
-  if (conversation.type === "admin_coach") return "Admin";
-  return "Coach";
 }
 
 function formatContactSubtitle(subtitle: string | null | undefined, t: ChatCopy) {
@@ -842,11 +836,6 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const selectedGroupMembers = selectedIsGroup
     ? selected.group_members || []
     : [];
-  const selectedGroupPreview = selectedIsGroup
-    ? groupMembersPreview(selected)
-    : selected
-      ? conversationLabel(selected)
-      : "";
 
   if (!isAuthenticated) {
     return (
@@ -907,26 +896,6 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         <div className="goalix-chat-thread-head">
           {selected ? (
             <>
-              <Avatar className="goalix-chat-avatar is-thread">
-                <AvatarFallback>
-                  {getInitials(selected.target.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="goalix-chat-thread-title">
-                <h2>{selected.target.name}</h2>
-                <div>
-                  <Badge
-                    variant={selected.status === "open" ? "success" : "secondary"}
-                    className="goalix-chat-status-badge"
-                  >
-                    {selected.status === "open" ? t.open : t.closed}
-                  </Badge>
-                  <span>{conversationLabel(selected, t)}</span>
-                  {selected.context?.playerName && (
-                    <span className="goalix-chat-context-pill">
-                      {t.about} {selected.context.playerName}
-                    </span>
-                  )}
               <button
                 type="button"
                 className={cn(
@@ -951,11 +920,16 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                   <div>
                     <Badge
                       variant={selected.status === "open" ? "success" : "secondary"}
-                      className="goalix-chat-status-badge"
-                    >
-                      {selected.status}
+                  className="goalix-chat-status-badge"
+                >
+                      {selected.status === "open" ? t.open : t.closed}
                     </Badge>
-                    <span>{selectedGroupPreview}</span>
+                    <span>{conversationLabel(selected, t)}</span>
+                    {selected.context?.playerName && (
+                      <span className="goalix-chat-context-pill">
+                        {t.about} {selected.context.playerName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </button>
@@ -1017,7 +991,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       {member.name}
                     </span>
                     <span className="goalix-chat-list-subtitle">
-                      {formatContactSubtitle(member.role)}
+                      {formatContactSubtitle(member.role, t)}
                       {member.membershipRole === "owner" ? " | Owner" : ""}
                     </span>
                   </span>
@@ -1315,7 +1289,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                           </span>
                           {contact.subtitle && (
                             <span className="goalix-chat-list-subtitle">
-                              {formatContactSubtitle(contact.subtitle)}
+                              {formatContactSubtitle(contact.subtitle, t)}
                             </span>
                           )}
                         </span>

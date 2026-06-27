@@ -3,12 +3,16 @@ require("dotenv").config();
 const { Client } = require("pg");
 
 const BASE_URL = process.env.E2E_API_URL || "http://127.0.0.1:3000";
-const PASSWORD = process.env.E2E_PASSWORD || "Goalix@2026";
+const PASSWORD = process.env.E2E_PASSWORD;
 const RUN_ID = Date.now().toString(36);
 const NOTE_TITLE = `E2E API note ${RUN_ID}`;
 const CHAT_BODY = `E2E parent-coach message ${RUN_ID}`;
 
 const results = [];
+
+if (!PASSWORD) {
+  throw new Error("E2E_PASSWORD is required before running role E2E tests.");
+}
 
 function record(name, passed, detail = "") {
   results.push({ name, passed, detail });

@@ -567,6 +567,60 @@ export interface ParentPlayerNote {
   coach_name?: string | null;
 }
 
+export interface ParentAiEvaluationInsight {
+  player_id: string;
+  analysis_id: string;
+  input: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  model_version: string | null;
+  created_at: string | null;
+}
+
+export interface ParentCoachEvaluationInsight {
+  id: string;
+  player_id: string;
+  event_id: string;
+  event_title?: string | null;
+  event_type?: CalendarEventType | string | null;
+  start_datetime?: string | null;
+  coach_id?: string | null;
+  coach_name?: string | null;
+  overall_rating?: string | number | null;
+  technical_rating?: string | number | null;
+  tactical_rating?: string | number | null;
+  physical_rating?: string | number | null;
+  mentality_rating?: string | number | null;
+  fatigue_rating?: string | number | null;
+  coach_notes?: string | null;
+  improvement_plan?: string | null;
+  created_at?: string | null;
+}
+
+export interface ParentRankingInsight {
+  id: string;
+  player_id: string;
+  group_id?: string | null;
+  total_score: string | number | null;
+  rank: number | null;
+  period: string;
+  trend: "up" | "down" | "same" | "new" | string;
+  calculated_at: string | null;
+  breakdown: {
+    coach_eval_score: string | number | null;
+    attendance_score: string | number | null;
+    discipline_score: string | number | null;
+    match_score: string | number | null;
+    ai_score: string | number | null;
+  };
+}
+
+export interface ParentAiInsights {
+  injuryRisk: InjuryRiskPredictionRecord | null;
+  aiEvaluation: ParentAiEvaluationInsight | null;
+  coachEvaluation: ParentCoachEvaluationInsight | null;
+  ranking: ParentRankingInsight | null;
+}
+
 export interface ParentDashboard {
   children: ParentChild[];
   selectedChild: ParentChild | null;
@@ -585,6 +639,7 @@ export interface ParentDashboard {
   }>;
   payments?: ParentPaymentSummary | null;
   weeklyReport?: ParentWeeklyReport | null;
+  aiInsights?: ParentAiInsights | null;
 }
 
 export interface AdminParentAccount {

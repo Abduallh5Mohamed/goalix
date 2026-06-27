@@ -8568,6 +8568,130 @@ class CalendarService {
     );
   }
 
+  async _latestParentAiInsights(academyId, childId) {
+    const [injuryRisk, performance, ranking, latestCoachEvaluation] = await Promise.all([
+      this.repo
+        .db("ai_analyses as aia")
+        .join("player_profiles as pp", "aia.player_id", "pp.id")
+        .where("aia.player_id", childId)
+        .where("pp.academy_id", academyId)
+        .where("aia.type", "injury_risk")
+        .whereNull("pp.deleted_at")
+        .select("aia.*")
+        .orderBy("aia.created_at", "desc")
+        .first(),
+      this.repo
+        .db("ai_analyses as aia")
+        .join("player_profiles as pp", "aia.player_id", "pp.id")
+        .where("aia.player_id", childId)
+        .where("pp.academy_id", academyId)
+        .where("aia.type", "performance")
+        .whereNull("pp.deleted_at")
+        .select("aia.*")
+        .orderBy("aia.created_at", "desc")
+        .first(),
+      this.repo
+        .db("ranking_snapshots as rs")
+        .join("player_profiles as pp", "rs.player_id", "pp.id")
+        .leftJoin("ranking_score_breakdown as rsb", "rsb.ranking_id", "rs.id")
+        .where("rs.player_id", childId)
+        .where("pp.academy_id", academyId)
+        .whereNull("pp.deleted_at")
+        .select(
+          "rs.*",
+          "rsb.coach_eval_score",
+          "rsb.attendance_score",
+          "rsb.discipline_score",
+          "rsb.match_score",
+          "rsb.ai_score",
+        )
+        .orderBy("rs.period", "desc")
+        .orderBy("rs.calculated_at", "desc")
+        .first(),
+      this.repo
+        .db("player_event_evaluations as pee")
+        .join("calendar_events as ce", "pee.event_id", "ce.id")
+        .leftJoin("coach_profiles as cp", "pee.coach_id", "cp.id")
+        .where("pee.player_id", childId)
+        .where("ce.academy_id", academyId)
+        .where("pee.visibility", "player_and_parent")
+        .whereNull("ce.deleted_at")
+        .whereNot("ce.status", "cancelled")
+        .select(
+          "pee.*",
+          "ce.title",
+          "ce.event_type",
+          "ce.start_datetime",
+          "cp.full_name as coach_name",
+        )
+        .orderBy("ce.start_datetime", "desc")
+        .first(),
+    ]);
+
+    return {
+      injuryRisk: injuryRisk
+        ? {
+            player_id: injuryRisk.player_id,
+            analysis_id: injuryRisk.id,
+            input: injuryRisk.input_data || null,
+            prediction: injuryRisk.result || null,
+            model_version: injuryRisk.model_version || null,
+            created_at: injuryRisk.created_at || null,
+          }
+        : null,
+      aiEvaluation: performance
+        ? {
+            player_id: performance.player_id,
+            analysis_id: performance.id,
+            input: performance.input_data || null,
+            result: performance.result || null,
+            model_version: performance.model_version || null,
+            created_at: performance.created_at || null,
+          }
+        : null,
+      coachEvaluation: latestCoachEvaluation
+        ? {
+            id: latestCoachEvaluation.id,
+            player_id: latestCoachEvaluation.player_id,
+            event_id: latestCoachEvaluation.event_id,
+            event_title: latestCoachEvaluation.title || null,
+            event_type: latestCoachEvaluation.event_type || null,
+            start_datetime: latestCoachEvaluation.start_datetime || null,
+            coach_id: latestCoachEvaluation.coach_id || null,
+            coach_name: latestCoachEvaluation.coach_name || null,
+            overall_rating: latestCoachEvaluation.overall_rating,
+            technical_rating: latestCoachEvaluation.technical_rating,
+            tactical_rating: latestCoachEvaluation.tactical_rating,
+            physical_rating: latestCoachEvaluation.physical_rating,
+            mentality_rating: latestCoachEvaluation.mentality_rating,
+            fatigue_rating: latestCoachEvaluation.fatigue_rating,
+            coach_notes: latestCoachEvaluation.coach_notes || null,
+            improvement_plan: latestCoachEvaluation.improvement_plan || null,
+            created_at: latestCoachEvaluation.created_at || null,
+          }
+        : null,
+      ranking: ranking
+        ? {
+            id: ranking.id,
+            player_id: ranking.player_id,
+            group_id: ranking.group_id || null,
+            total_score: ranking.total_score,
+            rank: ranking.rank,
+            period: ranking.period,
+            trend: ranking.trend,
+            calculated_at: ranking.calculated_at,
+            breakdown: {
+              coach_eval_score: ranking.coach_eval_score,
+              attendance_score: ranking.attendance_score,
+              discipline_score: ranking.discipline_score,
+              match_score: ranking.match_score,
+              ai_score: ranking.ai_score,
+            },
+          }
+        : null,
+    };
+  }
+
   async parentDashboard(parentUserId, academyId, childId = null) {
     const rawChildren = await this.repo.findParentLinkedPlayers(
       parentUserId,
@@ -8594,6 +8718,12 @@ class CalendarService {
         coaches: [],
         payments: null,
         weeklyReport: null,
+        aiInsights: {
+          injuryRisk: null,
+          aiEvaluation: null,
+          coachEvaluation: null,
+          ranking: null,
+        },
       };
     }
 
@@ -8618,6 +8748,7 @@ class CalendarService {
       notes,
       payments,
       weeklyReport,
+      aiInsights,
     ] = await Promise.all([
       canViewProgress
         ? this.playerProgress(parentUserId, academyId, selectedChildId)
@@ -8654,6 +8785,14 @@ class CalendarService {
       canViewProgress
         ? this.parentWeeklyReport(parentUserId, academyId, selectedChildId)
         : Promise.resolve(null),
+      canViewProgress
+        ? this._latestParentAiInsights(academyId, selectedChildId)
+        : Promise.resolve({
+            injuryRisk: null,
+            aiEvaluation: null,
+            coachEvaluation: null,
+            ranking: null,
+          }),
     ]);
 
     return {
@@ -8671,6 +8810,7 @@ class CalendarService {
       coaches: selectedCoaches,
       payments,
       weeklyReport,
+      aiInsights,
     };
   }
 

@@ -1,5 +1,7 @@
 const { z } = require('zod');
 
+const DEFAULT_COOKIE_SECRET = 'change-this-to-a-random-32-char-secret-in-production';
+
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().default(3000),
@@ -46,12 +48,21 @@ const envSchema = z.object({
     ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
 
     // Cookie signing secret
-    COOKIE_SECRET: z.string().min(32).default('change-this-to-a-random-32-char-secret-in-production'),
+    COOKIE_SECRET: z.string().min(32).default(DEFAULT_COOKIE_SECRET),
 });
 
 let env;
 try {
     env = envSchema.parse(process.env);
+    if (env.NODE_ENV === 'production' && env.COOKIE_SECRET === DEFAULT_COOKIE_SECRET) {
+        throw new z.ZodError([
+            {
+                code: z.ZodIssueCode.custom,
+                path: ['COOKIE_SECRET'],
+                message: 'COOKIE_SECRET must be set to a unique production secret',
+            },
+        ]);
+    }
 } catch (err) {
     console.error('❌ Environment validation failed:');
     console.error(err.errors.map((e) => `  - ${e.path.join('.')}: ${e.message}`).join('\n'));

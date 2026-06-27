@@ -17,6 +17,11 @@ const monthsAgo = (n) => {
     return d.toISOString().slice(0, 10);
 };
 const weeksAgo = (n) => daysAgo(n * 7);
+const DEMO_USER_PASSWORD = process.env.DEMO_USER_PASSWORD;
+
+if (!DEMO_USER_PASSWORD) {
+    throw new Error('DEMO_USER_PASSWORD is required before running 01_dashboard_data.js');
+}
 
 // ── fixed IDs ─────────────────────────────────────────────────────────────────
 const IDs = {
@@ -70,7 +75,7 @@ exports.seed = async function (knex) {
     await knex('auth_users').delete();
     await knex('academy_academies').delete();
 
-    const pw = await bcrypt.hash('Admin@123456', 10);
+    const pw = await bcrypt.hash(DEMO_USER_PASSWORD, 10);
 
     // ── 1b. RE-CREATE ADMIN & COACH1 USERS ──────────────────────────────────
     await knex('auth_users').insert([

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -34,46 +35,52 @@ export function DoughnutChart({
   centerValue,
 }: DoughnutChartProps) {
   const chartTheme = useGoalixChartTheme();
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        data,
-        backgroundColor: colors.slice(0, data.length).map((c) => `${c}cc`),
-        hoverBackgroundColor: colors.slice(0, data.length),
-        borderColor: "transparent",
-        borderWidth: 0,
-        spacing: 2,
-      },
-    ],
-  };
+  const chartData = useMemo(
+    () => ({
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: colors.slice(0, data.length).map((c) => `${c}cc`),
+          hoverBackgroundColor: colors.slice(0, data.length),
+          borderColor: "transparent",
+          borderWidth: 0,
+          spacing: 2,
+        },
+      ],
+    }),
+    [colors, data, labels]
+  );
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: "70%",
-    plugins: {
-      legend: {
-        position: "bottom" as const,
-        labels: {
-          color: chartTheme.legend,
-          font: { size: 12 },
-          padding: 16,
-          usePointStyle: true,
-          pointStyleWidth: 8,
+  const options = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "70%",
+      plugins: {
+        legend: {
+          position: "bottom" as const,
+          labels: {
+            color: chartTheme.legend,
+            font: { size: 12 },
+            padding: 16,
+            usePointStyle: true,
+            pointStyleWidth: 8,
+          },
+        },
+        tooltip: {
+          backgroundColor: chartTheme.tooltipBackground,
+          titleColor: chartTheme.tooltipTitle,
+          bodyColor: chartTheme.tooltipBody,
+          borderColor: chartTheme.tooltipBorder,
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 8,
         },
       },
-      tooltip: {
-        backgroundColor: chartTheme.tooltipBackground,
-        titleColor: chartTheme.tooltipTitle,
-        bodyColor: chartTheme.tooltipBody,
-        borderColor: chartTheme.tooltipBorder,
-        borderWidth: 1,
-        padding: 12,
-        cornerRadius: 8,
-      },
-    },
-  };
+    }),
+    [chartTheme]
+  );
 
   return (
     <div className={cn("relative w-full", className)} style={{ height }}>
