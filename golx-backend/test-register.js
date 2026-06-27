@@ -1,5 +1,11 @@
 const http = require('http');
-const data = JSON.stringify({ email: 'coach1@goalix.com', password: 'Admin@123456', role: 'coach' });
+const password = process.env.TEST_REGISTER_PASSWORD;
+
+if (!password) {
+    throw new Error('TEST_REGISTER_PASSWORD is required before running test-register.js');
+}
+
+const data = JSON.stringify({ email: 'coach1@goalix.com', password, role: 'coach' });
 const options = {
     hostname: 'localhost',
     port: 3001,

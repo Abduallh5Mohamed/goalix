@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
 import {
+  Activity,
+  BrainCircuit,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
@@ -73,6 +75,18 @@ const copy = {
     paymentAccess: "Payment access",
     progressAccess: "Progress access",
     weeklyReport: "Weekly parent report",
+    aiInsights: "AI health and evaluation",
+    injuryRisk: "Injury risk",
+    aiEvaluation: "AI evaluation",
+    riskLevel: "Risk level",
+    riskScore: "Risk score",
+    recommendation: "Recommendation",
+    noAiInsights: "No AI result has been published for this player yet.",
+    ranking: "Ranking",
+    overallScore: "Overall score",
+    aiBreakdown: "AI breakdown",
+    trend: "Trend",
+    model: "Model",
     highlights: "Highlights",
     actionItems: "Action items",
     payments: "Payments",
@@ -153,6 +167,18 @@ const copy = {
     paymentAccess: "صلاحية المدفوعات",
     progressAccess: "صلاحية التقدم",
     weeklyReport: "التقرير الأسبوعي لولي الأمر",
+    aiInsights: "نتائج الذكاء والتحليل",
+    injuryRisk: "مخاطر الإصابة",
+    aiEvaluation: "التقييم بالذكاء الاصطناعي",
+    riskLevel: "مستوى الخطورة",
+    riskScore: "درجة الخطورة",
+    recommendation: "التوصية",
+    noAiInsights: "لا توجد نتيجة ذكاء اصطناعي منشورة لهذا اللاعب حتى الآن.",
+    ranking: "الترتيب",
+    overallScore: "التقييم العام",
+    aiBreakdown: "تفاصيل الذكاء",
+    trend: "الاتجاه",
+    model: "النموذج",
     highlights: "أبرز النقاط",
     actionItems: "خطوات مقترحة",
     payments: "المدفوعات",
@@ -267,6 +293,41 @@ function relationLabel(relation: string | null | undefined, t: HomeCopy) {
   return t[relation.toLowerCase() as "father" | "mother" | "guardian"] || t.otherRelation;
 }
 
+function formatScore(value: unknown, fallback = "-") {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
+}
+
+function resultNumber(result: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!result) return null;
+  for (const key of keys) {
+    const numeric = Number(result[key]);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return null;
+}
+
+function riskTone(level: unknown) {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "high") {
+    return {
+      ring: "border-rose-400/35 bg-rose-400/10 text-rose-200",
+      text: "text-rose-300",
+    };
+  }
+  if (normalized === "medium") {
+    return {
+      ring: "border-amber-400/35 bg-amber-400/10 text-amber-100",
+      text: "text-amber-300",
+    };
+  }
+  return {
+    ring: "border-lime-300/35 bg-lime-300/10 text-lime-100",
+    text: "text-lime-300",
+  };
+}
+
 function LockedProgressPanel({ title, body }: { title: string; body: string }) {
   return (
     <div className="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#2a4460] bg-white/[0.035] p-6 text-center">
@@ -292,6 +353,24 @@ export default function ParentHomePage() {
 
   const child = data?.selectedChild ?? null;
   const progress = data?.progress ?? null;
+  const aiInsights = data?.aiInsights ?? null;
+  const injuryRisk = aiInsights?.injuryRisk?.prediction ?? null;
+  const aiEvaluation = aiInsights?.aiEvaluation ?? null;
+  const coachEvaluation = aiInsights?.coachEvaluation ?? null;
+  const aiEvaluationScore = resultNumber(aiEvaluation?.result, [
+    "score",
+    "overall_score",
+    "performance_score",
+    "weekly_score",
+  ]);
+  const ranking = aiInsights?.ranking ?? null;
+  const displayedEvaluationScore =
+    aiEvaluationScore ??
+    ranking?.breakdown?.ai_score ??
+    ranking?.total_score ??
+    coachEvaluation?.overall_rating ??
+    null;
+  const riskStyle = riskTone(injuryRisk?.risk_level);
   const canViewProgress = child?.can_view_progress !== false;
   const canMessageCoach = child?.can_message_coach !== false;
   const coaches = data?.coaches ?? child?.coaches ?? [];
@@ -580,6 +659,137 @@ export default function ParentHomePage() {
             ))}
             {!(data?.calendarEvents?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
           </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <Panel>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-lime-300">
+                {t.aiInsights}
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-black text-white">
+                {t.injuryRisk}
+              </h2>
+            </div>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-lime-300/15 text-lime-300">
+              <Activity className="h-6 w-6" />
+            </span>
+          </div>
+          {!canViewProgress ? (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          ) : injuryRisk ? (
+            <div className={cn("rounded-2xl border p-5", riskStyle.ring)}>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black text-slate-300">{t.riskLevel}</p>
+                  <strong className={cn("mt-1 block font-display text-4xl", riskStyle.text)}>
+                    {injuryRisk.risk_level || "-"}
+                  </strong>
+                </div>
+                <div className="text-end">
+                  <p className="text-sm font-black text-slate-300">{t.riskScore}</p>
+                  <strong className="mt-1 block font-display text-4xl text-white">
+                    {formatScore(injuryRisk.risk_percentage)}%
+                  </strong>
+                </div>
+              </div>
+              <div className="mt-5 rounded-2xl border border-[#2a4460] bg-[#06111f]/70 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">
+                  {t.recommendation}
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                  {injuryRisk.recommendation || t.empty}
+                </p>
+              </div>
+              <p className="mt-3 text-xs font-black text-slate-500">
+                {aiInsights?.injuryRisk?.model_version || t.aiEvaluation}
+                {" - "}
+                {formatDate(aiInsights?.injuryRisk?.created_at, language)}
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">
+              {t.noAiInsights}
+            </p>
+          )}
+        </Panel>
+
+        <Panel>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-300">
+                {t.ranking}
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-black text-white">
+                {t.aiEvaluation}
+              </h2>
+            </div>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300/15 text-cyan-300">
+              <BrainCircuit className="h-6 w-6" />
+            </span>
+          </div>
+          {!canViewProgress ? (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          ) : aiEvaluation || ranking || coachEvaluation ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.overallScore}</p>
+                <strong className="mt-2 block font-display text-4xl text-white">
+                  {formatScore(displayedEvaluationScore)}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.ranking}</p>
+                <strong className="mt-2 block font-display text-4xl text-lime-300">
+                  {ranking?.rank ? `#${ranking.rank}` : "-"}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.aiBreakdown}</p>
+                <strong className="mt-2 block font-display text-4xl text-cyan-300">
+                  {formatScore(ranking?.breakdown?.ai_score)}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-[#06111f]/70 p-4 sm:col-span-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.season}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {ranking?.period || formatDate(coachEvaluation?.start_datetime, language)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.trend}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {ranking?.trend || coachEvaluation?.event_title || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.model}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {aiEvaluation?.model_version || coachEvaluation?.coach_name || t.coach}
+                    </p>
+                  </div>
+                </div>
+                {(coachEvaluation?.coach_notes || coachEvaluation?.improvement_plan) && (
+                  <div className="mt-4 rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-lime-300">
+                      {t.coachReply}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {coachEvaluation.coach_notes || coachEvaluation.improvement_plan}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">
+              {t.noAiInsights}
+            </p>
+          )}
         </Panel>
       </section>
 

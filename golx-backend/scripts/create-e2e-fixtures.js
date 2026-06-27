@@ -4,8 +4,12 @@ const bcrypt = require("bcrypt");
 const crypto = require("node:crypto");
 const { Client } = require("pg");
 
-const PASSWORD = process.env.E2E_PASSWORD || "Goalix@2026";
+const PASSWORD = process.env.E2E_PASSWORD;
 const FIXTURE = "GOALIX_E2E_FIXTURE";
+
+if (!PASSWORD) {
+  throw new Error("E2E_PASSWORD is required before creating E2E fixtures.");
+}
 
 const ACCOUNTS = {
   admin: {

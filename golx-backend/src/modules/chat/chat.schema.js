@@ -53,6 +53,9 @@ const createConversationSchema = z
           code: z.ZodIssueCode.custom,
           path: ["coachId"],
           message: "coachId or parentUserId is required for parent-coach chat",
+        });
+      }
+    }
     if (data.type === "chat_group") {
       if (!data.groupName) {
         ctx.addIssue({

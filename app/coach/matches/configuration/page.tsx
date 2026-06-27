@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import { AlertTriangle, Loader2, Save, UserMinus, UserPlus } from "lucide-react";
-import { FormationPreview3D } from "@/components/coach/FormationPreview3D";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,18 @@ import {
 import { useGetCoachBirthdaysQuery } from "@/lib/store/api/coachApi";
 import { FORMATIONS, getFormationSlots } from "@/lib/football/formations";
 import { formatDate, localDateTimeTimestamp } from "@/lib/utils";
+
+const FormationPreview3D = dynamic(
+  () => import("@/components/coach/FormationPreview3D").then((mod) => mod.FormationPreview3D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[420px] items-center justify-center rounded-[28px] border border-[var(--gx-border)] bg-[var(--gx-card)] text-sm font-semibold text-[var(--gx-muted)]">
+        Loading tactical preview...
+      </div>
+    ),
+  }
+);
 
 type TargetMode = "group" | "birthday";
 type SlotState = Record<string, { playerId: string; instruction: string }>;
