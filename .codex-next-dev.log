@@ -79,3 +79,4 @@ Goalix API is already running on port 3000; starting frontend only.
 [frontend]  GET /api/v1/notifications/unread-count 200 in 121ms (next.js: 39ms, application-code: 83ms)
 [frontend]  GET /api/v1/admin/dashboard 200 in 226ms (next.js: 11ms, application-code: 215ms)
 [frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 8ms, application-code: 15ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 156ms (next.js: 27ms, application-code: 129ms)
