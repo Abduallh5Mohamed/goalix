@@ -29,6 +29,7 @@ import {
   useRunInjuryRiskPredictionsMutation,
   useUpsertInjuryRiskPainDiscomfortMutation,
 } from "@/lib/store/api/calendarApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { cn } from "@/lib/utils";
 
 const modelInputs = [
@@ -146,19 +147,33 @@ const riskBadgeVariant = (
 
 export default function CoachInjuryRiskAIPage() {
   const {
+    can,
+    isLoading: loadingPermissions,
+    isError: permissionsError,
+  } = useCoachPermissions();
+  const canViewInjuryRisk = can("can_view_injury_risk");
+  const canRunInjuryRisk = can("can_run_injury_risk");
+  const canManageInjuryRisk = can("can_manage_injury_risk");
+  const skipInjuryRiskQueries =
+    loadingPermissions || permissionsError || !canViewInjuryRisk;
+  const {
     data: painRows = emptyPainRows,
     isLoading: loadingPainRows,
     isFetching: fetchingPainRows,
     isError: painRowsError,
     refetch,
-  } = useGetInjuryRiskPainDiscomfortQuery();
+  } = useGetInjuryRiskPainDiscomfortQuery(undefined, {
+    skip: skipInjuryRiskQueries,
+  });
   const [savePainRows, { isLoading: savingPainRows, error: saveError }] =
     useUpsertInjuryRiskPainDiscomfortMutation();
   const {
     data: predictionRows = [],
     isLoading: loadingPredictions,
     isFetching: fetchingPredictions,
-  } = useGetInjuryRiskPredictionsQuery();
+  } = useGetInjuryRiskPredictionsQuery(undefined, {
+    skip: skipInjuryRiskQueries,
+  });
   const [
     runPredictions,
     { isLoading: runningPredictions, error: predictionRunError },
@@ -190,6 +205,7 @@ export default function CoachInjuryRiskAIPage() {
     isPainValue(selectedValueFor(row)),
   ).length;
   const canSave =
+    canManageInjuryRisk &&
     painRows.length > 0 &&
     selectedCount === painRows.length &&
     !savingPainRows &&
@@ -212,7 +228,6 @@ export default function CoachInjuryRiskAIPage() {
           painOrDiscomfort: selectedValueFor(row) as PainValue,
         })),
       }).unwrap();
-      await runPredictions().unwrap();
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -239,6 +254,18 @@ export default function CoachInjuryRiskAIPage() {
         ]}
       />
 
+      {!loadingPermissions && (permissionsError || !canViewInjuryRisk) && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <span>
+            Your assigned coach role does not include access to injury-risk data.
+            Ask an academy administrator to update your branch or group assignment.
+          </span>
+        </div>
+      )}
+
+      {canViewInjuryRisk && (
+        <>
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-lg border border-[#253f5a] bg-[#06111f]/86 p-5">
           <div className="mb-4 flex items-center gap-3">
@@ -327,18 +354,18 @@ export default function CoachInjuryRiskAIPage() {
               disabled={!canSave}
               className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
             >
-              {savingPainRows || runningPredictions ? (
+              {savingPainRows ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save + Run Model
+              Save Inputs
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={handleRunModel}
-              disabled={runningPredictions || savingPainRows}
+              disabled={!canRunInjuryRisk || runningPredictions || savingPainRows}
               className="bg-lime-300 text-slate-950 hover:bg-lime-200"
             >
               {runningPredictions ? (
@@ -354,7 +381,10 @@ export default function CoachInjuryRiskAIPage() {
         {(painRowsError || saveError || predictionRunError) && (
           <div className="flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             <AlertTriangle className="h-4 w-4" />
-            <span>Unable to complete the injury risk operation.</span>
+            <span>
+              Unable to complete the injury risk operation. Check your assigned
+              permission and the local Python model setup.
+            </span>
           </div>
         )}
 
@@ -403,6 +433,7 @@ export default function CoachInjuryRiskAIPage() {
                               key={value}
                               type="button"
                               aria-pressed={selectedValue === value}
+                              disabled={!canManageInjuryRisk}
                               onClick={() => updateDraft(row, value)}
                               className={cn(
                                 "h-9 w-12 rounded-md text-sm font-semibold text-slate-300 transition-colors",
@@ -452,6 +483,8 @@ export default function CoachInjuryRiskAIPage() {
           </div>
         )}
       </section>
+        </>
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

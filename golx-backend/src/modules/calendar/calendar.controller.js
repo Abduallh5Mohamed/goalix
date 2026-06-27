@@ -486,6 +486,22 @@ class CalendarController {
     }
   };
 
+  coachGetPermissions = async (req, res, next) => {
+    try {
+      res.set("Cache-Control", "private, max-age=60");
+      res.json(
+        ApiResponse.success(
+          await this.service.coachGetPermissions(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   coachListPlayers = async (req, res, next) => {
     try {
       const { page, limit } = this._pagination(req);

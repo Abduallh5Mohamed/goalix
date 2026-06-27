@@ -1,4 +1,7 @@
 const { z } = require("zod");
+const {
+  COACH_ASSIGNMENT_ROLE_VALUES,
+} = require("../coaches/coach-assignment-roles");
 
 const uuid = z.string().uuid();
 const dateSchema = z
@@ -674,10 +677,7 @@ const optionQuery = z.object({
 const coachGroupAssignmentSchema = z.object({
   coachId: uuid,
   groupId: uuid,
-  role: z.enum(["head", "assistant", "goalkeeping"]).default("head"),
-  canCreateTraining: z.boolean().default(true),
-  canTakeAttendance: z.boolean().default(true),
-  canEvaluatePlayers: z.boolean().default(true),
+  role: z.enum(COACH_ASSIGNMENT_ROLE_VALUES).default("assistant_coach"),
 });
 
 const updateCoachGroupAssignmentSchema = coachGroupAssignmentSchema

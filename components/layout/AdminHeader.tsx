@@ -28,6 +28,7 @@ export function AdminHeader() {
   const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(undefined, {
     skip: !notificationsEnabled,
     pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
   });
 
   return (

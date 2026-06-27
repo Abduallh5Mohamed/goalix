@@ -13,6 +13,7 @@ import { ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, rememberAuthSession } from "@/lib/auth/session";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { resetApiState } from "@/lib/store/resetApiState";
 
 const API_BASE = getApiBaseUrl();
 
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: apiUser.created_at ?? new Date().toISOString(),
             };
             rememberAuthSession();
+            resetApiState(dispatch);
             dispatch(loginSuccess({ user, role: user.role }));
             router.push(ROLE_ROUTES[user.role]);
             return;
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       credentials: "include",
     }).catch(() => {});
     forgetAuthSession();
+    resetApiState(dispatch);
     dispatch(logoutAction());
     router.push(redirectTo);
   }, [currentRole, dispatch, router]);

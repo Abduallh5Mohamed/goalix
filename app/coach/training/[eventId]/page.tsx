@@ -49,6 +49,7 @@ import {
   useUpsertTrainingAttendanceMutation,
   useUpsertTrainingEvaluationsMutation,
 } from "@/lib/store/api/calendarApi";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import type { TrainingParticipant } from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
@@ -180,6 +181,10 @@ const initialEvaluationMode = (): "all" | "search" => {
 export default function CoachTrainingEventPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
+  const { can } = useCoachPermissions();
+  const canTakeAttendance = can("can_take_attendance");
+  const canEvaluatePlayers = can("can_evaluate_players");
+  const canManageTraining = can("can_create_training");
   const { data: event, isLoading, isError, refetch } =
     useGetCoachTrainingEventQuery(eventId);
   const nowMs = useSyncExternalStore(
@@ -232,15 +237,19 @@ export default function CoachTrainingEventPage() {
       trainingEndMs > nowMs,
   );
   const showClosingWarning = Boolean(
-    warningWindowOpen && warningDismissedEndKey !== trainingEndKey,
+    warningWindowOpen &&
+      (canTakeAttendance || canEvaluatePlayers || canManageTraining) &&
+      warningDismissedEndKey !== trainingEndKey,
   );
   const evaluationEditable = Boolean(
+    canEvaluatePlayers &&
     event &&
       event.status !== "cancelled" &&
       event.status !== "postponed" &&
       nowMs >= trainingStartMs,
   );
   const attendanceEditable = Boolean(
+    canTakeAttendance &&
     event &&
       event.status !== "cancelled" &&
       event.status !== "postponed" &&
@@ -371,14 +380,14 @@ export default function CoachTrainingEventPage() {
         arrivalTime: arrivalTimes[player.id],
       }));
 
-    if (attendanceRecords.length) {
+    if (canTakeAttendance && attendanceRecords.length) {
       await upsertAttendance({
         eventId,
         records: attendanceRecords,
       }).unwrap();
     }
 
-    if (attendedPlayers.length) {
+    if (canEvaluatePlayers && attendedPlayers.length) {
       await upsertEvaluations({
         eventId,
         records: attendedPlayers.map((player) => {
@@ -421,6 +430,8 @@ export default function CoachTrainingEventPage() {
   }, [
     arrivalTimes,
     attendedPlayers,
+    canEvaluatePlayers,
+    canTakeAttendance,
     drafts,
     eventId,
     participants,
@@ -657,13 +668,13 @@ export default function CoachTrainingEventPage() {
           <QrAttendanceScanner
             mode="training"
             id={eventId}
-            disabled={!trainingOpen || savingAttendance}
+            disabled={!canTakeAttendance || !trainingOpen || savingAttendance}
             onScanSuccess={() => {
               void refetch();
             }}
           />
 
-          <Card className="border-border/50 bg-card">
+          {canTakeAttendance && <Card className="border-border/50 bg-card">
             <CardHeader>
               <CardTitle className="text-base">Attendance</CardTitle>
             </CardHeader>
@@ -735,9 +746,9 @@ export default function CoachTrainingEventPage() {
                 </div>
               ))}
             </CardContent>
-          </Card>
+          </Card>}
 
-          <Card className="border-border/50 bg-card">
+          {canEvaluatePlayers && <Card className="border-border/50 bg-card">
             <CardContent className="space-y-4 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -855,7 +866,7 @@ export default function CoachTrainingEventPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card>}
 
           <div className="space-y-4">
             {visibleEvaluationPlayers.map((player) => {
@@ -1105,21 +1116,23 @@ export default function CoachTrainingEventPage() {
                   : "-"}
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Extend by minutes</Label>
-              <Input
-                type="number"
-                min={1}
-                max={MAX_EXTENSION_MINUTES}
-                value={extensionMinutes}
-                onChange={(changeEvent) =>
-                  setExtensionMinutes(changeEvent.target.value)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Maximum total extension is one hour.
-              </p>
-            </div>
+            {canManageTraining && (
+              <div className="space-y-2">
+                <Label>Extend by minutes</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={MAX_EXTENSION_MINUTES}
+                  value={extensionMinutes}
+                  onChange={(changeEvent) =>
+                    setExtensionMinutes(changeEvent.target.value)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum total extension is one hour.
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -1134,17 +1147,19 @@ export default function CoachTrainingEventPage() {
               )}
               OK
             </Button>
-            <Button
-              type="button"
-              className="gap-2"
-              disabled={autoSaving || extendingTraining}
-              onClick={extendTrainingTime}
-            >
-              {extendingTraining && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
-              Extend Time
-            </Button>
+            {canManageTraining && (
+              <Button
+                type="button"
+                className="gap-2"
+                disabled={autoSaving || extendingTraining}
+                onClick={extendTrainingTime}
+              >
+                {extendingTraining && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Extend Time
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

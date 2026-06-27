@@ -35,17 +35,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/auth/auth-context";
 import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
-import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { getApiBaseUrl, getSocketBaseUrl } from "@/lib/api/baseUrl";
 
 const API_BASE = getApiBaseUrl();
-
-function getSocketBaseUrl() {
-  if (API_BASE) return API_BASE;
-  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") {
-    return API_BASE;
-  }
-  return `${window.location.protocol}//${window.location.hostname}:3000`;
-}
 
 type ChatRole = "admin" | "coach" | "player";
 type ContactType = "admin" | "coach" | "player";

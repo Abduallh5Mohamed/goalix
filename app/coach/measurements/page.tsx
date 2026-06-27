@@ -19,8 +19,9 @@ import {
   useGetCoachGroupsQuery,
   useSaveCoachMeasurementsMutation,
 } from "@/lib/store/api/coachApi";
+import { useGetCoachGroupsScopedQuery } from "@/lib/store/api/calendarApi";
 import { getInitials } from "@/lib/utils";
-import { CheckCircle2, Loader2, RefreshCw, Ruler, Save, Search } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Ruler, Save, Search, ShieldAlert } from "lucide-react";
 
 type MeasurementDraft = {
   heightCm: string;
@@ -69,8 +70,23 @@ const toTenPointValue = (value: number | undefined) => {
 };
 
 export default function CoachMeasurementsPage() {
-  const { data: groups = [], isLoading: loadingGroups, isError: groupsError, refetch } =
+  const { data: allGroups = [], isLoading: loadingGroups, isError: groupsError, refetch } =
     useGetCoachGroupsQuery();
+  const { data: permissionGroups = [], isLoading: loadingPermissions } =
+    useGetCoachGroupsScopedQuery();
+  const measurementGroupIds = useMemo(
+    () =>
+      new Set(
+        permissionGroups
+          .filter((group) => group.can_record_measurements)
+          .map((group) => group.group_id),
+      ),
+    [permissionGroups],
+  );
+  const groups = useMemo(
+    () => allGroups.filter((group) => measurementGroupIds.has(group.id)),
+    [allGroups, measurementGroupIds],
+  );
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [search, setSearch] = useState("");
   const [measurementMonth, setMeasurementMonth] = useState(() =>
@@ -179,6 +195,18 @@ export default function CoachMeasurementsPage() {
         ]}
       />
 
+      {!loadingGroups && !loadingPermissions && groups.length === 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-100">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+            <span>
+              Your assigned role does not allow recording measurements for any
+              group.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       {groupsError && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-red-300">
@@ -202,7 +230,7 @@ export default function CoachMeasurementsPage() {
                 setMeasurements({});
                 setSaved(false);
               }}
-              disabled={loadingGroups || groups.length === 0}
+              disabled={loadingGroups || loadingPermissions || groups.length === 0}
             >
               <SelectTrigger>
                 <SelectValue

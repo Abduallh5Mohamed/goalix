@@ -3,15 +3,13 @@ const fs = require('node:fs/promises');
 const { randomUUID } = require('node:crypto');
 const eventBus = require('../../events/eventBus');
 const COACHES_EVENTS = require('./coaches.events');
-const { BadRequestError, NotFoundError } = require('../../shared/errors');
-
-const legacyAssignmentRoleMap = {
-    head: 'head_coach',
-    assistant: 'assistant_coach',
-    goalkeeping: 'goalkeeping_coach',
-};
-
-const normalizeAssignmentRole = (role) => legacyAssignmentRoleMap[role] || role || 'assistant_coach';
+const { BadRequestError, ForbiddenError, NotFoundError } = require('../../shared/errors');
+const {
+    getAssignmentRole,
+    normalizeAssignmentRole,
+    permissionColumnsForRole,
+    publicRoleCatalog,
+} = require('./coach-assignment-roles');
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
@@ -93,6 +91,29 @@ class CoachesService {
         if (!coach) throw new NotFoundError('Coach (by userId)', userId);
         if (academyId && coach.academy_id !== academyId) throw new NotFoundError('Coach', coach.id);
         return coach;
+    }
+
+    listAssignmentRoles() {
+        return publicRoleCatalog();
+    }
+
+    async _assertCoachPermission(coach, academyId, permission, { groupIds = [], branchIds = [] } = {}) {
+        const scopes = await this.repo.findCoachPermissionScopes(coach.id, academyId, permission);
+        const allowedGroupIds = new Set(scopes.groups.map((row) => row.group_id));
+        const allowedBranchIds = new Set([
+            ...scopes.branches.map((row) => row.branch_id),
+            ...scopes.groups.map((row) => row.branch_id),
+        ]);
+
+        if (!groupIds.length && !branchIds.length && !allowedGroupIds.size && !allowedBranchIds.size) {
+            throw new ForbiddenError('Your assignment role does not allow this action');
+        }
+        if (groupIds.some((groupId) => !allowedGroupIds.has(groupId))) {
+            throw new ForbiddenError('Your assignment role does not allow this action for one or more groups');
+        }
+        if (branchIds.some((branchId) => !allowedBranchIds.has(branchId))) {
+            throw new ForbiddenError('Your assignment role does not allow this action for this branch');
+        }
     }
 
     _shapeGroup(group, players = []) {
@@ -197,9 +218,18 @@ class CoachesService {
 
     async createMyGroup(userId, academyId, data) {
         const coach = await this._getCurrentCoach(userId, academyId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
+            branchIds: [data.branchId],
+        });
         const group = await this.academyService.createGroup(academyId, data);
 
-        await this.assignGroup(coach.id, academyId, group.id, 'head');
+        const branchRule = (await this.repo.findCoachAccessRules(coach.id, academyId, data.branchId))[0];
+        await this.assignGroup(
+            coach.id,
+            academyId,
+            group.id,
+            branchRule?.role || 'head_coach',
+        );
 
         const detailed = await this.repo.findCoachGroupDetailed(coach.id, academyId, group.id);
         if (!detailed) throw new NotFoundError('Group', group.id);
@@ -208,7 +238,10 @@ class CoachesService {
     }
 
     async createMyBirthYear(userId, academyId, data) {
-        await this._getCurrentCoach(userId, academyId);
+        const coach = await this._getCurrentCoach(userId, academyId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
+            branchIds: [data.branchId],
+        });
         return this.academyService.createBirthYear(data, academyId);
     }
 
@@ -233,6 +266,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const group = await this.repo.findCoachGroupDetailed(coach.id, academyId, groupId);
         if (!group) throw new NotFoundError('Group', groupId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
+            groupIds: [groupId],
+        });
 
         const payload = {
             ...(data.name !== undefined ? { name: data.name } : {}),
@@ -250,6 +286,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const group = await this.repo.findCoachGroupDetailed(coach.id, academyId, groupId);
         if (!group) throw new NotFoundError('Group', groupId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
+            groupIds: [groupId],
+        });
 
         const now = new Date();
         await this.repo.db.transaction(async (trx) => {
@@ -335,6 +374,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const session = await this.repo.findCoachSessionById(coach.id, academyId, sessionId);
         if (!session) throw new NotFoundError('Session', sessionId);
+        await this._assertCoachPermission(coach, academyId, 'can_take_attendance', {
+            groupIds: [session.group_id],
+        });
 
         const players = await this.repo.findCoachPlayers(coach.id, academyId, session.group_id);
         const allowedPlayerIds = new Set(players.map((player) => player.id));
@@ -358,6 +400,10 @@ class CoachesService {
             const invalid = records.find((record) => !allowedPlayerIds.has(record.playerId));
             throw new NotFoundError('Player', invalid.playerId);
         }
+        const playerById = new Map(players.map((player) => [player.id, player]));
+        await this._assertCoachPermission(coach, academyId, 'can_record_measurements', {
+            groupIds: [...new Set(records.map((record) => playerById.get(record.playerId)?.group_id).filter(Boolean))],
+        });
 
         return this.repo.insertCoachMeasurements(validRecords, userId);
     }
@@ -488,6 +534,9 @@ class CoachesService {
         const players = await this.repo.findCoachPlayers(coach.id, academyId, data.groupId);
         const player = players.find((item) => item.id === data.playerId);
         if (!player) throw new NotFoundError('Player', data.playerId);
+        await this._assertCoachPermission(coach, academyId, 'can_evaluate_players', {
+            groupIds: [data.groupId || player.group_id],
+        });
 
         const score = (data.technicalScore + data.tacticalScore + data.physicalScore + data.mentalScore) / 4;
         const row = await this.repo.createCoachEvaluation({
@@ -732,6 +781,9 @@ class CoachesService {
     async createMyPlayerAssignment(userId, academyId, data) {
         const coach = await this._getCurrentCoach(userId, academyId);
         const targets = await this._resolvePlayerAssignmentTargets(coach.id, academyId, data);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_player_assignments', {
+            groupIds: targets.groupIds,
+        });
         const openAt = this._assignmentDate(data.openAt);
         const dueAt = this._assignmentDate(data.dueAt);
         const now = this._assignmentNowFloor();
@@ -779,6 +831,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const existing = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
         if (!existing) throw new NotFoundError('Player assignment', assignmentId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_player_assignments', {
+            groupIds: (existing.groups || []).map((group) => group.id),
+        });
         const shouldUpdateTargets =
             data.targetType !== undefined ||
             data.groupIds !== undefined ||
@@ -790,6 +845,11 @@ class CoachesService {
                 birthYearIds: data.birthYearIds || [],
             })
             : null;
+        if (targets) {
+            await this._assertCoachPermission(coach, academyId, 'can_manage_player_assignments', {
+                groupIds: targets.groupIds,
+            });
+        }
         const openAt = data.openAt === undefined ? undefined : this._assignmentDate(data.openAt);
         const dueAt = data.dueAt === undefined ? undefined : this._assignmentDate(data.dueAt);
         const now = this._assignmentNowFloor();
@@ -833,6 +893,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const existing = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
         if (!existing) throw new NotFoundError('Player assignment', assignmentId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_player_assignments', {
+            groupIds: (existing.groups || []).map((group) => group.id),
+        });
         await this.repo.deletePlayerAssignment(assignmentId);
         return { id: assignmentId, deleted: true };
     }
@@ -849,6 +912,9 @@ class CoachesService {
         const coach = await this._getCurrentCoach(userId, academyId);
         const assignment = await this.repo.findCoachPlayerAssignmentById(assignmentId, coach.id, academyId);
         if (!assignment) throw new NotFoundError('Player assignment', assignmentId);
+        await this._assertCoachPermission(coach, academyId, 'can_manage_player_assignments', {
+            groupIds: (assignment.groups || []).map((group) => group.id),
+        });
         const submissions = await this.repo.findPlayerAssignmentSubmissions(assignmentId);
         const submission = submissions.find((row) => row.id === submissionId);
         if (!submission) throw new NotFoundError('Player assignment submission', submissionId);
@@ -1053,12 +1119,15 @@ class CoachesService {
         const coach = await this.repo.findById(coachId);
         if (!coach) throw new NotFoundError('Coach', coachId);
         if (academyId && coach.academy_id !== academyId) throw new NotFoundError('Coach', coachId);
+        const normalizedRole = normalizeAssignmentRole(role);
+        const permissions = permissionColumnsForRole(normalizedRole);
+        if (!permissions) throw new BadRequestError('Unsupported coach assignment role');
 
         // Verify the group belongs to this academy before assigning
         const groupCheck = await this.repo.verifyGroupOwnership(groupId, academyId);
         if (!groupCheck) throw new NotFoundError('Group', groupId);
 
-        const assignment = await this.repo.assignGroup(coachId, groupId, role);
+        const assignment = await this.repo.assignGroup(coachId, groupId, normalizedRole, permissions);
         if (!coach.branch_id) await this.repo.updateCoachBranch(coachId, groupCheck.branch_id);
         await this.repo.db('coach_branch_assignments')
             .insert({ coach_id: coachId, branch_id: groupCheck.branch_id })
@@ -1098,7 +1167,13 @@ class CoachesService {
                 name: group.name,
                 role: normalizeAssignmentRole(group.role),
                 assignedAt: group.assigned_at,
+                permissions: Object.fromEntries(
+                    Object.entries(group)
+                        .filter(([key]) => key.startsWith('can_'))
+                        .map(([key, value]) => [key.replace(/^can_/, ''), value === true]),
+                ),
             })),
+            permissions: getAssignmentRole(rule.role)?.permissions || {},
             isInferred: !!rule.isInferred,
         };
     }
@@ -1145,6 +1220,9 @@ class CoachesService {
 
         const branch = await this.repo.verifyBranchOwnership(data.branchId, academyId);
         if (!branch) throw new NotFoundError('Branch', data.branchId);
+        const normalizedRole = normalizeAssignmentRole(data.role);
+        const permissions = permissionColumnsForRole(normalizedRole);
+        if (!permissions) throw new BadRequestError('Unsupported coach assignment role');
 
         let selectedGroupIds = [];
         let selectedBirthYearIds = [];
@@ -1181,7 +1259,8 @@ class CoachesService {
         const accessType = wantsGroups && wantsBirthYears ? 'both' : wantsGroups ? 'groups' : 'birth_years';
         const rule = await this.repo.replaceCoachAccessRule(coachId, data.branchId, {
             accessType,
-            role: data.role,
+            role: normalizedRole,
+            permissions,
             allGroups: wantsGroups ? data.allGroups : false,
             allBirthYears: wantsBirthYears ? data.allBirthYears : false,
             groupIds: wantsGroups && !data.allGroups ? selectedGroupIds : [],

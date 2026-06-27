@@ -109,6 +109,12 @@ function authRoutes(controller) {
         controller.me,
     );
 
+    router.get(
+        '/permissions',
+        authMiddleware,
+        controller.permissions,
+    );
+
     // ─── 2FA Routes ─────────────────────────────────────────────────────
 
     router.post(

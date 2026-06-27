@@ -383,7 +383,8 @@ export default function PlayerMatchesPage() {
   );
   const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
   const { data, isLoading, isFetching } = useGetPlayerMatchesQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });

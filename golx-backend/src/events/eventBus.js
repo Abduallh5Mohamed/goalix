@@ -42,7 +42,7 @@ class EventBus extends EventEmitter {
                 logger.error({ err, event, payload }, `Event handler error: ${event}`);
             }
         });
-        logger.info(`Subscribed to event: ${event}`);
+        logger.debug({ event }, 'Event handler subscribed');
     }
 }
 

@@ -19,6 +19,8 @@ const {
 function academyRoutes(controller) {
     const router = Router();
 
+    router.get('/public-profile', controller.getPublicProfile);
+
     // All academy routes require authentication
     router.use(authMiddleware);
 

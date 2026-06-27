@@ -1,20 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+  async redirects() {
     return [
       {
-        source: "/api/v1/:path*",
-        destination: `${apiUrl.replace(/\/$/, "")}/api/v1/:path*`,
+        source: "/admin/attendance/sessions",
+        destination: "/admin/calendar",
+        permanent: true,
       },
+    ];
+  },
+
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3000";
+    return [
       {
         source: "/uploads/:path*",
         destination: `${apiUrl.replace(/\/$/, "")}/uploads/:path*`,
-      },
-      {
-        source: "/socket.io/:path*",
-        destination: `${apiUrl.replace(/\/$/, "")}/socket.io/:path*`,
       },
     ];
   },

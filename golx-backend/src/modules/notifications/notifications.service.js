@@ -1,6 +1,15 @@
 const eventBus = require('../../events/eventBus');
 const NOTIFICATIONS_EVENTS = require('./notifications.events');
+const env = require('../../config/env');
+const { redis } = require('../../infrastructure/redis');
 const { NotFoundError } = require('../../shared/errors');
+const {
+    deleteCacheKeys,
+    getJsonCache,
+    setJsonCache,
+} = require('../../shared/redis-json-cache');
+
+const unreadCountCacheKey = (userId) => `goalix:notifications:${userId}:unread-count:v1`;
 
 class NotificationsService {
     constructor(notificationsRepository, notificationsQueue) {
@@ -13,7 +22,17 @@ class NotificationsService {
     }
 
     async getUnreadCount(user) {
-        return this.repo.getUnreadCount(user.userId, user);
+        const cacheKey = unreadCountCacheKey(user.userId);
+        const cached = await getJsonCache(redis, cacheKey);
+        if (cached !== undefined) return cached;
+
+        const count = await this.repo.getUnreadCount(user.userId, user);
+        await setJsonCache(redis, cacheKey, count, env.NOTIFICATION_UNREAD_COUNT_CACHE_TTL_SECONDS);
+        return count;
+    }
+
+    async _invalidateUnreadCounts(userIds) {
+        await deleteCacheKeys(redis, userIds.map(unreadCountCacheKey));
     }
 
     async sendNotification(data, academyId) {
@@ -31,6 +50,7 @@ class NotificationsService {
                 is_read: false,
             })))
             : [];
+        await this._invalidateUnreadCounts(recipients.map((recipient) => recipient.user_id));
 
         // Queue delivery via channel
         if (data.channel !== 'in_app') {
@@ -78,6 +98,7 @@ class NotificationsService {
     async markAsRead(notificationId, userId) {
         const notif = await this.repo.markAsRead(notificationId, userId);
         if (!notif) throw new NotFoundError('Notification', notificationId);
+        await this._invalidateUnreadCounts([userId]);
 
         eventBus.publish(NOTIFICATIONS_EVENTS.NOTIFICATION_READ, {
             notificationId,
@@ -89,6 +110,7 @@ class NotificationsService {
 
     async markAllAsRead(userId) {
         const count = await this.repo.markAllAsRead(userId);
+        await this._invalidateUnreadCounts([userId]);
         return { markedRead: count };
     }
 
@@ -98,3 +120,4 @@ class NotificationsService {
 }
 
 module.exports = NotificationsService;
+module.exports.unreadCountCacheKey = unreadCountCacheKey;

@@ -106,14 +106,19 @@ const totpService = new TotpService(authRepo);
 const academyService = new AcademyService(academyRepo);
 const playersService = new PlayersService(playersRepo);
 const coachesService = new CoachesService(coachesRepo, academyService);
-const attendanceService = new AttendanceService(attendanceRepo);
+const attendanceService = new AttendanceService(attendanceRepo, redis);
 const rankingsService = new RankingsService(rankingsRepo, rankingsQueue);
 const paymentsService = new PaymentsService(paymentsRepo, paymentsQueue);
 const notificationsService = new NotificationsService(notificationsRepo, notificationsQueue);
 const aiService = new AiService(aiRepo, aiQueue);
 const adminService = new AdminService(adminRepo);
 const customDataService = new CustomDataService(customDataRepo);
-const calendarService = new CalendarService(calendarRepo, playersService, customDataService);
+const calendarService = new CalendarService(
+    calendarRepo,
+    playersService,
+    customDataService,
+    redis,
+);
 const chatService = new ChatService(chatRepo);
 
 // ─── DI: wire controllers ────────────────────────────────────────────
@@ -137,21 +142,53 @@ const chatController = new ChatController(chatService);
 const app = express();
 app.locals.services = { chatService };
 
-if (process.env.NODE_ENV !== 'test') {
-    const matchDayInterval = setInterval(() => {
-        calendarService
-            .notifyDueMatchDays()
-            .catch((err) => logger.error({ err }, 'Match day notification scan failed'));
-        calendarService
-            .notifyDueAttendanceQrReminders()
-            .catch((err) => logger.error({ err }, 'Attendance QR reminder scan failed'));
-        calendarService
-            .notifyDueMonthlyMeasurementReminders()
-            .catch((err) => logger.error({ err }, 'Monthly measurement reminder scan failed'));
-    }, 60 * 1000);
-    matchDayInterval.unref?.();
+const backgroundAutomationsEnabled =
+    env.BACKGROUND_AUTOMATIONS_ENABLED ?? false;
+const injuryRiskAutomationEnabled =
+    env.INJURY_RISK_AUTOMATION_ENABLED ?? false;
 
+if (env.NODE_ENV !== 'test' && backgroundAutomationsEnabled) {
+    let reminderScanRunning = false;
+    const runReminderScans = async () => {
+        if (reminderScanRunning) {
+            logger.debug('Reminder scan skipped because the previous run is still active');
+            return;
+        }
+
+        reminderScanRunning = true;
+        try {
+            const scans = [
+                ['Match day', calendarService.notifyDueMatchDays()],
+                ['Attendance QR', calendarService.notifyDueAttendanceQrReminders()],
+                ['Monthly measurement', calendarService.notifyDueMonthlyMeasurementReminders()],
+            ];
+            const results = await Promise.allSettled(scans.map(([, task]) => task));
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    logger.error(
+                        { err: result.reason },
+                        `${scans[index][0]} notification scan failed`,
+                    );
+                }
+            });
+        } finally {
+            reminderScanRunning = false;
+        }
+    };
+
+    const matchDayInterval = setInterval(runReminderScans, 60 * 1000);
+    matchDayInterval.unref?.();
+}
+
+if (env.NODE_ENV !== 'test' && injuryRiskAutomationEnabled) {
+    let injuryRiskRunActive = false;
     const runWeeklyInjuryRisk = () => {
+        if (injuryRiskRunActive) {
+            logger.debug('Weekly injury risk automation skipped because the previous run is still active');
+            return;
+        }
+
+        injuryRiskRunActive = true;
         calendarService
             .runWeeklyInjuryRiskAutomation()
             .then((summary) => {
@@ -161,7 +198,10 @@ if (process.env.NODE_ENV !== 'test') {
                 }
                 logger.info({ summary }, 'Weekly injury risk automation completed');
             })
-            .catch((err) => logger.error({ err }, 'Weekly injury risk automation failed'));
+            .catch((err) => logger.error({ err }, 'Weekly injury risk automation failed'))
+            .finally(() => {
+                injuryRiskRunActive = false;
+            });
     };
     const injuryRiskInitialDelay = Number(
         process.env.INJURY_RISK_WEEKLY_INITIAL_DELAY_MS || 30 * 1000,
@@ -185,6 +225,29 @@ app.use((req, res, next) => {
     req.id = req.get('x-request-id') || randomUUID();
     res.setHeader('X-Request-ID', req.id);
     next();
+});
+
+app.use((req, res, next) => {
+    if (env.SLOW_REQUEST_LOG_MS <= 0) return next();
+    const startedAt = process.hrtime.bigint();
+
+    res.on('finish', () => {
+        const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        if (durationMs < env.SLOW_REQUEST_LOG_MS) return;
+
+        logger.warn(
+            {
+                requestId: req.id,
+                method: req.method,
+                url: req.originalUrl,
+                statusCode: res.statusCode,
+                durationMs: Number(durationMs.toFixed(2)),
+            },
+            'Slow HTTP request',
+        );
+    });
+
+    return next();
 });
 
 app.use(helmet({
@@ -310,15 +373,16 @@ app.use('/api/v1/payments', paymentsRoutes(paymentsController));
 app.use('/api/v1/notifications', notificationsRoutes(notificationsController));
 app.use('/api/v1/ai', aiRoutes(aiController));
 app.use('/api/v1/chat', chatRoutes(chatController));
+app.use('/api/v1/admin', adminRoutes(adminController));
 app.use('/api/v1/admin', adminCalendarRoutes(calendarController));
 app.use('/api/v1/admin', customDataRoutes(customDataController, 'admin'));
 app.use('/api/v1/coach', coachCalendarRoutes(calendarController));
 app.use('/api/v1/coach', customDataRoutes(customDataController, 'coach'));
 app.use('/api/v1/player', playerCalendarRoutes(calendarController));
 app.use('/api/v1/parent', parentCalendarRoutes(calendarController));
-app.use('/api/v1/admin', adminRoutes(adminController));
 
 // Role-based aliases matching the product API contract without the /v1 prefix.
+app.use('/api/admin', adminRoutes(adminController));
 app.use('/api/admin', adminCalendarRoutes(calendarController));
 app.use('/api/admin', customDataRoutes(customDataController, 'admin'));
 app.use('/api/coach', coachCalendarRoutes(calendarController));

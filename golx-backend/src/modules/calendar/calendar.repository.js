@@ -1,4 +1,7 @@
 const { emitNotifications } = require("../../realtime/chat.realtime");
+const {
+  PERMISSION_COLUMNS,
+} = require("../coaches/coach-assignment-roles");
 
 class CalendarRepository {
   constructor(db) {
@@ -58,10 +61,45 @@ class CalendarRepository {
         "cga.can_create_training",
         "cga.can_take_attendance",
         "cga.can_evaluate_players",
+        "cga.can_record_measurements",
+        "cga.can_manage_player_assignments",
+        "cga.can_manage_players",
+        "cga.can_manage_groups",
+        "cga.can_manage_matches",
+        "cga.can_view_injury_risk",
+        "cga.can_run_injury_risk",
+        "cga.can_manage_injury_risk",
         "ag.name as group_name",
         "ag.branch_id",
         "ab.name as branch_name",
       );
+  }
+
+  async findCoachEffectivePermissions(coachId, academyId) {
+    const [groupAssignments, branchRules] = await Promise.all([
+      this.db("coach_group_assignments as cga")
+        .join("academy_groups as ag", "cga.group_id", "ag.id")
+        .join("academy_branches as ab", "ag.branch_id", "ab.id")
+        .where("cga.coach_id", coachId)
+        .where("ab.academy_id", academyId)
+        .whereNull("ag.deleted_at")
+        .whereNull("ab.deleted_at")
+        .select(PERMISSION_COLUMNS.map((column) => `cga.${column}`)),
+      this.db("coach_branch_access_rules as car")
+        .join("academy_branches as ab", "car.branch_id", "ab.id")
+        .where("car.coach_id", coachId)
+        .where("ab.academy_id", academyId)
+        .whereNull("ab.deleted_at")
+        .select(PERMISSION_COLUMNS.map((column) => `car.${column}`)),
+    ]);
+
+    const assignments = [...groupAssignments, ...branchRules];
+    return Object.fromEntries(
+      PERMISSION_COLUMNS.map((column) => [
+        column,
+        assignments.some((assignment) => assignment[column] === true),
+      ]),
+    );
   }
 
   async findCoachAssignedBranches(coachId, academyId) {
@@ -73,7 +111,10 @@ class CalendarRepository {
       .select("ab.*");
   }
 
-  _coachAccessibleBirthYearIdsQuery(coachId) {
+  _coachAccessibleBirthYearIdsQuery(coachId, permission = null) {
+    if (permission && !PERMISSION_COLUMNS.includes(permission)) {
+      throw new Error(`Unsupported coach assignment permission: ${permission}`);
+    }
     return this.db
       .select("birth_year_id")
       .from(function accessibleBirthYears() {
@@ -88,6 +129,9 @@ class CalendarRepository {
           .whereIn("car_all.access_type", ["birth_years", "both"])
           .where("car_all.all_birth_years", true)
           .whereNull("aby_all.deleted_at")
+          .modify((query) => {
+            if (permission) query.where(`car_all.${permission}`, true);
+          })
           .union(function selectedBirthYears() {
             this.select("carb.birth_year_id")
               .from("coach_branch_access_rules as car_selected")
@@ -97,7 +141,10 @@ class CalendarRepository {
                 "car_selected.id",
               )
               .where("car_selected.coach_id", coachId)
-              .whereIn("car_selected.access_type", ["birth_years", "both"]);
+              .whereIn("car_selected.access_type", ["birth_years", "both"])
+              .modify((query) => {
+                if (permission) query.where(`car_selected.${permission}`, true);
+              });
           })
           .union(function groupBirthYears() {
             this.select("gby.birth_year_id")
@@ -105,7 +152,10 @@ class CalendarRepository {
               .join("academy_groups as ag", "cga.group_id", "ag.id")
               .join("group_birth_years as gby", "gby.group_id", "ag.id")
               .where("cga.coach_id", coachId)
-              .whereNull("ag.deleted_at");
+              .whereNull("ag.deleted_at")
+              .modify((query) => {
+                if (permission) query.where(`cga.${permission}`, true);
+              });
           })
           .as("coach_accessible_birth_years");
       });
@@ -114,12 +164,15 @@ class CalendarRepository {
   async findCoachAccessibleBirthYears(
     coachId,
     academyId,
-    { branchId, birthYear } = {},
+    { branchId, birthYear, permission } = {},
   ) {
     return this.db("academy_birth_years as aby")
       .join("academy_branches as ab", "aby.branch_id", "ab.id")
       .where("ab.academy_id", academyId)
-      .whereIn("aby.id", this._coachAccessibleBirthYearIdsQuery(coachId))
+      .whereIn(
+        "aby.id",
+        this._coachAccessibleBirthYearIdsQuery(coachId, permission),
+      )
       .whereNull("aby.deleted_at")
       .whereNull("ab.deleted_at")
       .modify((q) => {
@@ -243,13 +296,21 @@ class CalendarRepository {
   async findCoachScopedPlayers(
     coachId,
     academyId,
-    { onlyComplete = false, customFieldId, customValue, customOptionId } = {},
+    {
+      onlyComplete = false,
+      customFieldId,
+      customValue,
+      customOptionId,
+      permission,
+    } = {},
   ) {
     const [assignments, birthYears] = await Promise.all([
       this.findCoachAssignedGroups(coachId, academyId),
-      this.findCoachAccessibleBirthYears(coachId, academyId),
+      this.findCoachAccessibleBirthYears(coachId, academyId, { permission }),
     ]);
-    const groupIds = assignments.map((assignment) => assignment.group_id);
+    const groupIds = assignments
+      .filter((assignment) => !permission || assignment[permission] === true)
+      .map((assignment) => assignment.group_id);
     if (!groupIds.length && !birthYears.length) return [];
 
     return this.db("player_profiles as pp")
@@ -351,14 +412,16 @@ class CalendarRepository {
     coachId,
     academyId,
     playerIds,
-    { onlyComplete = false } = {},
+    { onlyComplete = false, permission } = {},
   ) {
     if (!playerIds.length) return [];
     const [assignments, birthYears] = await Promise.all([
       this.findCoachAssignedGroups(coachId, academyId),
-      this.findCoachAccessibleBirthYears(coachId, academyId),
+      this.findCoachAccessibleBirthYears(coachId, academyId, { permission }),
     ]);
-    const groupIds = assignments.map((assignment) => assignment.group_id);
+    const groupIds = assignments
+      .filter((assignment) => !permission || assignment[permission] === true)
+      .map((assignment) => assignment.group_id);
     if (!groupIds.length && !birthYears.length) return [];
 
     return this.db("player_profiles as pp")

@@ -14,6 +14,18 @@ class AdminController {
         }
     };
 
+    getReportsOverview = async (req, res, next) => {
+        try {
+            const data = await this.service.getReportsOverview(
+                req.user.academyId || null,
+                req.query,
+            );
+            res.json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
     // ─── Pending Registrations ───────────────────────────────────────────
 
     getPendingRegistrations = async (req, res, next) => {
@@ -31,6 +43,19 @@ class AdminController {
         try {
             const data = await this.service.getAccessControl(req.user.academyId || null);
             res.json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    createAccessUser = async (req, res, next) => {
+        try {
+            const data = await this.service.createAccessUser(
+                req.user.academyId || null,
+                req.user.userId,
+                req.body,
+            );
+            res.status(201).json(ApiResponse.success(data));
         } catch (err) {
             next(err);
         }
@@ -67,6 +92,34 @@ class AdminController {
         try {
             const result = await this.service.deleteRole(
                 req.params.id,
+                req.user.academyId || null,
+                req.user.userId,
+            );
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    assignRoleToUser = async (req, res, next) => {
+        try {
+            const result = await this.service.assignRoleToUser(
+                req.params.id,
+                req.params.userId,
+                req.user.academyId || null,
+                req.user.userId,
+            );
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    revokeRoleFromUser = async (req, res, next) => {
+        try {
+            const result = await this.service.revokeRoleFromUser(
+                req.params.id,
+                req.params.userId,
                 req.user.academyId || null,
                 req.user.userId,
             );

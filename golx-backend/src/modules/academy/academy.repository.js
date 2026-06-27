@@ -5,6 +5,21 @@ class AcademyRepository extends BaseRepository {
         super('academy_academies', db);
     }
 
+    async findPublicAcademyProfile() {
+        return this.db('academy_academies')
+            .whereNull('deleted_at')
+            .orderBy('created_at', 'asc')
+            .first(
+                'id',
+                'name',
+                'email',
+                'phone',
+                'address',
+                'logo_url',
+                'settings',
+            );
+    }
+
     // ─── Branches ───────────────────────────────────────────────────────
     async findBranches(academyId, { page = 1, limit = 20 } = {}) {
         const query = this.db('academy_branches')
@@ -41,23 +56,42 @@ class AcademyRepository extends BaseRepository {
         return this.db('academy_branches').where({ id }).update({ deleted_at: new Date() });
     }
 
-    async branchHasActiveRelations(branchId) {
+    async getBranchActiveRelations(branchId) {
+        const countId = (query) => query.count({ count: 'id' }).first();
+        const countSessionId = (query) => query.count({ count: 's.id' }).first();
+        const countMatchId = (query) => query.count({ count: 'm.id' }).first();
+
         const [birthYears, groups, coaches, players, sessions, matches] = await Promise.all([
-            this.db('academy_birth_years').where({ branch_id: branchId }).whereNull('deleted_at').first('id'),
-            this.db('academy_groups').where({ branch_id: branchId }).whereNull('deleted_at').first('id'),
-            this.db('coach_profiles').where({ branch_id: branchId }).whereNull('deleted_at').first('id'),
-            this.db('player_profiles').where({ branch_id: branchId }).whereNull('deleted_at').first('id'),
-            this.db('attendance_sessions as s')
-                .join('academy_groups as ag', 's.group_id', 'ag.id')
-                .where('ag.branch_id', branchId)
-                .first('s.id'),
-            this.db('matches as m')
-                .leftJoin('academy_groups as team', 'm.team_id', 'team.id')
-                .leftJoin('academy_groups as age_group', 'm.age_group_id', 'age_group.id')
-                .where((q) => q.where('team.branch_id', branchId).orWhere('age_group.branch_id', branchId))
-                .first('m.id'),
+            countId(this.db('academy_birth_years').where({ branch_id: branchId }).whereNull('deleted_at')),
+            countId(this.db('academy_groups').where({ branch_id: branchId }).whereNull('deleted_at')),
+            countId(this.db('coach_profiles').where({ branch_id: branchId }).whereNull('deleted_at')),
+            countId(this.db('player_profiles').where({ branch_id: branchId }).whereNull('deleted_at')),
+            countSessionId(
+                this.db('attendance_sessions as s')
+                    .join('academy_groups as ag', 's.group_id', 'ag.id')
+                    .where('ag.branch_id', branchId),
+            ),
+            countMatchId(
+                this.db('matches as m')
+                    .leftJoin('academy_groups as team', 'm.team_id', 'team.id')
+                    .leftJoin('academy_groups as age_group', 'm.age_group_id', 'age_group.id')
+                    .where((q) => q.where('team.branch_id', branchId).orWhere('age_group.branch_id', branchId)),
+            ),
         ]);
-        return !!(birthYears || groups || coaches || players || sessions || matches);
+
+        return [
+            { key: 'birthYears', label: 'birth years', count: Number(birthYears?.count || 0) },
+            { key: 'groups', label: 'groups', count: Number(groups?.count || 0) },
+            { key: 'coaches', label: 'coaches', count: Number(coaches?.count || 0) },
+            { key: 'players', label: 'players', count: Number(players?.count || 0) },
+            { key: 'sessions', label: 'attendance sessions', count: Number(sessions?.count || 0) },
+            { key: 'matches', label: 'matches', count: Number(matches?.count || 0) },
+        ].filter((relation) => relation.count > 0);
+    }
+
+    async branchHasActiveRelations(branchId) {
+        const relations = await this.getBranchActiveRelations(branchId);
+        return relations.length > 0;
     }
 
     // ─── Groups ─────────────────────────────────────────────────────────

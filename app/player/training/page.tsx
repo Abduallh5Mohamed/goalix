@@ -251,7 +251,8 @@ export default function PlayerTrainingPage() {
   );
   const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
   const trainingsQuery = useGetPlayerTrainingsQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
@@ -260,7 +261,8 @@ export default function PlayerTrainingPage() {
     refetchOnMountOrArgChange: true,
   });
   const attendanceQuery = useGetPlayerAttendanceQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval: 15000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });

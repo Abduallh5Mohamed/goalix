@@ -14,6 +14,13 @@ class AcademyController {
         } catch (err) { next(err); }
     };
 
+    getPublicProfile = async (_req, res, next) => {
+        try {
+            const profile = await this.service.getPublicAcademyProfile();
+            res.json(ApiResponse.success(profile));
+        } catch (err) { next(err); }
+    };
+
     updateAcademy = async (req, res, next) => {
         try {
             const academy = await this.service.updateAcademy(req.user.academyId, req.body);

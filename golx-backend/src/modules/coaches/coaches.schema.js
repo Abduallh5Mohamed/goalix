@@ -1,4 +1,7 @@
 const { z } = require("zod");
+const {
+  COACH_ASSIGNMENT_ROLE_VALUES,
+} = require("./coach-assignment-roles");
 
 const uuidParam = z.object({ id: z.string().uuid() });
 const groupParam = z.object({ groupId: z.string().uuid() });
@@ -12,23 +15,7 @@ const sessionParam = z.object({ sessionId: z.string().uuid() });
 const assignmentParam = z.object({ assignmentId: z.string().uuid() });
 const playerAssignmentSubmissionParam = assignmentParam.extend({ submissionId: z.string().uuid() });
 
-const coachRoleSchema = z.enum([
-  "head_coach",
-  "assistant_coach",
-  "goalkeeping_coach",
-  "fitness_coach",
-  "technical_coach",
-  "tactical_coach",
-  "goalkeeping_assistant",
-  "performance_analyst",
-  "team_manager",
-  "physiotherapist",
-  "rehabilitation_coach",
-  "scout",
-  "academy_director",
-  "youth_coach",
-  "conditioning_coach",
-]);
+const coachRoleSchema = z.enum(COACH_ASSIGNMENT_ROLE_VALUES);
 
 const createCoachSchema = z.object({
   userId: z.string().uuid(),

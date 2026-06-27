@@ -200,7 +200,7 @@ export interface CoachRow {
   is_active: boolean | null;
   branch_id?: string | null;
   branch_name?: string | null;
-  branches?: Array<{ id: string; name: string }>;
+  branches?: Array<{ id: string; name: string; role: CoachAssignmentRole }>;
   specialization: string | null;
   bio?: string | null;
   experience_years: number | null;
@@ -235,6 +235,18 @@ export interface CoachGroupAssignment {
 }
 
 export type CoachAccessType = "groups" | "birth_years" | "both";
+export type CoachAssignmentPermissionKey =
+  | "create_training"
+  | "take_attendance"
+  | "evaluate_players"
+  | "record_measurements"
+  | "manage_player_assignments"
+  | "manage_players"
+  | "manage_groups"
+  | "manage_matches"
+  | "view_injury_risk"
+  | "run_injury_risk"
+  | "manage_injury_risk";
 export type CoachAssignmentRole =
   | "head_coach"
   | "assistant_coach"
@@ -251,6 +263,17 @@ export type CoachAssignmentRole =
   | "academy_director"
   | "youth_coach"
   | "conditioning_coach";
+
+export interface CoachAssignmentRoleDefinition {
+  value: CoachAssignmentRole;
+  label: string;
+  description: string;
+  permissions: Array<{
+    key: CoachAssignmentPermissionKey;
+    label: string;
+    granted: boolean;
+  }>;
+}
 
 export interface CoachAccessRule {
   id: string | null;
@@ -277,7 +300,9 @@ export interface CoachAccessRule {
     name: string;
     role: string;
     assignedAt: string;
+    permissions: Partial<Record<CoachAssignmentPermissionKey, boolean>>;
   }>;
+  permissions: Record<CoachAssignmentPermissionKey, boolean>;
   isInferred: boolean;
 }
 
@@ -404,28 +429,19 @@ export interface Invoice {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 export interface AttendanceOverview {
-  totalSessions: number;
+  totalTrainings: number;
   avgRate: number;
   presentCount: number;
   absentCount: number;
   lateCount: number;
   excusedCount: number;
-  byGroup: { groupName: string; rate: number }[];
-}
-
-export interface AttendanceSession {
-  id: string;
-  group_id: string;
-  group_name?: string | null;
-  coach_id: string | null;
-  coach_name?: string | null;
-  session_date: string;
-  start_time?: string | null;
-  end_time?: string | null;
-  location?: string | null;
-  session_type?: string | null;
-  status: string;
-  notes: string | null;
+  injuredCount: number;
+  byGroup: {
+    groupId: string;
+    groupName: string;
+    rate: number;
+    total: number;
+  }[];
 }
 
 // ─── Rankings ────────────────────────────────────────────────────────────────
@@ -685,9 +701,34 @@ export interface AdminRole {
   permissionAssignments: AdminRolePermissionAssignment[];
 }
 
+export interface AdminUserRoleAssignment {
+  id: string;
+  roleId: string;
+  scopeBranchId: string | null;
+  scopeGroupId: string | null;
+  grantedAt: string;
+  expiresAt: string | null;
+}
+
+export interface AdminAccessUser {
+  id: string;
+  fullName: string;
+  email: string | null;
+  username: string | null;
+  phone: string | null;
+  role: "admin" | "coach" | "player" | "parent";
+  isActive: boolean;
+  address?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  notes?: string | null;
+  roleAssignments: AdminUserRoleAssignment[];
+}
+
 export interface AdminAccessControl {
   permissionGroups: AdminPermissionGroup[];
   roles: AdminRole[];
+  users: AdminAccessUser[];
 }
 
 export interface AdminRoleInput {
@@ -698,10 +739,37 @@ export interface AdminRoleInput {
   permissionIds: string[];
 }
 
+export interface CreateAdminAccessUserInput {
+  fullName: string;
+  accountRole: "admin" | "coach" | "parent";
+  email?: string | null;
+  phone: string;
+  username: string;
+  password: string;
+  address?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  notes?: string | null;
+  roleId?: string | null;
+}
+
+export interface CreateAdminAccessUserResult {
+  message: string;
+  user: AdminAccessUser;
+  users: AdminAccessUser[];
+  roles: AdminRole[];
+}
+
+export interface CurrentPermissions {
+  permissions: string[];
+  source: "iam" | "legacy" | "legacy_admin";
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 export const adminApi = createApi({
   reducerPath: "adminApi",
   baseQuery: baseQueryWithReauth,
+  keepUnusedDataFor: 300,
   tagTypes: [
     "Players",
     "Coaches",
@@ -710,13 +778,13 @@ export const adminApi = createApi({
     "Subscriptions",
     "Invoices",
     "Attendance",
-    "Sessions",
     "Rankings",
     "Notifications",
     "Branches",
     "BirthYears",
     "Groups",
     "CurrentUser",
+    "CurrentPermissions",
     "Academy",
     "AccessControl",
   ],
@@ -877,24 +945,7 @@ export const adminApi = createApi({
       query: () => "/attendance/overview",
       transformResponse: (res: { data: AttendanceOverview }) => res.data,
       providesTags: ["Attendance"],
-    }),
-
-    // ── Sessions ──────────────────────────────────────────────────────────
-    getSessions: builder.query<
-      PaginatedResponse<AttendanceSession>,
-      { page?: number; limit?: number; groupId?: string }
-    >({
-      query: ({ page = 1, limit = 20, groupId } = {}) => {
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(limit),
-        });
-        if (groupId) params.set("groupId", groupId);
-        return `/attendance/sessions?${params}`;
-      },
-      transformResponse: (res: ApiListResponse<AttendanceSession>) =>
-        toPaginated(res),
-      providesTags: ["Sessions"],
+      keepUnusedDataFor: 30,
     }),
 
     // ── Rankings ─────────────────────────────────────────────────────────
@@ -1092,6 +1143,12 @@ export const adminApi = createApi({
       providesTags: ["Coaches", "Groups"],
     }),
 
+    getCoachAccessRoles: builder.query<CoachAssignmentRoleDefinition[], void>({
+      query: () => "/coaches/access-roles",
+      transformResponse: (res: { data: CoachAssignmentRoleDefinition[] }) => res.data,
+      keepUnusedDataFor: 300,
+    }),
+
     upsertCoachAccess: builder.mutation<
       CoachAccessRule,
       UpsertCoachAccessInput
@@ -1232,6 +1289,20 @@ export const adminApi = createApi({
       invalidatesTags: ["AccessControl"],
     }),
 
+    createAdminAccessUser: builder.mutation<
+      CreateAdminAccessUserResult,
+      CreateAdminAccessUserInput
+    >({
+      query: (body) => ({
+        url: "/admin/settings/users",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: CreateAdminAccessUserResult }) =>
+        res.data,
+      invalidatesTags: ["AccessControl", "CurrentPermissions"],
+    }),
+
     updateAdminRole: builder.mutation<
       AdminRole,
       { id: string; body: Partial<AdminRoleInput> }
@@ -1251,6 +1322,30 @@ export const adminApi = createApi({
       invalidatesTags: ["AccessControl"],
     }),
 
+    assignAdminRoleToUser: builder.mutation<
+      { message: string },
+      { roleId: string; userId: string }
+    >({
+      query: ({ roleId, userId }) => ({
+        url: `/admin/settings/roles/${roleId}/users/${userId}`,
+        method: "POST",
+      }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["AccessControl", "CurrentPermissions"],
+    }),
+
+    revokeAdminRoleFromUser: builder.mutation<
+      { message: string },
+      { roleId: string; userId: string }
+    >({
+      query: ({ roleId, userId }) => ({
+        url: `/admin/settings/roles/${roleId}/users/${userId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["AccessControl", "CurrentPermissions"],
+    }),
+
     // ── Academy info ─────────────────────────────────────────────────────
     getAcademy: builder.query<AcademyInfo, void>({
       query: () => "/academy",
@@ -1268,6 +1363,13 @@ export const adminApi = createApi({
       query: () => "/auth/me",
       transformResponse: (res: { data: AuthUser }) => res.data,
       providesTags: ["CurrentUser"],
+    }),
+
+    getCurrentPermissions: builder.query<CurrentPermissions, string | void>({
+      query: () => "/auth/permissions",
+      transformResponse: (res: { data: CurrentPermissions }) => res.data,
+      providesTags: ["CurrentPermissions"],
+      keepUnusedDataFor: 0,
     }),
 
     setup2FA: builder.mutation<Setup2FAResponse, void>({
@@ -1315,7 +1417,6 @@ export const {
   useGetSubscriptionsQuery,
   useGetInvoicesQuery,
   useGetAttendanceOverviewQuery,
-  useGetSessionsQuery,
   useGetWeeklyRankingsQuery,
   useGetMonthlyRankingsQuery,
   useGetNotificationsQuery,
@@ -1335,6 +1436,7 @@ export const {
   useGetCoachByIdQuery,
   useGetCoachGroupsQuery,
   useAssignCoachToGroupMutation,
+  useGetCoachAccessRolesQuery,
   useGetCoachAccessQuery,
   useUpsertCoachAccessMutation,
   useRemoveCoachAccessMutation,
@@ -1350,11 +1452,15 @@ export const {
   useUploadCoachAssignmentFileMutation,
   useGetAdminAccessControlQuery,
   useCreateAdminRoleMutation,
+  useCreateAdminAccessUserMutation,
   useUpdateAdminRoleMutation,
   useDeleteAdminRoleMutation,
+  useAssignAdminRoleToUserMutation,
+  useRevokeAdminRoleFromUserMutation,
   useGetAcademyQuery,
   useUpdateAcademyMutation,
   useGetCurrentUserQuery,
+  useGetCurrentPermissionsQuery,
   useSetup2FAMutation,
   useVerifySetup2FAMutation,
   useDisable2FAMutation,

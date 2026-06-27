@@ -32,12 +32,12 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 48px",
-          fontFamily: "'Inter',sans-serif",
+          fontFamily: "var(--font-inter),sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
           <Link href="/" aria-label="Goalix home">
-            <Image src="/Logo.png" alt="Goalix" width={110} height={32} priority style={{ objectFit: "contain" }} />
+            <Image src="/Logo.png" alt="Goalix" width={1536} height={1024} priority style={{ width: "110px", height: "auto", objectFit: "contain" }} />
           </Link>
           <div className="goalix-login-nav-links" style={{ display: "flex", gap: 36 }}>
             {navLinks.map((link, index) => (
@@ -84,7 +84,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         <div className="goalix-login-top-actions" style={{ display: "flex", gap: 16 }}>
           <button
             onClick={() => router.push("/login")}
-            style={{ background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)", border: "none", borderRadius: 12, padding: "7px 22px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "'Inter',sans-serif" }}
+            style={{ background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)", border: "none", borderRadius: 12, padding: "7px 22px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-inter),sans-serif" }}
           >
             Log in
             <ArrowRight size={15} />
@@ -114,7 +114,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         {/* GOALIX G badge + soccer ball */}
         <div className="goalix-login-brand-cluster" aria-hidden="true">
           <div className="goalix-login-g-badge">
-            <Image src="/Logo.png" alt="" width={80} height={24} style={{ objectFit: "contain" }} />
+            <Image src="/Logo.png" alt="" width={1536} height={1024} style={{ width: "80px", height: "auto", objectFit: "contain" }} />
           </div>
           <div className="goalix-login-soccer-ball">
             <div className="goalix-login-ball-3d" />
@@ -156,7 +156,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           />
         </svg>
         <div className="goalix-login-mobile-brand">
-          <Image src="/Logo.png" alt="Goalix" width={130} height={39} priority />
+          <Image src="/Logo.png" alt="Goalix" width={1536} height={1024} priority style={{ width: "130px", height: "auto" }} />
           <Link href="/">Home</Link>
         </div>
         {children}

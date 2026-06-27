@@ -7,6 +7,7 @@ import { loginSuccess, logout } from "./slices/authSlice";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { resetApiState } from "./resetApiState";
 
 const API_BASE = getApiBaseUrl();
 
@@ -40,6 +41,7 @@ function SessionRefresher() {
     ran.current = true;
 
     if (!hasAuthSessionMarker()) {
+      resetApiState(store.dispatch);
       store.dispatch(logout());
       return;
     }
@@ -53,16 +55,19 @@ function SessionRefresher() {
         const apiUser = json?.data?.user as Record<string, unknown> | undefined;
         if (!apiUser) {
           forgetAuthSession();
+          resetApiState(store.dispatch);
           store.dispatch(logout());
           return;
         }
 
         const user = mapApiUser(apiUser);
         rememberAuthSession();
+        resetApiState(store.dispatch);
         store.dispatch(loginSuccess({ user, role: user.role }));
       })
       .catch(() => {
         forgetAuthSession();
+        resetApiState(store.dispatch);
         store.dispatch(logout());
       });
   }, []);

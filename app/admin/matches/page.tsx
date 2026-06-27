@@ -97,6 +97,7 @@ export default function AdminMatchesPage() {
     },
     {
       pollingInterval: 15000,
+      skipPollingIfUnfocused: true,
       refetchOnFocus: true,
       refetchOnMountOrArgChange: true,
     },

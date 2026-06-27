@@ -22,6 +22,7 @@ import { rememberAuthSession } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resetApiState } from "@/lib/store/resetApiState";
 
 type Step = "credentials" | "totp" | "backup";
 
@@ -77,6 +78,7 @@ export default function AdminLoginPage() {
   const completeLogin = (apiUser: ApiUser) => {
     const user = mapApiUser(apiUser, identifier.trim());
     rememberAuthSession();
+    resetApiState(dispatch);
     dispatch(loginSuccess({ user, role: user.role }));
     router.push(ROLE_ROUTES[user.role]);
   };
@@ -84,7 +86,7 @@ export default function AdminLoginPage() {
   const handleCredentials = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!identifier.trim() || !password) {
-      setError("Enter the admin email or coach username and password.");
+      setError("Enter the staff email or username and password.");
       return;
     }
 
@@ -224,13 +226,13 @@ export default function AdminLoginPage() {
         {step === "credentials" && (
           <form onSubmit={handleCredentials} className="goalix-login-form">
             <div className="goalix-login-field">
-              <Label htmlFor="staff-identifier">Admin email / Coach username</Label>
+              <Label htmlFor="staff-identifier">Staff email / username</Label>
               <div className="goalix-login-password">
                 <UserCheck aria-hidden="true" />
                 <Input
                   id="staff-identifier"
                   type="text"
-                  placeholder="admin@example.com or coach.username"
+                  placeholder="admin@example.com or staff.username"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
                   autoComplete="username"

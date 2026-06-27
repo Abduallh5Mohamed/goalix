@@ -4,6 +4,17 @@ const createNotificationsWorker = require('./notification.worker');
 const createPaymentsWorker = require('./payment.worker');
 const createAiWorker = require('./ai.worker');
 
+function buildRedisConnection(redisUrl) {
+    const url = new URL(redisUrl);
+    return {
+        host: url.hostname,
+        port: parseInt(url.port || '6379', 10),
+        ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
+        ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+        ...(url.protocol === 'rediss:' ? { tls: {} } : {}),
+    };
+}
+
 /**
  * Initialize all BullMQ workers.
  * Call this after Redis is connected.
@@ -28,4 +39,4 @@ async function stopWorkers(workers) {
     logger.info('All BullMQ workers stopped');
 }
 
-module.exports = { startWorkers, stopWorkers };
+module.exports = { buildRedisConnection, startWorkers, stopWorkers };

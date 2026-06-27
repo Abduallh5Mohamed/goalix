@@ -27,6 +27,34 @@ import {
   type Branch,
 } from "@/lib/store/api/adminApi";
 
+type ApiErrorDetail = {
+  reason?: string;
+  blockers?: Array<{ key?: string; label?: string; count?: number }>;
+  solution?: string;
+};
+
+type ApiMutationError = {
+  data?: {
+    error?: {
+      message?: string;
+      details?: ApiErrorDetail[];
+    };
+  };
+};
+
+function getApiError(error: unknown) {
+  const apiError = error as ApiMutationError | undefined;
+  const detail = apiError?.data?.error?.details?.[0];
+
+  return {
+    message: apiError?.data?.error?.message ?? "The request could not be completed.",
+    solution:
+      detail?.solution ??
+      "Review the linked records, remove the dependency that blocks this action, then try again.",
+    blockers: detail?.blockers ?? [],
+  };
+}
+
 const baseColumns: Column<Branch>[] = [
   {
     key: "name",
@@ -163,11 +191,17 @@ export default function BranchesPage() {
 
   const canSubmit = form.name.trim().length > 0 && !isCreating;
   const deleteName = deleteTarget?.name ?? "";
+  const deleteApiError = deleteError ? getApiError(deleteError) : null;
   const handleDelete = async () => {
     if (!deleteTarget || deleteText !== `clear ${deleteName}`) return;
-    await deleteBranch(deleteTarget.id).unwrap();
-    setDeleteTarget(null);
-    setDeleteText("");
+
+    try {
+      await deleteBranch(deleteTarget.id).unwrap();
+      setDeleteTarget(null);
+      setDeleteText("");
+    } catch {
+      // The dialog renders the API error with the recovery action below.
+    }
   };
 
   if (isLoading) {
@@ -301,7 +335,30 @@ export default function BranchesPage() {
           </DialogHeader>
           <div className="space-y-3">
             <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={`clear ${deleteName}`} />
-            {deleteError && <p className="text-sm text-red-400">Could not delete this branch. It may have active relations.</p>}
+            {deleteApiError && (
+              <div className="space-y-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
+                <div>
+                  <p className="font-semibold text-red-300">Error</p>
+                  <p className="text-red-100">{deleteApiError.message}</p>
+                </div>
+                {deleteApiError.blockers.length > 0 && (
+                  <div>
+                    <p className="font-semibold text-red-300">Blocking data</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-red-100">
+                      {deleteApiError.blockers.map((blocker) => (
+                        <li key={blocker.key ?? blocker.label}>
+                          {blocker.count ?? 0} {blocker.label ?? "related records"}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-red-300">Solution</p>
+                  <p className="text-red-100">{deleteApiError.solution}</p>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>

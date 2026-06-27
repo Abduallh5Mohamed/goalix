@@ -25,24 +25,27 @@ import {
   useVerifySetup2FAMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
-import { Building, CheckCircle, KeyRound, Loader2, Save, ShieldCheck, ShieldOff } from "lucide-react";
+import { CheckCircle, KeyRound, Loader2, Save, ShieldCheck, ShieldOff } from "lucide-react";
 
 type AcademyDraft = {
   name?: string;
   email?: string;
   phone?: string;
   address?: string;
-  logoUrl?: string;
   timezone?: string;
-  currency?: string;
-  language?: string;
-  weekStartsOn?: string;
+  communityWhatsappUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  twitterUrl?: string;
+  linkedinUrl?: string;
   matchDayOpenMinutesBeforeKickoff?: string;
   lateGraceMinutes?: string;
   autoCloseMinutes?: string;
   qrAttendanceEnabled?: boolean;
   keepQrOpenWhileEventActive?: boolean;
 };
+
+const SYSTEM_WEEK_STARTS_ON = "saturday";
 
 const numberDraft = (
   draftValue: string | undefined,
@@ -60,6 +63,13 @@ const clampInt = (value: string, min: number, max: number, fallback: number) => 
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.round(parsed)));
+};
+
+const normalizeOptionalUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 };
 
 function getApiErrorMessage(err: unknown, fallback: string) {
@@ -90,6 +100,7 @@ export default function AcademyProfilePage() {
 
   const [academyDraft, setAcademyDraft] = useState<AcademyDraft>({});
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [setupData, setSetupData] = useState<Setup2FAResponse | null>(null);
   const [setupCode, setSetupCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
@@ -106,19 +117,28 @@ export default function AcademyProfilePage() {
   const academyEmail = academyDraft.email ?? academy?.email ?? "";
   const academyPhone = academyDraft.phone ?? academy?.phone ?? "";
   const academyAddress = academyDraft.address ?? academy?.address ?? "";
-  const academyLogoUrl = academyDraft.logoUrl ?? academy?.logo_url ?? "";
+  const socialLinks =
+    typeof settings.socialLinks === "object" && settings.socialLinks
+      ? (settings.socialLinks as Record<string, unknown>)
+      : {};
+  const facebookUrl =
+    academyDraft.facebookUrl ??
+    (typeof socialLinks.facebook === "string" ? socialLinks.facebook : "");
+  const instagramUrl =
+    academyDraft.instagramUrl ??
+    (typeof socialLinks.instagram === "string" ? socialLinks.instagram : "");
+  const twitterUrl =
+    academyDraft.twitterUrl ??
+    (typeof socialLinks.twitter === "string" ? socialLinks.twitter : "");
+  const linkedinUrl =
+    academyDraft.linkedinUrl ??
+    (typeof socialLinks.linkedin === "string" ? socialLinks.linkedin : "");
   const timezone =
     academyDraft.timezone ??
     (typeof settings.timezone === "string" ? settings.timezone : "Africa/Cairo");
-  const currency =
-    academyDraft.currency ??
-    (typeof settings.currency === "string" ? settings.currency : "EGP");
-  const language =
-    academyDraft.language ??
-    (typeof settings.language === "string" ? settings.language : "en");
-  const weekStartsOn =
-    academyDraft.weekStartsOn ??
-    (typeof settings.weekStartsOn === "string" ? settings.weekStartsOn : "saturday");
+  const communityWhatsappUrl =
+    academyDraft.communityWhatsappUrl ??
+    (typeof settings.communityWhatsappUrl === "string" ? settings.communityWhatsappUrl : "");
   const matchDayOpenMinutesBeforeKickoff =
     numberDraft(
       academyDraft.matchDayOpenMinutesBeforeKickoff,
@@ -152,6 +172,7 @@ export default function AcademyProfilePage() {
   };
 
   const handleSave = async () => {
+    setSaveError("");
     try {
       const safeMatchDayOpenMinutes = clampInt(
         matchDayOpenMinutesBeforeKickoff,
@@ -164,13 +185,18 @@ export default function AcademyProfilePage() {
         email: academyEmail.trim() || null,
         phone: academyPhone.trim() || null,
         address: academyAddress.trim() || null,
-        logoUrl: academyLogoUrl.trim() || null,
         settings: {
           ...settings,
           timezone,
-          currency,
-          language,
-          weekStartsOn,
+          weekStartsOn: SYSTEM_WEEK_STARTS_ON,
+          communityWhatsappUrl: normalizeOptionalUrl(communityWhatsappUrl),
+          socialLinks: {
+            ...socialLinks,
+            facebook: normalizeOptionalUrl(facebookUrl),
+            instagram: normalizeOptionalUrl(instagramUrl),
+            twitter: normalizeOptionalUrl(twitterUrl),
+            linkedin: normalizeOptionalUrl(linkedinUrl),
+          },
           matchDayOpenMinutesBeforeKickoff: safeMatchDayOpenMinutes,
           attendance: {
             ...attendanceSettings,
@@ -184,8 +210,8 @@ export default function AcademyProfilePage() {
       setAcademyDraft({});
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
-    } catch {
-      // handled by RTK Query state
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, "Could not save academy settings."));
     }
   };
 
@@ -249,8 +275,8 @@ export default function AcademyProfilePage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="space-y-6">
+        <div className="space-y-6">
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <CardTitle className="text-base">General Information</CardTitle>
@@ -273,14 +299,6 @@ export default function AcademyProfilePage() {
               <div className="space-y-2">
                 <Label>Address</Label>
                 <Input value={academyAddress} onChange={(event) => updateDraft("address", event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Logo URL</Label>
-                <Input
-                  value={academyLogoUrl}
-                  onChange={(event) => updateDraft("logoUrl", event.target.value)}
-                  placeholder="https://example.com/logo.png"
-                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="match-day-open-minutes">
@@ -312,6 +330,66 @@ export default function AcademyProfilePage() {
                   </span>
                 )}
               </div>
+              {saveError && <p className="text-sm text-red-400">{saveError}</p>}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base">Footer & Social Links</CardTitle>
+              <CardDescription>
+                These contact details and social links appear on the public homepage footer.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Facebook URL</Label>
+                <Input
+                  type="url"
+                  value={facebookUrl}
+                  onChange={(event) => updateDraft("facebookUrl", event.target.value)}
+                  placeholder="https://facebook.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Instagram URL</Label>
+                <Input
+                  type="url"
+                  value={instagramUrl}
+                  onChange={(event) => updateDraft("instagramUrl", event.target.value)}
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Twitter / X URL</Label>
+                <Input
+                  type="url"
+                  value={twitterUrl}
+                  onChange={(event) => updateDraft("twitterUrl", event.target.value)}
+                  placeholder="https://x.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>LinkedIn URL</Label>
+                <Input
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={(event) => updateDraft("linkedinUrl", event.target.value)}
+                  placeholder="https://linkedin.com/company/..."
+                />
+              </div>
+              <div className="flex items-center gap-3 sm:col-span-2">
+                <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+                {saved && (
+                  <span className="flex items-center gap-1 text-sm text-emerald-400">
+                    <CheckCircle className="h-4 w-4" /> Saved
+                  </span>
+                )}
+              </div>
+              {saveError && <p className="text-sm text-red-400 sm:col-span-2">{saveError}</p>}
             </CardContent>
           </Card>
 
@@ -338,53 +416,17 @@ export default function AcademyProfilePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Currency</Label>
-                  <Select
-                    value={currency}
-                    onValueChange={(value) => updateDraft("currency", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EGP">EGP</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="SAR">SAR</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Language</Label>
-                  <Select
-                    value={language}
-                    onValueChange={(value) => updateDraft("language", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ar">Arabic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Week Starts On</Label>
-                  <Select
-                    value={weekStartsOn}
-                    onValueChange={(value) => updateDraft("weekStartsOn", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="saturday">Saturday</SelectItem>
-                      <SelectItem value="sunday">Sunday</SelectItem>
-                      <SelectItem value="monday">Monday</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="community-whatsapp-url">WhatsApp Community Link</Label>
+                  <Input
+                    id="community-whatsapp-url"
+                    type="url"
+                    value={communityWhatsappUrl}
+                    onChange={(event) =>
+                      updateDraft("communityWhatsappUrl", event.target.value)
+                    }
+                    placeholder="https://chat.whatsapp.com/..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Late Grace Minutes</Label>
@@ -535,25 +577,6 @@ export default function AcademyProfilePage() {
           </Card>
         </div>
 
-        <Card className="border-border/50 bg-card h-fit">
-          <CardHeader>
-            <CardTitle className="text-base">Logo</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <div className="flex h-32 w-32 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/50">
-              {academyLogoUrl ? (
-                <span className="px-3 text-center text-xs text-muted-foreground">
-                  Logo URL saved
-                </span>
-              ) : (
-                <Building className="h-12 w-12 text-muted-foreground" />
-              )}
-            </div>
-            <p className="break-all text-center text-xs text-muted-foreground">
-              {academyLogoUrl || "No logo URL"}
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

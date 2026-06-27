@@ -14,7 +14,10 @@ import {
   useGetCoachGroupQuery,
   useUpdateCoachGroupMutation,
 } from "@/lib/store/api/coachApi";
-import { useGetCoachPlayersScopedQuery } from "@/lib/store/api/calendarApi";
+import {
+  useGetCoachGroupsScopedQuery,
+  useGetCoachPlayersScopedQuery,
+} from "@/lib/store/api/calendarApi";
 import { getInitials } from "@/lib/utils";
 import { TREND_CONFIG } from "@/lib/constants";
 import {
@@ -85,6 +88,10 @@ export default function CoachGroupDetailPage() {
   const { data, isLoading, isError } = useGetCoachGroupQuery({ groupId }, { skip: !groupId });
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: permissionGroups = [] } = useGetCoachGroupsScopedQuery();
+  const groupPermissions = permissionGroups.find(
+    (assignment) => assignment.group_id === groupId,
+  );
   const [updateGroup, { isLoading: updatingGroup }] =
     useUpdateCoachGroupMutation();
   const [deleteGroup, { isLoading: deletingGroup }] =
@@ -218,30 +225,38 @@ export default function CoachGroupDetailPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Link href="/coach/training">
-              <Button size="sm">
-                <ClipboardCheck className="mr-1 h-4 w-4" />
-                Training Attendance
-              </Button>
-            </Link>
-            <Link href="/coach/evaluations/new">
-              <Button size="sm" variant="outline">
-                <Star className="mr-1 h-4 w-4" />
-                Evaluate
-              </Button>
-            </Link>
-            <Button size="sm" variant="outline" onClick={openEditDialog}>
-              <Pencil className="mr-1 h-4 w-4" />
-              Edit Group
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              Delete Group
-            </Button>
+            {groupPermissions?.can_take_attendance && (
+              <Link href="/coach/training">
+                <Button size="sm">
+                  <ClipboardCheck className="mr-1 h-4 w-4" />
+                  Training Attendance
+                </Button>
+              </Link>
+            )}
+            {groupPermissions?.can_evaluate_players && (
+              <Link href="/coach/evaluations/new">
+                <Button size="sm" variant="outline">
+                  <Star className="mr-1 h-4 w-4" />
+                  Evaluate
+                </Button>
+              </Link>
+            )}
+            {groupPermissions?.can_manage_groups && (
+              <>
+                <Button size="sm" variant="outline" onClick={openEditDialog}>
+                  <Pencil className="mr-1 h-4 w-4" />
+                  Edit Group
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Delete Group
+                </Button>
+              </>
+            )}
           </div>
         }
       />

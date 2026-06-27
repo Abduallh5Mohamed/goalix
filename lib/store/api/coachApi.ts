@@ -379,6 +379,7 @@ export interface CoachDailyAiSummary {
 export const coachApi = createApi({
   reducerPath: "coachApi",
   baseQuery: baseQueryWithReauth,
+  keepUnusedDataFor: 300,
   tagTypes: [
     "CoachDashboard",
     "CoachGroups",

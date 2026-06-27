@@ -17,6 +17,13 @@ const {
   MODEL_VERSION: RANKING_MODEL_VERSION,
   runRankingPredictions,
 } = require("../ai/ranking-model");
+const {
+  invalidateAttendanceCache,
+} = require("../../shared/attendance-cache");
+const {
+  normalizeAssignmentRole,
+  permissionColumnsForRole,
+} = require("../coaches/coach-assignment-roles");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -252,10 +259,16 @@ class CalendarService {
     calendarRepository,
     playersService = null,
     customDataService = null,
+    redis = null,
   ) {
     this.repo = calendarRepository;
     this.playersService = playersService;
     this.customDataService = customDataService;
+    this.redis = redis;
+  }
+
+  async _invalidateAttendanceCache(academyId) {
+    await invalidateAttendanceCache(this.redis, academyId);
   }
 
   async _getCoach(userId, academyId) {
@@ -449,7 +462,7 @@ class CalendarService {
   ) {
     const assignments = await this._getCoachAssignments(coach.id, academyId);
     const eligible = assignments.filter(
-      (assignment) => assignment[permission] !== false,
+      (assignment) => assignment[permission] === true,
     );
     if (!eligible.length)
       throw new ForbiddenError("Coach does not have this group permission");
@@ -482,7 +495,7 @@ class CalendarService {
     );
     const allowed = new Set(
       assignments
-        .filter((assignment) => !permission || assignment[permission] !== false)
+        .filter((assignment) => !permission || assignment[permission] === true)
         .map((assignment) => assignment.group_id),
     );
     if (!permission) {
@@ -496,16 +509,37 @@ class CalendarService {
     if (invalid) throw new ForbiddenError("Coach cannot manage this group");
   }
 
-  async _ensureCoachCanAccessBirthYears(coach, academyId, birthYearIds) {
+  async _ensureCoachCanAccessBirthYears(
+    coach,
+    academyId,
+    birthYearIds,
+    permission = null,
+  ) {
     const accessible = await this.repo.findCoachAccessibleBirthYears(
       coach.id,
       academyId,
+      { permission },
     );
     const allowed = new Set(accessible.map((row) => row.id));
     const invalid = uniq(birthYearIds).find(
       (birthYearId) => !allowed.has(birthYearId),
     );
     if (invalid) throw new ForbiddenError("Coach cannot access this birthday");
+  }
+
+  async _ensureCoachHasPermission(coach, academyId, permission) {
+    const [assignments, birthYears] = await Promise.all([
+      this.repo.findCoachAssignedGroups(coach.id, academyId),
+      this.repo.findCoachAccessibleBirthYears(coach.id, academyId, {
+        permission,
+      }),
+    ]);
+    if (
+      !assignments.some((assignment) => assignment[permission] === true) &&
+      !birthYears.length
+    ) {
+      throw new ForbiddenError("Coach does not have this assignment permission");
+    }
   }
 
   async _ensureCoachCanAccessEvent(
@@ -530,9 +564,12 @@ class CalendarService {
         coach,
         academyId,
         birthYearIds,
+        permission,
       );
     if (playerIds.length)
-      await this._ensureCoachCanAccessPlayers(coach, academyId, playerIds);
+      await this._ensureCoachCanAccessPlayers(coach, academyId, playerIds, {
+        permission,
+      });
     return { event, groupIds, birthYearIds, playerIds };
   }
 
@@ -557,6 +594,9 @@ class CalendarService {
         .first();
       if (!linkedRequest && !linkedAdminRequest)
         throw new ForbiddenError("Coach cannot access this match");
+      if (permission) {
+        await this._ensureCoachHasPermission(coach, academyId, permission);
+      }
     }
     if (groupIds.length)
       await this._ensureCoachCanAccessGroups(
@@ -570,6 +610,7 @@ class CalendarService {
         coach,
         academyId,
         birthYearIds,
+        permission,
       );
     return { match, groupIds, birthYearIds };
   }
@@ -609,13 +650,13 @@ class CalendarService {
     coach,
     academyId,
     playerIds,
-    { requireComplete = false } = {},
+    { requireComplete = false, permission = null } = {},
   ) {
     const players = await this.repo.findCoachScopedPlayersByIds(
       coach.id,
       academyId,
       uniq(playerIds),
-      { onlyComplete: requireComplete },
+      { onlyComplete: requireComplete, permission },
     );
     const byId = new Map(players.map((player) => [player.id, player]));
     const invalid = uniq(playerIds).find((playerId) => !byId.has(playerId));
@@ -683,7 +724,7 @@ class CalendarService {
       academyId,
     );
     const eligibleAssignments = assignments.filter(
-      (assignment) => assignment[permission] !== false,
+      (assignment) => assignment[permission] === true,
     );
     const groupIds = targetAllGroups
       ? eligibleAssignments.map((assignment) => assignment.group_id)
@@ -702,6 +743,7 @@ class CalendarService {
     const accessibleBirthYears = await this.repo.findCoachAccessibleBirthYears(
       coach.id,
       academyId,
+      { permission },
     );
     const birthYearIds = data.allBirthYears
       ? accessibleBirthYears.map((row) => row.id)
@@ -2192,6 +2234,9 @@ class CalendarService {
       return row;
     });
 
+    if (data.eventType === "training") {
+      await this._invalidateAttendanceCache(academyId);
+    }
     return this.adminGetCalendarEvent(academyId, event.id);
   }
 
@@ -2241,6 +2286,9 @@ class CalendarService {
       );
     });
 
+    if (event.event_type === "training" || data.eventType === "training") {
+      await this._invalidateAttendanceCache(academyId);
+    }
     return this.adminGetCalendarEvent(academyId, eventId);
   }
 
@@ -2348,6 +2396,7 @@ class CalendarService {
       );
     });
 
+    await this._invalidateAttendanceCache(academyId);
     return {
       message: "Training event permanently deleted",
       affectedPlayers: affectedPlayerIds.length,
@@ -2904,6 +2953,11 @@ class CalendarService {
     return this.repo.findCoachAssignedGroups(coach.id, academyId);
   }
 
+  async coachGetPermissions(userId, academyId) {
+    const coach = await this._getCoach(userId, academyId);
+    return this.repo.findCoachEffectivePermissions(coach.id, academyId);
+  }
+
   async coachListPlayers(userId, academyId, filters) {
     const coach = await this._getCoach(userId, academyId);
     const players = await this.repo.findCoachScopedPlayers(
@@ -2928,7 +2982,16 @@ class CalendarService {
 
   async coachListInjuryRiskPainDiscomfort(userId, academyId) {
     const coach = await this._getCoach(userId, academyId);
-    const scopedPlayers = await this.repo.findCoachScopedPlayers(coach.id, academyId);
+    const scopedPlayers = await this.repo.findCoachScopedPlayers(
+      coach.id,
+      academyId,
+      { permission: "can_view_injury_risk" },
+    );
+    await this._ensureCoachHasPermission(
+      coach,
+      academyId,
+      "can_view_injury_risk",
+    );
     const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
     const { rows } = await this.repo.db.raw(`
       SELECT
@@ -2984,7 +3047,9 @@ class CalendarService {
       new Map(records.map((record) => [record.playerId, record])).values(),
     );
     const playerIds = uniqueRecords.map((record) => record.playerId);
-    await this._ensureCoachCanAccessPlayers(coach, academyId, playerIds);
+    await this._ensureCoachCanAccessPlayers(coach, academyId, playerIds, {
+      permission: "can_manage_injury_risk",
+    });
 
     const { rows } = await this.repo.db.raw(`
       SELECT
@@ -3069,8 +3134,19 @@ class CalendarService {
     };
   }
 
-  async _coachScopedInjuryRiskPlayers(coach, academyId) {
-    return this.repo.findCoachScopedPlayers(coach.id, academyId);
+  async _coachScopedInjuryRiskPlayers(
+    coach,
+    academyId,
+    permission = "can_view_injury_risk",
+  ) {
+    await this._ensureCoachHasPermission(
+      coach,
+      academyId,
+      permission,
+    );
+    return this.repo.findCoachScopedPlayers(coach.id, academyId, {
+      permission,
+    });
   }
 
   async _injuryRiskPlayersWithMainPosition(players) {
@@ -3151,7 +3227,11 @@ class CalendarService {
 
   async coachRunInjuryRiskModel(userId, academyId) {
     const coach = await this._getCoach(userId, academyId);
-    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(coach, academyId);
+    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(
+      coach,
+      academyId,
+      "can_run_injury_risk",
+    );
     const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
     const playerIds = players.map((player) => player.id);
     if (!playerIds.length) return [];
@@ -3997,6 +4077,7 @@ class CalendarService {
       return row;
     });
 
+    await this._invalidateAttendanceCache(academyId);
     return this.repo.findEventById(event.id, academyId);
   }
 
@@ -4144,6 +4225,7 @@ class CalendarService {
       );
     });
 
+    await this._invalidateAttendanceCache(academyId);
     return this._trainingEventWithParticipants(
       await this.repo.findEventById(eventId, academyId),
       academyId,
@@ -4182,6 +4264,7 @@ class CalendarService {
       this.repo.db,
       "attendance",
     );
+    await this._invalidateAttendanceCache(academyId);
     return this._trainingEventWithParticipants(
       await this.repo.findEventById(eventId, academyId),
       academyId,
@@ -4422,6 +4505,7 @@ class CalendarService {
       [player.id],
       event.start_datetime,
     );
+    await this._invalidateAttendanceCache(academyId);
     if (existing?.status !== "present") {
       await this._notifyPlayerAttendanceCheckedIn(
         player,
@@ -4494,6 +4578,7 @@ class CalendarService {
       records.map((record) => record.playerId),
       event.start_datetime,
     );
+    await this._invalidateAttendanceCache(academyId);
     return result;
   }
 
@@ -4533,6 +4618,7 @@ class CalendarService {
       [playerId],
       event.start_datetime,
     );
+    await this._invalidateAttendanceCache(academyId);
     return row;
   }
 
@@ -4607,6 +4693,17 @@ class CalendarService {
 
   async coachUpdateEvaluation(userId, academyId, evaluationId, data) {
     const coach = await this._getCoach(userId, academyId);
+    const evaluation = await this.repo
+      .db("player_event_evaluations")
+      .where({ id: evaluationId, coach_id: coach.id })
+      .first("event_id");
+    if (!evaluation) throw new NotFoundError("Evaluation", evaluationId);
+    await this._ensureCoachCanAccessEvent(
+      coach,
+      academyId,
+      evaluation.event_id,
+      "can_evaluate_players",
+    );
     const [row] = await this.repo
       .db("player_event_evaluations")
       .where({ id: evaluationId, coach_id: coach.id })
@@ -5735,13 +5832,18 @@ class CalendarService {
 
     let selected = {};
     if (data.groupId) {
-      await this._ensureCoachCanAccessGroups(coach, academyId, [data.groupId]);
+      await this._ensureCoachCanAccessGroups(
+        coach,
+        academyId,
+        [data.groupId],
+        "can_manage_matches",
+      );
       matchData.groupIds = [data.groupId];
       selected = { selected_group_id: data.groupId };
     } else {
       await this._ensureCoachCanAccessBirthYears(coach, academyId, [
         data.birthYearId,
-      ]);
+      ], "can_manage_matches");
       matchData.birthYearIds = [data.birthYearId];
       selected = { selected_birth_year_id: data.birthYearId };
     }
@@ -5957,6 +6059,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchCanBeConfigured(match);
     const players = payload.players || [payload];
@@ -6031,6 +6134,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchCanBeConfigured(match);
     await this._ensurePlayersInMatchTargets(
@@ -6068,6 +6172,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchCanBeConfigured(match);
     const deleted = await this.repo
@@ -6086,6 +6191,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchCanBeConfigured(match);
     const existing = await this.repo
@@ -6118,17 +6224,24 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchCanBeConfigured(match);
     const groupIds = data.groupId ? [data.groupId] : [];
     const birthYearIds = data.birthYearId ? [data.birthYearId] : [];
     if (groupIds.length)
-      await this._ensureCoachCanAccessGroups(coach, academyId, groupIds);
+      await this._ensureCoachCanAccessGroups(
+        coach,
+        academyId,
+        groupIds,
+        "can_manage_matches",
+      );
     if (birthYearIds.length)
       await this._ensureCoachCanAccessBirthYears(
         coach,
         academyId,
         birthYearIds,
+        "can_manage_matches",
       );
     const targetSnapshot = await this._buildMatchTargetSnapshot(academyId, {
       groupIds,
@@ -6194,6 +6307,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchDayReady(match);
     if (match.match_status === "finished" && data.matchStatus !== "finished") {
@@ -6291,7 +6405,12 @@ class CalendarService {
   async coachRecordMatchIncident(userId, academyId, matchId, data) {
     const coach = await this._getCoach(userId, academyId);
     const { match, groupIds, birthYearIds } =
-      await this._ensureCoachCanAccessMatch(coach, academyId, matchId);
+      await this._ensureCoachCanAccessMatch(
+        coach,
+        academyId,
+        matchId,
+        "can_manage_matches",
+      );
     this._ensureMatchDayReady(match);
     this._ensureMatchHasStarted(match);
     await this._ensurePlayersInMatchTargets(
@@ -6381,7 +6500,12 @@ class CalendarService {
   async coachRecordMatchGoal(userId, academyId, matchId, data) {
     const coach = await this._getCoach(userId, academyId);
     const { match, groupIds, birthYearIds } =
-      await this._ensureCoachCanAccessMatch(coach, academyId, matchId);
+      await this._ensureCoachCanAccessMatch(
+        coach,
+        academyId,
+        matchId,
+        "can_manage_matches",
+      );
     this._ensureMatchDayReady(match);
     this._ensureMatchHasStarted(match);
 
@@ -6453,6 +6577,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchDayReady(match);
 
@@ -6509,6 +6634,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchDayReady(match);
     if (match.match_status === "finished") {
@@ -6592,6 +6718,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchDayReady(match);
     if (match.match_status === "finished") {
@@ -6613,6 +6740,7 @@ class CalendarService {
       coach,
       academyId,
       matchId,
+      "can_manage_matches",
     );
     this._ensureMatchDayReady(match);
 
@@ -6956,11 +7084,16 @@ class CalendarService {
     const coach = await this._getCoach(userId, academyId);
     const groupIds = uniq([data.teamId, data.ageGroupId]);
     if (groupIds.length)
-      await this._ensureCoachCanAccessGroups(coach, academyId, groupIds);
+      await this._ensureCoachCanAccessGroups(
+        coach,
+        academyId,
+        groupIds,
+        "can_manage_matches",
+      );
     if (data.birthYearId)
       await this._ensureCoachCanAccessBirthYears(coach, academyId, [
         data.birthYearId,
-      ]);
+      ], "can_manage_matches");
     const [row] = await this.repo
       .db("friendly_match_requests")
       .insert({
@@ -7110,6 +7243,13 @@ class CalendarService {
       user.role === "coach"
         ? await this._getCoach(user.userId, user.academyId)
         : null;
+    if (coach) {
+      await this._ensureCoachHasPermission(
+        coach,
+        user.academyId,
+        "can_manage_groups",
+      );
+    }
     const [row] = await this.repo
       .db("player_field_options")
       .insert({
@@ -7135,6 +7275,11 @@ class CalendarService {
     if (!option) throw new NotFoundError("Player option", optionId);
     if (user.role === "coach") {
       const coach = await this._getCoach(user.userId, user.academyId);
+      await this._ensureCoachHasPermission(
+        coach,
+        user.academyId,
+        "can_manage_groups",
+      );
       if (
         option.created_by_role !== "coach" ||
         option.created_by_coach_id !== coach.id
@@ -7181,15 +7326,16 @@ class CalendarService {
       .first();
     if (!coach) throw new NotFoundError("Coach", data.coachId);
     await this._validateAcademyGroups([data.groupId], academyId);
+    const role = normalizeAssignmentRole(data.role);
+    const permissions = permissionColumnsForRole(role);
+    if (!permissions) throw new BadRequestError("Unsupported coach assignment role");
     const [row] = await this.repo
       .db("coach_group_assignments")
       .insert({
         coach_id: data.coachId,
         group_id: data.groupId,
-        role: data.role,
-        can_create_training: data.canCreateTraining,
-        can_take_attendance: data.canTakeAttendance,
-        can_evaluate_players: data.canEvaluatePlayers,
+        role,
+        ...permissions,
         assigned_at: new Date(),
       })
       .onConflict(["coach_id", "group_id"])
@@ -7208,20 +7354,15 @@ class CalendarService {
       .first();
     if (!current)
       throw new NotFoundError("Coach group assignment", assignmentId);
+    const role = normalizeAssignmentRole(data.role || current.role);
+    const permissions = permissionColumnsForRole(role);
+    if (!permissions) throw new BadRequestError("Unsupported coach assignment role");
     const [row] = await this.repo
       .db("coach_group_assignments")
       .where({ id: assignmentId })
       .update({
-        ...(data.role !== undefined ? { role: data.role } : {}),
-        ...(data.canCreateTraining !== undefined
-          ? { can_create_training: data.canCreateTraining }
-          : {}),
-        ...(data.canTakeAttendance !== undefined
-          ? { can_take_attendance: data.canTakeAttendance }
-          : {}),
-        ...(data.canEvaluatePlayers !== undefined
-          ? { can_evaluate_players: data.canEvaluatePlayers }
-          : {}),
+        role,
+        ...permissions,
       })
       .returning("*");
     return row;
@@ -8532,7 +8673,12 @@ class CalendarService {
     let groupId = data.groupId || null;
     let branchId = data.branchId || null;
     if (groupId) {
-      await this._ensureCoachCanAccessGroups(coach, user.academyId, [groupId]);
+      await this._ensureCoachCanAccessGroups(
+        coach,
+        user.academyId,
+        [groupId],
+        "can_manage_players",
+      );
       const groups = await this.repo.findGroupsByIds([groupId], user.academyId);
       branchId = branchId || groups[0]?.branch_id;
     } else {
@@ -8542,6 +8688,7 @@ class CalendarService {
         {
           branchId,
           birthYear,
+          permission: "can_manage_players",
         },
       );
       if (!matches.length) {
@@ -8578,7 +8725,12 @@ class CalendarService {
     if (!this.playersService)
       throw new BadRequestError("Players service is unavailable");
     const coach = await this._getCoach(user.userId, user.academyId);
-    await this._ensureCoachCanAccessPlayers(coach, user.academyId, [playerId]);
+    await this._ensureCoachCanAccessPlayers(
+      coach,
+      user.academyId,
+      [playerId],
+      { permission: "can_manage_players" },
+    );
     if (this.customDataService) {
       await this.customDataService.savePlayerValues(
         user,

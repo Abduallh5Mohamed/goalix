@@ -166,6 +166,9 @@ const gradeValue = (row: RankingSystemInput) =>
 const rankValue = (row: RankingSystemInput) =>
   row.final_api_response?.rank ?? row.rank;
 
+const isCarryForwardRow = (row: RankingSystemInput) =>
+  Boolean(row.carry_forward || row.final_api_response?.carry_forward);
+
 const formatScore = (value: unknown) => {
   const numeric = numberValue(value);
   if (numeric === null) return "-";
@@ -878,8 +881,15 @@ export default function CoachRankingsPage() {
     useGetCoachRankingSystemInputsQuery({ limit: 500 });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
-  const weeklyHistory = useMemo(() => buildWeeklyHistory(rows), [rows]);
-  const monthlyHistory = useMemo(() => buildMonthlyHistory(rows), [rows]);
+  const actualRows = useMemo(
+    () => rows.filter((row) => !isCarryForwardRow(row)),
+    [rows],
+  );
+  const weeklyHistory = useMemo(() => buildWeeklyHistory(actualRows), [actualRows]);
+  const monthlyHistory = useMemo(
+    () => buildMonthlyHistory(actualRows),
+    [actualRows],
+  );
   const [selectedWeek, setSelectedWeek] = useState("");
   const currentWeek = useMemo(() => currentWeekStartKey(), []);
   const defaultWeek =
@@ -893,9 +903,9 @@ export default function CoachRankingsPage() {
   const selectedRows = useMemo(
     () =>
       selectedWeekSummary
-        ? rows.filter((row) => row.week_start === selectedWeekSummary.key)
+        ? actualRows.filter((row) => row.week_start === selectedWeekSummary.key)
         : [],
-    [rows, selectedWeekSummary],
+    [actualRows, selectedWeekSummary],
   );
   const modelRows = useMemo(() => sortByModelRank(selectedRows), [selectedRows]);
   const podiumPlayers = useMemo(() => modelRows.slice(0, 3), [modelRows]);

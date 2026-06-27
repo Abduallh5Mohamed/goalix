@@ -19,40 +19,44 @@ import {
   useGetGroupsQuery,
   useGetBranchesQuery,
   useGetBirthYearsQuery,
+  useGetCoachAccessRolesQuery,
   useGetCoachAccessQuery,
   useUpsertCoachAccessMutation,
   useRemoveCoachAccessMutation,
   type CoachAccessType,
+  type CoachAssignmentRoleDefinition,
   type CoachAssignmentRole,
   type CoachRow,
 } from "@/lib/store/api/adminApi";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
-import { Cake, Pencil, Search, Save, Trash2, Users } from "lucide-react";
+import { Cake, Check, Pencil, Search, Save, ShieldCheck, Trash2, Users, X } from "lucide-react";
 
-const roleOptions: Array<{ value: CoachAssignmentRole; label: string }> = [
-  { value: "head_coach", label: "Head coach" },
-  { value: "assistant_coach", label: "Assistant coach" },
-  { value: "goalkeeping_coach", label: "Goalkeeping coach" },
-  { value: "fitness_coach", label: "Fitness coach" },
-  { value: "technical_coach", label: "Technical coach" },
-  { value: "tactical_coach", label: "Tactical coach" },
-  { value: "goalkeeping_assistant", label: "Goalkeeping assistant" },
-  { value: "performance_analyst", label: "Performance analyst" },
-  { value: "team_manager", label: "Team manager" },
-  { value: "physiotherapist", label: "Physiotherapist" },
-  { value: "rehabilitation_coach", label: "Rehabilitation coach" },
-  { value: "scout", label: "Scout" },
-  { value: "academy_director", label: "Academy director" },
-  { value: "youth_coach", label: "Youth coach" },
-  { value: "conditioning_coach", label: "Conditioning coach" },
+const fallbackRoleOptions: Array<CoachAssignmentRoleDefinition> = [
+  { value: "head_coach", label: "Head coach", description: "", permissions: [] },
+  { value: "assistant_coach", label: "Assistant coach", description: "", permissions: [] },
+  { value: "goalkeeping_coach", label: "Goalkeeping coach", description: "", permissions: [] },
+  { value: "fitness_coach", label: "Fitness coach", description: "", permissions: [] },
+  { value: "technical_coach", label: "Technical coach", description: "", permissions: [] },
+  { value: "tactical_coach", label: "Tactical coach", description: "", permissions: [] },
+  { value: "goalkeeping_assistant", label: "Goalkeeping assistant", description: "", permissions: [] },
+  { value: "performance_analyst", label: "Performance analyst", description: "", permissions: [] },
+  { value: "team_manager", label: "Team manager", description: "", permissions: [] },
+  { value: "physiotherapist", label: "Physiotherapist", description: "", permissions: [] },
+  { value: "rehabilitation_coach", label: "Rehabilitation coach", description: "", permissions: [] },
+  { value: "scout", label: "Scout", description: "", permissions: [] },
+  { value: "academy_director", label: "Academy director", description: "", permissions: [] },
+  { value: "youth_coach", label: "Youth coach", description: "", permissions: [] },
+  { value: "conditioning_coach", label: "Conditioning coach", description: "", permissions: [] },
 ];
 
-const roleLabel = (value?: string | null) =>
-  roleOptions.find((option) => option.value === value)?.label ?? value ?? "Coach";
+const roleLabel = (
+  value?: string | null,
+  options: CoachAssignmentRoleDefinition[] = fallbackRoleOptions
+) => options.find((option) => option.value === value)?.label ?? value ?? "Coach";
 
-const getCoachLabel = (coach: CoachRow) =>
-  `${coach.full_name}${coach.specialization ? ` - ${roleLabel(coach.specialization)}` : ""}`;
+const getCoachLabel = (coach: CoachRow, options: CoachAssignmentRoleDefinition[]) =>
+  `${coach.full_name}${coach.specialization ? ` - ${roleLabel(coach.specialization, options)}` : ""}`;
 
 export default function AssignCoachPage() {
   const [selectedCoach, setSelectedCoach] = useState("");
@@ -71,6 +75,7 @@ export default function AssignCoachPage() {
 
   const { data: coachesRes, isLoading: loadingCoaches } = useGetCoachesQuery({ limit: 100 });
   const { data: branches, isLoading: loadingBranches } = useGetBranchesQuery();
+  const { data: backendRoleOptions = [] } = useGetCoachAccessRolesQuery();
   const { data: groups = [], isFetching: loadingGroups } = useGetGroupsQuery(
     selectedBranch ? { branchId: selectedBranch } : {},
     { skip: !selectedBranch }
@@ -87,9 +92,11 @@ export default function AssignCoachPage() {
   const [removeAccess, { isLoading: removing }] = useRemoveCoachAccessMutation();
 
   const coaches = useMemo(() => coachesRes?.data ?? [], [coachesRes?.data]);
+  const roleOptions = backendRoleOptions.length ? backendRoleOptions : fallbackRoleOptions;
   const selectedCoachRow = coaches.find((coach) => coach.id === selectedCoach);
   const selectedBranchRow = branches?.find((branch) => branch.id === selectedBranch);
   const activeAccess = accessRules[0] ?? null;
+  const selectedRoleDefinition = roleOptions.find((option) => option.value === role);
 
   const birthYears = useMemo(
     () =>
@@ -108,7 +115,7 @@ export default function AssignCoachPage() {
       (coach.branches ?? []).map((branch) => ({
         coach,
         branch,
-        search: `${coach.full_name} ${coach.specialization ?? ""} ${branch.name}`.toLowerCase(),
+        search: `${coach.full_name} ${branch.role ?? ""} ${branch.name}`.toLowerCase(),
       }))
     );
     const q = assignedSearch.trim().toLowerCase();
@@ -267,7 +274,7 @@ export default function AssignCoachPage() {
                   <SelectContent>
                     {coaches.map((coach) => (
                       <SelectItem key={coach.id} value={coach.id}>
-                        {getCoachLabel(coach)}
+                        {getCoachLabel(coach, roleOptions)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -298,6 +305,45 @@ export default function AssignCoachPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedRoleDefinition && (
+              <div className="rounded-lg border border-border/60 bg-background/30 p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{selectedRoleDefinition.label} permissions</p>
+                    {selectedRoleDefinition.description && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedRoleDefinition.description}
+                      </p>
+                    )}
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {selectedRoleDefinition.permissions.map((permission) => (
+                        <div
+                          key={permission.key}
+                          className={cn(
+                            "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs",
+                            permission.granted
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                              : "border-border/50 text-muted-foreground"
+                          )}
+                        >
+                          {permission.granted ? (
+                            <Check className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <X className="h-3.5 w-3.5 shrink-0" />
+                          )}
+                          <span>{permission.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-muted-foreground">
+                      Enforced by the backend for this branch and its selected groups or birth years.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <button
@@ -457,7 +503,9 @@ export default function AssignCoachPage() {
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{coach.full_name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{branch.name} - {roleLabel(coach.specialization)}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {branch.name} - {roleLabel(branch.role, roleOptions)}
+                        </p>
                       </div>
                       <Badge variant="success">Assigned</Badge>
                     </div>
@@ -504,7 +552,9 @@ export default function AssignCoachPage() {
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{coach.full_name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{roleLabel(coach.specialization)}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Profile: {roleLabel(coach.specialization, roleOptions)}
+                        </p>
                       </div>
                       <Badge variant={assigned ? "success" : "secondary"}>{assigned ? "Assigned" : "Unassigned"}</Badge>
                     </div>

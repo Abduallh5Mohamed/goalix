@@ -15,11 +15,13 @@ import {
   ClipboardCheck,
   CreditCard,
   Dumbbell,
+  ExternalLink,
   GraduationCap,
   HelpCircle,
   Home,
   Inbox,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Mail,
   Menu,
@@ -29,6 +31,7 @@ import {
   Ruler,
   Search,
   Settings,
+  ShieldAlert,
   Star,
   Sun,
   TrendingUp,
@@ -39,6 +42,7 @@ import {
   Users,
 } from "lucide-react";
 import { NAV_ITEMS, ROLE_ROUTES } from "@/lib/constants";
+import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { useRealtimeNotifications } from "@/lib/hooks/useRealtimeNotifications";
 import { getNotificationHref } from "@/lib/notifications";
 import {
@@ -47,6 +51,11 @@ import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
 } from "@/lib/store/api/calendarApi";
+import type { CoachPermission } from "@/lib/store/api/calendarApi";
+import {
+  useGetAcademyQuery,
+  useGetCurrentPermissionsQuery,
+} from "@/lib/store/api/adminApi";
 import type { UserRole } from "@/lib/types";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
 import { cn, formatDateTime, getInitials } from "@/lib/utils";
@@ -88,6 +97,12 @@ const settingsRoutes: Partial<Record<UserRole, string>> = {
   admin: "/admin/settings",
   coach: "/coach/settings",
   player: "/player/settings",
+};
+
+const getExternalHref = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 };
 
 type DashboardLanguage = "en" | "ar";
@@ -1107,6 +1122,115 @@ type NavItem = {
   children?: { label: string; href: string }[];
 };
 
+const adminNavPermissions: Record<string, string[]> = {
+  "/admin/dashboard": ["access_admin_dashboard", "admin.dashboard.access"],
+  "/admin/chat": ["access_admin_dashboard", "admin.dashboard.access"],
+  "/admin/requests": ["manage_users", "admin.user.update"],
+  "/admin/academy/branches": ["manage_teams", "admin.group.manage"],
+  "/admin/academy/birth-years": ["manage_teams", "admin.group.manage"],
+  "/admin/academy/groups": ["manage_teams", "admin.group.manage"],
+  "/admin/coaches": ["manage_coaches", "coach.read.academy", "coach.read.branch"],
+  "/admin/coaches/assign": ["manage_coaches", "coach.update"],
+  "/admin/coaches/assignments": ["manage_coaches", "coach.update"],
+  "/admin/players": ["manage_players", "player.read.academy", "player.read.branch"],
+  "/admin/calendar": ["manage_schedules", "calendar.manage.academy"],
+  "/admin/matches": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
+  "/admin/matches/archive": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
+  "/admin/registrations": ["manage_users", "admin.user.create", "admin.user.update"],
+  "/admin/attendance": ["manage_attendance", "attendance.view.academy", "attendance.export"],
+  "/admin/rankings/weekly": ["rankings:read", "ranking.read.academy", "ranking.read.branch"],
+  "/admin/rankings/monthly": ["rankings:read", "ranking.read.academy", "ranking.read.branch"],
+  "/admin/payments": ["view_financial_reports", "payment.read.academy"],
+  "/admin/payments/subscriptions": ["manage_subscriptions", "payment.read.academy"],
+  "/admin/payments/invoices": ["manage_payments", "payment.read.academy"],
+  "/admin/payments/reports": ["view_financial_reports", "payment.export", "payment.read.academy"],
+  "/admin/notifications": ["access_admin_dashboard", "admin.dashboard.access"],
+  "/admin/notifications/compose": ["access_admin_dashboard", "admin.dashboard.access"],
+  "/admin/reports/s": ["view_financial_reports", "payment.export", "attendance.export"],
+  "/admin/reports/player-progress": ["manage_players", "player.read.academy", "ranking.read.academy"],
+  "/admin/reports/attendance": ["manage_attendance", "attendance.export", "attendance.view.academy"],
+  "/admin/reports/coach": ["manage_coaches", "coach.read.academy"],
+  "/admin/settings": ["manage_academy_settings", "admin.settings.update"],
+  "/admin/settings/player-options": ["manage_players", "player.update"],
+  "/admin/settings/roles": ["manage_roles", "manage_permissions", "admin.role.manage"],
+  "/admin/settings/integrations": ["manage_academy_settings", "admin.settings.update"],
+};
+
+const hasAnyPermission = (
+  granted: Set<string>,
+  required: string[] | undefined,
+) => !required?.length || required.some((permission) => granted.has(permission));
+
+function filterAdminNav(items: NavItem[], granted: Set<string>) {
+  return items
+    .map((item) => {
+      const children = item.children?.filter((child) =>
+        hasAnyPermission(granted, adminNavPermissions[child.href]),
+      );
+      return children ? { ...item, children } : item;
+    })
+    .filter((item) => {
+      if (item.children) return item.children.length > 0;
+      return hasAnyPermission(
+        granted,
+        item.href ? adminNavPermissions[item.href] : undefined,
+      );
+    });
+}
+
+function firstNavHref(items: NavItem[]) {
+  for (const item of items) {
+    if (item.href) return item.href;
+    const childHref = item.children?.find((child) => child.href)?.href;
+    if (childHref) return childHref;
+  }
+  return null;
+}
+
+function requiredAdminPermissions(pathname: string): string[] | null {
+  const match = Object.entries(adminNavPermissions)
+    .filter(([href]) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort(([left], [right]) => right.length - left.length)[0];
+  return match?.[1] ?? null;
+}
+
+const coachNavPermissions: Record<string, CoachPermission> = {
+  "/coach/training/create": "can_create_training",
+  "/coach/measurements": "can_record_measurements",
+  "/coach/injury-risk-ai": "can_view_injury_risk",
+  "/coach/matches/evaluation": "can_evaluate_players",
+  "/coach/matches/configuration": "can_manage_matches",
+  "/coach/player-options": "can_manage_groups",
+};
+
+function filterCoachNav(
+  items: NavItem[],
+  canUse: (permission: CoachPermission) => boolean,
+) {
+  return items
+    .map((item) => {
+      const children = item.children?.filter((child) => {
+        const permission = coachNavPermissions[child.href];
+        return !permission || canUse(permission);
+      });
+      return children ? { ...item, children } : item;
+    })
+    .filter((item) => {
+      if (item.children) return item.children.length > 0;
+      const permission = item.href ? coachNavPermissions[item.href] : undefined;
+      return !permission || canUse(permission);
+    });
+}
+
+function requiredCoachPermission(pathname: string): CoachPermission | null {
+  const match = Object.entries(coachNavPermissions)
+    .filter(([href]) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort(([left], [right]) => right.length - left.length)[0];
+  if (match) return match[1];
+  if (pathname.startsWith("/coach/evaluations")) return "can_evaluate_players";
+  return null;
+}
+
 function firstHref(item: NavItem) {
   return item.href ?? item.children?.[0]?.href ?? "#";
 }
@@ -1272,7 +1396,70 @@ export function DashboardFrame({
   const { user } = authState;
   const { logout } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
-  const nav = NAV_ITEMS[role] as NavItem[];
+  const messageMenuRef = useRef<HTMLDivElement>(null);
+  const {
+    can: coachCan,
+    isLoading: coachPermissionsLoading,
+    isFetching: coachPermissionsFetching,
+  } = useCoachPermissions({
+    skip: role !== "coach" || !authState.isAuthenticated,
+  });
+  const {
+    data: currentPermissions,
+    isLoading: adminPermissionsLoading,
+    isFetching: adminPermissionsFetching,
+  } = useGetCurrentPermissionsQuery(user?.id, {
+    skip: role !== "admin" || !authState.isAuthenticated,
+    refetchOnMountOrArgChange: true,
+  });
+  const adminPermissionSet = useMemo(
+    () => new Set(currentPermissions?.permissions ?? []),
+    [currentPermissions?.permissions],
+  );
+  const nav = useMemo(() => {
+    const items = NAV_ITEMS[role] as NavItem[];
+    if (role === "admin") return filterAdminNav(items, adminPermissionSet);
+    if (role !== "coach") return items;
+    return filterCoachNav(items, coachCan);
+  }, [adminPermissionSet, coachCan, role]);
+  const hasSettingsInMainNav = useMemo(
+    () =>
+      nav.some((item) =>
+        item.href === (settingsRoutes[role] ?? ROLE_ROUTES[role]) ||
+        item.children?.some(
+          (child) => child.href === (settingsRoutes[role] ?? ROLE_ROUTES[role]),
+        ),
+      ),
+    [nav, role],
+  );
+  const firstAllowedHref = useMemo(() => firstNavHref(nav), [nav]);
+  const adminPagePermissions =
+    role === "admin" ? requiredAdminPermissions(pathname) : null;
+  const pagePermission =
+    role === "coach" ? requiredCoachPermission(pathname) : null;
+  const pagePermissionLoading =
+    (Boolean(pagePermission) &&
+      (coachPermissionsLoading || coachPermissionsFetching)) ||
+    (Boolean(adminPagePermissions) &&
+      (adminPermissionsLoading || adminPermissionsFetching));
+  const pagePermissionDenied =
+    (Boolean(pagePermission) &&
+    !pagePermissionLoading &&
+      !coachCan(pagePermission as CoachPermission)) ||
+    (Boolean(adminPagePermissions) &&
+      !pagePermissionLoading &&
+      !hasAnyPermission(adminPermissionSet, adminPagePermissions || undefined));
+
+  useEffect(() => {
+    if (
+      role === "admin" &&
+      pagePermissionDenied &&
+      firstAllowedHref &&
+      firstAllowedHref !== pathname
+    ) {
+      router.replace(firstAllowedHref);
+    }
+  }, [firstAllowedHref, pagePermissionDenied, pathname, role, router]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [language, setLanguage] = useState<DashboardLanguage>("en");
   const [theme, setTheme] = useState<DashboardTheme>("light");
@@ -1282,6 +1469,16 @@ export function DashboardFrame({
   const [settingsReady, setSettingsReady] = useState(false);
   const [compactNav, setCompactNav] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [messageMenuOpen, setMessageMenuOpen] = useState(false);
+  const { data: academy } = useGetAcademyQuery(undefined, {
+    skip: !authState.isAuthenticated,
+  });
+  const academySettings = (academy?.settings ?? {}) as Record<string, unknown>;
+  const communityWhatsappUrl =
+    typeof academySettings.communityWhatsappUrl === "string"
+      ? academySettings.communityWhatsappUrl
+      : "";
+  const communityWhatsappHref = getExternalHref(communityWhatsappUrl);
 
   const t = useMemo(() => (label: string) => translate(label, language), [language]);
 
@@ -1327,9 +1524,26 @@ export function DashboardFrame({
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setMobileNavOpen(false), 0);
+    const timeout = window.setTimeout(() => {
+      setMobileNavOpen(false);
+      setMessageMenuOpen(false);
+    }, 0);
     return () => window.clearTimeout(timeout);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!messageMenuOpen) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && messageMenuRef.current?.contains(target)) return;
+      setMessageMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [messageMenuOpen]);
 
   useEffect(() => {
     if (!settingsReady) return;
@@ -1483,13 +1697,57 @@ export function DashboardFrame({
 
     applyTranslations();
 
-    const observer = new MutationObserver(() => {
-      applyTranslations();
+    const observeOptions: MutationObserverInit = {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    };
+    const pendingRoots = new Set<HTMLElement>();
+    let animationFrame: number | null = null;
+
+    const flushTranslations = () => {
+      animationFrame = null;
+      observer.disconnect();
+      pendingRoots.forEach((root) => {
+        if (root.isConnected) translateRoot(root);
+      });
+      pendingRoots.clear();
+      observer.observe(document.body, observeOptions);
+    };
+
+    const scheduleTranslation = (root: HTMLElement | null) => {
+      if (!root) return;
+      pendingRoots.add(root);
+      if (animationFrame === null) {
+        animationFrame = window.requestAnimationFrame(flushTranslations);
+      }
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "characterData") {
+          scheduleTranslation(mutation.target.parentElement);
+          continue;
+        }
+
+        mutation.addedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            scheduleTranslation(node);
+          } else {
+            scheduleTranslation(node.parentElement);
+          }
+        });
+      }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, observeOptions);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+    };
   }, [language, pathname]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationsEnabled =
@@ -1500,14 +1758,16 @@ export function DashboardFrame({
     isError: notificationsError,
     refetch: refetchNotifications,
   } = useGetNotificationsQuery(undefined, {
-    skip: !notificationsEnabled,
-    pollingInterval: 10000,
+    skip: !notificationsEnabled || !notificationsOpen,
+    pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
     skip: !notificationsEnabled,
-    pollingInterval: 10000,
+    pollingInterval: 60000,
+    skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
   });
@@ -1691,14 +1951,16 @@ export function DashboardFrame({
 
         <div className="goalix-reference-menu-label">{t("General")}</div>
         <div className="goalix-reference-nav">
-          <Link
-            href={settingsRoutes[role] ?? ROLE_ROUTES[role]}
-            className="goalix-reference-nav-item"
-            onClick={closeMobileNav}
-          >
-            <Settings size={17} />
-            <span>{t("Settings")}</span>
-          </Link>
+          {!hasSettingsInMainNav && (
+            <Link
+              href={settingsRoutes[role] ?? ROLE_ROUTES[role]}
+              className="goalix-reference-nav-item"
+              onClick={closeMobileNav}
+            >
+              <Settings size={17} />
+              <span>{t("Settings")}</span>
+            </Link>
+          )}
           <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item" onClick={closeMobileNav}>
             <HelpCircle size={17} />
             <span>{t("Help")}</span>
@@ -1745,9 +2007,43 @@ export function DashboardFrame({
                 <span>{theme === "dark" ? t("Light theme") : t("Dark theme")}</span>
               </button>
             </div>
-            <button type="button" className="goalix-reference-message-trigger" aria-label={t("Messages")}>
-              <Mail size={18} />
-            </button>
+            <div className="goalix-reference-message-menu" ref={messageMenuRef}>
+              <button
+                type="button"
+                className="goalix-reference-message-trigger"
+                aria-label={t("Messages")}
+                aria-expanded={messageMenuOpen}
+                onClick={() => setMessageMenuOpen((current) => !current)}
+              >
+                <Mail size={18} />
+              </button>
+              {messageMenuOpen && (
+                <div className="goalix-reference-message-panel" role="menu" aria-label={t("Messages")}>
+                  <strong>{t("Community")}</strong>
+                  {communityWhatsappHref ? (
+                    <a
+                      href={communityWhatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      role="menuitem"
+                      onClick={() => setMessageMenuOpen(false)}
+                    >
+                      <MessageSquare size={16} />
+                      <span>{t("WhatsApp Community")}</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  ) : (
+                    <p>{t("WhatsApp community link is not set yet.")}</p>
+                  )}
+                  {role === "admin" && (
+                    <Link href="/admin/settings" role="menuitem" onClick={() => setMessageMenuOpen(false)}>
+                      <Settings size={16} />
+                      <span>{t("Edit community link")}</span>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="goalix-reference-notifications">
               <button
                 type="button"
@@ -1849,7 +2145,32 @@ export function DashboardFrame({
         </header>
 
         <div ref={contentRef} className="goalix-reference-content">
-          {children}
+          {pagePermissionLoading ? (
+            <div className="flex min-h-[45vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Checking coach permissions...
+            </div>
+          ) : pagePermissionDenied ? (
+            <div className="mx-auto flex min-h-[45vh] max-w-xl items-center justify-center">
+              <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
+                <ShieldAlert className="mx-auto h-9 w-9 text-amber-300" />
+                <h1 className="mt-3 text-lg font-semibold">Access not assigned</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your current role does not include permission for this page.
+                  Ask an academy administrator to update your role or permission grants.
+                </p>
+                <button
+                  type="button"
+                  className="mt-4 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted/50"
+                  onClick={() => router.replace(firstAllowedHref || ROLE_ROUTES[role] || "/")}
+                >
+                  Back to home
+                </button>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </div>
       </main>
     </div>

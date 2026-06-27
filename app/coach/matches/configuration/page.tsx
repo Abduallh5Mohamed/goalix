@@ -172,6 +172,7 @@ export default function CoachMatchConfigurationPage() {
   const { data: matchesRes, isLoading: loadingMatches } =
     useGetCoachMatchesQuery(undefined, {
       pollingInterval: 15000,
+      skipPollingIfUnfocused: true,
       refetchOnFocus: true,
       refetchOnMountOrArgChange: true,
     });
