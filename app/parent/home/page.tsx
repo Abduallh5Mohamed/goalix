@@ -1,141 +1,1042 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { type FormEvent, useMemo, useState } from "react";
 import {
+  Activity,
+  BrainCircuit,
   CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
   FileText,
   Goal,
-  HeartPulse,
-  Mail,
+  Loader2,
   MessageSquare,
-  Moon,
+  Send,
   ShieldCheck,
-  Smile,
   Star,
   Trophy,
-  User,
+  UserRound,
   Users,
-  Zap,
 } from "lucide-react";
+import {
+  type CalendarEvent,
+  type Match,
+  type ParentChild,
+  type PlayerAttendanceRecord,
+  type PlayerEvaluationRecord,
+  useCreateParentChildNoteMutation,
+  useGetParentDashboardQuery,
+} from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
+import { useParentSelectedChild } from "@/lib/hooks/useParentSelectedChild";
+import { cn } from "@/lib/utils";
 
-const topStats = [
-  { icon: CalendarDays, value: "85%", label: "Attendance" },
-  { icon: Users, value: "92%", label: "Participation" },
-  { icon: Smile, value: "Great", label: "Wellness" },
-  { icon: Star, value: "On Track", label: "Overall Progress" },
-];
+type DashboardLanguage = "en" | "ar";
 
-const skillRows = [
-  ["Finishing", "78%"], ["Passing", "72%"], ["Dribbling", "81%"], ["Defending", "65%"], ["Game IQ", "75%"],
-];
+const copy = {
+  en: {
+    eyebrow: "Family performance hub",
+    title: "Welcome back, guardian",
+    subtitle: "Monitor every linked player, message coaches, and follow the weekly journey from one place.",
+    children: "Linked players",
+    noChildren: "No linked players yet. Ask the academy admin to link your parent account to a player.",
+    attendance: "Attendance",
+    training: "Training",
+    matches: "Matches",
+    rating: "Avg rating",
+    goals: "Goals",
+    assists: "Assists",
+    minutes: "Weekly minutes",
+    discipline: "Discipline",
+    season: "This season",
+    coaches: "Assigned coaches",
+    messageCoach: "Message coach",
+    upcoming: "Upcoming schedule",
+    recentMatches: "Recent matches",
+    evaluations: "Coach evaluations",
+    attendanceLog: "Attendance log",
+    parentNotes: "Parent notes",
+    addNote: "Send a note",
+    titlePlaceholder: "Short title",
+    bodyPlaceholder: "What should the coach know?",
+    allCoaches: "All assigned coaches",
+    send: "Send note",
+    loading: "Loading family dashboard...",
+    empty: "No data yet.",
+    reviewed: "Reviewed",
+    resolved: "Resolved",
+    new: "New",
+    coachReply: "Coach reply",
+    viewCalendar: "Open calendar",
+    viewMatches: "Open matches",
+    paymentAccess: "Payment access",
+    progressAccess: "Progress access",
+    weeklyReport: "Weekly parent report",
+    aiInsights: "AI health and evaluation",
+    injuryRisk: "Injury risk",
+    aiEvaluation: "AI evaluation",
+    riskLevel: "Risk level",
+    riskScore: "Risk score",
+    recommendation: "Recommendation",
+    noAiInsights: "No AI result has been published for this player yet.",
+    ranking: "Ranking",
+    overallScore: "Overall score",
+    aiBreakdown: "AI breakdown",
+    trend: "Trend",
+    model: "Model",
+    highlights: "Highlights",
+    actionItems: "Action items",
+    payments: "Payments",
+    totalDue: "Total due",
+    paid: "Paid",
+    latestInvoice: "Latest invoice",
+    age: "Age",
+    group: "Group",
+    branch: "Branch",
+    relation: "Relation",
+    code: "Code",
+    coach: "Coach",
+    trainingEvaluation: "Training evaluation",
+    goalixVs: "GOALIX vs",
+    noProgressAccess: "Progress access is not enabled",
+    noProgressAccessBody: "The coach or academy admin controls whether performance reports are visible to this parent account.",
+    parentObservation: "Parent observation",
+    present: "Present",
+    late: "Late",
+    absent: "Absent",
+    excused: "Excused",
+    trainingType: "Training",
+    matchType: "Match",
+    scheduled: "Scheduled",
+    completed: "Completed",
+    finished: "Finished",
+    cancelled: "Cancelled",
+    postponed: "Postponed",
+    messageAccessDisabled: "Coach messaging is not enabled for this player.",
+    messageAccessDisabledBody: "The academy controls whether this parent account can contact the assigned coaches.",
+    noteSent: "Your note was sent to the coaching team.",
+    noteFailed: "The note could not be sent. Please try again.",
+    loadFailed: "The family dashboard could not be loaded.",
+    retry: "Retry",
+    otherEvent: "Other event",
+    unknownStatus: "Unknown status",
+    otherNote: "Family note",
+    father: "Father",
+    mother: "Mother",
+    guardian: "Guardian",
+    otherRelation: "Family",
+  },
+  ar: {
+    eyebrow: "مركز متابعة الأسرة",
+    title: "أهلا بعودتك، ولي الأمر",
+    subtitle: "تابع كل لاعب مرتبط بحسابك، تواصل مع المدربين، وراقب الرحلة الأسبوعية من مكان واحد.",
+    children: "اللاعبون المرتبطون",
+    noChildren: "لا يوجد لاعبون مرتبطون بعد. اطلب من إدارة الأكاديمية ربط حساب ولي الأمر بلاعب.",
+    attendance: "الحضور",
+    training: "التدريب",
+    matches: "المباريات",
+    rating: "متوسط التقييم",
+    goals: "الأهداف",
+    assists: "التمريرات الحاسمة",
+    minutes: "دقائق الأسبوع",
+    discipline: "الانضباط",
+    season: "هذا الموسم",
+    coaches: "المدربون المسؤولون",
+    messageCoach: "راسل المدرب",
+    upcoming: "الجدول القادم",
+    recentMatches: "آخر المباريات",
+    evaluations: "تقييمات المدرب",
+    attendanceLog: "سجل الحضور",
+    parentNotes: "ملاحظات ولي الأمر",
+    addNote: "إرسال ملاحظة",
+    titlePlaceholder: "عنوان مختصر",
+    bodyPlaceholder: "ماذا تريد أن يعرف المدرب؟",
+    allCoaches: "كل المدربين المسؤولين",
+    send: "إرسال الملاحظة",
+    loading: "جاري تحميل لوحة الأسرة...",
+    empty: "لا توجد بيانات بعد.",
+    reviewed: "تمت المراجعة",
+    resolved: "تم الحل",
+    new: "جديدة",
+    coachReply: "رد المدرب",
+    viewCalendar: "فتح التقويم",
+    viewMatches: "فتح المباريات",
+    paymentAccess: "صلاحية المدفوعات",
+    progressAccess: "صلاحية التقدم",
+    weeklyReport: "التقرير الأسبوعي لولي الأمر",
+    aiInsights: "نتائج الذكاء والتحليل",
+    injuryRisk: "مخاطر الإصابة",
+    aiEvaluation: "التقييم بالذكاء الاصطناعي",
+    riskLevel: "مستوى الخطورة",
+    riskScore: "درجة الخطورة",
+    recommendation: "التوصية",
+    noAiInsights: "لا توجد نتيجة ذكاء اصطناعي منشورة لهذا اللاعب حتى الآن.",
+    ranking: "الترتيب",
+    overallScore: "التقييم العام",
+    aiBreakdown: "تفاصيل الذكاء",
+    trend: "الاتجاه",
+    model: "النموذج",
+    highlights: "أبرز النقاط",
+    actionItems: "خطوات مقترحة",
+    payments: "المدفوعات",
+    totalDue: "المستحق",
+    paid: "المدفوع",
+    latestInvoice: "آخر فاتورة",
+    age: "العمر",
+    group: "المجموعة",
+    branch: "الفرع",
+    relation: "صلة القرابة",
+    code: "الكود",
+    coach: "المدرب",
+    trainingEvaluation: "تقييم التدريب",
+    goalixVs: "جوليكس ضد",
+    noProgressAccess: "صلاحية عرض التقدم غير مفعلة",
+    noProgressAccessBody: "المدرب أو إدارة الأكاديمية هم من يحددون ظهور تقارير الأداء لحساب ولي الأمر.",
+    parentObservation: "ملاحظة ولي الأمر",
+    present: "حاضر",
+    late: "متأخر",
+    absent: "غائب",
+    excused: "بعذر",
+    trainingType: "تدريب",
+    matchType: "مباراة",
+    scheduled: "مجدول",
+    completed: "مكتمل",
+    finished: "منتهي",
+    cancelled: "ملغي",
+    postponed: "مؤجل",
+    messageAccessDisabled: "التواصل مع المدرب غير مفعّل لهذا اللاعب.",
+    messageAccessDisabledBody: "إدارة الأكاديمية هي التي تحدد إمكانية تواصل حساب ولي الأمر مع المدربين المسؤولين.",
+    noteSent: "تم إرسال ملاحظتك إلى فريق التدريب.",
+    noteFailed: "تعذر إرسال الملاحظة. حاول مرة أخرى.",
+    loadFailed: "تعذر تحميل لوحة الأسرة.",
+    retry: "إعادة المحاولة",
+    otherEvent: "حدث آخر",
+    unknownStatus: "حالة غير محددة",
+    otherNote: "ملاحظة أسرية",
+    father: "الأب",
+    mother: "الأم",
+    guardian: "ولي الأمر",
+    otherRelation: "الأسرة",
+  },
+} as const;
 
-const alerts = [
-  ["Training time change", "Tomorrow, 20 May", "16:00 → 17:30"],
-  ["Bring: Shin guards", "20 May", "Equipment Reminder"],
-  ["Match day", "24 May vs FC United", "4d"],
-];
+type HomeCopy = Record<keyof typeof copy.en, string>;
 
-const sessions = [
-  ["Today", "Technical Training", "20 May", "16:00 - 17:30", "GOALIX Arena"],
-  ["Thu", "Strength & Conditioning", "22 May", "17:00 - 18:00", "GOALIX Gym"],
-  ["Sat", "Match Day", "24 May", "10:00", "Riverside Stadium"],
-];
-
-const wellness = [
-  { label: "Energy", value: "Good", progress: "82", Icon: Zap },
-  { label: "Sleep", value: "7.8 h", progress: "68", Icon: Moon },
-  { label: "Mood", value: "Positive", progress: "92", Icon: Smile },
-  { label: "Soreness", value: "Low", progress: "45", Icon: HeartPulse },
-];
-
-function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`goalix-dashboard-panel rounded-[18px] border border-[#2a4460]/80 bg-[#07172a]/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.24)] ${className}`}>{children}</section>;
+function Panel({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "goalix-dashboard-panel rounded-[20px] border border-[#2a4460]/80 bg-[#07172a]/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.18)] md:p-5",
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
 }
 
-function Ring({ value, label, color = "lime" }: { value: number; label?: string; color?: string }) {
-  const stroke = color === "cyan" ? "#00d8ff" : color === "teal" ? "#2ee8c9" : "#b6ff00";
+function formatDate(value?: string | null, language: DashboardLanguage = "en") {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en-US", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function metricValue(value: number | null | undefined, suffix = "") {
+  const number = Number(value || 0);
+  return `${Number.isInteger(number) ? number : number.toFixed(1)}${suffix}`;
+}
+
+function childAge(dateOfBirth?: string | null) {
+  if (!dateOfBirth) return "-";
+  const birth = new Date(dateOfBirth);
+  if (Number.isNaN(birth.getTime())) return "-";
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return String(age);
+}
+
+function eventTypeLabel(type: string | null | undefined, t: HomeCopy) {
+  if (type === "training") return t.trainingType;
+  if (type === "match") return t.matchType;
+  return type ? t.otherEvent : "-";
+}
+
+function statusLabel(status: string | null | undefined, t: HomeCopy) {
+  if (!status) return "-";
+  return t[status as "present" | "late" | "absent" | "excused" | "scheduled" | "completed" | "finished" | "cancelled" | "postponed"] || t.unknownStatus;
+}
+
+function noteCategoryLabel(category: string | null | undefined, t: HomeCopy) {
+  if (category === "parent_observation") return t.parentObservation;
+  return category ? t.otherNote : t.parentNotes;
+}
+
+function relationLabel(relation: string | null | undefined, t: HomeCopy) {
+  if (!relation) return "-";
+  return t[relation.toLowerCase() as "father" | "mother" | "guardian"] || t.otherRelation;
+}
+
+function formatScore(value: unknown, fallback = "-") {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
+}
+
+function resultNumber(result: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!result) return null;
+  for (const key of keys) {
+    const numeric = Number(result[key]);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return null;
+}
+
+function riskTone(level: unknown) {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "high") {
+    return {
+      ring: "border-rose-400/35 bg-rose-400/10 text-rose-200",
+      text: "text-rose-300",
+    };
+  }
+  if (normalized === "medium") {
+    return {
+      ring: "border-amber-400/35 bg-amber-400/10 text-amber-100",
+      text: "text-amber-300",
+    };
+  }
+  return {
+    ring: "border-lime-300/35 bg-lime-300/10 text-lime-100",
+    text: "text-lime-300",
+  };
+}
+
+function LockedProgressPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="relative mx-auto grid h-28 w-28 place-items-center">
-      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="39" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
-        <circle cx="50" cy="50" r="39" fill="none" stroke={stroke} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${value * 2.45} 245`} />
-      </svg>
-      <div className="text-center">
-        <div className="font-display text-3xl font-bold text-white">{value}%</div>
-        {label && <div className="text-xs text-slate-300">{label}</div>}
-      </div>
+    <div className="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#2a4460] bg-white/[0.035] p-6 text-center">
+      <ShieldCheck className="h-10 w-10 text-lime-300" />
+      <h3 className="mt-3 text-lg font-black text-white">{title}</h3>
+      <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-slate-400">{body}</p>
     </div>
   );
 }
 
-function Heatmap() {
-  return (
-    <svg viewBox="0 0 360 230" className="h-full w-full rounded-xl">
-      <rect width="360" height="230" fill="#071524" />
-      <rect x="12" y="12" width="336" height="206" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
-      <line x1="180" y1="12" x2="180" y2="218" stroke="rgba(255,255,255,0.55)" />
-      <circle cx="180" cy="115" r="36" fill="none" stroke="rgba(255,255,255,0.55)" />
-      <filter id="parentHeatBlur"><feGaussianBlur stdDeviation="14" /></filter>
-      <g filter="url(#parentHeatBlur)" opacity="0.9">
-        {[[118, 72, "#b6ff00"], [154, 92, "#ffef37"], [180, 120, "#ff2d2d"], [222, 106, "#7bea28"], [250, 148, "#00d8ff"], [116, 150, "#00d8ff"], [205, 165, "#b6ff00"]].map(([x, y, c], i) => (
-          <circle key={i} cx={Number(x)} cy={Number(y)} r="30" fill={String(c)} />
-        ))}
-      </g>
-    </svg>
-  );
-}
-
 export default function ParentHomePage() {
+  const language = useDashboardLanguage();
+  const t = copy[language];
+  const { selectedChildId, setSelectedChildId } = useParentSelectedChild();
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteBody, setNoteBody] = useState("");
+  const [coachUserId, setCoachUserId] = useState("");
+  const [noteNotice, setNoteNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const { data, isLoading, isFetching, isError, refetch } = useGetParentDashboardQuery(
+    selectedChildId ? { childId: selectedChildId } : undefined,
+  );
+  const [createNote, createNoteState] = useCreateParentChildNoteMutation();
+
+  const child = data?.selectedChild ?? null;
+  const progress = data?.progress ?? null;
+  const aiInsights = data?.aiInsights ?? null;
+  const injuryRisk = aiInsights?.injuryRisk?.prediction ?? null;
+  const aiEvaluation = aiInsights?.aiEvaluation ?? null;
+  const coachEvaluation = aiInsights?.coachEvaluation ?? null;
+  const aiEvaluationScore = resultNumber(aiEvaluation?.result, [
+    "score",
+    "overall_score",
+    "performance_score",
+    "weekly_score",
+  ]);
+  const ranking = aiInsights?.ranking ?? null;
+  const displayedEvaluationScore =
+    aiEvaluationScore ??
+    ranking?.breakdown?.ai_score ??
+    ranking?.total_score ??
+    coachEvaluation?.overall_rating ??
+    null;
+  const riskStyle = riskTone(injuryRisk?.risk_level);
+  const canViewProgress = child?.can_view_progress !== false;
+  const canMessageCoach = child?.can_message_coach !== false;
+  const coaches = data?.coaches ?? child?.coaches ?? [];
+  const childPhoto =
+    child?.photo_url && !/^https?:\/\//i.test(child.photo_url)
+      ? child.photo_url.startsWith("/")
+        ? child.photo_url
+        : `/${child.photo_url}`
+      : "/Player.png";
+
+  const metrics = useMemo(() => {
+    const p = progress;
+    return [
+      {
+        label: t.attendance,
+        value: metricValue(p?.attendancePercentage, "%"),
+        Icon: CalendarDays,
+        tone: "lime" as const,
+      },
+      {
+        label: t.training,
+        value: metricValue(p?.trainingAttendancePercentage, "%"),
+        Icon: ClipboardList,
+        tone: "teal" as const,
+      },
+      {
+        label: t.matches,
+        value: metricValue(p?.matchAttendancePercentage, "%"),
+        Icon: Trophy,
+        tone: "cyan" as const,
+      },
+      {
+        label: t.rating,
+        value: metricValue(Math.max(Number(p?.averageTrainingRating || 0), Number(p?.averageMatchRating || 0))),
+        Icon: Star,
+        tone: "lime" as const,
+      },
+      { label: t.goals, value: metricValue(p?.goals), Icon: Goal, tone: "teal" as const },
+      { label: t.assists, value: metricValue(p?.assists), Icon: Users, tone: "cyan" as const },
+      { label: t.minutes, value: metricValue(p?.weeklyMinutesPlayed), Icon: CheckCircle2, tone: "lime" as const },
+      {
+        label: t.discipline,
+        value: `${Number(p?.disciplineRecord?.yellowCards || 0)}/${Number(p?.disciplineRecord?.redCards || 0)}`,
+        Icon: ShieldCheck,
+        tone: "teal" as const,
+      },
+    ];
+  }, [progress, t]);
+
+  const weeklyHighlights = useMemo(() => {
+    if (language !== "ar") return data?.weeklyReport?.highlights ?? [];
+    const report = data?.weeklyReport;
+    if (!report) return [];
+    return [
+      `نسبة الحضور الأخيرة ${report.attendanceRate || 0}%`,
+      report.latestEvaluation
+        ? `آخر تقييم منشور من المدرب ${metricValue(Number(report.latestEvaluation.overall_rating || 0))}`
+        : "لا يوجد تقييم جديد منشور من المدرب حتى الآن",
+      `يوجد ${report.recentMatches?.length || 0} مباراة ظاهرة في التقرير`,
+    ];
+  }, [data?.weeklyReport, language]);
+
+  const weeklyActionItems = useMemo(() => {
+    if (language !== "ar") return data?.weeklyReport?.actionItems ?? [];
+    const report = data?.weeklyReport;
+    if (!report) return [];
+    const items: string[] = [];
+    if ((report.attendanceRate || 0) < 85) items.push("راجع انتظام الحضور مع المدرب");
+    if (!report.latestEvaluation) items.push("اسأل المدرب عن موعد نشر التقييم القادم");
+    if (report.recentNotes?.some((note) => note.status === "new")) items.push("تابع الملاحظات المفتوحة مع المدرب");
+    return items.length ? items : ["استمر على نفس الروتين وراقب تغيرات الأسبوع القادم"];
+  }, [data?.weeklyReport, language]);
+
+  async function submitNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!child?.id || !canMessageCoach || !noteBody.trim()) return;
+    setNoteNotice(null);
+    try {
+      await createNote({
+        childId: child.id,
+        body: {
+          coachUserId: coachUserId || undefined,
+          category: "parent_observation",
+          title: noteTitle.trim() || undefined,
+          body: noteBody.trim(),
+        },
+      }).unwrap();
+      setNoteTitle("");
+      setNoteBody("");
+      setCoachUserId("");
+      setNoteNotice({ type: "success", text: t.noteSent });
+    } catch {
+      setNoteNotice({ type: "error", text: t.noteFailed });
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Panel className="grid min-h-[420px] place-items-center text-center">
+        <div>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-lime-300" />
+          <p className="mt-4 font-black text-slate-300">{t.loading}</p>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Panel className="grid min-h-[420px] place-items-center text-center">
+        <div>
+          <ShieldCheck className="mx-auto h-11 w-11 text-rose-400" />
+          <p className="mt-4 font-black text-slate-300">{t.loadFailed}</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-5 min-h-11 rounded-2xl bg-gradient-to-r from-[#51b848] to-[#2d9ad5] px-5 font-black text-[#06111f]"
+          >
+            {t.retry}
+          </button>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (!child) {
+    return (
+      <Panel className="grid min-h-[420px] place-items-center text-center">
+        <div className="max-w-xl">
+          <UserRound className="mx-auto h-12 w-12 text-lime-300" />
+          <h1 className="mt-4 font-display text-4xl font-black text-white">{t.children}</h1>
+          <p className="mt-3 text-base font-semibold text-slate-400">{t.noChildren}</p>
+        </div>
+      </Panel>
+    );
+  }
+
   return (
-    <>
-      <section className="mb-5 grid gap-5 xl:grid-cols-[1fr_auto]">
-        <div><h1 className="font-display text-5xl font-bold leading-none md:text-6xl">Welcome back, Parent</h1><p className="mt-2 text-lg text-slate-300">Here&apos;s your child&apos;s journey at a glance <span className="text-lime-300">♡</span></p></div>
-        <div className="grid grid-cols-2 gap-5 md:grid-cols-4">{topStats.map((s) => <div key={s.label} className="flex items-center gap-3"><span className="grid h-12 w-12 place-items-center rounded-full border border-lime-300/30 bg-lime-300/5 text-lime-300"><s.icon size={22} /></span><div><strong className="text-2xl">{s.value}</strong><p className="text-xs text-slate-400">{s.label}</p></div></div>)}</div>
+    <div className="space-y-5">
+      <section className="grid gap-5 xl:grid-cols-[1fr_auto]">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-lime-300">{t.eyebrow}</p>
+          <h1 className="mt-2 font-display text-5xl font-black leading-none text-white md:text-6xl">
+            {t.title}
+          </h1>
+          <p className="mt-3 max-w-3xl text-base font-semibold leading-7 text-slate-300">
+            {t.subtitle}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {data?.children?.map((item: ParentChild) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSelectedChildId(item.id)}
+              className={cn(
+                "min-h-12 rounded-2xl border px-4 text-sm font-black transition",
+                item.id === child.id
+                  ? "border-lime-300/40 bg-lime-300 text-[#06111f] shadow-[0_14px_26px_rgba(178,210,59,0.24)]"
+                  : "border-[#2a4460] bg-white/[0.035] text-slate-200",
+              )}
+            >
+              {item.full_name}
+            </button>
+          ))}
+        </div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[0.8fr_1.98fr_0.72fr]">
-        <Panel className="goalix-dashboard-photo-card overflow-hidden xl:row-span-2">
-          <div className="relative min-h-[340px] p-5">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(182,255,0,0.28),transparent_28%)]" />
-            <div className="absolute right-7 top-10 font-display text-[190px] font-black leading-none text-lime-300/20">X</div>
-            <Image src="/Player.png" alt="child player placeholder" fill sizes="340px" className="object-cover object-center opacity-80 mix-blend-screen" priority />
-            <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07172a] to-transparent" />
-            <div className="absolute bottom-6 left-5 right-5">
-              <div className="mb-4 grid h-16 w-16 place-items-center rounded-2xl border border-lime-300/35 bg-[#07111f]/85 text-center"><span className="text-xs">OVR</span><strong className="font-display text-3xl text-lime-300">78</strong></div>
-              <h2 className="text-3xl font-semibold">Noah Williams</h2><p className="mt-1"><span className="font-bold text-lime-300">U13</span> <span className="text-slate-300">• Striker</span></p>
-              <div className="mt-5 grid grid-cols-5 gap-3 border-t border-[#2a4460] pt-4 text-xs">{["Age|12","DOB|12 Jan 2013","Height|158 cm","Weight|52 kg","Foot|Right"].map((i)=>{const [l,v]=i.split("|"); return <div key={l}><p className="text-slate-400">{l}</p><strong>{v}</strong></div>;})}</div>
+      <section className="grid gap-4 xl:grid-cols-[0.86fr_1.5fr_0.84fr]">
+        <Panel className="goalix-dashboard-photo-card overflow-hidden p-0 xl:row-span-2">
+          <div className="relative min-h-[390px] p-5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_20%,rgba(178,210,59,0.28),transparent_28%),linear-gradient(180deg,rgba(6,17,31,0),#07172a_92%)]" />
+            <Image
+              src={childPhoto}
+              alt={child.full_name}
+              fill
+              sizes="(max-width: 768px) 100vw, 380px"
+              className="object-cover object-center opacity-82 mix-blend-screen"
+              priority
+            />
+            <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#07172a] to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-2xl border border-lime-300/35 bg-[#07111f]/85 text-center">
+                <span className="text-xs font-black text-slate-300">{t.age}</span>
+                <strong className="font-display text-3xl text-lime-300">{childAge(child.date_of_birth)}</strong>
+              </div>
+              <h2 className="text-3xl font-black text-white">{child.full_name}</h2>
+              <p className="mt-1 font-semibold text-slate-300">
+                <span className="text-lime-300">{child.level || "GOALIX"}</span>
+                {" - "}
+                {child.position || child.group_name || "-"}
+              </p>
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#2a4460] pt-4 text-sm sm:grid-cols-4">
+                <div><p className="text-slate-400">{t.group}</p><strong>{child.group_name || "-"}</strong></div>
+                <div><p className="text-slate-400">{t.branch}</p><strong>{child.branch_name || "-"}</strong></div>
+                <div><p className="text-slate-400">{t.relation}</p><strong>{relationLabel(child.relation, t)}</strong></div>
+                <div><p className="text-slate-400">{t.code}</p><strong>{child.player_code || "-"}</strong></div>
+              </div>
             </div>
           </div>
-          <button className="m-4 flex w-[calc(100%-2rem)] items-center justify-between rounded-2xl border border-[#2a4460] px-4 py-3 text-sm"><span className="flex items-center gap-2"><User size={18} />View Full Profile</span>→</button>
         </Panel>
 
-        <Panel className="grid gap-0 overflow-hidden md:grid-cols-5">
-          {[["Attendance",85,"lime"],["Training Participation",92,"teal"],["On-Time Rate",90,"lime"],["Session Rating",92,"cyan"],["Safety Status",100,"teal"]].map(([label,value,color]) => <div key={String(label)} className="border-b border-[#2a4460] p-5 text-center md:border-b-0 md:border-r last:md:border-r-0"><p className="font-semibold">{label}</p>{label==="Safety Status"?<ShieldCheck className="mx-auto my-5 h-24 w-24 text-teal-300" />:<Ring value={Number(value)} label="This Season" color={String(color)} />}<p className="text-sm text-lime-300">↑ {label==="Attendance"?"10":"8"}% <span className="text-slate-400">vs last season</span></p></div>)}
+        <Panel className={canViewProgress ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-4" : ""}>
+          {canViewProgress ? (
+            metrics.map(({ label, value, Icon, tone }) => (
+              <div key={label} className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-400">{label}</p>
+                    <strong className="mt-2 block font-display text-4xl text-white">{value}</strong>
+                  </div>
+                  <span
+                    className={cn(
+                      "grid h-11 w-11 place-items-center rounded-2xl",
+                      tone === "cyan"
+                        ? "bg-cyan-300/15 text-cyan-300"
+                        : tone === "teal"
+                          ? "bg-teal-300/15 text-teal-300"
+                          : "bg-lime-300/15 text-lime-300",
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+                <p className="mt-3 text-xs font-black text-slate-500">{t.season}</p>
+              </div>
+            ))
+          ) : (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          )}
         </Panel>
 
-        <Panel className="p-4 xl:row-span-2"><div className="flex justify-between"><h2 className="font-semibold">Alerts</h2><span className="text-xs text-slate-400">View All</span></div><div className="mt-4 space-y-3">{alerts.map((a,i)=><div key={a[0]} className="flex gap-3 border-b border-[#2a4460] pb-3 last:border-b-0"><span className={`grid h-9 w-9 place-items-center rounded-xl ${i===0?"bg-yellow-400/15 text-yellow-400":i===1?"bg-red-400/15 text-red-400":"bg-cyan-400/15 text-cyan-300"}`}>●</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{a[0]}</p><p className="text-xs text-slate-400">{a[1]}</p></div><p className="text-xs text-slate-400">{a[2]}</p></div>)}</div><p className="mt-4 text-xs text-orange-300">● 3 unread alerts</p></Panel>
+        <Panel>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-black text-white">{t.coaches}</h2>
+              <p className="text-sm font-semibold text-slate-400">{child.full_name}</p>
+            </div>
+            {canMessageCoach && (
+              <Link
+                href="/parent/chat"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#51b848] to-[#2d9ad5] px-4 text-sm font-black text-[#06111f]"
+              >
+                <MessageSquare className="h-4 w-4" />
+                {t.messageCoach}
+              </Link>
+            )}
+          </div>
+          <div className="mt-4 grid gap-3">
+            {coaches.map((coach) => (
+              <div key={coach.user_id} className="flex items-center gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.035] p-3">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-lime-300 text-[#06111f] font-black">
+                  {coach.full_name?.slice(0, 2).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-black text-white">{coach.full_name}</p>
+                  <p className="truncate text-sm font-semibold text-slate-400">{coach.specialization || t.coach}</p>
+                </div>
+              </div>
+            ))}
+            {!coaches.length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-4 text-sm font-bold text-slate-400">{t.empty}</p>}
+            {!canMessageCoach && (
+              <div className="rounded-2xl border border-dashed border-amber-400/30 bg-amber-400/10 p-4">
+                <p className="font-black text-amber-300">{t.messageAccessDisabled}</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-400">
+                  {t.messageAccessDisabledBody}
+                </p>
+              </div>
+            )}
+          </div>
+        </Panel>
 
-        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_0.85fr_0.85fr]">
-          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="font-semibold">Skill Development</h2><button className="rounded-xl border border-[#2a4460] px-3 py-1 text-xs">This Season</button></div>{skillRows.map(([l,v])=><div key={l} className="mb-4 grid grid-cols-[90px_1fr_45px] items-center gap-3 text-sm"><span>{l}</span><div className="h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-lime-300" style={{width:v}} /></div><span className="text-lime-300">{v}</span></div>)}<div className="rounded-xl border border-[#2a4460] p-3"><div className="flex justify-between"><span>Overall Progress</span><strong>76%</strong></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full w-[76%] rounded-full bg-lime-300" /></div></div></Panel>
-          <Panel className="p-5"><h2 className="mb-4 font-semibold">Performance Heatmap</h2><div className="h-[210px]"><Heatmap /></div><p className="mt-3 text-sm text-slate-400">Attacking Direction →</p></Panel>
-          <Panel className="p-5"><h2 className="font-semibold">Coach Notes</h2><div className="mt-5 flex gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-orange-300/20">CA</div><div><p className="font-semibold">Coach Alex</p><p className="text-xs text-slate-400">19 May 2025</p></div></div><p className="mt-4 text-sm leading-6 text-slate-300">Noah has shown great improvement in movement off the ball and finishing in training.</p><div className="mt-4 flex gap-2"><span className="rounded-full bg-lime-300/15 px-3 py-1 text-xs text-lime-300">Hard Worker</span><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs text-cyan-300">Team Player</span></div></Panel>
-          <Panel className="p-5"><div className="mb-4 flex justify-between"><h2 className="font-semibold">Wellness Summary</h2><button className="text-xs text-slate-400">This Week</button></div>{wellness.map(({ label, value, progress, Icon })=><div key={label} className="mb-4 grid grid-cols-[24px_1fr_50px] items-center gap-3 text-sm"><Icon className="text-cyan-300" size={20}/><div><div className="flex justify-between"><span>{label}</span></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-lime-300" style={{width:`${progress}%`}} /></div></div><span className="text-right text-lime-300">{value}</span></div>)}</Panel>
+        <Panel className="xl:col-span-2">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-2xl font-black text-white">{t.upcoming}</h2>
+            <Link href="/parent/calendar" className="text-sm font-black text-lime-300">{t.viewCalendar}</Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {(data?.calendarEvents?.data ?? []).slice(0, 6).map((event: CalendarEvent) => (
+              <div key={event.id} className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-lime-300">{eventTypeLabel(event.event_type, t)}</p>
+                <h3 className="mt-2 font-black text-white">{event.title}</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-400">{formatDate(event.start_datetime, language)}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{event.location || "-"}</p>
+              </div>
+            ))}
+            {!(data?.calendarEvents?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <Panel>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-lime-300">
+                {t.aiInsights}
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-black text-white">
+                {t.injuryRisk}
+              </h2>
+            </div>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-lime-300/15 text-lime-300">
+              <Activity className="h-6 w-6" />
+            </span>
+          </div>
+          {!canViewProgress ? (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          ) : injuryRisk ? (
+            <div className={cn("rounded-2xl border p-5", riskStyle.ring)}>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black text-slate-300">{t.riskLevel}</p>
+                  <strong className={cn("mt-1 block font-display text-4xl", riskStyle.text)}>
+                    {injuryRisk.risk_level || "-"}
+                  </strong>
+                </div>
+                <div className="text-end">
+                  <p className="text-sm font-black text-slate-300">{t.riskScore}</p>
+                  <strong className="mt-1 block font-display text-4xl text-white">
+                    {formatScore(injuryRisk.risk_percentage)}%
+                  </strong>
+                </div>
+              </div>
+              <div className="mt-5 rounded-2xl border border-[#2a4460] bg-[#06111f]/70 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">
+                  {t.recommendation}
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                  {injuryRisk.recommendation || t.empty}
+                </p>
+              </div>
+              <p className="mt-3 text-xs font-black text-slate-500">
+                {aiInsights?.injuryRisk?.model_version || t.aiEvaluation}
+                {" - "}
+                {formatDate(aiInsights?.injuryRisk?.created_at, language)}
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">
+              {t.noAiInsights}
+            </p>
+          )}
+        </Panel>
+
+        <Panel>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-300">
+                {t.ranking}
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-black text-white">
+                {t.aiEvaluation}
+              </h2>
+            </div>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300/15 text-cyan-300">
+              <BrainCircuit className="h-6 w-6" />
+            </span>
+          </div>
+          {!canViewProgress ? (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          ) : aiEvaluation || ranking || coachEvaluation ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.overallScore}</p>
+                <strong className="mt-2 block font-display text-4xl text-white">
+                  {formatScore(displayedEvaluationScore)}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.ranking}</p>
+                <strong className="mt-2 block font-display text-4xl text-lime-300">
+                  {ranking?.rank ? `#${ranking.rank}` : "-"}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="text-xs font-black text-slate-400">{t.aiBreakdown}</p>
+                <strong className="mt-2 block font-display text-4xl text-cyan-300">
+                  {formatScore(ranking?.breakdown?.ai_score)}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-[#06111f]/70 p-4 sm:col-span-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.season}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {ranking?.period || formatDate(coachEvaluation?.start_datetime, language)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.trend}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {ranking?.trend || coachEvaluation?.event_title || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-500">{t.model}</p>
+                    <p className="mt-1 font-black text-slate-200">
+                      {aiEvaluation?.model_version || coachEvaluation?.coach_name || t.coach}
+                    </p>
+                  </div>
+                </div>
+                {(coachEvaluation?.coach_notes || coachEvaluation?.improvement_plan) && (
+                  <div className="mt-4 rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-lime-300">
+                      {t.coachReply}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-200">
+                      {coachEvaluation.coach_notes || coachEvaluation.improvement_plan}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">
+              {t.noAiInsights}
+            </p>
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+        <Panel>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-display text-2xl font-black text-white">{t.recentMatches}</h2>
+            <Link href="/parent/matches" className="text-sm font-black text-lime-300">{t.viewMatches}</Link>
+          </div>
+          <div className="grid gap-3">
+            {(data?.matches?.data ?? []).slice(0, 4).map((match: Match) => (
+              <div key={match.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <div>
+                  <p className="font-black text-white">{t.goalixVs} {match.opponent_name}</p>
+                  <p className="text-sm font-semibold text-slate-400">{match.match_date} - {match.location || "-"}</p>
+                </div>
+                <strong className="font-display text-3xl text-lime-300">
+                  {match.our_score ?? "-"} - {match.opponent_score ?? "-"}
+                </strong>
+              </div>
+            ))}
+            {!(data?.matches?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
+          </div>
+        </Panel>
+
+        <Panel>
+          <h2 className="font-display text-2xl font-black text-white">{t.evaluations}</h2>
+          {!canViewProgress ? (
+            <div className="mt-4">
+              <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {(data?.evaluations?.data ?? []).slice(0, 4).map((evaluation: PlayerEvaluationRecord) => (
+                <div key={evaluation.id} className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-black text-white">{evaluation.title || t.trainingEvaluation}</p>
+                    <span className="rounded-full bg-lime-300/15 px-3 py-1 text-xs font-black text-lime-300">
+                      {metricValue(Number(evaluation.overall_rating || 0))}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-slate-400">{formatDate(evaluation.start_datetime, language)}</p>
+                  <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-300">
+                    {evaluation.coach_notes || evaluation.improvement_plan || t.empty}
+                  </p>
+                </div>
+              ))}
+              {!(data?.evaluations?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
+            </div>
+          )}
+        </Panel>
+
+        <Panel>
+          <h2 className="font-display text-2xl font-black text-white">{t.attendanceLog}</h2>
+          <div className="mt-4 grid gap-3">
+            {(data?.attendance?.data ?? []).slice(0, 6).map((record: PlayerAttendanceRecord) => (
+              <div key={record.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#2a4460] bg-white/[0.035] p-3">
+                <div>
+                  <p className="font-black text-white">{record.title || record.opponent_name || eventTypeLabel(record.record_type, t)}</p>
+                  <p className="text-xs font-semibold text-slate-400">{formatDate(record.start_datetime || record.match_date, language)}</p>
+                </div>
+                <span className="rounded-full border border-lime-300/25 px-3 py-1 text-xs font-black text-lime-300">
+                  {statusLabel(record.status, t)}
+                </span>
+              </div>
+            ))}
+            {!(data?.attendance?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Panel>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-lime-300/15 text-lime-300">
+              <FileText className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-display text-2xl font-black text-white">{t.weeklyReport}</h2>
+              <p className="text-sm font-semibold text-slate-400">
+                {canViewProgress && data?.weeklyReport?.generatedAt
+                  ? formatDate(data.weeklyReport.generatedAt, language)
+                  : t.empty}
+              </p>
+            </div>
+          </div>
+          {!canViewProgress ? (
+            <LockedProgressPanel title={t.noProgressAccess} body={t.noProgressAccessBody} />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="mb-3 text-sm font-black text-lime-300">{t.highlights}</p>
+                <ul className="grid gap-2 text-sm font-semibold leading-6 text-slate-300">
+                  {weeklyHighlights.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <p className="mb-3 text-sm font-black text-cyan-300">{t.actionItems}</p>
+                <ul className="grid gap-2 text-sm font-semibold leading-6 text-slate-300">
+                  {weeklyActionItems.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </Panel>
+
+        <Panel>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-300/15 text-cyan-300">
+              <CreditCard className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-display text-2xl font-black text-white">{t.payments}</h2>
+              <p className="text-sm font-semibold text-slate-400">
+                {data?.payments?.currentSubscription?.plan || t.empty}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+              <p className="text-xs font-black text-slate-400">{t.totalDue}</p>
+              <strong className="mt-2 block font-display text-3xl text-lime-300">
+                {Math.round(data?.payments?.totals?.due ?? 0)}
+              </strong>
+            </div>
+            <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+              <p className="text-xs font-black text-slate-400">{t.paid}</p>
+              <strong className="mt-2 block font-display text-3xl text-cyan-300">
+                {Math.round(data?.payments?.totals?.paid ?? 0)}
+              </strong>
+            </div>
+            <div className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+              <p className="text-xs font-black text-slate-400">{t.latestInvoice}</p>
+              <strong className="mt-2 block font-display text-2xl text-white">
+                {data?.payments?.invoices?.[0]?.status || "-"}
+              </strong>
+            </div>
+          </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Panel>
+          <h2 className="font-display text-2xl font-black text-white">{t.addNote}</h2>
+          {!canMessageCoach ? (
+            <div className="mt-4">
+              <LockedProgressPanel
+                title={t.messageAccessDisabled}
+                body={t.messageAccessDisabledBody}
+              />
+            </div>
+          ) : (
+          <form onSubmit={submitNote} className="mt-4 grid gap-3">
+            <label className="sr-only" htmlFor="parent-note-coach">{t.coach}</label>
+            <select
+              id="parent-note-coach"
+              value={coachUserId}
+              onChange={(event) => setCoachUserId(event.target.value)}
+              className="h-12 rounded-2xl border border-[#2a4460] bg-[#06111f]/86 px-4 text-sm font-black text-slate-100 outline-none"
+            >
+              <option value="">{t.allCoaches}</option>
+              {coaches.map((coach) => (
+                <option key={coach.user_id} value={coach.user_id}>{coach.full_name}</option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="parent-note-title">{t.titlePlaceholder}</label>
+            <input
+              id="parent-note-title"
+              value={noteTitle}
+              onChange={(event) => setNoteTitle(event.target.value)}
+              maxLength={160}
+              placeholder={t.titlePlaceholder}
+              className="h-12 rounded-2xl border border-[#2a4460] bg-[#06111f]/86 px-4 text-sm font-black text-slate-100 outline-none placeholder:text-slate-500"
+            />
+            <label className="sr-only" htmlFor="parent-note-body">{t.bodyPlaceholder}</label>
+            <textarea
+              id="parent-note-body"
+              value={noteBody}
+              onChange={(event) => setNoteBody(event.target.value)}
+              rows={4}
+              maxLength={3000}
+              placeholder={t.bodyPlaceholder}
+              className="min-h-32 resize-none rounded-2xl border border-[#2a4460] bg-[#06111f]/86 px-4 py-3 text-sm font-semibold leading-7 text-slate-100 outline-none placeholder:text-slate-500"
+            />
+            <button
+              type="submit"
+              disabled={!noteBody.trim() || createNoteState.isLoading}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#51b848] to-[#2d9ad5] px-5 font-black text-[#06111f] disabled:opacity-60"
+            >
+              {createNoteState.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {t.send}
+            </button>
+            {noteNotice && (
+              <p
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  "rounded-2xl border px-4 py-3 text-sm font-black",
+                  noteNotice.type === "success"
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                    : "border-rose-400/30 bg-rose-400/10 text-rose-300",
+                )}
+              >
+                {noteNotice.text}
+              </p>
+            )}
+          </form>
+          )}
+        </Panel>
+
+        <Panel>
+          <h2 className="font-display text-2xl font-black text-white">{t.parentNotes}</h2>
+          <div className="mt-4 grid gap-3">
+            {(data?.notes?.data ?? []).map((note) => (
+              <article key={note.id} className="rounded-2xl border border-[#2a4460] bg-white/[0.035] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-lime-300">{noteCategoryLabel(note.category, t)}</p>
+                    <h3 className="mt-1 font-black text-white">{note.title || t.parentNotes}</h3>
+                  </div>
+                  <span className="rounded-full border border-lime-300/25 px-3 py-1 text-xs font-black text-lime-300">
+                    {t[note.status as "new" | "reviewed" | "resolved"]}
+                  </span>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-300">{note.body}</p>
+                {note.coach_response && (
+                  <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-sm font-semibold text-cyan-100">
+                    <strong className="mb-1 block text-cyan-300">{t.coachReply}</strong>
+                    {note.coach_response}
+                  </div>
+                )}
+              </article>
+            ))}
+            {!(data?.notes?.data ?? []).length && <p className="rounded-2xl border border-dashed border-[#2a4460] p-5 text-sm font-bold text-slate-400">{t.empty}</p>}
+          </div>
+        </Panel>
+      </section>
+
+      {isFetching && (
+        <div className="fixed bottom-5 right-5 z-50 rounded-full border border-lime-300/30 bg-[#06111f]/90 px-4 py-2 text-sm font-black text-lime-300 shadow-xl">
+          {t.loading}
         </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-[0.8fr_0.95fr_0.9fr_0.85fr]">
-        <Panel className="p-5"><div className="flex justify-between"><h2 className="font-semibold">Upcoming Sessions</h2><span className="text-xs text-slate-400">View Full Schedule</span></div><div className="mt-4 space-y-4">{sessions.map((s,i)=><div key={s[1]} className="grid grid-cols-[4px_50px_1fr] gap-4 border-b border-[#2a4460] pb-4 last:border-b-0"><span className={`rounded-full ${i===0?"bg-teal-300":i===1?"bg-yellow-300":"bg-lime-300"}`} /><span className="text-sm text-slate-300">{s[0]}<br />{s[2]}</span><div><p className="font-semibold">{s[1]}</p><p className="text-sm text-slate-400">{s[3]} <span className="text-lime-300">• {s[4]}</span></p></div></div>)}</div></Panel>
-        <Panel className="p-5"><div className="flex justify-between"><h2 className="font-semibold">Recent Match</h2><span className="text-xs text-slate-400">View All</span></div><div className="mt-6 grid grid-cols-3 items-center text-center"><div><Trophy className="mx-auto text-lime-300" /><p>GOALIX FC<br /><span className="text-xs text-slate-400">U13</span></p></div><div><strong className="font-display text-5xl">3 - 1</strong><p className="text-lime-300">Win</p></div><div><Goal className="mx-auto text-cyan-300" /><p>City Rovers<br /><span className="text-xs text-slate-400">U13</span></p></div></div></Panel>
-        <Panel className="p-5"><h2 className="font-semibold">Academic Progress</h2><div className="mt-6 grid grid-cols-4 gap-3 text-center">{["A|Maths","A-|Science","B+|English","A|PE"].map((g)=>{const [v,l]=g.split("|"); return <div key={l}><div className="grid h-20 w-20 place-items-center rounded-full border-[6px] border-lime-300 font-display text-3xl">{v}</div><p className="mt-2 text-sm text-slate-300">{l}</p></div>;})}</div><div className="mt-5 rounded-xl border border-[#2a4460] p-3"><span className="text-lime-300">Overall Average</span><strong className="float-right text-2xl">A-</strong></div></Panel>
-        <Panel className="p-5"><div className="flex justify-between"><h2 className="font-semibold">Calendar</h2><span className="text-sm text-slate-400">May 2025</span></div><div className="mt-4 grid grid-cols-7 gap-2 text-center text-sm">{["Mon","Tue","Wed","Thu","Fri","Sat","Sun",...Array.from({length:35},(_,i)=>String(i+1))].map((d,i)=><span key={`${d}-${i}`} className={`rounded-full p-1 ${["20","22","24"].includes(d)?"bg-lime-300 text-[#06111f] font-bold":i<7?"text-slate-400":"text-white"}`}>{d}</span>)}</div></Panel>
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-4">
-        <Panel className="p-5"><h2 className="font-semibold">Communication</h2><div className="mt-4 space-y-3"><div className="flex gap-3"><MessageSquare className="text-cyan-300" /><span>Team Group<br /><small className="text-slate-400">Coach Alex: Great session everyone!</small></span></div><div className="flex gap-3"><Mail className="text-cyan-300" /><span>Direct Message<br /><small className="text-slate-400">Let&apos;s chat about Noah&apos;s progress.</small></span></div></div></Panel>
-        <Panel className="p-5"><h2 className="font-semibold">Documents & Forms</h2>{["Medical Consent Form|Valid","Code of Conduct|Accepted","Photo & Video Consent|Valid"].map((d)=><div key={d} className="mt-4 flex justify-between border-b border-[#2a4460] pb-3"><span><FileText className="mr-2 inline text-cyan-300" size={18}/>{d.split("|")[0]}</span><span className="text-lime-300">{d.split("|")[1]} ✓</span></div>)}</Panel>
-        <Panel className="p-5"><h2 className="font-semibold">Payments & Subscription</h2><p className="mt-5 text-slate-400">Current Plan</p><p className="text-lg font-semibold">GOALIX Elite Annual <span className="float-right rounded-lg bg-lime-300/15 px-3 py-1 text-sm text-lime-300">Active</span></p><div className="mt-5 rounded-xl border border-[#2a4460] p-4"><p className="text-slate-400">Next Payment</p><strong>30 Nov 2025</strong><p>£299.00 <span className="float-right">Auto-pay ON ✓</span></p></div></Panel>
-        <Panel className="p-5"><h2 className="font-semibold">Family Access</h2>{["Sarah Williams|Mother • Primary Contact|Full Access","Mark Williams|Father|View Access"].map((f)=><div key={f} className="mt-4 flex items-center gap-3"><User className="text-slate-300"/><span className="flex-1">{f.split("|")[0]}<br/><small className="text-slate-400">{f.split("|")[1]}</small></span><span className="rounded-lg border border-lime-300/35 px-3 py-1 text-xs text-lime-300">{f.split("|")[2]}</span></div>)}<button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#2a4460] py-3"><Users size={18}/> Invite Family Member</button></Panel>
-      </div>
-    </>
+      )}
+    </div>
   );
 }

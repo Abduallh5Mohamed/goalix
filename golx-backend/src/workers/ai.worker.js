@@ -1,4 +1,5 @@
 const { Worker } = require('bullmq');
+const env = require('../config/env');
 const logger = require('../shared/logger');
 
 /**
@@ -7,7 +8,7 @@ const logger = require('../shared/logger');
  */
 function createAiWorker(redisConnection) {
     const worker = new Worker(
-        'ai',
+        `${env.BULLMQ_PREFIX}-ai`,
         async (job) => {
             logger.debug({ jobId: job.id, name: job.name }, 'AI worker: processing');
 

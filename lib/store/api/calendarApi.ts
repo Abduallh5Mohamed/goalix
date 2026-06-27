@@ -516,6 +516,249 @@ export interface PlayerProgress {
   monthlyProgressSummary: string;
 }
 
+export interface ParentChild {
+  id: string;
+  full_name: string;
+  player_code?: string | null;
+  position?: string | null;
+  level?: string | null;
+  photo_url?: string | null;
+  date_of_birth?: string | null;
+  height_cm?: string | number | null;
+  weight_kg?: string | number | null;
+  preferred_foot?: "left" | "right" | "both" | string | null;
+  profile_status?: string | null;
+  branch_id?: string | null;
+  branch_name?: string | null;
+  group_id?: string | null;
+  group_name?: string | null;
+  relation?: string | null;
+  is_primary?: boolean;
+  can_view_progress?: boolean;
+  can_view_payments?: boolean;
+  can_message_coach?: boolean;
+  coaches?: Array<{
+    id: string;
+    user_id: string;
+    full_name: string;
+    specialization?: string | null;
+  }>;
+}
+
+export interface ParentPlayerNote {
+  id: string;
+  academy_id: string;
+  parent_user_id: string;
+  player_id: string;
+  coach_user_id?: string | null;
+  category: string;
+  title?: string | null;
+  body: string;
+  visibility: "coach_only" | "parent_and_coach" | "player_and_parent" | "family";
+  status: "new" | "reviewed" | "resolved";
+  coach_response?: string | null;
+  responded_by_user_id?: string | null;
+  responded_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  player_name?: string | null;
+  player_position?: string | null;
+  parent_name?: string | null;
+  coach_name?: string | null;
+}
+
+export interface ParentAiEvaluationInsight {
+  player_id: string;
+  analysis_id: string;
+  input: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  model_version: string | null;
+  created_at: string | null;
+}
+
+export interface ParentCoachEvaluationInsight {
+  id: string;
+  player_id: string;
+  event_id: string;
+  event_title?: string | null;
+  event_type?: CalendarEventType | string | null;
+  start_datetime?: string | null;
+  coach_id?: string | null;
+  coach_name?: string | null;
+  overall_rating?: string | number | null;
+  technical_rating?: string | number | null;
+  tactical_rating?: string | number | null;
+  physical_rating?: string | number | null;
+  mentality_rating?: string | number | null;
+  fatigue_rating?: string | number | null;
+  coach_notes?: string | null;
+  improvement_plan?: string | null;
+  created_at?: string | null;
+}
+
+export interface ParentRankingInsight {
+  id: string;
+  player_id: string;
+  group_id?: string | null;
+  total_score: string | number | null;
+  rank: number | null;
+  period: string;
+  trend: "up" | "down" | "same" | "new" | string;
+  calculated_at: string | null;
+  breakdown: {
+    coach_eval_score: string | number | null;
+    attendance_score: string | number | null;
+    discipline_score: string | number | null;
+    match_score: string | number | null;
+    ai_score: string | number | null;
+  };
+}
+
+export interface ParentAiInsights {
+  injuryRisk: InjuryRiskPredictionRecord | null;
+  aiEvaluation: ParentAiEvaluationInsight | null;
+  coachEvaluation: ParentCoachEvaluationInsight | null;
+  ranking: ParentRankingInsight | null;
+}
+
+export interface ParentDashboard {
+  children: ParentChild[];
+  selectedChild: ParentChild | null;
+  progress: PlayerProgress | null;
+  calendarEvents: PaginatedResponse<CalendarEvent>;
+  trainings: PaginatedResponse<CalendarEvent>;
+  matches: PaginatedResponse<Match>;
+  attendance: PaginatedResponse<PlayerAttendanceRecord>;
+  evaluations: PaginatedResponse<PlayerEvaluationRecord>;
+  notes: PaginatedResponse<ParentPlayerNote>;
+  coaches: Array<{
+    id: string;
+    user_id: string;
+    full_name: string;
+    specialization?: string | null;
+  }>;
+  payments?: ParentPaymentSummary | null;
+  weeklyReport?: ParentWeeklyReport | null;
+  aiInsights?: ParentAiInsights | null;
+}
+
+export interface AdminParentAccount {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  username?: string | null;
+  is_active?: boolean;
+  linked_players_count?: number;
+}
+
+export interface AdminLinkablePlayer {
+  id: string;
+  full_name: string;
+  player_code?: string | null;
+  position?: string | null;
+  level?: string | null;
+  photo_url?: string | null;
+  group_name?: string | null;
+}
+
+export interface AdminParentLink {
+  id: string;
+  academy_id: string;
+  parent_user_id: string;
+  player_id: string;
+  relation: string;
+  is_primary: boolean;
+  can_view_progress: boolean;
+  can_view_payments: boolean;
+  can_message_coach: boolean;
+  parent_name?: string | null;
+  parent_email?: string | null;
+  parent_phone?: string | null;
+  player_name?: string | null;
+  player_code?: string | null;
+  position?: string | null;
+  level?: string | null;
+  group_name?: string | null;
+  branch_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ParentMeasurement {
+  id: string;
+  player_id: string;
+  height_cm?: string | number | null;
+  weight_kg?: string | number | null;
+  bmi?: string | number | null;
+  sprint_speed?: string | number | null;
+  acceleration?: string | number | null;
+  stamina?: number | null;
+  strength?: number | null;
+  agility?: number | null;
+  balance?: number | null;
+  jump_height_cm?: string | number | null;
+  flexibility?: number | null;
+  measured_at: string;
+  measured_by?: string | null;
+  measured_by_name?: string | null;
+  notes?: string | null;
+}
+
+export interface ParentPaymentInvoice {
+  id: string;
+  subscription_id: string;
+  amount: string | number;
+  due_date: string;
+  paid_at?: string | null;
+  status: "pending" | "paid" | "overdue" | "cancelled";
+  plan?: "monthly" | "quarterly" | "yearly" | string;
+  currency?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at?: string;
+}
+
+export interface ParentPaymentSubscription {
+  id: string;
+  player_id: string;
+  group_id?: string | null;
+  group_name?: string | null;
+  plan: "monthly" | "quarterly" | "yearly" | string;
+  amount: string | number;
+  currency?: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: "active" | "expired" | "cancelled" | "pending";
+  discount_amount?: string | number | null;
+  penalty_amount?: string | number | null;
+  last_payment_date?: string | null;
+  next_payment_due?: string | null;
+}
+
+export interface ParentPaymentSummary {
+  currentSubscription: ParentPaymentSubscription | null;
+  subscriptions: ParentPaymentSubscription[];
+  invoices: ParentPaymentInvoice[];
+  totals: {
+    total: number;
+    paid: number;
+    due: number;
+    byStatus: Record<string, number>;
+  };
+}
+
+export interface ParentWeeklyReport {
+  generatedAt: string;
+  progress: PlayerProgress | null;
+  attendanceRate: number;
+  latestEvaluation: PlayerEvaluationRecord | null;
+  upcomingTrainings: CalendarEvent[];
+  recentMatches: Match[];
+  recentNotes: ParentPlayerNote[];
+  highlights: string[];
+  actionItems: string[];
+}
+
 export interface PlayerAttendanceRecord {
   id: string;
   record_type?: "training" | "match";
@@ -925,6 +1168,8 @@ export const calendarApi = createApi({
     "Notifications",
     "EvaluationEditRequests",
     "PlayerAssignments",
+    "ParentPortal",
+    "ParentLinks",
   ],
   endpoints: (builder) => ({
     getAdminCalendarEvents: builder.query<
@@ -1862,6 +2107,22 @@ export const calendarApi = createApi({
         toPaginated(res),
       providesTags: ["CalendarEvents"],
     }),
+    getPlayerFamilyNotes: builder.query<
+      PaginatedResponse<ParentPlayerNote>,
+      { page?: number; limit?: number; status?: ParentPlayerNote["status"] } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.status) params.set("status", args.status);
+        return `/player/parent-notes?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<ParentPlayerNote>) =>
+        toPaginated(res),
+      providesTags: ["ParentPortal"],
+    }),
     getPlayerTrainings: builder.query<
       PaginatedResponse<CalendarEvent>,
       void
@@ -1961,10 +2222,250 @@ export const calendarApi = createApi({
         toPaginated(res),
       providesTags: ["CalendarEvents"],
     }),
+    getAdminParentLinks: builder.query<
+      PaginatedResponse<AdminParentLink>,
+      { page?: number; limit?: number; search?: string; parentUserId?: string; playerId?: string } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.search) params.set("search", args.search);
+        if (args?.parentUserId) params.set("parentUserId", args.parentUserId);
+        if (args?.playerId) params.set("playerId", args.playerId);
+        return `/admin/parent-links?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<AdminParentLink>) =>
+        toPaginated(res),
+      providesTags: ["ParentLinks"],
+    }),
+    getAdminParentAccounts: builder.query<
+      PaginatedResponse<AdminParentAccount>,
+      { page?: number; limit?: number; search?: string } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.search) params.set("search", args.search);
+        return `/admin/parent-accounts?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<AdminParentAccount>) =>
+        toPaginated(res),
+      providesTags: ["ParentLinks"],
+    }),
+    getAdminLinkablePlayers: builder.query<
+      PaginatedResponse<AdminLinkablePlayer>,
+      { page?: number; limit?: number; search?: string } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.search) params.set("search", args.search);
+        return `/admin/parent-linkable-players?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<AdminLinkablePlayer>) =>
+        toPaginated(res),
+      providesTags: ["ParentLinks"],
+    }),
+    createAdminParentLink: builder.mutation<
+      AdminParentLink,
+      {
+        parentUserId: string;
+        playerId: string;
+        relation?: string;
+        isPrimary?: boolean;
+        canViewProgress?: boolean;
+        canViewPayments?: boolean;
+        canMessageCoach?: boolean;
+      }
+    >({
+      query: (body) => ({ url: "/admin/parent-links", method: "POST", body }),
+      transformResponse: (res: { data: AdminParentLink }) => res.data,
+      invalidatesTags: ["ParentLinks", "ParentPortal"],
+    }),
+    updateAdminParentLink: builder.mutation<
+      AdminParentLink,
+      {
+        parentLinkId: string;
+        body: {
+          relation?: string;
+          isPrimary?: boolean;
+          canViewProgress?: boolean;
+          canViewPayments?: boolean;
+          canMessageCoach?: boolean;
+        };
+      }
+    >({
+      query: ({ parentLinkId, body }) => ({
+        url: `/admin/parent-links/${parentLinkId}`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: { data: AdminParentLink }) => res.data,
+      invalidatesTags: ["ParentLinks", "ParentPortal"],
+    }),
+    deleteAdminParentLink: builder.mutation<
+      { deleted: boolean; id: string },
+      string
+    >({
+      query: (parentLinkId) => ({
+        url: `/admin/parent-links/${parentLinkId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: { deleted: boolean; id: string } }) => res.data,
+      invalidatesTags: ["ParentLinks", "ParentPortal"],
+    }),
+    getParentChildren: builder.query<ParentChild[], void>({
+      query: () => "/parent/children",
+      transformResponse: (res: { data: ParentChild[] }) => res.data,
+      providesTags: ["ParentPortal"],
+    }),
+    getParentDashboard: builder.query<ParentDashboard, { childId?: string } | void>({
+      query: (args) => {
+        const params = new URLSearchParams();
+        if (args?.childId) params.set("childId", args.childId);
+        const query = params.toString();
+        return `/parent/dashboard${query ? `?${query}` : ""}`;
+      },
+      transformResponse: (res: { data: ParentDashboard }) => res.data,
+      providesTags: ["ParentPortal", "CalendarEvents", "Matches"],
+    }),
+    getParentChildProgress: builder.query<PlayerProgress, string>({
+      query: (childId) => `/parent/children/${childId}/progress`,
+      transformResponse: (res: { data: PlayerProgress }) => res.data,
+      providesTags: ["ParentPortal", "CalendarEvents", "Matches"],
+    }),
+    getParentChildTrainings: builder.query<
+      PaginatedResponse<CalendarEvent>,
+      string
+    >({
+      query: (childId) => `/parent/children/${childId}/trainings?limit=100`,
+      transformResponse: (res: ApiListResponse<CalendarEvent>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents", "ParentPortal"],
+    }),
+    getParentChildAttendance: builder.query<
+      PaginatedResponse<PlayerAttendanceRecord>,
+      { childId: string; page?: number; limit?: number }
+    >({
+      query: ({ childId, page = 1, limit = 100 }) =>
+        `/parent/children/${childId}/attendance?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<PlayerAttendanceRecord>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents", "ParentPortal"],
+    }),
+    getParentChildEvaluations: builder.query<
+      PaginatedResponse<PlayerEvaluationRecord>,
+      { childId: string; page?: number; limit?: number }
+    >({
+      query: ({ childId, page = 1, limit = 100 }) =>
+        `/parent/children/${childId}/evaluations?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<PlayerEvaluationRecord>) =>
+        toPaginated(res),
+      providesTags: ["CalendarEvents", "ParentPortal"],
+    }),
+    getParentChildMeasurements: builder.query<
+      PaginatedResponse<ParentMeasurement>,
+      { childId: string; page?: number; limit?: number }
+    >({
+      query: ({ childId, page = 1, limit = 100 }) =>
+        `/parent/children/${childId}/measurements?page=${page}&limit=${limit}`,
+      transformResponse: (res: ApiListResponse<ParentMeasurement>) =>
+        toPaginated(res),
+      providesTags: ["ParentPortal"],
+    }),
+    getParentChildPayments: builder.query<ParentPaymentSummary, string>({
+      query: (childId) => `/parent/children/${childId}/payments`,
+      transformResponse: (res: { data: ParentPaymentSummary }) => res.data,
+      providesTags: ["ParentPortal"],
+    }),
+    getParentChildWeeklyReport: builder.query<ParentWeeklyReport, string>({
+      query: (childId) => `/parent/children/${childId}/weekly-report`,
+      transformResponse: (res: { data: ParentWeeklyReport }) => res.data,
+      providesTags: ["ParentPortal", "CalendarEvents", "Matches"],
+    }),
+    getParentChildNotes: builder.query<
+      PaginatedResponse<ParentPlayerNote>,
+      { childId: string; page?: number; limit?: number; status?: string }
+    >({
+      query: ({ childId, page = 1, limit = 50, status }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (status) params.set("status", status);
+        return `/parent/children/${childId}/notes?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<ParentPlayerNote>) =>
+        toPaginated(res),
+      providesTags: ["ParentPortal"],
+    }),
+    createParentChildNote: builder.mutation<
+      ParentPlayerNote,
+      {
+        childId: string;
+        body: {
+          coachUserId?: string;
+          category?: string;
+          title?: string;
+          body: string;
+          visibility?: ParentPlayerNote["visibility"];
+        };
+      }
+    >({
+      query: ({ childId, body }) => ({
+        url: `/parent/children/${childId}/notes`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: ParentPlayerNote }) => res.data,
+      invalidatesTags: ["ParentPortal"],
+    }),
+    getCoachParentNotes: builder.query<
+      PaginatedResponse<ParentPlayerNote>,
+      { page?: number; limit?: number; status?: string; playerId?: string } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 100),
+        });
+        if (args?.status) params.set("status", args.status);
+        if (args?.playerId) params.set("playerId", args.playerId);
+        return `/coach/parent-notes?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<ParentPlayerNote>) =>
+        toPaginated(res),
+      providesTags: ["ParentPortal"],
+    }),
+    respondCoachParentNote: builder.mutation<
+      ParentPlayerNote,
+      {
+        noteId: string;
+        body: {
+          status?: ParentPlayerNote["status"];
+          visibility?: ParentPlayerNote["visibility"];
+          coachResponse?: string;
+        };
+      }
+    >({
+      query: ({ noteId, body }) => ({
+        url: `/coach/parent-notes/${noteId}/respond`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: { data: ParentPlayerNote }) => res.data,
+      invalidatesTags: ["ParentPortal"],
+    }),
     getParentChildMatches: builder.query<PaginatedResponse<Match>, string>({
       query: (childId) => `/parent/children/${childId}/matches?limit=100`,
       transformResponse: (res: ApiListResponse<Match>) => toPaginated(res),
-      providesTags: ["Matches"],
+      providesTags: ["Matches", "ParentPortal"],
     }),
     getParentChildCalendarEvents: builder.query<
       PaginatedResponse<CalendarEvent>,
@@ -1974,7 +2475,7 @@ export const calendarApi = createApi({
         `/parent/children/${childId}/calendar-events?limit=100`,
       transformResponse: (res: ApiListResponse<CalendarEvent>) =>
         toPaginated(res),
-      providesTags: ["CalendarEvents"],
+      providesTags: ["CalendarEvents", "ParentPortal"],
     }),
   }),
 });
@@ -2061,6 +2562,7 @@ export const {
   useGetPlayerProgressQuery,
   useGetPlayerAttendanceQuery,
   useGetPlayerEvaluationsQuery,
+  useGetPlayerFamilyNotesQuery,
   useGetPlayerTrainingsQuery,
   useGetPlayerAssignmentsQuery,
   useUploadPlayerAssignmentFileMutation,
@@ -2072,6 +2574,25 @@ export const {
   useMarkAllNotificationsReadMutation,
   useGetPlayerMatchesQuery,
   useGetPlayerCalendarEventsQuery,
+  useGetAdminParentLinksQuery,
+  useGetAdminParentAccountsQuery,
+  useGetAdminLinkablePlayersQuery,
+  useCreateAdminParentLinkMutation,
+  useUpdateAdminParentLinkMutation,
+  useDeleteAdminParentLinkMutation,
+  useGetParentChildrenQuery,
+  useGetParentDashboardQuery,
+  useGetParentChildProgressQuery,
+  useGetParentChildTrainingsQuery,
+  useGetParentChildAttendanceQuery,
+  useGetParentChildEvaluationsQuery,
+  useGetParentChildMeasurementsQuery,
+  useGetParentChildPaymentsQuery,
+  useGetParentChildWeeklyReportQuery,
+  useGetParentChildNotesQuery,
+  useCreateParentChildNoteMutation,
+  useGetCoachParentNotesQuery,
+  useRespondCoachParentNoteMutation,
   useGetParentChildMatchesQuery,
   useGetParentChildCalendarEventsQuery,
 } = calendarApi;

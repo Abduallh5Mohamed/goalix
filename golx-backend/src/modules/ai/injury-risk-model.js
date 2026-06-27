@@ -10,10 +10,14 @@ const modelDir =
 const scriptPath =
     process.env.INJURY_RISK_MODEL_SCRIPT ||
     path.join(modelDir, "inference_football_academy_injury_risk_v3.py");
+const projectPython =
+    process.platform === "win32"
+        ? path.resolve(__dirname, "../../../..", ".venv", "Scripts", "python.exe")
+        : path.resolve(__dirname, "../../../..", ".venv", "bin", "python");
 const pythonBin =
     process.env.PYTHON_BIN ||
     process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "python3");
+    projectPython;
 
 function runInjuryRiskPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     return new Promise((resolve, reject) => {

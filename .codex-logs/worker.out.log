@@ -1,0 +1,4 @@
+
+> golx-backend@1.0.0 worker
+> node src/workers/index.js
+

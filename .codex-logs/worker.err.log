@@ -1,0 +1,5 @@
+❌ Environment validation failed:
+  - DATABASE_URL: Required
+  - REDIS_URL: Required
+  - JWT_SECRET: Required
+  - JWT_REFRESH_SECRET: Required

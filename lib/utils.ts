@@ -13,8 +13,11 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatDate(
+  date: string | Date,
+  locale = "en-US",
+): string {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -71,12 +74,15 @@ export function localDateTimeTimestamp(
   return Date.parse(`${localDatePart(date)}T${normalizedTime}:00`);
 }
 
-export function formatTime12(time: string | Date | null | undefined): string {
+export function formatTime12(
+  time: string | Date | null | undefined,
+  locale = "en-US",
+): string {
   if (!time) return "--";
   if (time instanceof Date || String(time).includes("T")) {
     const parsed = new Date(time);
     if (!Number.isNaN(parsed.getTime())) {
-      return new Intl.DateTimeFormat("en-US", {
+      return new Intl.DateTimeFormat(locale, {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
@@ -91,13 +97,19 @@ export function formatTime12(time: string | Date | null | undefined): string {
   const minute = Number(minuteValue);
   if (Number.isNaN(hour) || Number.isNaN(minute)) return String(time);
 
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+  const syntheticDate = new Date(2000, 0, 1, hour, minute);
+  return new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(syntheticDate);
 }
 
-export function formatDateTime(date: string | Date): string {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatDateTime(
+  date: string | Date,
+  locale = "en-US",
+): string {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",

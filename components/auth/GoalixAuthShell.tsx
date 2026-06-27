@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ const navLinks = [
 
 export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <div className="goalix-login-system">
@@ -90,6 +92,48 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
             <ArrowRight size={15} />
           </button>
         </div>
+
+        {/* Mobile menu action buttons */}
+        <div className="goalix-login-mobile-actions">
+          <Link href="/login" className="goalix-login-mobile-login-link">
+            Log in
+          </Link>
+          <button
+            type="button"
+            className="goalix-login-hamburger-btn"
+            aria-label="Toggle menu"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile dropdown menu overlay */}
+        {isMenuOpen && (
+          <div className="goalix-login-mobile-dropdown">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMenuOpen(false)}
+                className="goalix-login-mobile-dropdown-link"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* ─── Left: story panel ─── */}
@@ -121,9 +165,18 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           </div>
         </div>
 
+
         {/* Live Match Analysis strip */}
         <div className="goalix-login-live-strip">
-          <span className="goalix-login-live-icon" />
+          <span className="goalix-login-live-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 15 15" />
+              <line x1="12" y1="2" x2="12" y2="5" />
+              <path d="M17 2l4 4" />
+              <path d="M7 2l-4 4" />
+            </svg>
+          </span>
           <div>
             <strong>Live Match Analysis</strong>
             <p>Real-time data. Actionable insights.</p>
@@ -135,7 +188,15 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
       {/* ─── Right: form panel ─── */}
       <section className="goalix-login-panel-shell">
         {/*
-          Wave SVG keeps the original S-curve divider shape.
+          Wave SVG — pixel-perfect S-curve matching the reference mockup.
+          ViewBox: 200×900. The white fill covers the right panel.
+          Curve anatomy (matching reference):
+            Top    → x=130 at y=0
+            Bulge1 → x=48  at y=225  (left, near Email field)
+            Mid    → x=166 at y=450  (right, near Password field)
+            Bulge2 → x=78  at y=675  (left, near Log In button)
+            Bottom → x=130 at y=900
+          Each segment uses matched tangents for C¹ continuity.
         */}
         <svg
           className="goalix-login-wave"
@@ -145,12 +206,17 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         >
           <defs>
             <filter id="waveShadow" x="-50%" y="0%" width="170%" height="100%">
-              <feDropShadow dx="-10" dy="0" stdDeviation="12" floodColor="#000000" floodOpacity="0.16" result="shadow1" />
-              <feDropShadow dx="-3" dy="0" stdDeviation="4" floodColor="#000000" floodOpacity="0.08" result="shadow2" />
+              <feDropShadow dx="-8" dy="0" stdDeviation="14" floodColor="#000000" floodOpacity="0.22" />
+              <feDropShadow dx="-2" dy="0" stdDeviation="4" floodColor="#000000" floodOpacity="0.10" />
             </filter>
           </defs>
           <path
-            d="M200 0 C 40 80, 180 320, 180 450 C 180 580, 100 820, 200 900 L 200 0 Z"
+            d="M 130 0
+               C 130 75, 180 150, 180 225
+               C 180 300, 135 375, 135 450
+               C 135 525, 180 600, 180 675
+               C 180 750, 130 825, 130 900
+               L 200 900 L 200 0 Z"
             fill="#ffffff"
             filter="url(#waveShadow)"
           />

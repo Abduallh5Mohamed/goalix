@@ -79,6 +79,7 @@ export const NAV_ITEMS = {
       ],
     },
     { label: "Players", href: "/admin/players", icon: "UserCheck" },
+    { label: "Parents", href: "/admin/parents", icon: "Users" },
     { label: "Calendar", href: "/admin/calendar", icon: "Calendar" },
     {
       label: "Matches",
@@ -140,6 +141,7 @@ export const NAV_ITEMS = {
   coach: [
     { label: "Home", href: "/coach/home", icon: "Home" },
     { label: "Chats", href: "/coach/chat", icon: "MessageSquare" },
+    { label: "Parent Notes", href: "/coach/parent-notes", icon: "MessageSquare" },
     { label: "Notifications", href: "/coach/notifications", icon: "Bell" },
     { label: "Players", href: "/coach/players", icon: "Users" },
     { label: "Birthdays", href: "/coach/birthdays", icon: "Cake" },
@@ -174,6 +176,7 @@ export const NAV_ITEMS = {
   player: [
     { label: "Home", href: "/player/home", icon: "Home" },
     { label: "Chats", href: "/player/chat", icon: "MessageSquare" },
+    { label: "Family Notes", href: "/player/family-notes", icon: "MessageSquare" },
     { label: "Notifications", href: "/player/notifications", icon: "Bell" },
     { label: "Calendar", href: "/player/calendar", icon: "Calendar" },
     { label: "Matches", href: "/player/matches", icon: "Trophy" },
@@ -207,6 +210,7 @@ export const NAV_ITEMS = {
   ],
   parent: [
     { label: "Home", href: "/parent/home", icon: "Home" },
+    { label: "Chats", href: "/parent/chat", icon: "MessageSquare" },
     { label: "Calendar", href: "/parent/calendar", icon: "Calendar" },
     { label: "Matches", href: "/parent/matches", icon: "Trophy" },
     {

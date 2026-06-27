@@ -1,0 +1,167 @@
+
+> goalix@0.1.0 predev
+> npm run free:dev-ports
+
+
+> goalix@0.1.0 free:dev-ports
+> node scripts/free-dev-ports.js
+
+
+> goalix@0.1.0 dev
+> concurrently -n "backend,frontend" -c "bgBlue,bgGreen" "npm run dev:backend" "npm run dev:frontend"
+
+[frontend] 
+[frontend] > goalix@0.1.0 dev:frontend
+[frontend] > next dev --webpack -H 0.0.0.0 -p 3001
+[frontend] 
+[backend] 
+[backend] > goalix@0.1.0 dev:backend
+[backend] > cd golx-backend && npm run dev
+[backend] 
+[backend] 
+[backend] > golx-backend@1.0.0 dev
+[backend] > nodemon src/server.js
+[backend] 
+[backend] [33m[nodemon] 3.1.14[39m
+[backend] [33m[nodemon] to restart at any time, enter `rs`[39m
+[backend] [33m[nodemon] watching path(s): *.*[39m
+[backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[frontend] ▲ Next.js 16.2.6 (webpack)
+[frontend] - Local:         http://localhost:3001
+[frontend] - Network:       http://0.0.0.0:3001
+[frontend] ✓ Ready in 839ms
+[frontend] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[frontend]  We detected multiple lockfiles and selected the directory of C:\Users\abdua\OneDrive\سطح المكتب\Goalix\package-lock.json as the root directory.
+[frontend]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[frontend]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[frontend]  Detected additional lockfiles: 
+[frontend]    * C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\package-lock.json
+[frontend] 
+[backend] [2026-06-25 20:37:16.029 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:37:16.044 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:37:16.049 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:37:16.163 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[frontend] 
+[backend] [2026-06-25 20:37:46.105 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [2026-06-25 20:40:08.546 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "c2f38e87-16a2-43c6-ab30-34d24528330e",
+[backend]       "role": "admin",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [2026-06-25 20:40:08.790 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "ca70038d-7f44-408a-a65f-7881aa2ecbd5",
+[backend]       "role": "parent",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [32m[nodemon] restarting due to changes...[39m
+[backend] [32m[nodemon] restarting due to changes...[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[backend] [2026-06-25 20:45:09.464 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:45:09.481 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:45:09.488 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:45:09.532 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:45:39.552 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [32m[nodemon] restarting due to changes...[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[backend] [2026-06-25 20:47:29.852 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:47:29.866 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:47:29.871 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:47:29.906 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:47:59.945 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [32m[nodemon] restarting due to changes...[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[backend] [2026-06-25 20:48:18.023 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:48:18.039 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:48:18.045 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:48:18.084 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 20:48:48.088 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[frontend] [?25h
+[frontend] npm run dev:frontend exited with code 1

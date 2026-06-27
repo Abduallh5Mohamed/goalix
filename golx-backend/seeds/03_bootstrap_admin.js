@@ -8,7 +8,11 @@ const bcrypt = require('bcrypt');
 const { ensureIamForAuthUser } = require('../src/shared/iam-sync');
 
 const ADMIN_EMAIL = 'admin@goalix.com';
-const ADMIN_PASSWORD = 'Admin@123456';
+const ADMIN_PASSWORD = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+
+if (!ADMIN_PASSWORD) {
+    throw new Error('BOOTSTRAP_ADMIN_PASSWORD is required before running 03_bootstrap_admin.js');
+}
 
 exports.seed = async function seed(knex) {
     await knex.transaction(async (trx) => {

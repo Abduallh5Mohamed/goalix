@@ -32,9 +32,9 @@ This document is for backend/API TestSprite runs.
 
 ## Seeded Test Credentials
 
-All seeded test users below use the same password:
+Seeded test users use the password provided through the seed environment:
 
-- Password: Admin@123456
+- Password: `<DEMO_USER_PASSWORD>`
 
 Admin account:
 
@@ -59,9 +59,9 @@ Player account:
 
 Login request bodies for API tests:
 
-- Admin: `{ "email": "admin@goalix.com", "password": "Admin@123456" }`
-- Coach: `{ "email": "coach1@goalix.com", "password": "Admin@123456" }`
-- Player: `{ "email": "player1@goalix.com", "password": "Admin@123456", "role": "player" }`
+- Admin: `{ "email": "admin@goalix.com", "password": "<DEMO_USER_PASSWORD>" }`
+- Coach: `{ "email": "coach1@goalix.com", "password": "<DEMO_USER_PASSWORD>" }`
+- Player: `{ "email": "player1@goalix.com", "password": "<DEMO_USER_PASSWORD>", "role": "player" }`
 
 Authentication is cookie-based. API tests should use `requests.Session` or an
 equivalent cookie jar. API tests may also use the returned access token as

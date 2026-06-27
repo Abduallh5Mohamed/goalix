@@ -8,10 +8,12 @@ const createConversationSchema = z
       "admin_coach",
       "coach_player",
       "admin_player_session",
+      "parent_coach",
       "chat_group",
     ]),
     adminUserId: uuid.optional(),
     coachId: uuid.optional(),
+    parentUserId: uuid.optional(),
     playerId: uuid.optional(),
     groupName: z.string().trim().min(2).max(120).optional(),
     memberUserIds: z.array(uuid).max(80).optional().default([]),
@@ -37,6 +39,22 @@ const createConversationSchema = z
         path: ["playerId"],
         message: "playerId is required for player chat",
       });
+    }
+    if (data.type === "parent_coach") {
+      if (!data.playerId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["playerId"],
+          message: "playerId is required for parent-coach chat",
+        });
+      }
+      if (!data.coachId && !data.parentUserId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["coachId"],
+          message: "coachId or parentUserId is required for parent-coach chat",
+        });
+      }
     }
     if (data.type === "chat_group") {
       if (!data.groupName) {

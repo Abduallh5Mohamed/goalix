@@ -1,16 +1,9 @@
 const { Queue } = require('bullmq');
 const env = require('../config/env');
 const logger = require('../shared/logger');
+const redisConnectionFromUrl = require('./redis-connection');
 
-const redisUrl = new URL(env.REDIS_URL);
-// Preserve auth credentials and TLS from REDIS_URL so BullMQ authenticates correctly in production
-const redisConnection = {
-    host: redisUrl.hostname,
-    port: parseInt(redisUrl.port || '6379', 10),
-    ...(redisUrl.password ? { password: decodeURIComponent(redisUrl.password) } : {}),
-    // rediss: protocol means TLS-encrypted Redis (e.g. Redis Cloud, Upstash)
-    ...(redisUrl.protocol === 'rediss:' ? { tls: {} } : {}),
-};
+const redisConnection = redisConnectionFromUrl(env.REDIS_URL);
 
 const bullmqEnabled =
     process.env.BULLMQ_ENABLED !== 'false' && env.NODE_ENV !== 'test';

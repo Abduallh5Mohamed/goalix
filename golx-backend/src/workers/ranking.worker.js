@@ -1,4 +1,5 @@
 const { Worker } = require('bullmq');
+const env = require('../config/env');
 const logger = require('../shared/logger');
 
 /**
@@ -7,7 +8,7 @@ const logger = require('../shared/logger');
  */
 function createRankingsWorker(redisConnection) {
     const worker = new Worker(
-        'rankings',
+        `${env.BULLMQ_PREFIX}-rankings`,
         async (job) => {
             const { type } = job.data;
             logger.debug({ jobId: job.id, type }, 'Rankings worker: processing');

@@ -1,0 +1,3434 @@
+
+> goalix@0.1.0 predev
+> npm run free:dev-ports
+
+
+> goalix@0.1.0 free:dev-ports
+> node scripts/free-dev-ports.js
+
+
+> goalix@0.1.0 dev
+> concurrently -n "backend,frontend" -c "bgBlue,bgGreen" "npm run dev:backend" "npm run dev:frontend"
+
+[backend] 
+[backend] > goalix@0.1.0 dev:backend
+[backend] > cd golx-backend && npm run dev
+[backend] 
+[frontend] 
+[frontend] > goalix@0.1.0 dev:frontend
+[frontend] > next dev --webpack -H 0.0.0.0 -p 3001
+[frontend] 
+[backend] 
+[backend] > golx-backend@1.0.0 dev
+[backend] > nodemon src/server.js
+[backend] 
+[backend] [33m[nodemon] 3.1.14[39m
+[backend] [33m[nodemon] to restart at any time, enter `rs`[39m
+[backend] [33m[nodemon] watching path(s): *.*[39m
+[backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[frontend] ▲ Next.js 16.2.6 (webpack)
+[frontend] - Local:         http://localhost:3001
+[frontend] - Network:       http://0.0.0.0:3001
+[frontend] ✓ Ready in 1086ms
+[frontend] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[frontend]  We detected multiple lockfiles and selected the directory of C:\Users\abdua\OneDrive\سطح المكتب\Goalix\package-lock.json as the root directory.
+[frontend]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[frontend]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[frontend]  Detected additional lockfiles: 
+[frontend]    * C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\package-lock.json
+[frontend] 
+[backend] [2026-06-25 01:46:57.228 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.230 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.230 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.231 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.231 +0300] [33mWARN[39m: [36m⚠️  Redis unavailable — caching/locking disabled[39m
+[backend]     service: "golx-api"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.232 +0300] [33mWARN[39m: [36m⚠️  Redis connection failed — running without Redis[39m
+[backend]     service: "golx-api"
+[backend]     err: {
+[backend]       "type": "Error",
+[backend]       "message": "Connection is closed.",
+[backend]       "stack":
+[backend]           Error: Connection is closed.
+[backend]               at EventEmitter.connectionCloseHandler (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\ioredis\built\Redis.js:208:28)
+[backend]               at Object.onceWrapper (node:events:634:26)
+[backend]               at EventEmitter.emit (node:events:519:28)
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:85:11)
+[backend]     }
+[backend] [2026-06-25 01:46:57.232 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 01:46:57.236 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 01:46:57.269 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 01:46:57.434 +0300] [33mWARN[39m: [36m⚠️  Redis unavailable — caching/locking disabled[39m
+[backend]     service: "golx-api"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:57.838 +0300] [33mWARN[39m: [36m⚠️  Redis unavailable — caching/locking disabled[39m
+[backend]     service: "golx-api"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:58.242 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:58.243 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:58.243 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:58.244 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:58.443 +0300] [33mWARN[39m: [36m⚠️  Redis unavailable — caching/locking disabled[39m
+[backend]     service: "golx-api"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[frontend] 
+[backend] [2026-06-25 01:46:59.245 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:59.246 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:59.246 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:46:59.246 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:00.248 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:00.248 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:00.249 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:00.249 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:01.250 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:01.251 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:01.251 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:01.251 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:02.252 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:02.253 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:02.253 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:02.253 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:03.256 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:03.257 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:03.257 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:03.257 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:04.356 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:04.356 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:04.356 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:04.356 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:07.340 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:07.340 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:07.340 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:07.340 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:15.446 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:15.447 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:15.447 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:15.447 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:27.306 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": [
+[backend]         {
+[backend]           "academyId": "a6484b8d-4deb-4a68-8d45-cc4a3f4f8751",
+[backend]           "academyName": "GOLX Football Academy",
+[backend]           "message": "Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases."
+[backend]         }
+[backend]       ]
+[backend]     }
+[backend] [2026-06-25 01:47:35.451 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:35.451 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:35.451 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:35.451 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[frontend] ○ Compiling /login ...
+[frontend]  GET /login 200 in 5.8s (next.js: 5.1s, proxy.ts: 255ms, application-code: 491ms)
+[backend] [2026-06-25 01:47:55.457 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:55.457 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:55.457 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:47:55.457 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:15.460 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:15.460 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:15.461 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:15.461 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:35.464 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:35.464 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:35.464 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:35.464 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:55.466 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:55.466 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:55.467 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:48:55.467 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:15.470 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:15.470 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:15.471 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:15.471 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:35.475 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:35.475 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:35.475 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:35.475 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:55.479 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:55.480 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:55.480 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:49:55.480 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:15.483 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:15.483 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:15.483 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:15.483 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:35.487 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "ai"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:35.487 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "notifications"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:35.487 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "rankings"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }
+[backend] [2026-06-25 01:50:35.487 +0300] [31mERROR[39m: [36mQueue error[39m
+[backend]     service: "golx-api"
+[backend]     queue: "payments"
+[backend]     err: {
+[backend]       "type": "AggregateError",
+[backend]       "message": "",
+[backend]       "stack":
+[backend]           AggregateError [ECONNREFUSED]: 
+[backend]               at internalConnectMultiple (node:net:1134:18)
+[backend]               at afterConnectMultiple (node:net:1715:7)
+[backend]       "aggregateErrors": [
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED ::1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED ::1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "::1",
+[backend]           "port": 6379
+[backend]         },
+[backend]         {
+[backend]           "type": "Error",
+[backend]           "message": "connect ECONNREFUSED 127.0.0.1:6379",
+[backend]           "stack":
+[backend]               Error: connect ECONNREFUSED 127.0.0.1:6379
+[backend]                   at createConnectionError (node:net:1678:14)
+[backend]                   at afterConnectMultiple (node:net:1708:16)
+[backend]           "errno": -4078,
+[backend]           "code": "ECONNREFUSED",
+[backend]           "syscall": "connect",
+[backend]           "address": "127.0.0.1",
+[backend]           "port": 6379
+[backend]         }
+[backend]       ],
+[backend]       "code": "ECONNREFUSED"
+[backend]     }

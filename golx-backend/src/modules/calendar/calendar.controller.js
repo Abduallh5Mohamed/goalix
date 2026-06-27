@@ -22,6 +22,95 @@ class CalendarController {
     return parsePagination(req.query);
   }
 
+  adminListParentLinks = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.adminListParentLinks(req.user.academyId, {
+        ...req.query,
+        page,
+        limit,
+      });
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminListParentAccounts = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.adminListParentAccounts(req.user.academyId, {
+        ...req.query,
+        page,
+        limit,
+      });
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminListLinkablePlayers = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.adminListLinkablePlayers(req.user.academyId, {
+        ...req.query,
+        page,
+        limit,
+      });
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminCreateParentLink = async (req, res, next) => {
+    try {
+      res.status(201).json(
+        ApiResponse.success(
+          await this.service.adminCreateParentLink(
+            req.user.academyId,
+            req.user.userId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminUpdateParentLink = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.adminUpdateParentLink(
+            req.user.academyId,
+            req.params.parentLinkId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adminDeleteParentLink = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.adminDeleteParentLink(
+            req.user.academyId,
+            req.params.parentLinkId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
   adminListCalendarEvents = async (req, res, next) => {
     try {
       const { page, limit } = this._pagination(req);
@@ -1423,6 +1512,20 @@ class CalendarController {
     }
   };
 
+  playerListParentNotes = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.playerListParentNotes(
+        req.user.userId,
+        req.user.academyId,
+        { ...req.query, page, limit },
+      );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   playerListAssignments = async (req, res, next) => {
     try {
       const { page, limit } = this._pagination(req);
@@ -1478,6 +1581,37 @@ class CalendarController {
         buffer: req.body,
       });
       res.status(201).json(ApiResponse.success(data));
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentListChildren = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.parentListChildren(
+            req.user.userId,
+            req.user.academyId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentDashboard = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.parentDashboard(
+            req.user.userId,
+            req.user.academyId,
+            req.query.childId || null,
+          ),
+        ),
+      );
     } catch (err) {
       next(err);
     }
@@ -1592,20 +1726,123 @@ class CalendarController {
     }
   };
 
-  parentProgress = async (req, res, next) => {
+  parentMeasurements = async (req, res, next) => {
     try {
-      await this.service.parentListCalendarEvents(
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.parentMeasurements(
         req.user.userId,
         req.user.academyId,
         req.params.childId,
-        {},
+        { page, limit },
       );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentPayments = async (req, res, next) => {
+    try {
       res.json(
         ApiResponse.success(
-          await this.service.playerProgress(
+          await this.service.parentPayments(
             req.user.userId,
             req.user.academyId,
             req.params.childId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentWeeklyReport = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.parentWeeklyReport(
+            req.user.userId,
+            req.user.academyId,
+            req.params.childId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentListNotes = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.parentListNotes(
+        req.user.userId,
+        req.user.academyId,
+        req.params.childId,
+        { ...req.query, page, limit },
+      );
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentCreateNote = async (req, res, next) => {
+    try {
+      res.status(201).json(
+        ApiResponse.success(
+          await this.service.parentCreateNote(
+            req.user.userId,
+            req.user.academyId,
+            req.params.childId,
+            req.body,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  parentProgress = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.parentProgress(
+            req.user.userId,
+            req.user.academyId,
+            req.params.childId,
+          ),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachListParentNotes = async (req, res, next) => {
+    try {
+      const { page, limit } = this._pagination(req);
+      const result = await this.service.coachListParentNotes(req.user, {
+        ...req.query,
+        page,
+        limit,
+      });
+      this._sendPage(res, result, page, limit);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  coachRespondParentNote = async (req, res, next) => {
+    try {
+      res.json(
+        ApiResponse.success(
+          await this.service.coachRespondParentNote(
+            req.user,
+            req.params.noteId,
+            req.body,
           ),
         ),
       );

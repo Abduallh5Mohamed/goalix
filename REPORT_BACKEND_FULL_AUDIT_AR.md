@@ -538,14 +538,14 @@ res.cookie('refreshToken', token, {
 **الموقع:** `docker-compose.yml` → السطر 10
 
 ```yaml
-POSTGRES_PASSWORD: golx_dev_pass
+POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 ```
 
 **المشكلة:** كلمة مرور Postgres ثابتة في ملف يُحتمل نشره في Git repository.
 
 **الخطر:**
 - إذا كان الريبو عاماً أو الملف مشاركاً = بيانات اعتماد DB مكشوفة
-- الملف يحتوي أيضاً `DATABASE_URL: postgresql://golx:golx_dev_pass@postgres:5432/golx_main` في service الـ API
+- The API database URL now uses the `POSTGRES_PASSWORD` environment variable instead of a committed password.
 
 **التوصية:** استخدام Docker Secrets أو متغيرات بيئة خارج الريبو، وإضافة `docker-compose.yml` إلى `.gitignore` أو استخدام `docker-compose.override.yml`
 
@@ -567,7 +567,7 @@ redis:
 **الخطر:**
 - أي شخص يعرف IP السيرفر يستطيع الوصول المباشر لـ Postgres وRedis
 - Redis بدون كلمة مرور (لا يوجد `requirepass` في إعداد الـ redis service)
-- PostgreSQL محمي فقط بـ `golx_dev_pass` الثابتة
+- PostgreSQL should use a non-committed password from environment configuration.
 
 **التوصية:**
 - حذف `ports` من postgres وredis في الإنتاج

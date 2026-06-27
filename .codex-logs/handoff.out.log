@@ -1,0 +1,238 @@
+
+> goalix@0.1.0 predev
+> npm run free:dev-ports
+
+
+> goalix@0.1.0 free:dev-ports
+> node scripts/free-dev-ports.js
+
+
+> goalix@0.1.0 dev
+> concurrently -n "backend,frontend" -c "bgBlue,bgGreen" "npm run dev:backend" "npm run dev:frontend"
+
+[backend] 
+[backend] > goalix@0.1.0 dev:backend
+[backend] > cd golx-backend && npm run dev
+[backend] 
+[frontend] 
+[frontend] > goalix@0.1.0 dev:frontend
+[frontend] > next dev --webpack -H 0.0.0.0 -p 3001
+[frontend] 
+[backend] 
+[backend] > golx-backend@1.0.0 dev
+[backend] > nodemon src/server.js
+[backend] 
+[backend] [33m[nodemon] 3.1.14[39m
+[backend] [33m[nodemon] to restart at any time, enter `rs`[39m
+[backend] [33m[nodemon] watching path(s): *.*[39m
+[backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[frontend] ▲ Next.js 16.2.9 (webpack)
+[frontend] - Local:         http://localhost:3001
+[frontend] - Network:       http://0.0.0.0:3001
+[frontend] ✓ Ready in 755ms
+[frontend] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[frontend]  We detected multiple lockfiles and selected the directory of C:\Users\abdua\OneDrive\سطح المكتب\Goalix\package-lock.json as the root directory.
+[frontend]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[frontend]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[frontend]  Detected additional lockfiles: 
+[frontend]    * C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\package-lock.json
+[frontend] 
+[backend] [2026-06-25 21:07:32.381 +0300] [32mINFO[39m: [36m✅ Redis connected[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 21:07:32.396 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 21:07:32.402 +0300] [32mINFO[39m: [36mGOLX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "golx-api"
+[backend] [2026-06-25 21:07:32.443 +0300] [32mINFO[39m: [36m✅ PostgreSQL connected[39m
+[backend]     service: "golx-api"
+[frontend] 
+[backend] [2026-06-25 21:08:12.251 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 18,
+[backend]       "saved": 18,
+[backend]       "skippedAcademies": 0,
+[backend]       "errors": []
+[backend]     }
+[backend] [2026-06-25 21:08:26.693 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "c2f38e87-16a2-43c6-ab30-34d24528330e",
+[backend]       "role": "admin",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [2026-06-25 21:08:26.937 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "d4eb3097-c329-458b-9eef-8426263bcdc7",
+[backend]       "role": "coach",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [2026-06-25 21:08:27.176 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "4b721f2a-dda5-49bd-a03a-7a24e3b28c7e",
+[backend]       "role": "player",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [2026-06-25 21:08:27.404 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_in[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_in"
+[backend]     payload: {
+[backend]       "userId": "ca70038d-7f44-408a-a65f-7881aa2ecbd5",
+[backend]       "role": "parent",
+[backend]       "ip": "127.0.0.1"
+[backend]     }
+[backend] [2026-06-25 21:08:28.487 +0300] [33mWARN[39m: [36mInsufficient permissions[39m
+[backend]     service: "golx-api"
+[backend]     url: "/api/v1/parent/children"
+[backend]     method: "GET"
+[backend]     err: {
+[backend]       "type": "ForbiddenError",
+[backend]       "message": "Insufficient permissions",
+[backend]       "stack":
+[backend]           ForbiddenError: Insufficient permissions
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\rbac.middleware.js:41:21
+[backend]               at Layer.handle [as handle_request] (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\layer.js:95:5)
+[backend]               at trim_prefix (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:328:13)
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:286:9
+[backend]               at Function.process_params (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:346:12)
+[backend]               at next (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:280:10)
+[backend]               at authMiddleware (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\auth.middleware.js:83:16)
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]       "name": "ForbiddenError",
+[backend]       "statusCode": 403,
+[backend]       "code": "FORBIDDEN",
+[backend]       "details": [],
+[backend]       "isOperational": true
+[backend]     }
+[backend] [2026-06-25 21:08:28.504 +0300] [33mWARN[39m: [36mInsufficient permissions[39m
+[backend]     service: "golx-api"
+[backend]     url: "/api/v1/admin/dashboard"
+[backend]     method: "GET"
+[backend]     err: {
+[backend]       "type": "ForbiddenError",
+[backend]       "message": "Insufficient permissions",
+[backend]       "stack":
+[backend]           ForbiddenError: Insufficient permissions
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\rbac.middleware.js:15:21
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]       "name": "ForbiddenError",
+[backend]       "statusCode": 403,
+[backend]       "code": "FORBIDDEN",
+[backend]       "details": [],
+[backend]       "isOperational": true
+[backend]     }
+[backend] [2026-06-25 21:08:28.508 +0300] [33mWARN[39m: [36mInsufficient permissions[39m
+[backend]     service: "golx-api"
+[backend]     url: "/api/v1/parent/children"
+[backend]     method: "GET"
+[backend]     err: {
+[backend]       "type": "ForbiddenError",
+[backend]       "message": "Insufficient permissions",
+[backend]       "stack":
+[backend]           ForbiddenError: Insufficient permissions
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\rbac.middleware.js:41:21
+[backend]               at Layer.handle [as handle_request] (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\layer.js:95:5)
+[backend]               at trim_prefix (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:328:13)
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:286:9
+[backend]               at Function.process_params (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:346:12)
+[backend]               at next (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:280:10)
+[backend]               at authMiddleware (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\auth.middleware.js:83:16)
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]       "name": "ForbiddenError",
+[backend]       "statusCode": 403,
+[backend]       "code": "FORBIDDEN",
+[backend]       "details": [],
+[backend]       "isOperational": true
+[backend]     }
+[backend] [2026-06-25 21:08:28.513 +0300] [33mWARN[39m: [36mInsufficient permissions[39m
+[backend]     service: "golx-api"
+[backend]     url: "/api/v1/coach/groups"
+[backend]     method: "GET"
+[backend]     err: {
+[backend]       "type": "ForbiddenError",
+[backend]       "message": "Insufficient permissions",
+[backend]       "stack":
+[backend]           ForbiddenError: Insufficient permissions
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\rbac.middleware.js:41:21
+[backend]               at Layer.handle [as handle_request] (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\layer.js:95:5)
+[backend]               at trim_prefix (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:328:13)
+[backend]               at C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:286:9
+[backend]               at Function.process_params (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:346:12)
+[backend]               at next (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\node_modules\express\lib\router\index.js:280:10)
+[backend]               at authMiddleware (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\middleware\auth.middleware.js:83:16)
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]       "name": "ForbiddenError",
+[backend]       "statusCode": 403,
+[backend]       "code": "FORBIDDEN",
+[backend]       "details": [],
+[backend]       "isOperational": true
+[backend]     }
+[backend] [2026-06-25 21:08:28.519 +0300] [33mWARN[39m: [36mParent can only access their linked child[39m
+[backend]     service: "golx-api"
+[backend]     url: "/api/v1/parent/children/00000000-0000-4000-8000-000000000001/progress"
+[backend]     method: "GET"
+[backend]     err: {
+[backend]       "type": "ForbiddenError",
+[backend]       "message": "Parent can only access their linked child",
+[backend]       "stack":
+[backend]           ForbiddenError: Parent can only access their linked child
+[backend]               at CalendarService._assertParentChild (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\modules\calendar\calendar.service.js:398:13)
+[backend]               at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]               at async CalendarService._assertParentCanViewProgress (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\modules\calendar\calendar.service.js:404:20)
+[backend]               at async CalendarService.parentProgress (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\modules\calendar\calendar.service.js:8710:5)
+[backend]               at async parentProgress (C:\Users\abdua\OneDrive\سطح المكتب\Goalix\goalix\golx-backend\src\modules\calendar\calendar.controller.js:1796:11)
+[backend]       "name": "ForbiddenError",
+[backend]       "statusCode": 403,
+[backend]       "code": "FORBIDDEN",
+[backend]       "details": [],
+[backend]       "isOperational": true
+[backend]     }
+[backend] [2026-06-25 21:08:28.527 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_out[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_out"
+[backend]     payload: {
+[backend]       "userId": "c2f38e87-16a2-43c6-ab30-34d24528330e"
+[backend]     }
+[backend] [2026-06-25 21:08:28.534 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_out[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_out"
+[backend]     payload: {
+[backend]       "userId": "d4eb3097-c329-458b-9eef-8426263bcdc7"
+[backend]     }
+[backend] [2026-06-25 21:08:28.541 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_out[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_out"
+[backend]     payload: {
+[backend]       "userId": "4b721f2a-dda5-49bd-a03a-7a24e3b28c7e"
+[backend]     }
+[backend] [2026-06-25 21:08:28.547 +0300] [34mDEBUG[39m: [36mEvent published: auth.user.logged_out[39m
+[backend]     service: "golx-api"
+[backend]     event: "auth.user.logged_out"
+[backend]     payload: {
+[backend]       "userId": "ca70038d-7f44-408a-a65f-7881aa2ecbd5"
+[backend]     }
+[backend] [2026-06-25 22:07:32.282 +0300] [32mINFO[39m: [36mWeekly injury risk automation completed[39m
+[backend]     service: "golx-api"
+[backend]     summary: {
+[backend]       "skipped": false,
+[backend]       "weekStart": "2026-06-22",
+[backend]       "academies": 1,
+[backend]       "players": 0,
+[backend]       "saved": 0,
+[backend]       "skippedAcademies": 1,
+[backend]       "errors": []
+[backend]     }
+[frontend] ○ Compiling proxy ...
+[frontend] ○ Compiling / ...
+[backend] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[frontend] [?25h
+[frontend] npm run dev:frontend exited with code 1

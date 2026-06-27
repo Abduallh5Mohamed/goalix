@@ -458,6 +458,37 @@ body {
   gap: 8px;
 }
 
+.goalix-parent-child-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 220px;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 34, 25, 0.08);
+  border-radius: 999px;
+  color: #0e1814;
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(19, 27, 23, 0.06);
+}
+
+.goalix-parent-child-switcher svg {
+  flex: 0 0 auto;
+  color: #087f83;
+}
+
+.goalix-parent-child-switcher select {
+  min-width: 0;
+  max-width: 168px;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .goalix-reference-pill-control {
   display: inline-flex;
   align-items: center;
@@ -1023,6 +1054,22 @@ html[data-goalix-dashboard-theme="dark"] .goalix-dashboard-grid,
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.18);
 }
 
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-parent-child-switcher {
+  border-color: rgba(45, 154, 213, 0.2);
+  color: #edf7ff;
+  background: rgba(14, 36, 55, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-parent-child-switcher svg {
+  color: #b2d23b;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-parent-child-switcher option {
+  color: #edf7ff;
+  background: #071b2c;
+}
+
 .goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-brand,
 .goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-search,
 .goalix-reference-frame[data-dashboard-theme="dark"] .goalix-reference-top-actions > button,
@@ -1392,6 +1439,15 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   .goalix-reference-top-actions {
     flex-wrap: wrap;
     justify-content: space-between;
+  }
+
+  .goalix-parent-child-switcher {
+    width: 100%;
+    max-width: none;
+  }
+
+  .goalix-parent-child-switcher select {
+    max-width: none;
   }
 
   .goalix-reference-switches {
@@ -7447,6 +7503,23 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   line-height: 1.15;
 }
 
+.goalix-chat-thread-title > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.goalix-chat-context-pill {
+  border: 1px solid color-mix(in srgb, var(--dash-accent-2) 28%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--dash-accent-2);
+  background: color-mix(in srgb, var(--dash-accent-2) 10%, transparent);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
 .goalix-chat-head-icon {
   width: 20px;
   height: 20px;
@@ -8456,15 +8529,9 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   position: absolute !important;
   inset: 0 !important;
   z-index: 0 !important;
-  background:
-    linear-gradient(90deg,
-      rgba(8,13,24,0.97) 0%,
-      rgba(8,13,24,0.70) 38%,
-      rgba(8,13,24,0.22) 62%,
-      rgba(8,13,24,0.65) 82%,
-      rgba(8,13,24,0.94) 100%
-    ),
-    url("/goalix-coach-tablet.png") 56% center / cover no-repeat !important;
+  background: url("/Login_Pc.png") 100% 92% / 90% no-repeat !important;
+  mask-image: radial-gradient(circle at 100% 86%, black 25%, transparent 80%) !important;
+  -webkit-mask-image: radial-gradient(circle at 100% 86%, black 25%, transparent 80%) !important;
 }
 
 /* Subtle accent glow layer */
@@ -8504,22 +8571,23 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
-  padding: 40px clamp(40px, 5.5vw, 90px) clamp(32px, 5vh, 60px) !important;
+  padding: 20px clamp(20px, 2.5vw, 42px) clamp(32px, 5vh, 60px) !important;
 }
 
 /* Hero copy */
 .goalix-login-copy {
   position: relative !important;
   z-index: 2 !important;
-  max-width: min(460px, 46vw) !important;
+  max-width: min(380px, 38vw) !important;
+  margin-top: 0 !important;
 }
 
 .goalix-login-copy h1 {
   margin: 0 !important;
   color: #ffffff !important;
-  font-size: clamp(2.8rem, 4.6vw, 5.8rem) !important;
+  font-size: clamp(2.2rem, 3.6vw, 4.4rem) !important;
   font-weight: 950 !important;
-  line-height: 0.92 !important;
+  line-height: 0.9 !important;
   letter-spacing: -0.04em !important;
   text-transform: none !important;
 }
@@ -8656,7 +8724,7 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   position: absolute !important;
   z-index: 3 !important;
   left: clamp(40px, 5.5vw, 90px) !important;
-  bottom: clamp(36px, 6vh, 68px) !important;
+  bottom: clamp(120px, 14vh, 160px) !important;
   right: auto !important;
   display: flex !important;
   align-items: center !important;
@@ -8715,12 +8783,7 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 }
 
 .goalix-login-live-icon::after {
-  content: "" !important;
-  width: 12px !important;
-  height: 12px !important;
-  border-radius: 50% !important;
-  background: #22c55e !important;
-  box-shadow: 0 0 8px rgba(34,197,94,0.8) !important;
+  display: none !important;
 }
 
 .goalix-login-live-strip strong {
@@ -8806,7 +8869,7 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 }
 
 .goalix-login-card-head {
-  margin-bottom: 24px !important;
+  margin-bottom: 28px !important;
 }
 
 .goalix-login-card-icon,
@@ -8817,18 +8880,18 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 .goalix-login-card-head h1 {
   margin: 0 !important;
   color: #0f172a !important;
-  font-size: clamp(1.9rem, 2.8vw, 2.8rem) !important;
+  font-size: clamp(2rem, 3vw, 2.8rem) !important;
   font-weight: 800 !important;
-  line-height: 1.05 !important;
+  line-height: 1.08 !important;
   letter-spacing: -0.03em !important;
 }
 
 .goalix-login-card-head p {
-  margin: 8px 0 0 !important;
+  margin: 10px 0 0 !important;
   color: #64748b !important;
-  font-size: 0.88rem !important;
+  font-size: 0.92rem !important;
   font-weight: 500 !important;
-  line-height: 1.4 !important;
+  line-height: 1.5 !important;
 }
 
 /* ── Form layout ── */
@@ -8856,12 +8919,12 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 .goalix-login-password {
   display: flex !important;
   align-items: center !important;
-  height: 48px !important;
-  min-height: 48px !important;
+  height: 52px !important;
+  min-height: 52px !important;
   border: 1.5px solid #e2e8f0 !important;
-  border-radius: 10px !important;
+  border-radius: 14px !important;
   background: #f8fafc !important;
-  transition: border-color 0.18s !important;
+  transition: border-color 0.18s, box-shadow 0.18s !important;
   overflow: hidden !important;
 }
 
@@ -8869,7 +8932,7 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 .goalix-login-password:focus-within {
   border-color: #22c55e !important;
   background: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(34,197,94,0.12) !important;
+  box-shadow: 0 0 0 4px rgba(34,197,94,0.1) !important;
 }
 
 /* Left icon inside input wrapper */
@@ -8974,13 +9037,13 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   height: 52px !important;
   min-height: 52px !important;
   border: 0 !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   color: #ffffff !important;
   background: linear-gradient(90deg, #84cc16 0%, #22c55e 38%, #06b6d4 72%, #3b82f6 100%) !important;
   box-shadow:
-    0 4px 20px rgba(34,197,94,0.35),
-    0 2px 8px rgba(6,182,212,0.22) !important;
-  font-size: 0.92rem !important;
+    0 6px 24px rgba(34,197,94,0.30),
+    0 2px 8px rgba(6,182,212,0.18) !important;
+  font-size: 1rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.01em !important;
   cursor: pointer !important;
@@ -9066,23 +9129,44 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   font-weight: 700 !important;
 }
 
-/* ── Responsive: tablet/mobile (≤1180px) ── */
+/* Mobile actions hidden by default on desktop */
+.goalix-login-mobile-actions {
+  display: none !important;
+}
+
+/* ── Hide copy on tablet & mobile (≤1180px) ── */
 @media (max-width: 1180px) {
+  .goalix-login-copy {
+    display: none !important;
+  }
+
+  .goalix-login-story::before {
+    background: url("/login_mob.png") 10% center / cover no-repeat !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+  }
+}
+
+/* ── Responsive: mobile (≤768px) ── */
+@media (max-width: 768px) {
   .goalix-login-system {
     grid-template-columns: 1fr !important;
-    grid-template-rows: 64px minmax(300px, 40vh) auto !important;
+    grid-template-rows: minmax(360px, 44vh) auto !important;
     height: auto !important;
     min-height: 100dvh !important;
     overflow-y: auto !important;
   }
 
   .goalix-login-story-header {
-    position: relative !important;
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    height: 64px !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 72px !important;
     padding: 0 24px !important;
-    background: rgba(8,13,24,0.96) !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    z-index: 100 !important;
   }
 
   .goalix-login-nav-links,
@@ -9090,11 +9174,78 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
     display: none !important;
   }
 
+  .goalix-login-mobile-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+
+  .goalix-login-mobile-login-link {
+    color: #ffffff !important;
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+  }
+
+  .goalix-login-hamburger-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    cursor: pointer !important;
+    padding: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Mobile menu dropdown */
+  .goalix-login-mobile-dropdown {
+    position: absolute !important;
+    top: 72px !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: rgba(8, 13, 24, 0.98) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 16px 24px !important;
+    gap: 16px !important;
+    z-index: 99 !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .goalix-login-mobile-dropdown-link {
+    color: #e2e8f0 !important;
+    font-size: 14.5px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+    text-align: left !important;
+  }
+
+  .goalix-login-mobile-dropdown-link:last-child {
+    border-bottom: none !important;
+  }
+
+  .goalix-login-mobile-dropdown-link:hover {
+    color: #cfff04 !important;
+  }
+
   .goalix-login-story {
     grid-column: 1 !important;
-    grid-row: 2 !important;
-    min-height: 300px !important;
-    padding: 32px 24px 20px !important;
+    grid-row: 1 !important;
+    min-height: 360px !important;
+    padding: 80px 24px 20px !important;
+  }
+
+  /* Mobile background: use dedicated mobile image, centered */
+  .goalix-login-story::before {
+    background: url("/login_mob.png") 10% 30% / cover no-repeat !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
   }
 
   .goalix-login-story-content {
@@ -9103,47 +9254,60 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
     padding: 0 !important;
   }
 
-  .goalix-login-copy {
-    max-width: min(100%, 400px) !important;
-  }
-
-  .goalix-login-copy h1 {
-    font-size: clamp(2.4rem, 9vw, 4rem) !important;
-  }
-
+  /* Floating cards vertical alignment on right to prevent overlap */
   .goalix-login-perf-card {
-    top: 20px !important;
+    top: 84px !important;
     right: 16px !important;
-    width: 168px !important;
+    width: 150px !important;
+    bottom: auto !important;
+    transform: scale(0.85) !important;
+    transform-origin: right top !important;
   }
 
   .goalix-login-heatmap-card {
+    top: 176px !important;
     right: 16px !important;
-    bottom: 20px !important;
-    width: 160px !important;
-    height: 110px !important;
+    width: 140px !important;
+    height: 100px !important;
+    bottom: auto !important;
+    transform: scale(0.85) !important;
+    transform-origin: right top !important;
   }
 
   .goalix-login-live-strip {
-    left: 16px !important;
-    bottom: 16px !important;
-    width: min(360px, calc(100vw - 32px)) !important;
+    display: none !important;
   }
 
+  /* Brand cluster soccer ball in bottom right peeking out */
   .goalix-login-brand-cluster {
-    left: 16px !important;
-    bottom: 98px !important;
+    right: 16px !important;
+    left: auto !important;
+    bottom: -10px !important;
+    transform: scale(0.85) !important;
+    transform-origin: right bottom !important;
+    z-index: 5 !important;
   }
 
   .goalix-login-panel-shell {
     grid-column: 1 !important;
-    grid-row: 3 !important;
-    padding: 36px 24px 52px !important;
-    border-radius: 28px 28px 0 0 !important;
-    overflow: hidden !important;
+    grid-row: 2 !important;
+    padding: 36px 24px 40px !important;
+    border-radius: 40px 40px 0 0 !important;
+    margin-top: -30px !important;
+    background: #ffffff !important;
+    position: relative !important;
+    z-index: 10 !important;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.12) !important;
+    overflow: visible !important;
   }
 
   .goalix-login-wave {
+    display: none !important;
+  }
+
+  /* Hide social logins and divider on mobile */
+  .goalix-login-divider,
+  .goalix-login-socials {
     display: none !important;
   }
 }
@@ -9158,32 +9322,23 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   }
 
   .goalix-login-story {
-    min-height: 400px !important;
-    padding: 26px 16px 18px !important;
+    min-height: 380px !important;
+    padding: 76px 16px 18px !important;
   }
 
-  .goalix-login-copy h1 {
-    font-size: clamp(2.2rem, 12vw, 3.2rem) !important;
-  }
-
-  .goalix-login-copy p {
-    max-width: 280px !important;
-    font-size: 0.84rem !important;
-  }
-
-  .goalix-login-perf-card,
-  .goalix-login-heatmap-card {
-    transform: scale(0.80) !important;
-    transform-origin: right top !important;
+  .goalix-login-perf-card {
+    top: 80px !important;
+    right: 12px !important;
   }
 
   .goalix-login-heatmap-card {
-    bottom: 80px !important;
+    top: 168px !important;
+    right: 12px !important;
   }
 
-  .goalix-login-live-strip {
-    min-height: 60px !important;
-    border-radius: 18px !important;
+  .goalix-login-brand-cluster {
+    right: 12px !important;
+    bottom: -8px !important;
   }
 
   .goalix-login-card-head h1 {
@@ -9198,6 +9353,38 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 }
 
 /* Final login reference pass: section links + exact blob divider */
+html:has(.gx-hero) {
+  scroll-behavior: smooth;
+}
+
+body:has(:is(#ai-in-sport, #how-goalix-works, #product-suite, #clubs-coaches, #goalix-ecosystem):target) .gx-section-nav-link {
+  color: #e2e8f0 !important;
+  font-weight: 400 !important;
+}
+
+body:has(:is(#ai-in-sport, #how-goalix-works, #product-suite, #clubs-coaches, #goalix-ecosystem):target) .gx-section-nav-marker {
+  opacity: 0 !important;
+  transform: translateY(-3px) !important;
+}
+
+body:has(#ai-in-sport:target) .gx-section-nav-link[href="#ai-in-sport"],
+body:has(#how-goalix-works:target) .gx-section-nav-link[href="#how-goalix-works"],
+body:has(#product-suite:target) .gx-section-nav-link[href="#product-suite"],
+body:has(#clubs-coaches:target) .gx-section-nav-link[href="#clubs-coaches"],
+body:has(#goalix-ecosystem:target) .gx-section-nav-link[href="#goalix-ecosystem"] {
+  color: #cfff04 !important;
+  font-weight: 600 !important;
+}
+
+body:has(#ai-in-sport:target) .gx-section-nav-link[href="#ai-in-sport"] + .gx-section-nav-marker,
+body:has(#how-goalix-works:target) .gx-section-nav-link[href="#how-goalix-works"] + .gx-section-nav-marker,
+body:has(#product-suite:target) .gx-section-nav-link[href="#product-suite"] + .gx-section-nav-marker,
+body:has(#clubs-coaches:target) .gx-section-nav-link[href="#clubs-coaches"] + .gx-section-nav-marker,
+body:has(#goalix-ecosystem:target) .gx-section-nav-link[href="#goalix-ecosystem"] + .gx-section-nav-marker {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
 #ai-in-sport,
 #how-goalix-works,
 #product-suite,
@@ -9205,6 +9392,12 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
 #goalix-ecosystem,
 #goalix-cta {
   scroll-margin-top: 86px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.gx-hero) {
+    scroll-behavior: auto;
+  }
 }
 
 @media (min-width: 1181px) {
@@ -9424,44 +9617,85 @@ html[data-goalix-dashboard-language="ar"] .goalix-select-item > span:first-child
   }
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .goalix-reference-content {
-  gap: 0.875rem;
+/* Theme-aware dashboard hardcoded surfaces used by legacy sections. */
+.goalix-reference-frame .bg-\[\#06111f\]\/86 {
+  border-color: rgba(15, 34, 25, 0.08) !important;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(178, 210, 59, 0.16), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(244, 250, 247, 0.84)) !important;
+  color: #101914 !important;
+  box-shadow: 0 16px 34px rgba(19, 27, 23, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .goalix-reference-main {
-  padding: 1rem;
+.goalix-reference-frame .border-\[\#253f5a\] {
+  border-color: rgba(15, 34, 25, 0.1) !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .p-5 {
-  padding: 1rem;
+.goalix-reference-frame[data-dashboard-theme="dark"] .bg-\[\#06111f\]\/86 {
+  border-color: rgba(45, 154, 213, 0.18) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(45, 154, 213, 0.1), transparent 13rem),
+    linear-gradient(145deg, rgba(7, 27, 44, 0.96), rgba(6, 17, 31, 0.92)) !important;
+  color: #edf7ff !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .p-4 {
-  padding: 0.875rem;
+.goalix-reference-frame[data-dashboard-theme="dark"] .border-\[\#253f5a\] {
+  border-color: rgba(45, 154, 213, 0.2) !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .gap-6 {
-  gap: 1rem;
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-slate-100 {
+  color: #101914 !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] .gap-4 {
-  gap: 0.75rem;
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-slate-300 {
+  color: #405348 !important;
 }
 
-.goalix-reference-frame[data-dashboard-density="compact"] h1 {
-  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-slate-400 {
+  color: #5f7067 !important;
 }
 
-.goalix-reference-frame[data-dashboard-motion="reduced"],
-.goalix-reference-frame[data-dashboard-motion="reduced"] *,
-.goalix-dashboard-viewport[data-dashboard-motion="reduced"],
-.goalix-dashboard-viewport[data-dashboard-motion="reduced"] * {
-  scroll-behavior: auto !important;
-  transition-duration: 0.001ms !important;
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-slate-500 {
+  color: #7a8b82 !important;
 }
 
-.goalix-reference-frame[data-dashboard-focus="on"] .goalix-reference-download {
-  display: none;
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-cyan-200,
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-cyan-300 {
+  color: #078b9c !important;
+}
+
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-lime-300,
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .text-lime-200 {
+  color: #5b8d0b !important;
+}
+
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .bg-white\/\[0\.025\],
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .bg-white\/\[0\.03\],
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .bg-white\/\[0\.035\],
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .bg-white\/\[0\.06\] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .border-white\/10 {
+  border-color: rgba(15, 34, 25, 0.1) !important;
+}
+
+.goalix-reference-frame:not([data-dashboard-theme="dark"]) .goalix-injury-risk-page .divide-\[\#253f5a\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(15, 34, 25, 0.1) !important;
+}
+
+.goalix-reference-frame[data-dashboard-language="ar"] .goalix-injury-risk-page thead {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.goalix-reference-frame .goalix-formation-preview {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(226, 255, 238, 0.78), rgba(244, 250, 247, 0.92) 58%, #ffffff 100%) !important;
+}
+
+.goalix-reference-frame[data-dashboard-theme="dark"] .goalix-formation-preview {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(0, 23, 40, 0.68), rgba(2, 6, 23, 0.9) 58%, #020617 100%) !important;
 }
