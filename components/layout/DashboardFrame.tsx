@@ -2101,7 +2101,7 @@ export function DashboardFrame({
               <span>{t("Settings")}</span>
             </Link>
           )}
-          <Link href={ROLE_ROUTES[role]} className="goalix-reference-nav-item" onClick={closeMobileNav}>
+          <Link href={`/${role}/help`} className="goalix-reference-nav-item" onClick={closeMobileNav}>
             <HelpCircle size={17} />
             <span>{t("Help")}</span>
           </Link>
@@ -2185,13 +2185,6 @@ export function DashboardFrame({
                 </div>
               )}
             </div>
-            <Link
-              href={`/${role}/chat`}
-              className="goalix-reference-message-trigger"
-              aria-label={t("Messages")}
-            >
-              <Mail size={18} />
-            </Link>
             <div className="goalix-reference-notifications">
               <button
                 type="button"

@@ -44,7 +44,7 @@ type RoleEdit = Partial<RoleDraft> & { permissionIds?: string[] };
 
 type NewAccessUserDraft = {
   fullName: string;
-  accountRole: "admin" | "coach" | "parent";
+  accountRole: "admin";
   email: string;
   phone: string;
   username: string;
@@ -68,7 +68,20 @@ const emptyAccessUserDraft: NewAccessUserDraft = {
   notes: "",
 };
 
-const protectedRoleCodes = new Set(["super_admin", "academy_owner", "player"]);
+const hiddenPortalRoleCodes = new Set([
+  "coach",
+  "head_coach",
+  "assistant_coach",
+  "player",
+  "parent",
+  "parent_guardian",
+]);
+
+const protectedRoleCodes = new Set([
+  "super_admin",
+  "academy_owner",
+  ...hiddenPortalRoleCodes,
+]);
 
 const adminPortalPermissionCodes = new Set([
   "access_admin_dashboard",
@@ -107,38 +120,6 @@ const adminPortalPermissionCodes = new Set([
   "manage_permissions",
   "admin.role.manage",
 ]);
-
-const coachPortalPermissionCodes = new Set([
-  "access_coach_dashboard",
-  "view_assigned_players",
-  "manage_training_sessions",
-  "mark_attendance",
-  "view_team_schedule",
-  "player.read.team",
-  "coach.read.team",
-  "ranking.read.team",
-  "attendance.view.team",
-  "attendance.mark.team",
-  "evaluation.create",
-  "evaluation.update",
-  "evaluation.publish",
-  "evaluation.read.team",
-]);
-
-const parentPortalPermissionCodes = new Set([
-  "child:read",
-  "view_own_profile",
-  "view_own_schedule",
-  "view_own_attendance",
-  "view_own_payments",
-  "player.read.self",
-  "attendance.view.self",
-  "evaluation.read.self",
-  "ranking.read.self",
-  "payment.read.self",
-]);
-
-const playerPortalPermissionCodes = new Set(["access_player_dashboard"]);
 
 const rolePermissionIds = (role: AdminRole | undefined) =>
   new Set(
@@ -229,9 +210,13 @@ export default function RolesPage() {
   const [assignRole, { isLoading: assigning }] = useAssignAdminRoleToUserMutation();
   const [revokeRole, { isLoading: revoking }] = useRevokeAdminRoleFromUserMutation();
 
-  const roles = useMemo(() => data?.roles ?? [], [data?.roles]);
+  const roles = useMemo(
+    () =>
+      (data?.roles ?? []).filter((role) => !hiddenPortalRoleCodes.has(role.code)),
+    [data?.roles],
+  );
   const users = useMemo(
-    () => (data?.users ?? []).filter((user) => user.role !== "player"),
+    () => (data?.users ?? []).filter((user) => user.role === "admin"),
     [data?.users],
   );
   const permissionGroups = useMemo(
@@ -280,54 +265,13 @@ export default function RolesPage() {
       ),
     [selectedPermissionCodes],
   );
-  const hasCoachPortalPermissions = useMemo(
-    () =>
-      Array.from(selectedPermissionCodes).some((code) =>
-        coachPortalPermissionCodes.has(code),
-      ),
-    [selectedPermissionCodes],
-  );
-  const hasParentPortalPermissions = useMemo(
-    () =>
-      Array.from(selectedPermissionCodes).some((code) =>
-        parentPortalPermissionCodes.has(code),
-      ),
-    [selectedPermissionCodes],
-  );
-  const hasPlayerPortalPermissions = useMemo(
-    () =>
-      Array.from(selectedPermissionCodes).some((code) =>
-        playerPortalPermissionCodes.has(code),
-      ),
-    [selectedPermissionCodes],
-  );
   const canAccessAdminDashboard = hasAdminPortalPermissions;
-  const recommendedAccountRole: NewAccessUserDraft["accountRole"] = hasAdminPortalPermissions
-    ? "admin"
-    : hasCoachPortalPermissions
-      ? "coach"
-      : hasParentPortalPermissions
-        ? "parent"
-        : "admin";
-  const accountRoleHelp = hasAdminPortalPermissions
-    ? "This role opens admin pages, so it must use Staff / Admin Login."
-    : hasCoachPortalPermissions
-      ? "This role opens coach pages, so it must use Coach Login."
-      : hasParentPortalPermissions
-        ? "This role is for parents/guardians, so it must use Parent Login."
-        : "Choose where this account should sign in.";
+  const recommendedAccountRole: NewAccessUserDraft["accountRole"] = "admin";
+  const accountRoleHelp =
+    "Roles settings is for admin/staff access only. Coaches are assigned from /admin/coaches/assign, parents from /admin/parents, and players from /admin/players.";
   const isAccountRoleAllowed = useCallback((accountRole: NewAccessUserDraft["accountRole"]) => {
-    if (hasPlayerPortalPermissions) return false;
-    if (hasAdminPortalPermissions) return accountRole === "admin";
-    if (hasCoachPortalPermissions) return accountRole === "coach";
-    if (hasParentPortalPermissions) return accountRole === "parent";
-    return true;
-  }, [
-    hasAdminPortalPermissions,
-    hasCoachPortalPermissions,
-    hasParentPortalPermissions,
-    hasPlayerPortalPermissions,
-  ]);
+    return accountRole === "admin";
+  }, []);
   const selectedRoleProtected = selectedRole
     ? protectedRoleCodes.has(selectedRole.code)
     : false;
@@ -335,8 +279,7 @@ export default function RolesPage() {
   const selectedAccountRole = isAccountRoleAllowed(newUser.accountRole)
     ? newUser.accountRole
     : recommendedAccountRole;
-  const newUserLoginPath =
-    selectedAccountRole === "parent" ? "/login" : "/admin-login";
+  const newUserLoginPath = "/admin-login";
 
   const totalPermissionCount = useMemo(
     () => permissionGroups.reduce((sum, group) => sum + group.permissions.length, 0),
@@ -479,8 +422,7 @@ export default function RolesPage() {
         roleId: selectedRole.id,
       }).unwrap();
       const createdUsername = created.user.username || newUser.username.trim().toLowerCase();
-      const createdLoginPath =
-        created.user.role === "parent" ? "/login" : "/admin-login";
+      const createdLoginPath = "/admin-login";
       setNewUser(emptyAccessUserDraft);
       setMessage(
         `User created. Login from ${createdLoginPath} using username "${createdUsername}".`,
@@ -557,6 +499,7 @@ export default function RolesPage() {
     const assigned = selectedRoleUserIds.has(user.id);
     const compatibleAccountRole =
       user.role !== "player" &&
+      user.role !== "parent" &&
       isAccountRoleAllowed(user.role as NewAccessUserDraft["accountRole"]);
     if (!assigned && !compatibleAccountRole) {
       setError(
@@ -770,9 +713,9 @@ export default function RolesPage() {
                     Add User to This Role
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Create a non-player account and assign only{" "}
+                    Create an admin/staff account and assign only{" "}
                     <span className="font-medium text-foreground">{selectedRole.name}</span>.
-                    Players are created from the Players page.
+                    Coaches, parents, and players are managed from their dedicated pages.
                   </p>
                 </div>
                 <Badge variant="secondary">
@@ -818,28 +761,11 @@ export default function RolesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Login Type</Label>
-                    <select
-                      value={selectedAccountRole}
-                      onChange={(event) =>
-                        setNewUser((current) => ({
-                          ...current,
-                          accountRole: event.target.value as NewAccessUserDraft["accountRole"],
-                        }))
-                      }
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="admin" disabled={!isAccountRoleAllowed("admin")}>
-                        Staff / Admin Login
-                      </option>
-                      <option value="coach" disabled={!isAccountRoleAllowed("coach")}>
-                        Coach Login
-                      </option>
-                      <option value="parent" disabled={!isAccountRoleAllowed("parent")}>
-                        Parent Login
-                      </option>
-                    </select>
+                    <div className="flex h-10 items-center rounded-md border border-input bg-muted/20 px-3 text-sm">
+                      Staff / Admin Login
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {accountRoleHelp} Parents use /login. Staff and coaches use /admin-login.
+                      {accountRoleHelp}
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -978,8 +904,8 @@ export default function RolesPage() {
                     Assigned Users
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Grant or revoke this role for academy users. Backend access is
-                    enforced by permissions; players are intentionally hidden here.
+                    Grant or revoke this role for admin/staff users only. Coach,
+                    player, and parent access is managed from their dedicated pages.
                   </p>
                 </div>
                 <Badge variant="outline">{selectedRoleUserIds.size} assigned</Badge>
@@ -999,7 +925,7 @@ export default function RolesPage() {
                     const assigned = selectedRoleUserIds.has(user.id);
                     const isSelf = user.id === currentUser?.id;
                     const compatibleAccountRole =
-                      user.role !== "player" &&
+                      user.role === "admin" &&
                       isAccountRoleAllowed(user.role as NewAccessUserDraft["accountRole"]);
                     const disabled =
                       isSelf ||
@@ -1030,7 +956,9 @@ export default function RolesPage() {
                             </Badge>
                             {isSelf && <span>self protected</span>}
                             {!assigned && !compatibleAccountRole && (
-                              <span>needs {recommendedAccountRole} login</span>
+                              <span>
+                                needs {recommendedAccountRole} login
+                              </span>
                             )}
                           </span>
                         </span>

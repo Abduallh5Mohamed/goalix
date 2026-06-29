@@ -28,3 +28,1078 @@
     url: "/api/v1/academy"
     statusCode: 200
     durationMs: 1479.78
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/server.js`[39m
+[2026-06-28 01:40:36.864 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+    service: "goalix-api"
+[2026-06-28 01:40:36.878 +0300] [32mINFO[39m: [36mAll BullMQ workers started[39m
+    service: "goalix-api"
+[2026-06-28 01:40:36.883 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+    service: "goalix-api"
+[2026-06-28 01:50:45.368 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 891.59
+    sql: "select \"id\", \"name\", \"email\", \"phone\", \"address\", \"logo_url\", \"settings\" from \"academy_academies\" where \"deleted_at\" is null order by \"created_at\" asc limit $1"
+[2026-06-28 01:50:46.684 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "585363bd-5faa-4083-b267-d66fba9b7641"
+    method: "GET"
+    url: "/api/v1/academy/public-profile"
+    statusCode: 200
+    durationMs: 2869.85
+[2026-06-28 02:03:07.726 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:03:07.834 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:03:20.150 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:03:20.224 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:08:17.319 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 1287.85
+    sql: "select * from \"auth_refresh_tokens\" where \"token_hash\" = $1 and \"is_revoked\" = $2 and \"expires_at\" > $3 limit $4"
+[2026-06-28 02:08:17.480 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "ccd4b6f0-3066-42be-9711-fbfe09218090"
+    method: "POST"
+    url: "/api/v1/auth/refresh"
+    statusCode: 200
+    durationMs: 1740.78
+[2026-06-28 02:08:50.464 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 342.34
+    sql: "select * from \"auth_refresh_tokens\" where \"token_hash\" = $1 and \"is_revoked\" = $2 and \"expires_at\" > $3 limit $4"
+[2026-06-28 02:08:51.051 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 350.62
+    sql: "select * from \"auth_users\" where \"auth_users\".\"deleted_at\" is null and \"auth_users\".\"id\" = $1 limit $2"
+[2026-06-28 02:08:51.369 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 284.89
+    sql: "insert into \"auth_refresh_tokens\" (\"access_jti\", \"expires_at\", \"ip_address\", \"last_seen_at\", \"token_hash\", \"user_agent\", \"user_id\") values ($1, $2, $3, $4, $5, $6, $7) returning *"
+[2026-06-28 02:08:51.599 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "cf2301d6-8602-4bf6-9c82-d05011378f26"
+    method: "POST"
+    url: "/api/v1/auth/refresh"
+    statusCode: 200
+    durationMs: 2395.01
+[2026-06-28 02:09:19.515 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:09:19.617 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:12:15.051 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:16:14.609 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:16:14.865 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:16:14.953 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:16:15.074 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:16:15.099 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:20:58.716 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "42020355-4c09-4bed-bad5-4fe9e80215b1"
+    method: "GET"
+    url: "/api/v1/auth/permissions"
+    statusCode: 200
+    durationMs: 5945.81
+[2026-06-28 02:21:44.692 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 1891.98
+    sql: "insert into \"auth_refresh_tokens\" (\"access_jti\", \"expires_at\", \"ip_address\", \"last_seen_at\", \"token_hash\", \"user_agent\", \"user_id\") values ($1, $2, $3, $4, $5, $6, $7) returning *"
+[2026-06-28 02:21:44.738 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "283324f7-36e1-4e42-8a79-c4c2ab265fea"
+    method: "POST"
+    url: "/api/v1/auth/refresh"
+    statusCode: 200
+    durationMs: 6242.22
+[2026-06-28 02:22:14.599 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 1602.22
+    sql: "update \"auth_users\" set \"last_login_at\" = $1 where \"id\" = $2"
+[2026-06-28 02:22:17.301 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 1262.43
+    sql: "insert into \"auth_refresh_tokens\" (\"access_jti\", \"expires_at\", \"ip_address\", \"last_seen_at\", \"token_hash\", \"user_agent\", \"user_id\") values ($1, $2, $3, $4, $5, $6, $7) returning *"
+[2026-06-28 02:22:19.777 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 2003.39
+    sql: "insert into \"audit_logs\" (\"action\", \"ip_address\", \"record_id\", \"table_name\", \"user_agent\", \"user_id\") values ($1, $2, $3, $4, $5, $6) returning *"
+[2026-06-28 02:22:19.806 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "ca8c069f-d44f-4b7d-bf7d-330e211b4237"
+    method: "POST"
+    url: "/api/v1/auth/admin/login"
+    statusCode: 200
+    durationMs: 7414.21
+[2026-06-28 02:22:25.449 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "3580ba66-9890-49a5-bdf5-4d8d15b7e109"
+    method: "GET"
+    url: "/api/v1/auth/permissions"
+    statusCode: 200
+    durationMs: 4309.71
+[2026-06-28 02:22:25.455 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+    service: "goalix-api"
+    durationMs: 3973.35
+    sql: "select * from \"academy_academies\" where \"academy_academies\".\"deleted_at\" is null and \"academy_academies\".\"id\" = $1 limit $2"
+[2026-06-28 02:22:25.457 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "a7ecf094-d71d-4ddd-9492-bab576c641a5"
+    method: "GET"
+    url: "/api/v1/academy"
+    statusCode: 200
+    durationMs: 4256.75
+[2026-06-28 02:22:25.525 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+    service: "goalix-api"
+    requestId: "a047e9a2-778e-40cd-9ad8-00e95f14edf0"
+    method: "GET"
+    url: "/api/v1/notifications/unread-count"
+    statusCode: 200
+    durationMs: 4316.6
+[2026-06-28 02:24:37.054 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    service: "goalix-api"
+    url: "/api/v1/chat/conversations"
+    method: "GET"
+    err: {
+      "type": "Error",
+      "message": "Expected 1 bindings, saw 0",
+      "stack":
+          Error: Expected 1 bindings, saw 0
+              at replaceRawArrBindings (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\rawFormatter.js:27:11)
+              at Raw.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\raw.js:77:13)
+              at unwrapRaw (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:119:19)
+              at wrap (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:83:15)
+              at columnize (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\formatter\wrappingFormatter.js:75:12)
+              at QueryCompiler_PG.columns (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:347:13)
+              at D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:180:40
+              at Array.forEach (<anonymous>)
+              at QueryCompiler_PG.select (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:179:16)
+              at QueryCompiler_PG.toSQL (D:\Goalix\goalix\golx-backend\node_modules\knex\lib\query\querycompiler.js:120:29)
+    }
+[2026-06-28 02:24:37.289 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:24:37.872 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:24:37.878 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:25:10.213 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:25:10.317 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:25:10.420 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:25:10.444 +0300] [33mWARN[39m: [36mRefresh token reuse detected for userId=b180aaf1-cd7e-4f5f-8c42-9ce386de77e0 — revoking all tokens[39m
+    service: "goalix-api"
+[2026-06-28 02:37:47.896 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+    service: "goalix-api"
+    message: "Stream isn't writeable and enableOfflineQueue options is false"
+[2026-06-28 02:37:48.285 +0300] [32mINFO[39m: [36mRedis connected[39m
+    service: "goalix-api"
+[2026-06-28 02:37:48.655 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "ai"
+    err: {
+      "type": "Error",
+      "message": "write ECONNABORTED",
+      "stack":
+          Error: write ECONNABORTED
+              at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+              at writeGeneric (node:internal/stream_base_commons:150:3)
+              at Socket._writeGeneric (node:net:971:11)
+              at Socket._write (node:net:983:8)
+              at writeOrBuffer (node:internal/streams/writable:572:12)
+              at _write (node:internal/streams/writable:501:10)
+              at Writable.write (node:internal/streams/writable:510:10)
+              at EventEmitter.sendCommand (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\Redis.js:406:29)
+              at EventEmitter.client (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\utils\Commander.js:90:25)
+              at D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\redis\event_handler.js:65:22
+      "errno": -4079,
+      "code": "ECONNABORTED",
+      "syscall": "write"
+    }
+[2026-06-28 02:37:48.660 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "payments"
+    err: {
+      "type": "Error",
+      "message": "write ECONNABORTED",
+      "stack":
+          Error: write ECONNABORTED
+              at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+              at writeGeneric (node:internal/stream_base_commons:150:3)
+              at Socket._writeGeneric (node:net:971:11)
+              at Socket._write (node:net:983:8)
+              at writeOrBuffer (node:internal/streams/writable:572:12)
+              at _write (node:internal/streams/writable:501:10)
+              at Writable.write (node:internal/streams/writable:510:10)
+              at EventEmitter.sendCommand (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\Redis.js:406:29)
+              at EventEmitter.client (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\utils\Commander.js:90:25)
+              at D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\redis\event_handler.js:65:22
+      "errno": -4079,
+      "code": "ECONNABORTED",
+      "syscall": "write"
+    }
+[2026-06-28 02:37:48.661 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "notifications"
+    err: {
+      "type": "Error",
+      "message": "write ECONNABORTED",
+      "stack":
+          Error: write ECONNABORTED
+              at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+              at writeGeneric (node:internal/stream_base_commons:150:3)
+              at Socket._writeGeneric (node:net:971:11)
+              at Socket._write (node:net:983:8)
+              at writeOrBuffer (node:internal/streams/writable:572:12)
+              at _write (node:internal/streams/writable:501:10)
+              at Writable.write (node:internal/streams/writable:510:10)
+              at EventEmitter.sendCommand (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\Redis.js:406:29)
+              at EventEmitter.client (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\utils\Commander.js:90:25)
+              at D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\redis\event_handler.js:65:22
+      "errno": -4079,
+      "code": "ECONNABORTED",
+      "syscall": "write"
+    }
+[2026-06-28 02:37:48.661 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "rankings"
+    err: {
+      "type": "Error",
+      "message": "write ECONNABORTED",
+      "stack":
+          Error: write ECONNABORTED
+              at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+              at writeGeneric (node:internal/stream_base_commons:150:3)
+              at Socket._writeGeneric (node:net:971:11)
+              at Socket._write (node:net:983:8)
+              at writeOrBuffer (node:internal/streams/writable:572:12)
+              at _write (node:internal/streams/writable:501:10)
+              at Writable.write (node:internal/streams/writable:510:10)
+              at EventEmitter.sendCommand (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\Redis.js:406:29)
+              at EventEmitter.client (D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\utils\Commander.js:90:25)
+              at D:\Goalix\goalix\golx-backend\node_modules\ioredis\built\redis\event_handler.js:65:22
+      "errno": -4079,
+      "code": "ECONNABORTED",
+      "syscall": "write"
+    }
+[2026-06-28 02:37:49.674 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "rankings"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:49.674 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "notifications"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:49.675 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "payments"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:49.675 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "ai"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:50.694 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "notifications"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:50.694 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "payments"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:50.710 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "rankings"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:50.711 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "ai"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:51.735 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "ai"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:51.735 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "rankings"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:51.736 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "payments"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:51.736 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "notifications"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:52.751 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "ai"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:52.752 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "notifications"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:52.753 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "payments"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }
+[2026-06-28 02:37:52.753 +0300] [31mERROR[39m: [36mQueue error[39m
+    service: "goalix-api"
+    queue: "rankings"
+    err: {
+      "type": "AggregateError",
+      "message": "",
+      "stack":
+          AggregateError [ECONNREFUSED]: 
+              at internalConnectMultiple (node:net:1139:18)
+              at afterConnectMultiple (node:net:1712:7)
+      "aggregateErrors": [
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED ::1:6379",
+          "stack":
+              Error: connect ECONNREFUSED ::1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "::1",
+          "port": 6379
+        },
+        {
+          "type": "Error",
+          "message": "connect ECONNREFUSED 127.0.0.1:6379",
+          "stack":
+              Error: connect ECONNREFUSED 127.0.0.1:6379
+                  at createConnectionError (node:net:1675:14)
+                  at afterConnectMultiple (node:net:1705:16)
+          "errno": -4078,
+          "code": "ECONNREFUSED",
+          "syscall": "connect",
+          "address": "127.0.0.1",
+          "port": 6379
+        }
+      ],
+      "code": "ECONNREFUSED"
+    }

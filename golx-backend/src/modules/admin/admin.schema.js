@@ -47,7 +47,7 @@ const optionalUuid = z.preprocess(
 
 const createAccessUserSchema = z.object({
     fullName: z.string().trim().min(2).max(160),
-    accountRole: z.enum(['admin', 'coach', 'parent']),
+    accountRole: z.literal('admin'),
     email: z.preprocess(
         (value) => (value === null || (typeof value === 'string' && value.trim() === '') ? undefined : value),
         z.string().trim().email().max(255).optional(),

@@ -189,7 +189,6 @@ export default function BranchesPage() {
     }
   };
 
-  const canSubmit = form.name.trim().length > 0 && !isCreating;
   const deleteName = deleteTarget?.name ?? "";
   const deleteApiError = deleteError ? getApiError(deleteError) : null;
   const handleDelete = async () => {

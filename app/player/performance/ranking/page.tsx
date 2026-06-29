@@ -5,14 +5,38 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useGetPlayerProfileQuery } from "@/lib/store/api/calendarApi";
 import {
-  useGetWeeklyRankingsQuery,
-  type RankingRow,
-} from "@/lib/store/api/adminApi";
+  useGetPlayerProfileQuery,
+  useGetPlayerRankingSystemInputsQuery,
+  type RankingSystemInput,
+} from "@/lib/store/api/calendarApi";
 import { getInitials } from "@/lib/utils";
 
-const scoreText = (value: string | number | null | undefined) => {
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const scoreValue = (row: RankingSystemInput) =>
+  numberValue(row.final_api_response?.weekly_score ?? row.weekly_score);
+
+const rankValue = (row: RankingSystemInput) =>
+  row.final_api_response?.rank ?? row.rank;
+
+const sortByModelRank = (rows: RankingSystemInput[]) =>
+  [...rows].sort((a, b) => {
+    const rankDiff = rankValue(a) - rankValue(b);
+    if (rankDiff) return rankDiff;
+    const scoreDiff = (scoreValue(b) ?? -1) - (scoreValue(a) ?? -1);
+    if (scoreDiff) return scoreDiff;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""));
+  });
+
+const scoreText = (value: unknown) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return "0";
   return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
@@ -38,13 +62,13 @@ function EmptyState({ text }: { text: string }) {
 export default function PlayerRankingPage() {
   const profileQuery = useGetPlayerProfileQuery();
   const profile = profileQuery.data;
-  const rankingsQuery = useGetWeeklyRankingsQuery(
-    { groupId: profile?.group_id ?? undefined, limit: 100 },
-    { skip: !profile?.group_id },
-  );
-  const groupRankings = (rankingsQuery.data?.data ?? [])
-    .slice()
-    .sort((a, b) => a.rank - b.rank);
+  const rankingsQuery = useGetPlayerRankingSystemInputsQuery({ limit: 500 });
+  const rows = rankingsQuery.data?.data ?? [];
+  const latestWeek = rows
+    .map((row) => String(row.week_start || ""))
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a))[0];
+  const groupRankings = sortByModelRank(rows.filter((row) => row.week_start === latestWeek));
   const myRanking = groupRankings.find((ranking) => ranking.player_id === profile?.id);
   const topRankings = groupRankings.slice(0, 3);
   const isLoading = profileQuery.isLoading || rankingsQuery.isLoading;
@@ -80,19 +104,19 @@ export default function PlayerRankingPage() {
                   <div>
                     <p className="text-sm text-slate-300">Your Rank</p>
                     <p className="text-4xl font-bold text-cyan-100">
-                      #{myRanking.rank}
+                      #{rankValue(myRanking)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-center">
                     <p className="text-3xl font-bold text-white">
-                      {scoreText(myRanking.total_score)}
+                      {scoreText(scoreValue(myRanking))}
                     </p>
                     <p className="text-xs text-slate-400">Points</p>
                   </div>
                   <Badge variant="info" className="text-sm">
-                    {myRanking.period}
+                    {latestWeek || "-"}
                   </Badge>
                 </div>
               </CardContent>
@@ -113,13 +137,13 @@ export default function PlayerRankingPage() {
                     <CardContent className="p-5 text-center">
                       <Avatar className="mx-auto mb-3 h-12 w-12 border border-white/10">
                         <AvatarFallback className="bg-cyan-400/10 text-cyan-100">
-                          {getInitials(ranking.player_name)}
+                          {getInitials(ranking.player_name || "Player")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="mb-2 flex items-center justify-center gap-2">
-                        <Medal className={`h-5 w-5 ${medalColor(ranking.rank)}`} />
+                        <Medal className={`h-5 w-5 ${medalColor(rankValue(ranking))}`} />
                         <span className="text-xl font-bold text-white">
-                          #{ranking.rank}
+                          #{rankValue(ranking)}
                         </span>
                       </div>
                       <p className="font-semibold text-white">
@@ -127,7 +151,7 @@ export default function PlayerRankingPage() {
                         {isMe ? " (You)" : ""}
                       </p>
                       <p className="mt-1 text-2xl font-bold text-cyan-200">
-                        {scoreText(ranking.total_score)}
+                        {scoreText(scoreValue(ranking))}
                       </p>
                     </CardContent>
                   </Card>
@@ -143,7 +167,7 @@ export default function PlayerRankingPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {groupRankings.map((ranking: RankingRow) => {
+              {groupRankings.map((ranking) => {
                 const isMe = ranking.player_id === profile?.id;
                 return (
                   <div
@@ -156,10 +180,10 @@ export default function PlayerRankingPage() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] text-lg font-bold">
-                        {ranking.rank <= 3 ? (
-                          <Medal className={`h-5 w-5 ${medalColor(ranking.rank)}`} />
+                        {rankValue(ranking) <= 3 ? (
+                          <Medal className={`h-5 w-5 ${medalColor(rankValue(ranking))}`} />
                         ) : (
-                          <span className="text-slate-400">{ranking.rank}</span>
+                          <span className="text-slate-400">{rankValue(ranking)}</span>
                         )}
                       </div>
                       <div>
@@ -168,12 +192,12 @@ export default function PlayerRankingPage() {
                           {isMe ? " (You)" : ""}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {ranking.group_name}
+                          {[ranking.position, ranking.role_family, latestWeek].filter(Boolean).join(" - ")}
                         </p>
                       </div>
                     </div>
                     <p className="text-2xl font-bold text-cyan-200">
-                      {scoreText(ranking.total_score)}
+                      {scoreText(scoreValue(ranking))}
                     </p>
                   </div>
                 );
@@ -182,7 +206,7 @@ export default function PlayerRankingPage() {
           </Card>
         </>
       ) : (
-        <EmptyState text="No backend ranking snapshot is available for your group yet." />
+        <EmptyState text="No Ranking System output is available for your group yet." />
       )}
     </div>
   );

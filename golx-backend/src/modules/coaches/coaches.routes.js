@@ -74,10 +74,12 @@ function coachesRoutes(controller) {
 
     router.get('/me/dashboard', restrictTo('coach'), controller.getMeDashboard);
     router.get('/me/access-status', restrictTo('coach'), controller.getMeAccessStatus);
+    router.get('/me/manage-branches', restrictTo('coach'), controller.getMeManageBranches);
     router.get('/me/birthdays', restrictTo('coach'), controller.getMeBirthdays);
     router.get('/me/groups', restrictTo('coach'), controller.getMeGroups);
     router.post('/me/groups', restrictTo('coach'), validate({ body: createCoachGroupSchema }), controller.createMeGroup);
     router.post('/me/birth-years', restrictTo('coach'), validate({ body: createCoachBirthYearSchema }), controller.createMeBirthYear);
+    router.delete('/me/birth-years/:id', restrictTo('coach'), validate({ params: uuidParam }), controller.deleteMeBirthYear);
     router.get('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam, query: coachGroupQuery }), controller.getMeGroup);
     router.patch('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam, body: updateCoachGroupSchema }), controller.updateMeGroup);
     router.delete('/me/groups/:groupId', restrictTo('coach'), validate({ params: groupParam }), controller.deleteMeGroup);

@@ -201,7 +201,13 @@ async function proxyApiRequest(
   request: NextRequest,
   context: ApiRouteContext,
 ) {
-  const { path = [] } = await context.params;
+  const params = await context.params;
+  const fallbackPath = request.nextUrl.pathname
+    .replace(/^\/api\/v1\/?/, "")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment));
+  const path = params.path?.length ? params.path : fallbackPath;
   const target = new URL(
     `/api/v1/${path.join("/")}${request.nextUrl.search}`,
     getApiUrl(),

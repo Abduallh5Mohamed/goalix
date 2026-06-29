@@ -1,0 +1,4 @@
+Docker is not available and Redis port 6379 is closed. Redis cache/queue features are disabled, but dev will continue.
+[frontend] ⚠ Fast Refresh had to perform a full reload when ./lib/store/api/coachApi.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[frontend] [browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+[frontend] [browser] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.

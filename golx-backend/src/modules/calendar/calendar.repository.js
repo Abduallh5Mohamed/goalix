@@ -1,4 +1,5 @@
 const { emitNotifications } = require("../../realtime/chat.realtime");
+const { ensureIamForAuthUser } = require("../../shared/iam-sync");
 const {
   PERMISSION_COLUMNS,
 } = require("../coaches/coach-assignment-roles");
@@ -157,6 +158,7 @@ class CalendarRepository {
   parentLinksQuery(academyId) {
     return this.db("parent_player_links as ppl")
       .join("auth_users as parent_user", "ppl.parent_user_id", "parent_user.id")
+      .leftJoin("iam_users as parent_iam", "parent_user.id", "parent_iam.id")
       .join("player_profiles as pp", "ppl.player_id", "pp.id")
       .leftJoin("player_group_assignments as pga", function joinCurrentGroup() {
         this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
@@ -172,10 +174,11 @@ class CalendarRepository {
       .select(
         "ppl.*",
         this.db.raw(
-          "COALESCE(parent_user.username, parent_user.email, parent_user.phone, 'Parent') as parent_name",
+          "COALESCE(parent_iam.full_name, parent_user.username, parent_user.email, parent_user.phone, 'Parent') as parent_name",
         ),
         "parent_user.email as parent_email",
         "parent_user.phone as parent_phone",
+        "parent_iam.address as parent_address",
         "pp.full_name as player_name",
         "pp.player_code",
         "pp.position",
@@ -190,10 +193,15 @@ class CalendarRepository {
       .modify((q) => {
         if (filters.parentUserId) q.where("ppl.parent_user_id", filters.parentUserId);
         if (filters.playerId) q.where("ppl.player_id", filters.playerId);
+        if (Array.isArray(filters.playerIds)) {
+          if (filters.playerIds.length) q.whereIn("ppl.player_id", filters.playerIds);
+          else q.whereRaw("1 = 0");
+        }
         if (filters.search) {
           q.where((search) => {
             search
               .where("pp.full_name", "ilike", `%${filters.search}%`)
+              .orWhere("parent_iam.full_name", "ilike", `%${filters.search}%`)
               .orWhere("parent_user.email", "ilike", `%${filters.search}%`)
               .orWhere("parent_user.username", "ilike", `%${filters.search}%`)
               .orWhere("parent_user.phone", "ilike", `%${filters.search}%`);
@@ -207,8 +215,11 @@ class CalendarRepository {
 
   async listAdminParentAccounts(academyId, filters = {}) {
     const query = this.db("auth_users as au")
+      .leftJoin("iam_users as iu", "au.id", "iu.id")
       .leftJoin("parent_player_links as ppl", function joinActiveLinks() {
-        this.on("ppl.parent_user_id", "=", "au.id").andOnNull("ppl.deleted_at");
+        this.on("ppl.parent_user_id", "=", "au.id")
+          .andOn("ppl.academy_id", "=", "au.academy_id")
+          .andOnNull("ppl.deleted_at");
       })
       .where("au.academy_id", academyId)
       .where("au.role", "parent")
@@ -217,9 +228,11 @@ class CalendarRepository {
         if (filters.search) {
           q.where((search) => {
             search
-              .where("au.email", "ilike", `%${filters.search}%`)
+              .where("iu.full_name", "ilike", `%${filters.search}%`)
+              .orWhere("au.email", "ilike", `%${filters.search}%`)
               .orWhere("au.username", "ilike", `%${filters.search}%`)
-              .orWhere("au.phone", "ilike", `%${filters.search}%`);
+              .orWhere("au.phone", "ilike", `%${filters.search}%`)
+              .orWhere("iu.address", "ilike", `%${filters.search}%`);
           });
         }
       })
@@ -229,11 +242,123 @@ class CalendarRepository {
         "au.phone",
         "au.username",
         "au.is_active",
+        "iu.full_name",
+        "iu.address",
+        this.db.raw(
+          "COALESCE(iu.full_name, au.username, au.email, au.phone, 'Parent') as name",
+        ),
         this.db.raw("COUNT(ppl.id)::int as linked_players_count"),
       )
-      .groupBy("au.id")
-      .orderByRaw("COALESCE(au.username, au.email, au.phone) asc");
+      .groupBy("au.id", "iu.full_name", "iu.address")
+      .orderByRaw("COALESCE(iu.full_name, au.username, au.email, au.phone) asc");
     return this.paginate(query, filters);
+  }
+
+  async findParentIdentityConflict({ username, phone }) {
+    const normalizedUsername = username ? username.toLowerCase() : null;
+
+    const authUser = await this.db("auth_users")
+      .whereNull("deleted_at")
+      .where((query) => {
+        if (normalizedUsername) {
+          query.orWhereRaw("lower(username) = ?", [normalizedUsername]);
+        }
+        if (phone) query.orWhere("phone", phone);
+      })
+      .first("id", "username", "phone");
+
+    if (authUser) {
+      if (normalizedUsername && authUser.username?.toLowerCase() === normalizedUsername) {
+        return { field: "username", value: username };
+      }
+      if (phone && authUser.phone === phone) {
+        return { field: "phone", value: phone };
+      }
+      return { field: "login details", value: null };
+    }
+
+    const iamUser = await this.db("iam_users")
+      .whereNull("deleted_at")
+      .where((query) => {
+        if (normalizedUsername) {
+          query.orWhereRaw("lower(username) = ?", [normalizedUsername]);
+        }
+        if (phone) query.orWhere("phone", phone);
+      })
+      .first("id", "username", "phone");
+
+    if (!iamUser) return null;
+    if (normalizedUsername && iamUser.username?.toLowerCase() === normalizedUsername) {
+      return { field: "username", value: username };
+    }
+    if (phone && iamUser.phone === phone) {
+      return { field: "phone", value: phone };
+    }
+    return { field: "login details", value: null };
+  }
+
+  findParentAccountById(parentUserId, academyId, dbOrTrx = this.db) {
+    return dbOrTrx("auth_users as au")
+      .leftJoin("iam_users as iu", "au.id", "iu.id")
+      .leftJoin("parent_player_links as ppl", function joinActiveLinks() {
+        this.on("ppl.parent_user_id", "=", "au.id")
+          .andOn("ppl.academy_id", "=", "au.academy_id")
+          .andOnNull("ppl.deleted_at");
+      })
+      .where({
+        "au.id": parentUserId,
+        "au.academy_id": academyId,
+        "au.role": "parent",
+      })
+      .whereNull("au.deleted_at")
+      .select(
+        "au.id",
+        "au.email",
+        "au.phone",
+        "au.username",
+        "au.is_active",
+        "iu.full_name",
+        "iu.address",
+        this.db.raw(
+          "COALESCE(iu.full_name, au.username, au.email, au.phone, 'Parent') as name",
+        ),
+        this.db.raw("COUNT(ppl.id)::int as linked_players_count"),
+      )
+      .groupBy("au.id", "iu.full_name", "iu.address")
+      .first();
+  }
+
+  async createParentAccount({
+    academyId,
+    actorUserId,
+    fullName,
+    username,
+    phone,
+    passwordHash,
+    address,
+  }) {
+    return this.db.transaction(async (trx) => {
+      const [user] = await trx("auth_users")
+        .insert({
+          username,
+          email: null,
+          phone,
+          password_hash: passwordHash,
+          role: "parent",
+          academy_id: academyId,
+          is_active: true,
+          is_verified: true,
+        })
+        .returning("*");
+
+      await ensureIamForAuthUser(trx, user, {
+        fullName,
+        address,
+        grantedBy: actorUserId,
+      });
+
+      return this.findParentAccountById(user.id, academyId, trx);
+    });
   }
 
   async listAdminLinkablePlayers(academyId, filters = {}) {
@@ -245,6 +370,10 @@ class CalendarRepository {
       .where("pp.academy_id", academyId)
       .whereNull("pp.deleted_at")
       .modify((q) => {
+        if (Array.isArray(filters.playerIds)) {
+          if (filters.playerIds.length) q.whereIn("pp.id", filters.playerIds);
+          else q.whereRaw("1 = 0");
+        }
         if (filters.search) {
           q.where((search) => {
             search
@@ -303,9 +432,54 @@ class CalendarRepository {
       const [row] = await trx("parent_player_links")
         .insert(data)
         .returning("*");
+
+      await trx("player_profiles")
+        .where({ id: data.player_id, academy_id: data.academy_id })
+        .whereNull("deleted_at")
+        .update({
+          guardian_name: null,
+          guardian_phone: null,
+          guardian_relation: null,
+          updated_at: new Date(),
+        });
+
       return row;
     });
     return this.findParentPlayerLink(created.id, data.academy_id);
+  }
+
+  findPrimaryParentForPlayer(playerId, academyId) {
+    return this.db("parent_player_links as ppl")
+      .join("auth_users as au", "ppl.parent_user_id", "au.id")
+      .leftJoin("iam_users as iu", "au.id", "iu.id")
+      .where({
+        "ppl.player_id": playerId,
+        "ppl.academy_id": academyId,
+        "au.role": "parent",
+      })
+      .whereNull("ppl.deleted_at")
+      .whereNull("au.deleted_at")
+      .select(
+        "ppl.id as link_id",
+        "ppl.relation",
+        "ppl.is_primary",
+        "ppl.can_view_progress",
+        "ppl.can_view_payments",
+        "ppl.can_message_coach",
+        "au.id as user_id",
+        "au.email",
+        "au.phone",
+        "au.username",
+        "au.is_active",
+        "iu.full_name",
+        "iu.address",
+        this.db.raw(
+          "COALESCE(iu.full_name, au.username, au.email, au.phone, 'Parent') as name",
+        ),
+      )
+      .orderBy("ppl.is_primary", "desc")
+      .orderBy("ppl.created_at", "asc")
+      .first();
   }
 
   async updateParentPlayerLink(linkId, academyId, patch) {
@@ -700,6 +874,29 @@ class CalendarRepository {
         });
       })
       .modify((q) => {
+        if (onlyComplete) q.where("pp.profile_status", "complete");
+      })
+      .distinctOn("pp.id")
+      .select("pp.*", "pga.group_id")
+      .orderBy("pp.id")
+      .orderBy("pp.full_name", "asc");
+  }
+
+  async findAcademyRankingPlayers(
+    academyId,
+    { groupId, onlyComplete = false } = {},
+  ) {
+    return this.db("player_profiles as pp")
+      .leftJoin(
+        "player_group_assignments as pga",
+        function joinCurrentAssignment() {
+          this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
+        },
+      )
+      .where("pp.academy_id", academyId)
+      .whereNull("pp.deleted_at")
+      .modify((q) => {
+        if (groupId) q.where("pga.group_id", groupId);
         if (onlyComplete) q.where("pp.profile_status", "complete");
       })
       .distinctOn("pp.id")

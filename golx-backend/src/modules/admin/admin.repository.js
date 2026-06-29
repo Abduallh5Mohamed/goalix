@@ -765,7 +765,7 @@ class AdminRepository extends BaseRepository {
             this.db('auth_users as au')
                 .leftJoin('iam_users as iu', 'iu.id', 'au.id')
                 .where('au.academy_id', academyId)
-                .whereNot('au.role', 'player')
+                .where('au.role', 'admin')
                 .whereNull('au.deleted_at')
                 .select(
                     'au.id',
@@ -1107,16 +1107,11 @@ class AdminRepository extends BaseRepository {
         roleId,
     }) {
         return this.db.transaction(async (trx) => {
-            if (accountRole === 'player') {
-                throw new BadRequestError('Players must be created from the Players page');
+            if (accountRole !== 'admin') {
+                throw new BadRequestError('Roles settings can only create admin/staff users');
             }
 
-            const branchId = accountRole === 'coach'
-                ? await this.getDefaultBranchId(academyId, trx)
-                : null;
-            if (accountRole === 'coach' && !branchId) {
-                throw new BadRequestError('A branch is required before creating a coach login user');
-            }
+            const branchId = null;
 
             const [user] = await trx('auth_users')
                 .insert({
@@ -1141,18 +1136,6 @@ class AdminRepository extends BaseRepository {
                 department,
                 notes,
             });
-
-            if (accountRole === 'coach') {
-                await this.createCoachProfileForAccessUser(trx, {
-                    academyId,
-                    user,
-                    fullName,
-                    email,
-                    phone,
-                    username,
-                    jobTitle,
-                });
-            }
 
             const assignment = roleId
                 ? await this.assignExclusiveRoleToUser(trx, {
@@ -1356,6 +1339,39 @@ class AdminRepository extends BaseRepository {
             });
         }
         return q;
+    }
+
+    async listPasswordResetRequests(academyId) {
+        return this.db('auth_password_resets as apr')
+            .join('auth_users as au', 'apr.user_id', 'au.id')
+            .leftJoin('iam_users as iu', 'au.id', 'iu.id')
+            .leftJoin('player_profiles as pp', 'pp.user_id', 'au.id')
+            .where('au.academy_id', academyId)
+            .whereNull('au.deleted_at')
+            .select(
+                'apr.id',
+                'apr.user_id as userId',
+                'apr.expires_at as expiresAt',
+                'apr.is_used as isUsed',
+                'apr.created_at as createdAt',
+                'apr.updated_at as updatedAt',
+                'au.role',
+                'au.username',
+                'au.email',
+                'au.phone',
+                'pp.id as playerId',
+                'pp.full_name as playerName',
+                this.db.raw("COALESCE(pp.full_name, iu.full_name, au.username, au.email, au.phone, 'User') as \"displayName\""),
+                this.db.raw(`
+                    CASE
+                        WHEN apr.is_used = true THEN 'resolved'
+                        WHEN apr.expires_at <= now() THEN 'expired'
+                        ELSE 'pending'
+                    END as status
+                `),
+            )
+            .orderBy('apr.created_at', 'desc')
+            .limit(100);
     }
 
     async findPendingRegistrationById(id) {

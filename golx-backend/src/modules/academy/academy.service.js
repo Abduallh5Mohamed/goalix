@@ -325,6 +325,10 @@ class AcademyService {
                 id: row.id,
                 fromYear: row.from_year,
                 toYear: row.to_year,
+                createdByRole: row.created_by_role || 'admin',
+                createdByUserId: row.created_by_user_id || null,
+                createdByCoachId: row.created_by_coach_id || null,
+                createdByName: row.created_by_name || (row.created_by_role === 'coach' ? 'Coach' : 'Admin'),
             });
         });
 
@@ -354,6 +358,10 @@ class AcademyService {
             normalizedLabel: detail.birthYear.normalized_label,
             fromYear: detail.birthYear.from_year,
             toYear: detail.birthYear.to_year,
+            createdByRole: detail.birthYear.created_by_role || 'admin',
+            createdByUserId: detail.birthYear.created_by_user_id || null,
+            createdByCoachId: detail.birthYear.created_by_coach_id || null,
+            createdByName: detail.birthYear.created_by_name || (detail.birthYear.created_by_role === 'coach' ? 'Coach' : 'Admin'),
             groups: detail.groups,
             players: detail.players,
             coaches: detail.coaches.map((coach) => ({
@@ -363,7 +371,7 @@ class AcademyService {
         };
     }
 
-    async createBirthYear(data, academyId) {
+    async createBirthYear(data, academyId, creator = null) {
         // Verify the target branch belongs to this academy before creating
         const branch = await this.repo.findBranchById(data.branchId);
         if (!branch || (academyId && branch.academy_id !== academyId)) throw new NotFoundError('Branch', data.branchId);
@@ -386,6 +394,9 @@ class AcademyService {
             normalized_label: normalizedLabel,
             from_year: data.fromYear,
             to_year: data.toYear,
+            created_by_role: creator?.role === 'coach' ? 'coach' : 'admin',
+            created_by_user_id: creator?.userId || null,
+            created_by_coach_id: creator?.role === 'coach' ? creator.coachId || null : null,
         });
 
         eventBus.publish(ACADEMY_EVENTS.BIRTH_YEAR_CREATED, {

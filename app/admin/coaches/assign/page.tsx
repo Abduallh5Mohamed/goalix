@@ -32,22 +32,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
 import { Cake, Check, Pencil, Search, Save, ShieldCheck, Trash2, Users, X } from "lucide-react";
 
+const ASSIGNABLE_ROLE_VALUES = new Set<CoachAssignmentRole>([
+  "head_coach",
+  "assistant_coach",
+]);
+
 const fallbackRoleOptions: Array<CoachAssignmentRoleDefinition> = [
   { value: "head_coach", label: "Head coach", description: "", permissions: [] },
   { value: "assistant_coach", label: "Assistant coach", description: "", permissions: [] },
-  { value: "goalkeeping_coach", label: "Goalkeeping coach", description: "", permissions: [] },
-  { value: "fitness_coach", label: "Fitness coach", description: "", permissions: [] },
-  { value: "technical_coach", label: "Technical coach", description: "", permissions: [] },
-  { value: "tactical_coach", label: "Tactical coach", description: "", permissions: [] },
-  { value: "goalkeeping_assistant", label: "Goalkeeping assistant", description: "", permissions: [] },
-  { value: "performance_analyst", label: "Performance analyst", description: "", permissions: [] },
-  { value: "team_manager", label: "Team manager", description: "", permissions: [] },
-  { value: "physiotherapist", label: "Physiotherapist", description: "", permissions: [] },
-  { value: "rehabilitation_coach", label: "Rehabilitation coach", description: "", permissions: [] },
-  { value: "scout", label: "Scout", description: "", permissions: [] },
-  { value: "academy_director", label: "Academy director", description: "", permissions: [] },
-  { value: "youth_coach", label: "Youth coach", description: "", permissions: [] },
-  { value: "conditioning_coach", label: "Conditioning coach", description: "", permissions: [] },
 ];
 
 const roleLabel = (
@@ -92,7 +84,11 @@ export default function AssignCoachPage() {
   const [removeAccess, { isLoading: removing }] = useRemoveCoachAccessMutation();
 
   const coaches = useMemo(() => coachesRes?.data ?? [], [coachesRes?.data]);
-  const roleOptions = backendRoleOptions.length ? backendRoleOptions : fallbackRoleOptions;
+  const roleOptions = useMemo(() => {
+    const options = backendRoleOptions.length ? backendRoleOptions : fallbackRoleOptions;
+    const filtered = options.filter((option) => ASSIGNABLE_ROLE_VALUES.has(option.value));
+    return filtered.length ? filtered : fallbackRoleOptions;
+  }, [backendRoleOptions]);
   const selectedCoachRow = coaches.find((coach) => coach.id === selectedCoach);
   const selectedBranchRow = branches?.find((branch) => branch.id === selectedBranch);
   const activeAccess = accessRules[0] ?? null;
@@ -159,7 +155,7 @@ export default function AssignCoachPage() {
 
     const hasGroupAccess = activeAccess.accessType === "groups" || activeAccess.accessType === "both";
     const hasBirthYearAccess = activeAccess.accessType === "birth_years" || activeAccess.accessType === "both";
-    setRole(activeAccess.role);
+    setRole(ASSIGNABLE_ROLE_VALUES.has(activeAccess.role) ? activeAccess.role : "assistant_coach");
     setGroupsEnabled(hasGroupAccess);
     setBirthYearsEnabled(hasBirthYearAccess);
     setSelectedGroupIds(activeAccess.groupIds);

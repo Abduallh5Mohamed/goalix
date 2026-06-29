@@ -1,11 +1,10 @@
 ﻿"use client";
 
 import { use } from "react";
-import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { StatsCard } from "@/components/shared/StatsCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,7 +18,6 @@ import { Edit, Calendar } from "lucide-react";
 
 export default function CoachProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const { data: coach, isLoading, error } = useGetCoachByIdQuery(id);
   const { data: groups } = useGetCoachGroupsQuery(id);
 

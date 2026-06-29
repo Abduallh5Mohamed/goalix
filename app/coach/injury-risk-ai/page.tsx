@@ -455,12 +455,15 @@ export default function CoachInjuryRiskAIPage() {
   const selectedCount = painRows.filter((row) =>
     isPainValue(selectedValueFor(row)),
   ).length;
+  const selectedRows = painRows.filter((row) =>
+    isPainValue(selectedValueFor(row)),
+  );
   const canSave =
     canManageInjuryRisk &&
-    painRows.length > 0 &&
-    selectedCount === painRows.length &&
+    selectedRows.length > 0 &&
     !savingPainRows &&
     !runningPredictions;
+  const canSaveAndRun = canSave && canRunInjuryRisk;
 
   const updateDraft = (
     row: InjuryRiskPainDiscomfortRecord,
@@ -474,12 +477,29 @@ export default function CoachInjuryRiskAIPage() {
     if (!canSave) return;
     try {
       await savePainRows({
-        records: painRows.map((row) => ({
+        records: selectedRows.map((row) => ({
           playerId: row.player_id,
           painOrDiscomfort: selectedValueFor(row) as PainValue,
         })),
       }).unwrap();
       setSaved(true);
+      window.setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaved(false);
+    }
+  };
+
+  const handleSaveAndRunModel = async () => {
+    if (!canSaveAndRun) return;
+    try {
+      await savePainRows({
+        records: selectedRows.map((row) => ({
+          playerId: row.player_id,
+          painOrDiscomfort: selectedValueFor(row) as PainValue,
+        })),
+      }).unwrap();
+      setSaved(true);
+      await runPredictions().unwrap();
       window.setTimeout(() => setSaved(false), 2500);
     } catch {
       setSaved(false);
@@ -615,6 +635,19 @@ export default function CoachInjuryRiskAIPage() {
                 <Save className="h-4 w-4" />
               )}
               Save Inputs
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveAndRunModel}
+              disabled={!canSaveAndRun}
+              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+            >
+              {savingPainRows || runningPredictions ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BrainCircuit className="h-4 w-4" />
+              )}
               {copy.saveAndRun}
             </Button>
             <Button
@@ -641,7 +674,6 @@ export default function CoachInjuryRiskAIPage() {
               Unable to complete the injury risk operation. Check your assigned
               permission and the local Python model setup.
             </span>
-            <span>{isArabic ? "تعذر إكمال عملية مخاطر الإصابة." : "Unable to complete the injury risk operation."}</span>
           </div>
         )}
 

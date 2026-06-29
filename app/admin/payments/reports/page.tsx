@@ -24,11 +24,6 @@ export default function PaymentReportsPage() {
   const paidCount = paidItem ? Number(paidItem.count) : 1;
   const avgPerPlayer = paidCount > 0 ? totalRevenue / paidCount : 0;
 
-  const statusCounts = (overview ?? []).reduce<Record<string, number>>((acc, o) => {
-    acc[o.status] = Number(o.count);
-    return acc;
-  }, {});
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader

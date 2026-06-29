@@ -10,6 +10,11 @@ export interface CoachGroup {
     label: string;
     fromYear: number;
     toYear: number;
+    createdByRole?: "admin" | "coach";
+    createdByUserId?: string | null;
+    createdByCoachId?: string | null;
+    createdByName?: string | null;
+    canDelete?: boolean;
   }>;
   name: string;
   role: string;
@@ -177,6 +182,11 @@ export interface CoachAccessStatus {
   groupCount: number;
 }
 
+export interface CoachManageBranch {
+  id: string;
+  name: string;
+}
+
 export interface CoachBirthday {
   id: string;
   branchId: string;
@@ -188,6 +198,11 @@ export interface CoachBirthday {
   accessType: "groups" | "birth_years";
   groupCount: number;
   playerCount: number;
+  createdByRole?: "admin" | "coach";
+  createdByUserId?: string | null;
+  createdByCoachId?: string | null;
+  createdByName?: string | null;
+  canDelete?: boolean;
 }
 
 export interface CoachGroupDetail {
@@ -399,6 +414,11 @@ export const coachApi = createApi({
       transformResponse: (res: { data: CoachAccessStatus }) => res.data,
       providesTags: ["CoachAccess"],
     }),
+    getCoachManageBranches: builder.query<CoachManageBranch[], void>({
+      query: () => "/coaches/me/manage-branches",
+      transformResponse: (res: { data: CoachManageBranch[] }) => res.data,
+      providesTags: ["CoachAccess"],
+    }),
     getCoachBirthdays: builder.query<CoachBirthday[], void>({
       query: () => "/coaches/me/birthdays",
       transformResponse: (res: { data: CoachBirthday[] }) => res.data,
@@ -455,6 +475,9 @@ export const coachApi = createApi({
         from_year: number;
         to_year: number;
         label: string | null;
+        created_by_role?: "admin" | "coach";
+        created_by_user_id?: string | null;
+        created_by_coach_id?: string | null;
       },
       CreateCoachBirthYearInput
     >({
@@ -470,9 +493,20 @@ export const coachApi = createApi({
           from_year: number;
           to_year: number;
           label: string | null;
+          created_by_role?: "admin" | "coach";
+          created_by_user_id?: string | null;
+          created_by_coach_id?: string | null;
         };
       }) => res.data,
       invalidatesTags: ["CoachBirthdays", "CoachAccess"],
+    }),
+    deleteCoachBirthYear: builder.mutation<{ message: string }, string>({
+      query: (birthYearId) => ({
+        url: `/coaches/me/birth-years/${birthYearId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: { message: string } }) => res.data,
+      invalidatesTags: ["CoachBirthdays", "CoachAccess", "CoachGroups", "CoachDashboard"],
     }),
     getCoachSessions: builder.query<
       PaginatedResponse<CoachSession>,
@@ -672,6 +706,7 @@ export const coachApi = createApi({
 
 export const {
   useGetCoachAccessStatusQuery,
+  useGetCoachManageBranchesQuery,
   useGetCoachBirthdaysQuery,
   useGetCoachDashboardQuery,
   useGetCoachGroupsQuery,
@@ -680,6 +715,7 @@ export const {
   useUpdateCoachGroupMutation,
   useDeleteCoachGroupMutation,
   useCreateCoachBirthYearMutation,
+  useDeleteCoachBirthYearMutation,
   useGetCoachSessionsQuery,
   useGetCoachSessionQuery,
   useMarkCoachAttendanceMutation,

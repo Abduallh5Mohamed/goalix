@@ -73,6 +73,17 @@ class CoachesRepository extends BaseRepository {
         return this.db('coach_profiles').where({ user_id: userId }).whereNull('deleted_at').first();
     }
 
+    async findBirthYearById(id, academyId) {
+        return this.db('academy_birth_years as aby')
+            .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .where('aby.id', id)
+            .where('ab.academy_id', academyId)
+            .whereNull('aby.deleted_at')
+            .whereNull('ab.deleted_at')
+            .select('aby.*', 'ab.academy_id')
+            .first();
+    }
+
     async findCoachGroupsDetailed(coachId, academyId) {
         return this.db('coach_group_assignments as cga')
             .join('academy_groups as ag', 'cga.group_id', 'ag.id')
@@ -621,44 +632,94 @@ class CoachesRepository extends BaseRepository {
             .map((rule) => rule.branch_id);
         const ruleIds = rules.map((rule) => rule.id);
 
-        const [allRows, selectedRows, groupRows] = await Promise.all([
+        const [allRows, selectedRows, groupRows, ownedRows] = await Promise.all([
             allBranchIds.length
                 ? this.db('academy_birth_years as aby')
                     .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+                    .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+                    .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
                     .whereIn('aby.branch_id', allBranchIds)
                     .where('ab.academy_id', academyId)
                     .whereNull('aby.deleted_at')
                     .whereNull('ab.deleted_at')
-                    .select('aby.*', 'ab.name as branch_name', this.db.raw("'birth_years' as access_type"))
+                    .select(
+                        'aby.*',
+                        'ab.name as branch_name',
+                        this.db.raw("'birth_years' as access_type"),
+                        this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
+                    )
                 : [],
             ruleIds.length
                 ? this.db('coach_access_rule_birth_years as carb')
                     .join('coach_branch_access_rules as car', 'carb.rule_id', 'car.id')
                     .join('academy_birth_years as aby', 'carb.birth_year_id', 'aby.id')
                     .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+                    .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+                    .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
                     .whereIn('car.id', ruleIds)
                     .where('car.coach_id', coachId)
                     .whereIn('car.access_type', ['birth_years', 'both'])
                     .where('ab.academy_id', academyId)
                     .whereNull('aby.deleted_at')
                     .whereNull('ab.deleted_at')
-                    .select('aby.*', 'ab.name as branch_name', 'car.access_type')
+                    .select(
+                        'aby.*',
+                        'ab.name as branch_name',
+                        'car.access_type',
+                        this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
+                    )
                 : [],
             this.db('coach_group_assignments as cga')
                 .join('academy_groups as ag', 'cga.group_id', 'ag.id')
                 .join('academy_branches as ab', 'ag.branch_id', 'ab.id')
                 .join('group_birth_years as gby', 'gby.group_id', 'ag.id')
                 .join('academy_birth_years as aby', 'gby.birth_year_id', 'aby.id')
+                .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+                .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
                 .where('cga.coach_id', coachId)
                 .where('ab.academy_id', academyId)
                 .whereNull('ag.deleted_at')
                 .whereNull('aby.deleted_at')
                 .whereNull('ab.deleted_at')
-                .select('aby.*', 'ab.name as branch_name', this.db.raw("'groups' as access_type")),
+                .select(
+                    'aby.*',
+                    'ab.name as branch_name',
+                    this.db.raw("'groups' as access_type"),
+                    this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
+                ),
+            this.db('academy_birth_years as aby')
+                .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+                .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+                .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
+                .where('aby.created_by_coach_id', coachId)
+                .where('ab.academy_id', academyId)
+                .whereNull('aby.deleted_at')
+                .whereNull('ab.deleted_at')
+                .where(function hasCurrentBranchAccess() {
+                    this.whereExists(function branchRuleExists() {
+                        this.select(1)
+                            .from('coach_branch_access_rules as owned_car')
+                            .whereRaw('owned_car.coach_id = ?', [coachId])
+                            .whereRaw('owned_car.branch_id = aby.branch_id');
+                    }).orWhereExists(function groupAssignmentExists() {
+                        this.select(1)
+                            .from('coach_group_assignments as owned_cga')
+                            .join('academy_groups as owned_ag', 'owned_cga.group_id', 'owned_ag.id')
+                            .whereRaw('owned_cga.coach_id = ?', [coachId])
+                            .whereRaw('owned_ag.branch_id = aby.branch_id')
+                            .whereNull('owned_ag.deleted_at');
+                    });
+                })
+                .select(
+                    'aby.*',
+                    'ab.name as branch_name',
+                    this.db.raw("'birth_years' as access_type"),
+                    this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
+                ),
         ]);
 
         const rowsById = new Map();
-        [...allRows, ...selectedRows, ...groupRows].forEach((row) => {
+        [...allRows, ...selectedRows, ...groupRows, ...ownedRows].forEach((row) => {
             if (!rowsById.has(row.id)) rowsById.set(row.id, row);
         });
         const rows = [...rowsById.values()];

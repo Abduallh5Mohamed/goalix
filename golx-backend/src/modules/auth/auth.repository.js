@@ -74,10 +74,10 @@ class AuthRepository extends BaseRepository {
         }
     }
 
-    async updateLastLogin(userId) {
+    async updateLastLogin(userId, loggedInAt = new Date()) {
         return this.db('auth_users')
             .where({ id: userId })
-            .update({ last_login_at: new Date() });
+            .update({ last_login_at: loggedInAt });
     }
 
     // --- Refresh tokens (owned by auth module) ---

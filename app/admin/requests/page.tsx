@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   CheckCircle2,
   Clock,
+  KeyRound,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -20,6 +21,10 @@ import {
   useRejectEvaluationEditRequestMutation,
   type MatchEvaluationEditRequest,
 } from "@/lib/store/api/calendarApi";
+import {
+  useGetAdminPasswordResetRequestsQuery,
+  type PasswordResetRequest,
+} from "@/lib/store/api/adminApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 const displayStatus = (request: MatchEvaluationEditRequest) => {
@@ -34,9 +39,21 @@ const statusVariant = (status: string) => {
   return "secondary" as const;
 };
 
+const resetStatusVariant = (status: PasswordResetRequest["status"]) => {
+  if (status === "pending") return "warning" as const;
+  if (status === "resolved") return "success" as const;
+  return "secondary" as const;
+};
+
 export default function AdminRequestsPage() {
   const { data, isLoading, isError, refetch } =
     useGetAdminEvaluationEditRequestsQuery({ limit: 100 });
+  const {
+    data: passwordResetRequests = [],
+    isLoading: resetsLoading,
+    isError: resetsError,
+    refetch: refetchResets,
+  } = useGetAdminPasswordResetRequestsQuery();
   const [approveRequest, { isLoading: approving }] =
     useApproveEvaluationEditRequestMutation();
   const [rejectRequest, { isLoading: rejecting }] =
@@ -44,6 +61,9 @@ export default function AdminRequestsPage() {
 
   const requests = data?.data ?? [];
   const busy = approving || rejecting;
+  const hasRequests = requests.length > 0 || passwordResetRequests.length > 0;
+  const loading = isLoading || resetsLoading;
+  const failed = isError || resetsError;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -55,14 +75,22 @@ export default function AdminRequestsPage() {
           { label: "Requests" },
         ]}
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetch();
+              refetchResets();
+            }}
+            className="gap-1.5"
+          >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
         }
       />
 
-      {isLoading && (
+      {loading && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
             <Skeleton key={index} className="h-28 w-full rounded-xl" />
@@ -70,11 +98,19 @@ export default function AdminRequestsPage() {
         </div>
       )}
 
-      {isError && (
+      {failed && (
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center justify-between gap-3 p-5">
             <p className="text-sm text-muted-foreground">Failed to load requests.</p>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetch();
+                refetchResets();
+              }}
+              className="gap-1.5"
+            >
               <RefreshCw className="h-4 w-4" />
               Retry
             </Button>
@@ -82,19 +118,68 @@ export default function AdminRequestsPage() {
         </Card>
       )}
 
-      {!isLoading && !isError && !requests.length && (
+      {!loading && !failed && !hasRequests && (
         <Card className="border-border/50 bg-card">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <ShieldCheck className="mb-3 h-10 w-10 text-muted-foreground/40" />
             <p className="text-sm font-medium">No requests right now.</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Evaluation edit requests from coaches will appear here.
+              Evaluation edit requests and player password reset requests will appear here.
             </p>
           </CardContent>
         </Card>
       )}
 
+      {!!passwordResetRequests.length && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Password reset requests
+            </h2>
+          </div>
+          {passwordResetRequests.map((request) => (
+            <Card key={request.id} className="border-border/50 bg-card">
+              <CardContent className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-semibold">{request.displayName}</h3>
+                    <Badge variant={resetStatusVariant(request.status)} className="capitalize">
+                      {request.status}
+                    </Badge>
+                    <Badge variant="outline">{request.role}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                    {request.username && <span>{request.username}</span>}
+                    {request.phone && <span>{request.phone}</span>}
+                    <span>Requested {new Date(request.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {request.playerId && (
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href={`/admin/players/${request.playerId}`}>
+                        <KeyRound className="h-4 w-4" />
+                        Reset Password
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-3">
+        {!!requests.length && (
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Evaluation edit requests
+            </h2>
+          </div>
+        )}
         {requests.map((request) => {
           const status = displayStatus(request);
           const pending = request.status === "pending";

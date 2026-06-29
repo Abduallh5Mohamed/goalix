@@ -27,6 +27,8 @@ const {
 } = require('../../shared/redis-json-cache');
 
 const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
+const authPermissionsCacheKey = (user) =>
+    `goalix:auth:permissions:v1:${user.userId}:${user.academyId || 'global'}`;
 
 class AuthService {
     constructor(authRepository, redis) {
@@ -140,6 +142,8 @@ class AuthService {
             academyId: user.academy_id,
             email: user.email,
             username: user.username,
+            role: user.role,
+            username: user.username,
         });
 
         return {
@@ -246,9 +250,9 @@ class AuthService {
             };
         }
 
-        await this.repo.updateLastLogin(user.id);
-
-        const tokens = await this._generateTokens(user, ip, userAgent);
+        const loggedInAt = new Date();
+        const loggedInUser = { ...user, last_login_at: loggedInAt };
+        const tokens = await this._generateTokens(loggedInUser, ip, userAgent);
 
         eventBus.publish(AUTH_EVENTS.USER_LOGGED_IN, {
             userId: user.id,
@@ -256,18 +260,10 @@ class AuthService {
             ip,
         });
 
-        // Audit log
-        await this.repo.createAuditLog({
-            user_id: user.id,
-            action: 'login',
-            table_name: 'auth_users',
-            record_id: user.id,
-            ip_address: ip,
-            user_agent: userAgent,
-        });
+        this._recordSuccessfulLogin(user, ip, userAgent, 'login', loggedInAt);
 
         return {
-            user: this._sanitizeUser(await this._attachProfileName(user)),
+            user: this._sanitizeUser(await this._attachProfileName(loggedInUser)),
             ...tokens,
         };
     }
@@ -290,8 +286,9 @@ class AuthService {
             throw new UnauthorizedError('User not found or deactivated');
         }
 
-        await this.repo.updateLastLogin(user.id);
-        const tokens = await this._generateTokens(user, ip, userAgent);
+        const loggedInAt = new Date();
+        const loggedInUser = { ...user, last_login_at: loggedInAt };
+        const tokens = await this._generateTokens(loggedInUser, ip, userAgent);
 
         eventBus.publish(AUTH_EVENTS.USER_LOGGED_IN, {
             userId: user.id,
@@ -299,17 +296,10 @@ class AuthService {
             ip,
         });
 
-        await this.repo.createAuditLog({
-            user_id: user.id,
-            action: 'login_2fa',
-            table_name: 'auth_users',
-            record_id: user.id,
-            ip_address: ip,
-            user_agent: userAgent,
-        });
+        this._recordSuccessfulLogin(user, ip, userAgent, 'login_2fa', loggedInAt);
 
         return {
-            user: this._sanitizeUser(await this._attachProfileName(user)),
+            user: this._sanitizeUser(await this._attachProfileName(loggedInUser)),
             ...tokens,
         };
     }
@@ -435,11 +425,15 @@ class AuthService {
     }
 
     // ─── Forgot Password ───────────────────────────────────────────────
-    async forgotPassword(email) {
-        const user = await this.repo.findByEmail(email);
+    async forgotPassword({ email, username } = {}) {
+        const normalizedEmail = email ? email.trim().toLowerCase() : null;
+        const normalizedUsername = username ? username.trim().toLowerCase() : null;
+        const user = normalizedEmail
+            ? await this.repo.findByEmail(normalizedEmail)
+            : await this.repo.findByUsername(normalizedUsername);
         if (!user) {
-            // Return success anyway to prevent email enumeration
-            return { message: 'If the email exists, a reset link will be sent' };
+            // Return success anyway to prevent account enumeration
+            return { message: 'If the account exists, a reset request will be created' };
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -458,7 +452,7 @@ class AuthService {
             resetToken, // Required by notification worker for email link — ensure event handlers don't log this
         });
 
-        return { message: 'If the email exists, a reset link will be sent' };
+        return { message: 'If the account exists, a reset request will be created' };
     }
 
     // ─── Reset Password ────────────────────────────────────────────────
@@ -501,12 +495,18 @@ class AuthService {
     }
 
     async getCurrentPermissions(user) {
+        const cacheKey = authPermissionsCacheKey(user);
+        const cached = await getJsonCache(this.redis, cacheKey);
+        if (cached !== undefined) return cached;
+
         const iamPermissions = await getIamPermissionCodes(user, this.repo.db);
         if (iamPermissions) {
-            return {
+            const result = {
                 permissions: [...iamPermissions].sort(),
                 source: 'iam',
             };
+            await setJsonCache(this.redis, cacheKey, result, env.AUTH_PERMISSIONS_CACHE_TTL_SECONDS);
+            return result;
         }
 
         const legacy = legacyPermissions[user.role] || [];
@@ -515,16 +515,20 @@ class AuthService {
                 .whereNull('deleted_at')
                 .orderBy('code', 'asc')
                 .select('code');
-            return {
+            const result = {
                 permissions: rows.map((row) => row.code),
                 source: 'legacy_admin',
             };
+            await setJsonCache(this.redis, cacheKey, result, env.AUTH_PERMISSIONS_CACHE_TTL_SECONDS);
+            return result;
         }
 
-        return {
+        const result = {
             permissions: [...legacy].sort(),
             source: 'legacy',
         };
+        await setJsonCache(this.redis, cacheKey, result, env.AUTH_PERMISSIONS_CACHE_TTL_SECONDS);
+        return result;
     }
 
     // ─── Private Helpers ────────────────────────────────────────────────
@@ -598,6 +602,29 @@ class AuthService {
         };
     }
 
+    _recordSuccessfulLogin(user, ip, userAgent, action, loggedInAt) {
+        Promise.allSettled([
+            this.repo.updateLastLogin(user.id, loggedInAt),
+            this.repo.createAuditLog({
+                user_id: user.id,
+                action,
+                table_name: 'auth_users',
+                record_id: user.id,
+                ip_address: ip,
+                user_agent: userAgent,
+            }),
+        ]).then((results) => {
+            results.forEach((result) => {
+                if (result.status === 'rejected') {
+                    logger.warn(
+                        { err: result.reason, userId: user.id, action },
+                        'Failed to record successful login metadata',
+                    );
+                }
+            });
+        });
+    }
+
     _sanitizeUser(user) {
         return {
             id: user.id,
@@ -620,3 +647,4 @@ class AuthService {
 
 module.exports = AuthService;
 module.exports.authUserCacheKey = authUserCacheKey;
+module.exports.authPermissionsCacheKey = authPermissionsCacheKey;

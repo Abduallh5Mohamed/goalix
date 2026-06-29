@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -129,6 +130,19 @@ export default function BirthYearsPage() {
     setDeletePlayerCount(0);
   };
 
+  const creatorMeta = (range: BirthYearRange) => {
+    if (range.createdByRole === "coach") {
+      return {
+        label: `Created by Coach${range.createdByName ? `: ${range.createdByName}` : ""}`,
+        className: "border-cyan-400/50 bg-cyan-400/15 text-cyan-100",
+      };
+    }
+    return {
+      label: `Created by Admin${range.createdByName ? `: ${range.createdByName}` : ""}`,
+      className: "border-lime-400/50 bg-lime-400/15 text-lime-100",
+    };
+  };
+
   if (loadingBranches) return <LoadingSkeleton />;
 
   return (
@@ -195,25 +209,38 @@ export default function BirthYearsPage() {
               <CardContent>
                 <div className="space-y-2">
                   {group.birthYears.map((range) => (
-                    <div
-                      key={range.id}
-                      className="flex cursor-pointer items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2"
-                      onClick={() => router.push(`/admin/academy/birth-years/${range.id}`)}
-                    >
-                      <span className="text-sm font-medium">
-                        {range.fromYear === range.toYear
-                          ? range.fromYear
-                          : `${range.fromYear} - ${range.toYear}`}
-                      </span>
-                      <div className="flex gap-1">
-                        <Button type="button" variant="ghost" size="icon" onClick={(event) => { event.stopPropagation(); openEdit({ ...range, groupLabel: group.label }); }}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={(event) => { event.stopPropagation(); openDelete({ ...range, groupLabel: group.label }); }}>
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                      </div>
-                    </div>
+                    (() => {
+                      const creator = creatorMeta(range);
+                      return (
+                        <div
+                          key={range.id}
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2"
+                          onClick={() => router.push(`/admin/academy/birth-years/${range.id}`)}
+                        >
+                          <div className="min-w-0 space-y-1.5">
+                            <p className="text-sm font-medium">
+                              {range.fromYear === range.toYear
+                                ? range.fromYear
+                                : `${range.fromYear} - ${range.toYear}`}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className={`max-w-full truncate px-2 py-0.5 text-[11px] font-semibold ${creator.className}`}
+                            >
+                              {creator.label}
+                            </Badge>
+                          </div>
+                          <div className="flex shrink-0 gap-1">
+                            <Button type="button" variant="ghost" size="icon" onClick={(event) => { event.stopPropagation(); openEdit({ ...range, groupLabel: group.label }); }}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={(event) => { event.stopPropagation(); openDelete({ ...range, groupLabel: group.label }); }}>
+                              <Trash2 className="h-4 w-4 text-red-400" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()
                   ))}
                 </div>
               </CardContent>

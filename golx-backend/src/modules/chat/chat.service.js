@@ -188,7 +188,9 @@ class ChatService {
       return new Set([
         user.userId,
         ...(contacts.admins || []).map((contact) => contact.user_id),
+        ...(contacts.coaches || []).map((contact) => contact.user_id),
         ...(contacts.players || []).map((contact) => contact.user_id),
+        ...(contacts.parents || []).map((contact) => contact.user_id),
       ]);
     }
 

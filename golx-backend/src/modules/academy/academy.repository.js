@@ -294,9 +294,15 @@ class AcademyRepository extends BaseRepository {
 
     // ─── Birth Years ────────────────────────────────────────────────────
     async findBirthYears(branchId) {
-        return this.db('academy_birth_years')
-            .where({ branch_id: branchId })
-            .whereNull('deleted_at')
+        return this.db('academy_birth_years as aby')
+            .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+            .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
+            .where('aby.branch_id', branchId)
+            .whereNull('aby.deleted_at')
+            .select(
+                'aby.*',
+                this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
+            )
             .orderBy('normalized_label', 'asc')
             .orderBy('from_year', 'asc');
     }
@@ -316,6 +322,8 @@ class AcademyRepository extends BaseRepository {
     async findBirthYearDetail(id) {
         const birthYear = await this.db('academy_birth_years as aby')
             .join('academy_branches as ab', 'aby.branch_id', 'ab.id')
+            .leftJoin('coach_profiles as creator_coach', 'aby.created_by_coach_id', 'creator_coach.id')
+            .leftJoin('auth_users as creator_user', 'aby.created_by_user_id', 'creator_user.id')
             .where('aby.id', id)
             .whereNull('aby.deleted_at')
             .whereNull('ab.deleted_at')
@@ -323,6 +331,7 @@ class AcademyRepository extends BaseRepository {
                 'aby.*',
                 'ab.name as branch_name',
                 'ab.academy_id',
+                this.db.raw("COALESCE(creator_coach.full_name, creator_user.username, creator_user.email) as created_by_name"),
             )
             .first();
         if (!birthYear) return null;
