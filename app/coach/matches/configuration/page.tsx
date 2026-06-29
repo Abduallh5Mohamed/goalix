@@ -286,7 +286,7 @@ export default function CoachMatchConfigurationPage() {
       ].filter((match) => isConfigurableMatch(match, nowMs)),
     [acceptedRequestMatches, matches, nowMs],
   );
-  const players = playersRes?.data ?? [];
+  const players = useMemo(() => playersRes?.data ?? [], [playersRes?.data]);
   const injuryRiskByPlayerId = useMemo(
     () => new Map(injuryRiskRows.map((row) => [row.player_id, row])),
     [injuryRiskRows],

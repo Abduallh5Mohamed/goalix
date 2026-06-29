@@ -6,6 +6,7 @@ const containerName = process.env.GOLX_REDIS_CONTAINER || "golx-redis";
 const image = process.env.GOLX_REDIS_IMAGE || "redis:7-alpine";
 const hostPort = process.env.GOLX_REDIS_PORT || "6379";
 const dataVolume = process.env.GOLX_REDIS_VOLUME || "golx-redis-data";
+const optional = process.env.GOALIX_REDIS_OPTIONAL === "true";
 
 function docker(args, options = {}) {
   return execFileSync("docker", args, {
@@ -51,9 +52,12 @@ async function main() {
       console.warn(`Docker is not available, but Redis port ${hostPort} is open; continuing.`);
       return;
     }
-    console.error(
-      `Docker is not available and Redis port ${hostPort} is closed. Start Docker Desktop or Redis, then run npm run dev again.`,
-    );
+    const message = `Docker is not available and Redis port ${hostPort} is closed.`;
+    if (optional) {
+      console.warn(`${message} Redis cache/queue features are disabled, but dev will continue.`);
+      return;
+    }
+    console.error(`${message} Start Docker Desktop or Redis, then run npm run dev again.`);
     process.exit(1);
   }
 
@@ -91,6 +95,10 @@ async function main() {
 }
 
 main().catch((error) => {
+  if (optional) {
+    console.warn(`Redis cache/queue features are disabled, but dev will continue: ${error.message}`);
+    return;
+  }
   console.error(error.message);
   process.exit(1);
 });

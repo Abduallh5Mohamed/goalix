@@ -2,12 +2,11 @@ import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { loginSuccess, logout } from "../slices/authSlice";
 import type { UserRole } from "@/lib/types";
-import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
+import { hasAuthSessionMarker } from "@/lib/auth/session";
+import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
 const API_BASE = getApiBaseUrl();
-
-let refreshPromise: Promise<boolean> | null = null;
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: `${API_BASE}/api/v1`,
@@ -48,36 +47,18 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
       return result;
     }
 
-    if (!refreshPromise) {
-      refreshPromise = (async () => {
-        const refreshResult = await rawBaseQuery(
-          { url: "/auth/refresh", method: "POST" },
-          api,
-          extraOptions,
-        );
+    const refreshResult = await refreshAuthSession();
 
-        const data = refreshResult.data as { data?: { user?: Record<string, unknown> } } | undefined;
-        const apiUser = data?.data?.user;
-
-        if (apiUser) {
-          const user = mapApiUser(apiUser);
-          rememberAuthSession();
-          api.dispatch(loginSuccess({ user, role: user.role }));
-          return true;
-        }
-
-        forgetAuthSession();
+    if (!refreshResult.ok) {
+      if (refreshResult.unauthorized) {
         api.dispatch(logout());
-        return false;
-      })();
+      }
+      return result;
     }
 
-    const refreshed = await refreshPromise;
-    refreshPromise = null;
-
-    if (refreshed) {
-      result = await rawBaseQuery(args, api, extraOptions);
-    }
+    const user = mapApiUser(refreshResult.user);
+    api.dispatch(loginSuccess({ user, role: user.role }));
+    result = await rawBaseQuery(args, api, extraOptions);
   }
 
   return result;

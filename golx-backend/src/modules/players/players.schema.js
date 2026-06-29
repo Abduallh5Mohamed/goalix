@@ -169,8 +169,8 @@ const createPlayerSchema = playerBaseSchema.refine(
 
 const updatePlayerSchema = playerBaseSchema
   .partial()
-  .refine(playerCredentialsProvidedTogether, {
-    message: "Username and password must be provided together",
+  .refine((data) => !data.username, {
+    message: "Username cannot be changed",
     path: ["username"],
   });
 

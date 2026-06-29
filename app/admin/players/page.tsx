@@ -120,13 +120,6 @@ export default function PlayersPage() {
   const [form, setForm] = useState(emptyCreateForm);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [formError, setFormError] = useState("");
-  const [editingPlayer, setEditingPlayer] = useState<PlayerRow | null>(null);
-  const [editForm, setEditForm] = useState({
-    fullName: "",
-    birthDate: "",
-    position: "",
-  });
-  const [editError, setEditError] = useState("");
   const [deletePlayerRow, setDeletePlayerRow] = useState<PlayerRow | null>(
     null,
   );
@@ -143,16 +136,6 @@ export default function PlayersPage() {
   const [updatePlayer, { isLoading: isUpdating }] = useUpdatePlayerMutation();
   const [hardDeletePlayer, { isLoading: isHardDeleting }] =
     useHardDeletePlayerMutation();
-
-  const openEdit = useCallback((player: PlayerRow) => {
-    setEditingPlayer(player);
-    setEditForm({
-      fullName: player.full_name,
-      birthDate: player.date_of_birth?.slice(0, 10) ?? "",
-      position: player.position ?? "",
-    });
-    setEditError("");
-  }, []);
 
   const openDelete = useCallback((player: PlayerRow) => {
     setDeletePlayerRow(player);
@@ -173,7 +156,12 @@ export default function PlayersPage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium text-foreground">{row.full_name}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-foreground">{row.full_name}</p>
+                <Badge variant={row.profile_status === "complete" ? "success" : "warning"}>
+                  {row.profile_status === "complete" ? "Complete profile" : "Complete profile required"}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {row.position ?? "-"} -{" "}
                 {row.date_of_birth
@@ -265,7 +253,7 @@ export default function PlayersPage() {
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => openEdit(row)}
+              onClick={() => router.push(`/admin/players/${row.id}`)}
             >
               <Pencil className="h-3.5 w-3.5" />
               Edit
@@ -302,7 +290,7 @@ export default function PlayersPage() {
         ),
       },
     ],
-    [isUpdating, openDelete, openEdit, updatePlayer],
+    [isUpdating, openDelete, router, updatePlayer],
   );
 
   const updateForm = (field: keyof typeof form, value: string) => {
@@ -329,6 +317,9 @@ export default function PlayersPage() {
       form.phone.trim(),
       form.address.trim(),
       form.branchId,
+      form.guardianName.trim(),
+      form.guardianPhone.trim(),
+      form.guardianRelation,
     ];
     if (requiredValues.some((value) => !value)) {
       setFormError("Fill all required player basics. Photo is optional.");
@@ -372,30 +363,6 @@ export default function PlayersPage() {
           "Could not create player. Please check the entered data.",
         ),
       );
-    }
-  };
-
-  const handleUpdatePlayer = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingPlayer) return;
-    setEditError("");
-    if (!editForm.fullName.trim()) {
-      setEditError("Full name is required.");
-      return;
-    }
-
-    try {
-      await updatePlayer({
-        id: editingPlayer.id,
-        body: {
-          fullName: editForm.fullName.trim(),
-          birthDate: editForm.birthDate || undefined,
-          position: editForm.position.trim() || undefined,
-        },
-      }).unwrap();
-      setEditingPlayer(null);
-    } catch {
-      setEditError("Could not update player. Please review the entered data.");
     }
   };
 
@@ -622,6 +589,7 @@ export default function PlayersPage() {
                     updateForm("guardianName", event.target.value)
                   }
                   placeholder="Parent or guardian name"
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -633,6 +601,7 @@ export default function PlayersPage() {
                     updateForm("guardianPhone", event.target.value)
                   }
                   placeholder="Parent or guardian phone"
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -750,83 +719,6 @@ export default function PlayersPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
                 Create Player
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(editingPlayer)}
-        onOpenChange={(nextOpen) => !nextOpen && setEditingPlayer(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Player</DialogTitle>
-            <DialogDescription>
-              Update the basic player information.
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={handleUpdatePlayer}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="edit-player-full-name">Full name</Label>
-                <Input
-                  id="edit-player-full-name"
-                  value={editForm.fullName}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      fullName: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-player-birth-date">Birth date</Label>
-                <Input
-                  id="edit-player-birth-date"
-                  type="date"
-                  value={editForm.birthDate}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      birthDate: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="edit-player-position">Position</Label>
-                <Input
-                  id="edit-player-position"
-                  value={editForm.position}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      position: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            {editError && <p className="text-sm text-red-400">{editError}</p>}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingPlayer(null)}
-              >
-                Close
-              </Button>
-              <Button
-                type="submit"
-                disabled={isUpdating || !editForm.fullName.trim()}
-                className="gap-2"
-              >
-                {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save Changes
               </Button>
             </DialogFooter>
           </form>

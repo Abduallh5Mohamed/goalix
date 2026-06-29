@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 
 const MODEL_VERSION = "football_academy_injury_risk_model_v3";
@@ -15,12 +16,35 @@ const projectPython =
         ? path.resolve(__dirname, "../../../..", ".venv", "Scripts", "python.exe")
         : path.resolve(__dirname, "../../../..", ".venv", "bin", "python");
 const pythonBin =
-    process.env.PYTHON_BIN ||
-    process.env.PYTHON ||
-    projectPython;
+    resolvePythonBin([
+        process.env.INJURY_RISK_PYTHON_BIN,
+        process.env.PYTHON_BIN,
+        process.env.PYTHON,
+        projectPython,
+        process.platform === "win32" ? "python" : "python3",
+        "python",
+    ]);
+
+function isFilePath(value) {
+    return path.isAbsolute(value) || value.includes("/") || value.includes("\\");
+}
+
+function resolvePythonBin(candidates) {
+    for (const candidate of candidates.filter(Boolean)) {
+        if (!isFilePath(candidate) || fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+    return process.platform === "win32" ? "python" : "python3";
+}
 
 function runInjuryRiskPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     return new Promise((resolve, reject) => {
+        if (!fs.existsSync(scriptPath)) {
+            reject(new Error(`Injury risk model script was not found: ${scriptPath}`));
+            return;
+        }
+
         const child = spawn(pythonBin, [scriptPath, "--json-stdin"], {
             cwd: modelDir,
             windowsHide: true,
@@ -38,7 +62,13 @@ function runInjuryRiskPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = 
         child.stderr.on("data", (chunk) => stderr.push(chunk));
         child.on("error", (error) => {
             clearTimeout(timer);
-            reject(error);
+            reject(
+                new Error(
+                    `Could not start the injury risk Python model with "${pythonBin}". ` +
+                        `Set INJURY_RISK_PYTHON_BIN or PYTHON_BIN to a valid Python executable. ` +
+                        `Original error: ${error.message}`,
+                ),
+            );
         });
         child.on("close", (code) => {
             clearTimeout(timer);

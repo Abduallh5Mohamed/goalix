@@ -4,6 +4,7 @@ const {
   ForbiddenError,
   NotFoundError,
 } = require("../../shared/errors");
+const bcrypt = require("bcrypt");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { createHmac, randomUUID, timingSafeEqual } = require("node:crypto");
@@ -232,6 +233,7 @@ const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const QR_ATTENDANCE_TYPE = "goalix_player_attendance";
 const QR_ATTENDANCE_VERSION = 1;
+const playerCodePattern = /\bPLY-[A-Z0-9-]+\b/i;
 const attendanceQrSignature = ({ academyId, playerId, playerCode }) =>
   createHmac("sha256", env.JWT_SECRET)
     .update(
@@ -3449,7 +3451,146 @@ class CalendarService {
       [playerId],
     );
     if (!scopedPlayers.length) throw new NotFoundError("Player", playerId);
+    return this._managedPlayerDetail(academyId, playerId);
+  }
 
+  async adminGetPlayerDetail(academyId, playerId) {
+    const exists = await this.repo
+      .db("player_profiles")
+      .where({ id: playerId, academy_id: academyId })
+      .whereNull("deleted_at")
+      .first("id");
+    if (!exists) throw new NotFoundError("Player", playerId);
+    return this._managedPlayerDetail(academyId, playerId);
+  }
+
+  async _listManagedPlayerAssignments(academyId, player) {
+    const db = this.repo.db;
+    const [groupRows, birthYearRows] = await Promise.all([
+      db("player_group_assignments")
+        .where({ player_id: player.id })
+        .select("group_id", "joined_at", "left_at"),
+      this.repo.findBirthYearsForPlayer(player),
+    ]);
+    const groupIds = [...new Set(groupRows.map((row) => row.group_id).filter(Boolean))];
+    const birthYearIds = birthYearRows.map((row) => row.id).filter(Boolean);
+    if (!groupIds.length && !birthYearIds.length) return [];
+
+    const assignmentRows = await db("player_assignments as pa")
+      .leftJoin("coach_profiles as cp", "pa.created_by_coach_id", "cp.id")
+      .where("pa.academy_id", academyId)
+      .whereNull("pa.deleted_at")
+      .where((targetScope) => {
+        if (groupIds.length) {
+          targetScope.orWhereExists((existsQuery) => {
+            existsQuery
+              .select(db.raw("1"))
+              .from("player_assignment_groups as pag_scope")
+              .whereRaw("pag_scope.assignment_id = pa.id")
+              .whereIn("pag_scope.group_id", groupIds)
+              .where((typeScope) => {
+                typeScope.whereNull("pa.target_type").orWhere("pa.target_type", "group");
+              });
+          });
+        }
+        if (birthYearIds.length) {
+          targetScope.orWhereExists((existsQuery) => {
+            existsQuery
+              .select(db.raw("1"))
+              .from("player_assignment_birth_years as paby_scope")
+              .whereRaw("paby_scope.assignment_id = pa.id")
+              .whereIn("paby_scope.birth_year_id", birthYearIds);
+          });
+        }
+      })
+      .select("pa.*", "cp.full_name as coach_name")
+      .orderByRaw("CASE WHEN pa.due_at IS NULL THEN 1 ELSE 0 END")
+      .orderBy("pa.due_at", "asc")
+      .orderBy("pa.created_at", "desc");
+
+    const assignmentIds = assignmentRows.map((assignment) => assignment.id);
+    if (!assignmentIds.length) return [];
+
+    const [groups, submissions] = await Promise.all([
+      db("player_assignment_groups as pag")
+        .join("academy_groups as ag", "pag.group_id", "ag.id")
+        .leftJoin("academy_branches as ab", "ag.branch_id", "ab.id")
+        .whereIn("pag.assignment_id", assignmentIds)
+        .select(
+          "pag.assignment_id",
+          "ag.id",
+          "ag.name",
+          "ab.name as branch_name",
+        ),
+      db("player_assignment_submissions")
+        .whereIn("assignment_id", assignmentIds)
+        .where("player_id", player.id),
+    ]);
+    const submissionIds = submissions.map((submission) => submission.id);
+    const files = submissionIds.length
+      ? await db("player_assignment_files")
+          .whereIn("submission_id", submissionIds)
+          .orderBy("created_at", "desc")
+      : [];
+    const groupsByAssignment = groups.reduce((acc, group) => {
+      if (!acc[group.assignment_id]) acc[group.assignment_id] = [];
+      acc[group.assignment_id].push({
+        id: group.id,
+        name: group.name,
+        branchName: group.branch_name,
+      });
+      return acc;
+    }, {});
+    const filesBySubmission = files.reduce((acc, file) => {
+      if (!acc[file.submission_id]) acc[file.submission_id] = [];
+      acc[file.submission_id].push(file);
+      return acc;
+    }, {});
+    const submissionByAssignment = new Map(
+      submissions.map((submission) => [
+        submission.assignment_id,
+        {
+          ...submission,
+          files: filesBySubmission[submission.id] || [],
+        },
+      ]),
+    );
+
+    return assignmentRows.map((assignment) => {
+      const submission = this._shapePlayerAssignmentSubmission(
+        submissionByAssignment.get(assignment.id),
+      );
+      const reviewStatus = submission?.reviewStatus || null;
+      const playerStatus = reviewStatus
+        ? reviewStatus === "approved"
+          ? "approved"
+          : reviewStatus === "rejected"
+            ? "rejected"
+            : "submitted"
+        : "not_submitted";
+
+      return {
+        id: assignment.id,
+        assignmentType: "coach_task",
+        title: assignment.title,
+        description: assignment.description || "",
+        coachName: assignment.coach_name || null,
+        openAt: assignment.open_at,
+        dueAt: assignment.due_at,
+        status: assignment.status,
+        isSystemDaily: false,
+        acceptedFileTypes: assignment.accepted_file_types || ["pdf", "word", "image"],
+        groups: groupsByAssignment[assignment.id] || [],
+        submission,
+        playerStatus,
+        submittedAt: submission?.submittedAt || null,
+        reviewStatus,
+        filesCount: submission?.files?.length || 0,
+      };
+    });
+  }
+
+  async _managedPlayerDetail(academyId, playerId) {
     const db = this.repo.db;
     const player = await db("player_profiles as pp")
       .leftJoin("auth_users as au", "pp.user_id", "au.id")
@@ -3493,6 +3634,8 @@ class CalendarService {
       rankings,
       coachRatings,
       subscriptions,
+      linkedParent,
+      playerAssignments,
     ] = await Promise.all([
       db("player_group_assignments as pga")
         .leftJoin("academy_groups as ag", "pga.group_id", "ag.id")
@@ -3638,6 +3781,8 @@ class CalendarService {
         .where("ps.player_id", playerId)
         .select("ps.*", "ag.name as group_name")
         .orderBy("ps.starts_at", "desc"),
+      this.repo.findPrimaryParentForPlayer(playerId, academyId),
+      this._listManagedPlayerAssignments(academyId, player),
     ]);
 
     const subscriptionIds = subscriptions.map((row) => row.id);
@@ -3652,6 +3797,26 @@ class CalendarService {
           .whereIn("invoice_id", invoiceIds)
           .orderBy("created_at", "desc")
       : [];
+    const attendancePayload = this._buildAttendanceQrPayload({
+      academyId,
+      player,
+    });
+    const attendanceQr = {
+      playerId: player.id,
+      playerName: player.full_name,
+      playerCode: player.player_code || null,
+      username: player.username || null,
+      payload: attendancePayload,
+      qrCodeDataUrl: await QRCode.toDataURL(attendancePayload, {
+        errorCorrectionLevel: "H",
+        margin: 3,
+        width: 420,
+        color: {
+          dark: "#0f172a",
+          light: "#ffffff",
+        },
+      }),
+    };
 
     const optionIds = new Set();
     customValues.forEach((row) => {
@@ -3742,8 +3907,36 @@ class CalendarService {
       matchAttended: matchAttendanceTotals.present + matchAttendanceTotals.late,
     };
 
+    const linkedParentPayload = linkedParent
+      ? {
+          link_id: linkedParent.link_id,
+          user_id: linkedParent.user_id,
+          name: linkedParent.name,
+          full_name: linkedParent.full_name,
+          username: linkedParent.username,
+          email: linkedParent.email,
+          phone: linkedParent.phone,
+          address: linkedParent.address,
+          relation: linkedParent.relation || "guardian",
+          is_primary: Boolean(linkedParent.is_primary),
+          is_active: Boolean(linkedParent.is_active),
+          can_view_progress: linkedParent.can_view_progress !== false,
+          can_view_payments: linkedParent.can_view_payments !== false,
+          can_message_coach: linkedParent.can_message_coach !== false,
+        }
+      : null;
+    const playerWithParent = linkedParentPayload
+      ? {
+          ...player,
+          guardian_name: linkedParentPayload.name,
+          guardian_phone: linkedParentPayload.phone,
+          guardian_relation: linkedParentPayload.relation,
+          linked_parent: linkedParentPayload,
+        }
+      : { ...player, linked_parent: null };
+
     return {
-      player,
+      player: playerWithParent,
       summary: {
         matchTotals,
         attendanceTotals,
@@ -3769,6 +3962,8 @@ class CalendarService {
       goals,
       rankings,
       coachRatings,
+      playerAssignments,
+      attendanceQr,
       payments: { subscriptions, invoices, transactions },
     };
   }
@@ -4341,10 +4536,29 @@ class CalendarService {
   _parseAttendanceQrPayload(data = {}) {
     const rawPayload =
       typeof data.payload === "string" ? data.payload.trim() : "";
+    const compactPayload = rawPayload.replace(/\s+/g, "");
     let parsed = null;
     if (rawPayload) {
       try {
         parsed = JSON.parse(rawPayload);
+      } catch {
+        parsed = null;
+      }
+    }
+    if (!parsed && rawPayload) {
+      try {
+        const url = new URL(rawPayload);
+        parsed = {
+          playerId:
+            url.searchParams.get("playerId") ||
+            url.searchParams.get("player_id") ||
+            url.searchParams.get("id"),
+          playerCode:
+            url.searchParams.get("playerCode") ||
+            url.searchParams.get("player_code") ||
+            url.searchParams.get("code"),
+          username: url.searchParams.get("username"),
+        };
       } catch {
         parsed = null;
       }
@@ -4364,11 +4578,25 @@ class CalendarService {
       null;
     const username = source.username || data.username || null;
 
-    if (rawPayload && !parsed && uuidPattern.test(rawPayload)) {
-      return { playerId: rawPayload, playerCode: null, username: null, signed: false };
+    if (compactPayload && !parsed && uuidPattern.test(compactPayload)) {
+      return { playerId: compactPayload, playerCode: null, username: null, signed: false };
     }
-    if (rawPayload && !parsed && rawPayload.toUpperCase().startsWith("PLY-")) {
-      return { playerId: null, playerCode: rawPayload, username: null, signed: false };
+    const visiblePlayerCode = !parsed && rawPayload.match(playerCodePattern)?.[0];
+    if (visiblePlayerCode) {
+      return {
+        playerId: null,
+        playerCode: visiblePlayerCode.toUpperCase(),
+        username: null,
+        signed: false,
+      };
+    }
+    if (compactPayload && !parsed && compactPayload.toUpperCase().startsWith("PLY-")) {
+      return {
+        playerId: null,
+        playerCode: compactPayload.toUpperCase(),
+        username: null,
+        signed: false,
+      };
     }
     if (rawPayload && !parsed) {
       return { playerId: null, playerCode: null, username: rawPayload, signed: false };
@@ -4389,6 +4617,8 @@ class CalendarService {
 
   _buildAttendanceQrPayload({ academyId, player }) {
     const playerCode = player.player_code || null;
+    if (playerCode) return playerCode;
+    if (player.username) return player.username;
     const payload = {
       type: QR_ATTENDANCE_TYPE,
       v: QR_ATTENDANCE_VERSION,
@@ -4830,6 +5060,83 @@ class CalendarService {
 
   async coachRankingSystemInputs(userId, academyId, filters) {
     const coach = await this._getCoach(userId, academyId);
+    const [groupIds, birthYears, scopedPlayers] = await Promise.all([
+      this._getCoachVisibleGroupIds(coach.id, academyId),
+      this.repo.findCoachAccessibleBirthYears(coach.id, academyId),
+      this.repo.findCoachScopedPlayers(coach.id, academyId),
+    ]);
+
+    return this._rankingSystemInputsForScope(academyId, filters, {
+      coach,
+      groupIds,
+      birthYearIds: birthYears.map((row) => row.id),
+      scopedPlayers,
+      requireAssignedScope: true,
+      notifyCoach: true,
+    });
+  }
+
+  async adminRankingSystemInputs(academyId, filters) {
+    const scopedPlayers = await this.repo.findAcademyRankingPlayers(academyId, {
+      groupId: filters.groupId || null,
+    });
+
+    return this._rankingSystemInputsForScope(academyId, filters, {
+      groupIds: filters.groupId ? [filters.groupId] : [],
+      birthYearIds: [],
+      scopedPlayers,
+      requireAssignedScope: false,
+      notifyCoach: false,
+    });
+  }
+
+  async playerRankingSystemInputs(userId, academyId, filters) {
+    const player = await this.repo.findPlayerByUserId(userId);
+    if (!player || player.academy_id !== academyId) {
+      throw new NotFoundError("Player profile");
+    }
+    const assignment = await this.repo.db("player_group_assignments")
+      .where({ player_id: player.id })
+      .whereNull("left_at")
+      .first("group_id");
+    const groupId = filters.groupId || assignment?.group_id || null;
+    const scopedPlayers = groupId
+      ? await this.repo.findAcademyRankingPlayers(academyId, { groupId })
+      : [player];
+
+    return this._rankingSystemInputsForScope(academyId, filters, {
+      groupIds: groupId ? [groupId] : [],
+      birthYearIds: [],
+      scopedPlayers,
+      requireAssignedScope: false,
+      notifyCoach: false,
+    });
+  }
+
+  async parentRankingSystemInputs(userId, academyId, filters) {
+    const children = await this.repo.findParentLinkedPlayers(userId, academyId);
+    const child = filters.childId
+      ? children.find((item) => item.id === filters.childId)
+      : children[0];
+    if (!child) throw new NotFoundError("Linked player");
+    if (child.can_view_progress === false) {
+      throw new ForbiddenError("Progress access is not enabled for this child");
+    }
+    const groupId = child.group_id || null;
+    const scopedPlayers = groupId
+      ? await this.repo.findAcademyRankingPlayers(academyId, { groupId })
+      : [child];
+
+    return this._rankingSystemInputsForScope(academyId, filters, {
+      groupIds: groupId ? [groupId] : [],
+      birthYearIds: [],
+      scopedPlayers,
+      requireAssignedScope: false,
+      notifyCoach: false,
+    });
+  }
+
+  async _rankingSystemInputsForScope(academyId, filters, scope = {}) {
     const page = Number(filters.page || 1);
     const limit = Number(filters.limit || 100);
     const offset = (page - 1) * limit;
@@ -5124,25 +5431,28 @@ class CalendarService {
       if (Array.isArray(value)) return value.filter(Boolean).join(", ") || null;
       return String(value).trim() || null;
     };
-    const groupIds = await this._getCoachVisibleGroupIds(coach.id, academyId);
-    const birthYearIds = (
-      await this.repo.findCoachAccessibleBirthYears(coach.id, academyId)
-    ).map((row) => row.id);
+    const {
+      coach = null,
+      groupIds = [],
+      birthYearIds = [],
+      scopedPlayers = [],
+      requireAssignedScope = false,
+      notifyCoach = false,
+    } = scope;
 
-    if (!groupIds.length && !birthYearIds.length) {
+    if (requireAssignedScope && !groupIds.length && !birthYearIds.length) {
       return { data: [], total: 0, page, totalPages: 1 };
     }
 
     const accessibleMatchIds = this.repo
-      .matchListQuery(academyId, { groupIds, birthYearIds })
+      .matchListQuery(academyId, {
+        ...(groupIds.length ? { groupIds } : {}),
+        ...(birthYearIds.length ? { birthYearIds } : {}),
+      })
       .clearSelect()
       .clearOrder()
       .select("m.id");
 
-    const scopedPlayers = await this.repo.findCoachScopedPlayers(
-      coach.id,
-      academyId,
-    );
     const playerIds = scopedPlayers.map((player) => player.id);
     if (!playerIds.length) {
       return { data: [], total: 0, page, totalPages: 1 };
@@ -5777,7 +6087,9 @@ class CalendarService {
       ),
     );
 
-    await this._notifyCoachWeeklyRankingReady(coach, rows);
+    if (notifyCoach && coach) {
+      await this._notifyCoachWeeklyRankingReady(coach, rows);
+    }
 
     const total = rows.length;
     const data = rows.slice(offset, offset + limit);
@@ -8599,6 +8911,81 @@ class CalendarService {
     return this.repo.listAdminLinkablePlayers(academyId, filters);
   }
 
+  async adminGetParentProfile(academyId, parentUserId) {
+    const parent = await this.repo.findParentAccountById(parentUserId, academyId);
+    if (!parent) throw new NotFoundError("Parent account", parentUserId);
+
+    const links = await this.repo.listAdminParentLinks(academyId, {
+      parentUserId,
+      page: 1,
+      limit: 500,
+    });
+    const children = await Promise.all(
+      links.data.map((link) => this._managedPlayerDetail(academyId, link.player_id)),
+    );
+    return { parent, links: links.data, children };
+  }
+
+  async _scopedCoachPlayerIds(userId, academyId) {
+    const coach = await this._getCoach(userId, academyId);
+    const players = await this.repo.findCoachScopedPlayers(coach.id, academyId);
+    return {
+      coach,
+      playerIds: players.map((player) => player.id),
+    };
+  }
+
+  emptyPage(filters = {}) {
+    return {
+      data: [],
+      total: 0,
+      page: filters.page || 1,
+      totalPages: 1,
+    };
+  }
+
+  async createParentAccount(academyId, actorUserId, data) {
+    const username = data.username.trim().toLowerCase();
+    const phone = data.phone.trim();
+
+    const conflict = await this.repo.findParentIdentityConflict({
+      username,
+      phone,
+    });
+    if (conflict) {
+      throw new ConflictError(
+        `${conflict.field} is already used by another user. Choose a different ${conflict.field}.`,
+      );
+    }
+
+    try {
+      const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
+      const parent = await this.repo.createParentAccount({
+        academyId,
+        actorUserId,
+        fullName: data.fullName.trim(),
+        username,
+        phone,
+        passwordHash,
+        address: data.address.trim(),
+      });
+
+      return {
+        ...parent,
+        relationship: data.relationship || "guardian",
+      };
+    } catch (err) {
+      if (err.code === "23505") {
+        throw new ConflictError("User with this username or phone already exists");
+      }
+      throw err;
+    }
+  }
+
+  async adminCreateParentAccount(academyId, actorUserId, data) {
+    return this.createParentAccount(academyId, actorUserId, data);
+  }
+
   async adminCreateParentLink(academyId, actorUserId, data) {
     const [parent, player] = await Promise.all([
       this.repo.findParentUser(data.parentUserId, academyId),
@@ -8631,6 +9018,14 @@ class CalendarService {
     });
   }
 
+  async adminCreateParentLinkByQr(academyId, actorUserId, data) {
+    const player = await this._resolveAttendanceQrPlayer(academyId, data);
+    return this.adminCreateParentLink(academyId, actorUserId, {
+      ...data,
+      playerId: player.id,
+    });
+  }
+
   async adminUpdateParentLink(academyId, linkId, data) {
     const link = await this.repo.findParentPlayerLink(linkId, academyId);
     if (!link) throw new NotFoundError("Parent link", linkId);
@@ -8659,6 +9054,83 @@ class CalendarService {
     const deleted = await this.repo.deleteParentPlayerLink(linkId, academyId);
     if (!deleted) throw new NotFoundError("Parent link", linkId);
     return { deleted: true, id: linkId };
+  }
+
+  async coachListParentLinks(userId, academyId, filters = {}) {
+    const { playerIds } = await this._scopedCoachPlayerIds(userId, academyId);
+    if (!playerIds.length) return this.emptyPage(filters);
+    return this.repo.listAdminParentLinks(academyId, {
+      ...filters,
+      playerIds,
+    });
+  }
+
+  async coachListParentAccounts(userId, academyId, filters = {}) {
+    await this._getCoach(userId, academyId);
+    return this.repo.listAdminParentAccounts(academyId, filters);
+  }
+
+  async coachListLinkablePlayers(userId, academyId, filters = {}) {
+    const { playerIds } = await this._scopedCoachPlayerIds(userId, academyId);
+    if (!playerIds.length) return this.emptyPage(filters);
+    return this.repo.listAdminLinkablePlayers(academyId, {
+      ...filters,
+      playerIds,
+    });
+  }
+
+  async coachGetParentProfile(userId, academyId, parentUserId) {
+    const { playerIds } = await this._scopedCoachPlayerIds(userId, academyId);
+    const parent = await this.repo.findParentAccountById(parentUserId, academyId);
+    if (!parent) throw new NotFoundError("Parent account", parentUserId);
+
+    const links = await this.repo.listAdminParentLinks(academyId, {
+      parentUserId,
+      playerIds,
+      page: 1,
+      limit: 500,
+    });
+    const children = await Promise.all(
+      links.data.map((link) => this._managedPlayerDetail(academyId, link.player_id)),
+    );
+    return { parent, links: links.data, children };
+  }
+
+  async coachCreateParentAccount(userId, academyId, data) {
+    await this._getCoach(userId, academyId);
+    return this.createParentAccount(academyId, userId, data);
+  }
+
+  async coachCreateParentLink(userId, academyId, data) {
+    const coach = await this._getCoach(userId, academyId);
+    await this._ensureCoachCanAccessPlayers(coach, academyId, [data.playerId]);
+    return this.adminCreateParentLink(academyId, userId, data);
+  }
+
+  async coachCreateParentLinkByQr(userId, academyId, data) {
+    const coach = await this._getCoach(userId, academyId);
+    const player = await this._resolveAttendanceQrPlayer(academyId, data);
+    await this._ensureCoachCanAccessPlayers(coach, academyId, [player.id]);
+    return this.adminCreateParentLink(academyId, userId, {
+      ...data,
+      playerId: player.id,
+    });
+  }
+
+  async coachUpdateParentLink(userId, academyId, linkId, data) {
+    const coach = await this._getCoach(userId, academyId);
+    const link = await this.repo.findParentPlayerLink(linkId, academyId);
+    if (!link) throw new NotFoundError("Parent link", linkId);
+    await this._ensureCoachCanAccessPlayers(coach, academyId, [link.player_id]);
+    return this.adminUpdateParentLink(academyId, linkId, data);
+  }
+
+  async coachDeleteParentLink(userId, academyId, linkId) {
+    const coach = await this._getCoach(userId, academyId);
+    const link = await this.repo.findParentPlayerLink(linkId, academyId);
+    if (!link) throw new NotFoundError("Parent link", linkId);
+    await this._ensureCoachCanAccessPlayers(coach, academyId, [link.player_id]);
+    return this.adminDeleteParentLink(academyId, linkId);
   }
 
   _shapeParentChild(row, coaches = []) {
@@ -9189,7 +9661,7 @@ class CalendarService {
       `${note.parent_name || "A parent"} sent a note about ${player.full_name}.`,
       "parent_note_created",
       {
-        href: "/coach/parent-notes",
+        href: "/coach/home",
         noteId: note.id,
         playerId: childId,
         playerName: player.full_name,
@@ -9271,7 +9743,7 @@ class CalendarService {
           `${updated.coach_name || "Coach"} shared a family note with you.`,
           "player_family_note",
           {
-            href: "/player/family-notes",
+            href: "/player/home",
             noteId: updated.id,
             playerName: updated.player_name || null,
             coachName: updated.coach_name || null,

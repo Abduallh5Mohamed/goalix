@@ -1,6 +1,6 @@
 const { z } = require("zod");
 const {
-  COACH_ASSIGNMENT_ROLE_VALUES,
+  ASSIGNABLE_COACH_ACCESS_ROLE_VALUES,
 } = require("../coaches/coach-assignment-roles");
 
 const uuid = z.string().uuid();
@@ -139,6 +139,14 @@ const paginationQuery = z.object({
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 
+const rankingSystemInputsQuery = paginationQuery.extend({
+  groupId: uuid.optional(),
+});
+
+const parentRankingSystemInputsQuery = rankingSystemInputsQuery.extend({
+  childId: uuid.optional(),
+});
+
 const parentNoteStatusSchema = z.enum(["new", "reviewed", "resolved"]);
 const parentNoteVisibilitySchema = z.enum([
   "coach_only",
@@ -178,6 +186,49 @@ const updateParentLinkSchema = parentLinkSchema
     canMessageCoach: true,
   })
   .partial();
+const parentRelationshipSchema = z.enum([
+  "father",
+  "mother",
+  "grandfather",
+  "grandmother",
+  "brother",
+  "sister",
+  "uncle",
+  "aunt",
+  "legal_guardian",
+  "stepfather",
+  "stepmother",
+  "foster_parent",
+  "guardian",
+  "other",
+]);
+const parentUsernameSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(80)
+  .regex(/^[a-zA-Z0-9._-]+$/, "Username may only contain letters, numbers, dots, underscores, and hyphens");
+const parentPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128)
+  .refine((p) => /[A-Z]/.test(p), {
+    message: "Password must contain at least one uppercase letter",
+  })
+  .refine((p) => /[0-9]/.test(p), {
+    message: "Password must contain at least one digit",
+  })
+  .refine((p) => /[^A-Za-z0-9]/.test(p), {
+    message: "Password must contain at least one special character",
+  });
+const parentAccountSchema = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  username: parentUsernameSchema,
+  password: parentPasswordSchema,
+  phone: z.string().trim().min(8).max(20),
+  address: z.string().trim().min(2).max(500),
+  relationship: parentRelationshipSchema.default("guardian"),
+});
 const parentNoteSchema = z.object({
   coachUserId: uuid.optional(),
   category: z
@@ -418,6 +469,28 @@ const attendanceRecordsSchema = z.object({
 
 const attendanceQrScanSchema = z
   .object({
+    payload: z.string().trim().min(1).max(2000).optional(),
+    playerId: uuid.optional(),
+    playerCode: z.string().trim().min(1).max(100).optional(),
+    username: z.string().trim().min(1).max(100).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.payload && !data.playerId && !data.playerCode && !data.username) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["payload"],
+        message: "QR payload, player ID, player code, or username is required.",
+      });
+    }
+  });
+const parentLinkQrSchema = z
+  .object({
+    parentUserId: uuid,
+    relation: z.string().trim().min(2).max(60).optional(),
+    isPrimary: z.boolean().optional(),
+    canViewProgress: z.boolean().optional(),
+    canViewPayments: z.boolean().optional(),
+    canMessageCoach: z.boolean().optional(),
     payload: z.string().trim().min(1).max(2000).optional(),
     playerId: uuid.optional(),
     playerCode: z.string().trim().min(1).max(100).optional(),
@@ -737,7 +810,7 @@ const optionQuery = z.object({
 const coachGroupAssignmentSchema = z.object({
   coachId: uuid,
   groupId: uuid,
-  role: z.enum(COACH_ASSIGNMENT_ROLE_VALUES).default("assistant_coach"),
+  role: z.enum(ASSIGNABLE_COACH_ACCESS_ROLE_VALUES).default("assistant_coach"),
 });
 
 const updateCoachGroupAssignmentSchema = coachGroupAssignmentSchema
@@ -821,6 +894,8 @@ module.exports = {
   evaluationParam,
   coachGroupAssignmentParam,
   paginationQuery,
+  rankingSystemInputsQuery,
+  parentRankingSystemInputsQuery,
   evaluationEditRequestsQuery,
   evaluationEditRequestSchema,
   evaluationEditRequestReviewSchema,
@@ -833,6 +908,8 @@ module.exports = {
   parentLinkQuery,
   parentLinkSchema,
   updateParentLinkSchema,
+  parentAccountSchema,
+  parentLinkQrSchema,
   parentNoteSchema,
   coachParentNoteResponseSchema,
   adminCalendarEventSchema,

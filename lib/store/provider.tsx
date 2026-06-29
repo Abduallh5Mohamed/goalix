@@ -5,11 +5,9 @@ import { Provider } from "react-redux";
 import { store } from "./store";
 import { authInitialized, loginSuccess, logout } from "./slices/authSlice";
 import type { UserRole } from "@/lib/types";
-import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
-import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { hasAuthSessionMarker } from "@/lib/auth/session";
+import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { resetApiState } from "./resetApiState";
-
-const API_BASE = getApiBaseUrl();
 
 function mapApiUser(apiUser: Record<string, unknown>) {
   return {
@@ -51,28 +49,22 @@ function SessionRefresher() {
       }
 
       try {
-        const response = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-          signal: controller.signal,
-        });
-        const json = response.ok ? await response.json() : null;
-        const apiUser = json?.data?.user as Record<string, unknown> | undefined;
-        if (!apiUser) {
-          forgetAuthSession();
-          resetApiState(store.dispatch);
-          store.dispatch(logout());
+        const result = await refreshAuthSession(controller.signal);
+        if (!result.ok) {
+          if (result.unauthorized) {
+            resetApiState(store.dispatch);
+            store.dispatch(logout());
+          } else {
+            store.dispatch(authInitialized());
+          }
           return;
         }
 
-        const user = mapApiUser(apiUser);
-        rememberAuthSession();
+        const user = mapApiUser(result.user);
         resetApiState(store.dispatch);
         store.dispatch(loginSuccess({ user, role: user.role }));
       } catch {
-        forgetAuthSession();
-        resetApiState(store.dispatch);
-        store.dispatch(logout());
+        store.dispatch(authInitialized());
       } finally {
         window.clearTimeout(timeout);
         store.dispatch(authInitialized());

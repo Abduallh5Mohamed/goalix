@@ -125,7 +125,10 @@ class AcademyController {
 
     createBirthYear = async (req, res, next) => {
         try {
-            const birthYear = await this.service.createBirthYear(req.body, req.user.academyId);
+            const birthYear = await this.service.createBirthYear(req.body, req.user.academyId, {
+                role: 'admin',
+                userId: req.user.userId,
+            });
             res.status(201).json(ApiResponse.success(birthYear));
         } catch (err) { next(err); }
     };

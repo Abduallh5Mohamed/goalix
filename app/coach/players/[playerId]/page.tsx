@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Activity,
   ArrowLeft,
+  CheckCircle2,
   HeartPulse,
+  Pencil,
   Shield,
   ShieldAlert,
   Star,
@@ -19,9 +21,29 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetCoachPlayerDetailQuery } from "@/lib/store/api/calendarApi";
+import { useGetBranchesQuery, useUpdatePlayerMutation } from "@/lib/store/api/adminApi";
+import {
+  type ParentManagementRole,
+  useGetManagedPlayerDetailQuery,
+} from "@/lib/store/api/calendarApi";
 import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
 
 type AnyRecord = Record<string, unknown>;
@@ -56,6 +78,17 @@ const formatValue = (value: unknown): string => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return formatDate(text);
   if (/^\d{4}-\d{2}-\d{2}T/.test(text)) return formatDateTime(text);
   return text;
+};
+
+const formatListValue = (value: unknown): string => {
+  if (Array.isArray(value)) return value.length ? value.map((item) => formatValue(item)).join(", ") : "--";
+  if (typeof value !== "string") return formatValue(value);
+  try {
+    const parsed = JSON.parse(value);
+    return formatListValue(parsed);
+  } catch {
+    return formatValue(value);
+  }
 };
 
 const ageFrom = (date: string | null | undefined) => {
@@ -145,13 +178,91 @@ function RecordsTable({
   );
 }
 
-export default function CoachPlayerDetailPage() {
+const assignmentStatusMeta = (status: unknown) => {
+  switch (status) {
+    case "approved":
+      return { label: "Approved", variant: "success" as const };
+    case "rejected":
+      return { label: "Rejected", variant: "destructive" as const };
+    case "submitted":
+      return { label: "Submitted", variant: "info" as const };
+    default:
+      return { label: "Not submitted", variant: "warning" as const };
+  }
+};
+
+const emptyEditForm = {
+  fullName: "",
+  birthDate: "",
+  heightCm: "",
+  weightKg: "",
+  preferredFoot: "",
+  dateJoined: "",
+  gender: "",
+  nationality: "",
+  branchId: "",
+  position: "",
+  level: "",
+  phone: "",
+  address: "",
+  guardianName: "",
+  guardianPhone: "",
+  guardianRelation: "",
+  password: "",
+  notes: "",
+};
+
+const editFormFromPlayer = (
+  player: Record<string, unknown>,
+  latestMeasurement?: Record<string, unknown> | null,
+) => ({
+  fullName: String(player.full_name ?? ""),
+  birthDate: String(player.date_of_birth ?? "").slice(0, 10),
+  heightCm:
+    latestMeasurement?.height_cm === null || latestMeasurement?.height_cm === undefined
+      ? ""
+      : String(latestMeasurement.height_cm),
+  weightKg:
+    latestMeasurement?.weight_kg === null || latestMeasurement?.weight_kg === undefined
+      ? ""
+      : String(latestMeasurement.weight_kg),
+  preferredFoot: String(player.preferred_foot ?? ""),
+  dateJoined: String(player.date_joined ?? "").slice(0, 10),
+  gender: String(player.gender ?? ""),
+  nationality: String(player.nationality ?? ""),
+  branchId: String(player.branch_id ?? ""),
+  position: String(player.position ?? ""),
+  level: String(player.level ?? ""),
+  phone: String(player.phone ?? ""),
+  address: String(player.address ?? ""),
+  guardianName: String(player.guardian_name ?? ""),
+  guardianPhone: String(player.guardian_phone ?? ""),
+  guardianRelation: String(player.guardian_relation ?? ""),
+  password: "",
+  notes: String(player.notes ?? ""),
+});
+
+export function ManagedPlayerDetailPage({
+  role = "coach",
+  playerId: explicitPlayerId,
+}: {
+  role?: ParentManagementRole;
+  playerId?: string;
+}) {
   const params = useParams<{ playerId: string }>();
   const router = useRouter();
-  const playerId = String(params.playerId || "");
-  const { data, isLoading, error } = useGetCoachPlayerDetailQuery(playerId, {
-    skip: !playerId,
+  const playerId = explicitPlayerId ?? String(params.playerId || "");
+  const { data, isLoading, error } = useGetManagedPlayerDetailQuery(
+    { role, id: playerId },
+    { skip: !playerId },
+  );
+  const { data: branches = [] } = useGetBranchesQuery(undefined, {
+    skip: role !== "admin",
   });
+  const [updatePlayer, updateState] = useUpdatePlayerMutation();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editError, setEditError] = useState("");
 
   const player = data?.player;
   const matchTotals = data?.summary.matchTotals;
@@ -162,6 +273,7 @@ export default function CoachPlayerDetailPage() {
     const attended = Number(attendanceTotals?.present || 0) + Number(attendanceTotals?.late || 0);
     return Math.round((attended / total) * 100);
   }, [attendanceTotals]);
+  const latestMeasurement = data?.summary.latestMeasurement ?? data?.measurements?.[0] ?? null;
 
   if (isLoading) {
     return (
@@ -185,19 +297,80 @@ export default function CoachPlayerDetailPage() {
     );
   }
 
+  const latestValue = (key: string) => player[key] ?? latestMeasurement?.[key] ?? null;
+  const linkedParent = player.linked_parent ?? null;
+  const handleSaveEdit = async () => {
+    setEditError("");
+    if (!editForm.fullName.trim()) {
+      setEditError("Full name is required.");
+      return;
+    }
+    const level = ["A", "B", "C", "D", "F"].includes(editForm.level)
+      ? (editForm.level as "A" | "B" | "C" | "D" | "F")
+      : undefined;
+    const preferredFoot = ["left", "right", "both"].includes(editForm.preferredFoot)
+      ? (editForm.preferredFoot as "left" | "right" | "both")
+      : undefined;
+    const gender = ["male", "female", "other"].includes(editForm.gender)
+      ? (editForm.gender as "male" | "female" | "other")
+      : undefined;
+    try {
+      await updatePlayer({
+        id: player.id,
+        body: {
+          fullName: editForm.fullName.trim(),
+          birthDate: editForm.birthDate || undefined,
+          heightCm: editForm.heightCm ? Number(editForm.heightCm) : undefined,
+          weightKg: editForm.weightKg ? Number(editForm.weightKg) : undefined,
+          preferredFoot,
+          dateJoined: editForm.dateJoined || undefined,
+          gender,
+          nationality: editForm.nationality.trim() || undefined,
+          branchId: editForm.branchId || undefined,
+          position: editForm.position.trim() || undefined,
+          level,
+          phone: editForm.phone.trim() || undefined,
+          address: editForm.address.trim() || undefined,
+          guardianName: editForm.guardianName.trim() || undefined,
+          guardianPhone: editForm.guardianPhone.trim() || undefined,
+          guardianRelation: editForm.guardianRelation.trim() || undefined,
+          password: editForm.password || undefined,
+          notes: editForm.notes.trim() || undefined,
+        },
+      }).unwrap();
+      setEditOpen(false);
+    } catch (err) {
+      const apiError = err as { data?: { error?: { message?: string } } };
+      setEditError(apiError.data?.error?.message || "Could not update player.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title={player.full_name}
         description={`${compact(player.position)} - ${compact(player.group_name)} - ${compact(player.branch_name)}`}
         breadcrumbs={[
-          { label: "Dashboard", href: "/coach/home" },
-          { label: "Players", href: "/coach/players" },
+          { label: "Dashboard", href: role === "admin" ? "/admin/dashboard" : "/coach/home" },
+          { label: "Players", href: role === "admin" ? "/admin/players" : "/coach/players" },
           { label: player.full_name },
         ]}
         actions={
           <div className="flex flex-wrap gap-2">
-            {player.profile_status !== "complete" && (
+            {role === "admin" && (
+              <Button
+                className="gap-2"
+                onClick={() => {
+                  setEditForm(editFormFromPlayer(player, latestMeasurement));
+                  setEditError("");
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Player
+              </Button>
+            )}
+            {role === "coach" && player.profile_status !== "complete" && (
               <Button
                 className="gap-2"
                 onClick={() => router.push(`/coach/players?complete=${player.id}`)}
@@ -206,7 +379,11 @@ export default function CoachPlayerDetailPage() {
                 Complete profile
               </Button>
             )}
-            <Button variant="outline" className="gap-2" onClick={() => router.push("/coach/players")}>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => router.push(role === "admin" ? "/admin/players" : "/coach/players")}
+            >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
@@ -250,6 +427,19 @@ export default function CoachPlayerDetailPage() {
                 <span className="font-medium">{compact(player.guardian_name)}</span>
               </div>
             </div>
+            {data.attendanceQr?.qrCodeDataUrl && (
+              <div className="mt-6 rounded-md border border-border/60 bg-background/40 p-3 text-center">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Player QR Code</p>
+                <img
+                  src={data.attendanceQr.qrCodeDataUrl}
+                  alt={`${player.full_name} QR code`}
+                  className="mx-auto mt-3 h-44 w-44 rounded-md bg-white p-2"
+                />
+                <p className="mt-2 break-all text-xs text-muted-foreground">
+                  {data.attendanceQr.playerCode || data.attendanceQr.username || player.id}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -302,6 +492,26 @@ export default function CoachPlayerDetailPage() {
                   ["Current group", player.group_name],
                   ["Date joined", player.date_joined],
                   ["Profile completed", player.profile_completed_at],
+                  ["Profile status", player.profile_status],
+                  ["Active", player.is_active],
+                  ["Notes", player.notes],
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Football Profile</CardTitle></CardHeader>
+            <CardContent>
+              <DetailGrid
+                rows={[
+                  ["Main position", player.position],
+                  ["Secondary positions", formatListValue(player.secondary_positions)],
+                  ["Preferred foot", player.preferred_foot],
+                  ["Current team", player.current_team],
+                  ["Shirt number", player.shirt_number],
+                  ["Playing style", player.playing_style],
+                  ["Years experience", player.years_experience],
+                  ["Previous club / academy", player.previous_club_academy],
                 ]}
               />
             </CardContent>
@@ -323,6 +533,103 @@ export default function CoachPlayerDetailPage() {
                     guardianRelationLabels[String(player.guardian_relation ?? "")] ??
                       player.guardian_relation,
                   ],
+                  ["Linked parent account", linkedParent?.name],
+                  ["Parent username", linkedParent?.username],
+                  ["Parent phone", linkedParent?.phone],
+                  ["Parent address", linkedParent?.address],
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Account and Status</CardTitle></CardHeader>
+            <CardContent>
+              <DetailGrid
+                rows={[
+                  ["Username", player.username],
+                  ["Login phone", player.account_phone],
+                  ["Account active", player.account_is_active],
+                  ["Account verified", player.account_is_verified],
+                  ["Created at", player.created_at],
+                  ["Updated at", player.updated_at],
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Physical Baseline</CardTitle></CardHeader>
+            <CardContent>
+              <DetailGrid
+                rows={[
+                  ["Height", latestValue("height_cm")],
+                  ["Weight", latestValue("weight_kg")],
+                  ["BMI", latestValue("bmi")],
+                  ["Sprint speed", latestValue("sprint_speed")],
+                  ["Acceleration", latestValue("acceleration")],
+                  ["Stamina", latestValue("stamina")],
+                  ["Strength", latestValue("strength")],
+                  ["Agility", latestValue("agility")],
+                  ["Balance", latestValue("balance")],
+                  ["Jump height", latestValue("jump_height_cm")],
+                  ["Flexibility", latestValue("flexibility")],
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Group Assignments</CardTitle></CardHeader>
+            <CardContent>
+              <RecordsTable
+                rows={data.groups}
+                empty="No group assignment history."
+                columns={[
+                  { key: "group_name", label: "Group" },
+                  { key: "branch_name", label: "Branch" },
+                  { key: "joined_at", label: "Joined" },
+                  { key: "left_at", label: "Left" },
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Player Assignments</CardTitle></CardHeader>
+            <CardContent>
+              <RecordsTable
+                rows={(data.playerAssignments || []) as unknown as AnyRecord[]}
+                empty="No player assignments found."
+                columns={[
+                  { key: "title", label: "Assignment" },
+                  {
+                    key: "groups",
+                    label: "Target",
+                    render: (row) => {
+                      const groups = Array.isArray(row.groups) ? row.groups : [];
+                      return groups.length
+                        ? groups
+                            .map((group) =>
+                              `${formatValue((group as AnyRecord).name)}${
+                                (group as AnyRecord).branchName
+                                  ? ` - ${formatValue((group as AnyRecord).branchName)}`
+                                  : ""
+                              }`,
+                            )
+                            .join(", ")
+                        : "--";
+                    },
+                  },
+                  { key: "coachName", label: "Coach" },
+                  { key: "openAt", label: "Opened" },
+                  { key: "dueAt", label: "Due" },
+                  {
+                    key: "playerStatus",
+                    label: "Player status",
+                    render: (row) => {
+                      const meta = assignmentStatusMeta(row.playerStatus);
+                      return <Badge variant={meta.variant}>{meta.label}</Badge>;
+                    },
+                  },
+                  { key: "submittedAt", label: "Submitted" },
+                  { key: "filesCount", label: "Files" },
                 ]}
               />
             </CardContent>
@@ -330,7 +637,11 @@ export default function CoachPlayerDetailPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Custom Profile</CardTitle></CardHeader>
             <CardContent>
-              <DetailGrid rows={data.customProfile.map((row) => [`${compact(row.category_name)} - ${row.label}`, row.value])} />
+              {data.customProfile.length ? (
+                <DetailGrid rows={data.customProfile.map((row) => [`${compact(row.category_name)} - ${row.label}`, row.value])} />
+              ) : (
+                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">No custom profile data.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -347,6 +658,45 @@ export default function CoachPlayerDetailPage() {
               { key: "assists", label: "Assists" },
               { key: "performance_rating", label: "Overall" },
               { key: "match_status", label: "Status" },
+            ]}
+          />
+          <RecordsTable
+            rows={data.matchAttendance}
+            empty="No match attendance yet."
+            columns={[
+              { key: "match_date", label: "Date" },
+              { key: "opponent_name", label: "Opponent" },
+              { key: "status", label: "Status" },
+              { key: "notes", label: "Notes" },
+            ]}
+          />
+          <RecordsTable
+            rows={data.goals as unknown as AnyRecord[]}
+            empty="No goals or assists recorded."
+            columns={[
+              { key: "match_date", label: "Date" },
+              { key: "opponent_name", label: "Opponent" },
+              { key: "minute", label: "Minute" },
+              {
+                key: "goal_role",
+                label: "Contribution",
+                render: (row) =>
+                  row.scorer_player_id === player.id ? "Goal" : "Assist",
+              },
+              { key: "notes", label: "Notes" },
+            ]}
+          />
+          <RecordsTable
+            rows={data.matchSummaries}
+            empty="No match summaries yet."
+            columns={[
+              { key: "recorded_at", label: "Date" },
+              { key: "group_name", label: "Group" },
+              { key: "matches_played", label: "Matches" },
+              { key: "minutes_played", label: "Minutes" },
+              { key: "goals", label: "Goals" },
+              { key: "assists", label: "Assists" },
+              { key: "match_rating", label: "Rating" },
             ]}
           />
           <RecordsTable
@@ -379,6 +729,19 @@ export default function CoachPlayerDetailPage() {
 
         <TabsContent value="training" className="space-y-4">
           <RecordsTable
+            rows={data.trainingSummaries}
+            empty="No training summaries yet."
+            columns={[
+              { key: "recorded_at", label: "Date" },
+              { key: "group_name", label: "Group" },
+              { key: "training_sessions_count", label: "Sessions" },
+              { key: "attendance_count", label: "Attendance" },
+              { key: "absence_count", label: "Absence" },
+              { key: "attendance_rate", label: "Rate" },
+              { key: "training_performance_rating", label: "Rating" },
+            ]}
+          />
+          <RecordsTable
             rows={data.trainingAttendance}
             empty="No training attendance yet."
             columns={[
@@ -399,7 +762,14 @@ export default function CoachPlayerDetailPage() {
               { key: "overall_rating", label: "Overall" },
               { key: "technical_rating", label: "Technical" },
               { key: "tactical_rating", label: "Tactical" },
+              { key: "physical_rating", label: "Physical" },
+              { key: "mental_rating", label: "Mental" },
+              { key: "endurance_rating", label: "Endurance" },
+              { key: "strength_rating", label: "Strength" },
+              { key: "agility_rating", label: "Agility" },
               { key: "coach_name", label: "Coach" },
+              { key: "strengths", label: "Strengths" },
+              { key: "improvement_areas", label: "Improvements" },
             ]}
           />
         </TabsContent>
@@ -443,10 +813,17 @@ export default function CoachPlayerDetailPage() {
               { key: "assessed_at", label: "Date" },
               { key: "group_name", label: "Group" },
               { key: "ball_control", label: "Ball control" },
+              { key: "first_touch", label: "First touch" },
               { key: "passing", label: "Passing" },
               { key: "shooting", label: "Shooting" },
+              { key: "dribbling", label: "Dribbling" },
+              { key: "crossing", label: "Crossing" },
+              { key: "heading", label: "Heading" },
+              { key: "tackling", label: "Tackling" },
               { key: "positioning", label: "Positioning" },
               { key: "decision_making", label: "Decision making" },
+              { key: "teamwork", label: "Teamwork" },
+              { key: "game_reading", label: "Game reading" },
             ]}
           />
           <RecordsTable
@@ -468,6 +845,11 @@ export default function CoachPlayerDetailPage() {
               { key: "coach_name", label: "Coach" },
               { key: "group_name", label: "Group" },
               { key: "score", label: "Score" },
+              { key: "potential_rating", label: "Potential" },
+              { key: "recommended_position", label: "Recommended position" },
+              { key: "strengths", label: "Strengths" },
+              { key: "weaknesses", label: "Weaknesses" },
+              { key: "development_plan", label: "Development plan" },
               { key: "notes", label: "Notes" },
             ]}
           />
@@ -496,9 +878,207 @@ export default function CoachPlayerDetailPage() {
               { key: "paid_at", label: "Paid at" },
             ]}
           />
+          <RecordsTable
+            rows={data.payments.transactions}
+            empty="No payment transactions."
+            columns={[
+              { key: "created_at", label: "Date" },
+              { key: "amount", label: "Amount" },
+              { key: "currency", label: "Currency" },
+              { key: "status", label: "Status" },
+              { key: "provider", label: "Provider" },
+              { key: "reference", label: "Reference" },
+            ]}
+          />
         </TabsContent>
 
       </Tabs>
+      {role === "admin" && (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Player</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-username">Username</Label>
+                <Input id="edit-username" value={String(player.username ?? "")} readOnly />
+                <p className="text-xs text-muted-foreground">Username cannot be changed.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">Password</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={editForm.password}
+                  placeholder="Leave empty to keep current password"
+                  onChange={(event) =>
+                    setEditForm((current) => ({
+                      ...current,
+                      password: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {[
+                ["fullName", "Full name", "text"],
+                ["birthDate", "Birth date", "date"],
+                ["heightCm", "Height (cm)", "number"],
+                ["weightKg", "Weight (kg)", "number"],
+                ["dateJoined", "Date Joined Academy", "date"],
+                ["nationality", "Nationality", "text"],
+                ["phone", "Phone", "text"],
+                ["position", "Position", "text"],
+                ["address", "Address", "text"],
+                ["guardianName", "Guardian name", "text"],
+                ["guardianPhone", "Guardian phone", "text"],
+              ].map(([key, label, type]) => (
+                <div key={key} className="space-y-2">
+                  <Label htmlFor={`edit-${key}`}>{label}</Label>
+                  <Input
+                    id={`edit-${key}`}
+                    type={type}
+                    value={editForm[key as keyof typeof editForm]}
+                    onChange={(event) =>
+                      setEditForm((current) => ({
+                        ...current,
+                        [key]: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+              <div className="space-y-2">
+                <Label htmlFor="edit-preferredFoot">Preferred Foot</Label>
+                <Select
+                  value={editForm.preferredFoot}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, preferredFoot: value }))
+                  }
+                >
+                  <SelectTrigger id="edit-preferredFoot">
+                    <SelectValue placeholder="Choose foot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="right">Right</SelectItem>
+                    <SelectItem value="left">Left</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-gender">Gender</Label>
+                <Select
+                  value={editForm.gender}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, gender: value }))
+                  }
+                >
+                  <SelectTrigger id="edit-gender">
+                    <SelectValue placeholder="Choose gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-level">Level</Label>
+                <Select
+                  value={editForm.level}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, level: value }))
+                  }
+                >
+                  <SelectTrigger id="edit-level">
+                    <SelectValue placeholder="Choose level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["A", "B", "C", "D", "F"].map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-guardianRelation">Guardian relation</Label>
+                <Select
+                  value={editForm.guardianRelation}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, guardianRelation: value }))
+                  }
+                >
+                  <SelectTrigger id="edit-guardianRelation">
+                    <SelectValue placeholder="Choose relation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(guardianRelationLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="edit-branchId">Branch</Label>
+                <Select
+                  value={editForm.branchId}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, branchId: value }))
+                  }
+                >
+                  <SelectTrigger id="edit-branchId">
+                    <SelectValue placeholder="Choose branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Input
+                  id="edit-notes"
+                  value={editForm.notes}
+                  onChange={(event) =>
+                    setEditForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            {editError && <p className="text-sm text-red-400">{editError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                Close
+              </Button>
+              <Button type="button" disabled={updateState.isLoading} onClick={handleSaveEdit}>
+                {updateState.isLoading ? (
+                  <Activity className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
+}
+
+export default function CoachPlayerDetailPage() {
+  return <ManagedPlayerDetailPage role="coach" />;
 }

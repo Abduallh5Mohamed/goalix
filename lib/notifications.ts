@@ -190,7 +190,12 @@ export function getNotificationHref(
     explicitHref.startsWith("/") &&
     !explicitHref.startsWith("//")
   ) {
-    return explicitHref;
+    const removedHrefs: Record<string, string> = {
+      "/coach/parent-notes": "/coach/home",
+      "/player/family-notes": "/player/home",
+      "/parent/calendar": "/parent/schedule",
+    };
+    return removedHrefs[explicitHref] || explicitHref;
   }
 
   const matchData = data?.match as { id?: string } | undefined;
@@ -207,7 +212,7 @@ export function getNotificationHref(
   if (type === "training" || type === "session" || eventId) {
     if (role === "admin") return "/admin/calendar";
     if (role === "coach") return eventId ? `/coach/training/${eventId}` : "/coach/training";
-    if (role === "parent") return "/parent/calendar";
+    if (role === "parent") return "/parent/schedule";
     return "/player/training";
   }
 
@@ -217,12 +222,12 @@ export function getNotificationHref(
   }
 
   if (type === "parent_note_created" || type === "parent_note_replied") {
-    if (role === "coach") return "/coach/parent-notes";
+    if (role === "coach") return "/coach/home";
     if (role === "parent") return "/parent/home";
   }
 
   if (type === "player_family_note" && role === "player") {
-    return "/player/family-notes";
+    return "/player/home";
   }
 
   if (type === "chat" || type === "message") {

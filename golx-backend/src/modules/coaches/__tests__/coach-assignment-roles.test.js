@@ -1,5 +1,5 @@
 const {
-  COACH_ASSIGNMENT_ROLE_VALUES,
+  ASSIGNABLE_COACH_ACCESS_ROLE_VALUES,
   PERMISSIONS,
   getAssignmentRole,
   normalizeAssignmentRole,
@@ -11,7 +11,10 @@ describe("coach assignment role catalog", () => {
   test("publishes one complete permission matrix for every role", () => {
     const catalog = publicRoleCatalog();
 
-    expect(catalog).toHaveLength(COACH_ASSIGNMENT_ROLE_VALUES.length);
+    expect(catalog).toHaveLength(ASSIGNABLE_COACH_ACCESS_ROLE_VALUES.length);
+    expect(catalog.map((role) => role.value)).toEqual(
+      ASSIGNABLE_COACH_ACCESS_ROLE_VALUES,
+    );
     catalog.forEach((role) => {
       expect(role.permissions).toHaveLength(PERMISSIONS.length);
       expect(role.permissions.every((permission) =>

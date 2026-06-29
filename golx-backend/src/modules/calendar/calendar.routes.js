@@ -15,10 +15,22 @@ function adminCalendarRoutes(controller) {
     controller.adminListParentLinks,
   );
   router.post(
+    "/parents",
+    rbac("manage_teams"),
+    validate({ body: schema.parentAccountSchema }),
+    controller.adminCreateParentAccount,
+  );
+  router.post(
     "/parent-links",
     rbac("manage_teams"),
     validate({ body: schema.parentLinkSchema }),
     controller.adminCreateParentLink,
+  );
+  router.post(
+    "/parent-links/qr",
+    rbac("manage_teams"),
+    validate({ body: schema.parentLinkQrSchema }),
+    controller.adminCreateParentLinkByQr,
   );
   router.patch(
     "/parent-links/:parentLinkId",
@@ -41,9 +53,24 @@ function adminCalendarRoutes(controller) {
     controller.adminListParentAccounts,
   );
   router.get(
+    "/parents/:id/profile",
+    validate({ params: schema.idParam }),
+    controller.adminGetParentProfile,
+  );
+  router.get(
     "/parent-linkable-players",
     validate({ query: schema.parentLinkQuery }),
     controller.adminListLinkablePlayers,
+  );
+  router.get(
+    "/players/:id/detail",
+    validate({ params: schema.idParam }),
+    controller.adminGetPlayerDetail,
+  );
+  router.get(
+    "/ranking-system-inputs",
+    validate({ query: schema.rankingSystemInputsQuery }),
+    controller.adminRankingSystemInputs,
   );
 
   router.get(
@@ -293,6 +320,54 @@ function coachCalendarRoutes(controller) {
     controller.coachGetPlayerDetail,
   );
   router.get(
+    "/parent-links",
+    validate({ query: schema.parentLinkQuery }),
+    controller.coachListParentLinks,
+  );
+  router.post(
+    "/parents",
+    validate({ body: schema.parentAccountSchema }),
+    controller.coachCreateParentAccount,
+  );
+  router.post(
+    "/parent-links",
+    validate({ body: schema.parentLinkSchema }),
+    controller.coachCreateParentLink,
+  );
+  router.post(
+    "/parent-links/qr",
+    validate({ body: schema.parentLinkQrSchema }),
+    controller.coachCreateParentLinkByQr,
+  );
+  router.patch(
+    "/parent-links/:parentLinkId",
+    validate({
+      params: schema.parentLinkParam,
+      body: schema.updateParentLinkSchema,
+    }),
+    controller.coachUpdateParentLink,
+  );
+  router.delete(
+    "/parent-links/:parentLinkId",
+    validate({ params: schema.parentLinkParam }),
+    controller.coachDeleteParentLink,
+  );
+  router.get(
+    "/parent-accounts",
+    validate({ query: schema.parentLinkQuery }),
+    controller.coachListParentAccounts,
+  );
+  router.get(
+    "/parents/:id/profile",
+    validate({ params: schema.idParam }),
+    controller.coachGetParentProfile,
+  );
+  router.get(
+    "/parent-linkable-players",
+    validate({ query: schema.parentLinkQuery }),
+    controller.coachListLinkablePlayers,
+  );
+  router.get(
     "/parent-notes",
     validate({ query: schema.coachParentNotesQuery }),
     controller.coachListParentNotes,
@@ -407,7 +482,7 @@ function coachCalendarRoutes(controller) {
   );
   router.get(
     "/ranking-system-inputs",
-    validate({ query: schema.paginationQuery }),
+    validate({ query: schema.rankingSystemInputsQuery }),
     controller.coachRankingSystemInputs,
   );
 
@@ -642,6 +717,11 @@ function playerCalendarRoutes(controller) {
     validate({ query: schema.paginationQuery }),
     controller.playerEvaluations,
   );
+  router.get(
+    "/ranking-system-inputs",
+    validate({ query: schema.rankingSystemInputsQuery }),
+    controller.playerRankingSystemInputs,
+  );
   router.get("/progress", controller.playerProgress);
   router.get(
     "/parent-notes",
@@ -684,6 +764,11 @@ function parentCalendarRoutes(controller) {
     "/dashboard",
     validate({ query: schema.parentDashboardQuery }),
     controller.parentDashboard,
+  );
+  router.get(
+    "/ranking-system-inputs",
+    validate({ query: schema.parentRankingSystemInputsQuery }),
+    controller.parentRankingSystemInputs,
   );
   router.get(
     "/children/:childId/calendar-events",

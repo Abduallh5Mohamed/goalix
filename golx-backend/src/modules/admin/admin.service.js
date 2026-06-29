@@ -113,6 +113,11 @@ class AdminService {
         return this.repo.getPendingRegistrations({ status, academyId });
     }
 
+    async listPasswordResetRequests(academyId) {
+        if (!academyId) throw new BadRequestError('Academy context is required');
+        return this.repo.listPasswordResetRequests(academyId);
+    }
+
     async getAccessControl(academyId) {
         if (!academyId) throw new BadRequestError('Academy context is required');
         return this.repo.getAccessControl(academyId);
@@ -120,8 +125,8 @@ class AdminService {
 
     async createAccessUser(academyId, actorUserId, data) {
         if (!academyId) throw new BadRequestError('Academy context is required');
-        if (data.accountRole === 'player') {
-            throw new BadRequestError('Players must be created from the Players page');
+        if (data.accountRole !== 'admin') {
+            throw new BadRequestError('Roles settings can only create admin/staff users. Use the dedicated coach, parent, or player pages.');
         }
 
         const normalizedUsername = data.username.trim().toLowerCase();
@@ -195,17 +200,16 @@ class AdminService {
             throw new BadRequestError('This role opens admin pages, so choose Staff/Admin Login.');
         }
 
-        if (!hasAdminPortalPermission && hasCoachPortalPermission && accountRole !== 'coach') {
-            throw new BadRequestError('This role opens coach pages, so choose Coach Login.');
+        if (!hasAdminPortalPermission && hasCoachPortalPermission) {
+            throw new BadRequestError('Coach roles are assigned from the coach assignment page.');
         }
 
         if (
             !hasAdminPortalPermission
             && !hasCoachPortalPermission
             && hasParentPortalPermission
-            && accountRole !== 'parent'
         ) {
-            throw new BadRequestError('This role is for parents/guardians, so choose Parent Login.');
+            throw new BadRequestError('Parent roles are managed from Parents, not Roles settings.');
         }
     }
 
@@ -263,6 +267,9 @@ class AdminService {
             .whereNull('deleted_at')
             .first('role');
         if (!targetUser) throw new NotFoundError('User', targetUserId);
+        if (targetUser.role === 'parent') {
+            throw new BadRequestError('Parent accounts are managed from the Parents page.');
+        }
         await this.validateRoleAccountCompatibility(roleId, academyId, targetUser.role);
 
         const assignment = await this.repo.assignRoleToUser({

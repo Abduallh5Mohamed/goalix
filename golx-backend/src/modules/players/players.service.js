@@ -220,6 +220,7 @@ class PlayersService {
     const playerBirthYear = data.birthDate
       ? new Date(data.birthDate).getFullYear()
       : null;
+    const profileCompleteOnCreate = data.markProfileComplete === true;
     if (actor.role === "coach") {
       if (!coachProfile)
         throw new ForbiddenError("Coach profile is not linked to this user");
@@ -277,7 +278,7 @@ class PlayersService {
     // so the sequence counter and the profile row are either both committed or both rolled back.
     const player = await this.repo.db.transaction(async (trx) => {
       let userId = data.userId || null;
-      if (!targetGroupId && data.birthDate) {
+      if (profileCompleteOnCreate && !targetGroupId && data.birthDate) {
         const autoGroup = Number.isInteger(playerBirthYear)
           ? actor.role === "coach"
             ? await this.repo.findCoachAutoAssignableGroup(
@@ -351,11 +352,17 @@ class PlayersService {
           guardian_phone: data.guardianPhone || null,
           guardian_relation: data.guardianRelation || null,
           notes: data.notes || null,
+          ...(profileCompleteOnCreate
+            ? {
+                profile_status: "complete",
+                profile_completed_at: new Date(),
+              }
+            : {}),
         })
         .returning("*");
 
       // Group assignment inside the same transaction
-      if (targetGroupId) {
+      if (profileCompleteOnCreate && targetGroupId) {
         await trx("player_group_assignments").insert({
           player_id: row.id,
           group_id: targetGroupId,
@@ -571,7 +578,7 @@ class PlayersService {
       actor.role === "coach"
         ? await this.repo.findCoachProfileByUserId(actor.userId)
         : null;
-    const currentGroupAssignment = data.groupId
+    const currentGroupAssignment = data.groupId || data.markProfileComplete
       ? await this.repo.findCurrentGroupAssignment(id)
       : null;
     const nextBranchId = data.branchId || player.branch_id;
@@ -589,6 +596,11 @@ class PlayersService {
     }
 
     if (data.groupId) {
+      if (player.profile_status !== "complete" && !data.markProfileComplete) {
+        throw new BadRequestError(
+          "Player profile must be complete before assigning a group",
+        );
+      }
       const group = await this.repo.findGroupByIdAndBranch(
         data.groupId,
         nextBranchId,
@@ -626,6 +638,7 @@ class PlayersService {
     const updateData = {};
     if (data.fullName) updateData.full_name = data.fullName;
     if (data.birthDate) updateData.date_of_birth = data.birthDate;
+    if (data.dateJoined !== undefined) updateData.date_joined = data.dateJoined;
     if (data.gender !== undefined) updateData.gender = data.gender;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.address !== undefined) updateData.address = data.address;
@@ -675,17 +688,47 @@ class PlayersService {
             .update({ is_active: data.isActive, updated_at: new Date() });
         }
       }
+      if (data.password !== undefined) {
+        if (!player.user_id) {
+          throw new BadRequestError("This player does not have a login account to reset.");
+        }
+        const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
+        const updatedAuthRows = await trx("auth_users")
+          .where({ id: player.user_id, role: "player" })
+          .whereNull("deleted_at")
+          .update({ password_hash: passwordHash, updated_at: new Date() });
+        if (!updatedAuthRows) {
+          throw new BadRequestError("Player login account was not found.");
+        }
+        await trx("auth_password_resets")
+          .where({ user_id: player.user_id, is_used: false })
+          .update({ is_used: true, updated_at: new Date() });
+      }
       await this._saveExtendedPlayerData(trx, row, data, actor, coachProfile);
       return row;
     });
 
+    let nextGroupId = data.groupId || null;
+    if (data.markProfileComplete && !nextGroupId && !currentGroupAssignment) {
+      const autoGroup = Number.isInteger(nextBirthYear)
+        ? actor.role === "coach"
+          ? await this.repo.findCoachAutoAssignableGroup(
+              coachProfile.id,
+              nextBranchId,
+              nextBirthYear,
+            )
+          : await this.repo.findAutoAssignableGroup(nextBranchId, nextBirthYear)
+        : null;
+      nextGroupId = autoGroup?.id || null;
+    }
+
     // Handle group change
-    if (data.groupId && data.groupId !== currentGroupAssignment?.group_id) {
-      await this.repo.assignToGroup(id, data.groupId);
+    if (nextGroupId && nextGroupId !== currentGroupAssignment?.group_id) {
+      await this.repo.assignToGroup(id, nextGroupId);
       eventBus.publish(PLAYERS_EVENTS.GROUP_CHANGED, {
         playerId: id,
         oldGroupId: currentGroupAssignment?.group_id,
-        newGroupId: data.groupId,
+        newGroupId: nextGroupId,
       });
     }
 

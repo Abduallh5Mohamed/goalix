@@ -16,14 +16,48 @@ import {
 } from "@/components/ui/select";
 import { getInitials } from "@/lib/utils";
 import { Medal, RefreshCw, Trophy } from "lucide-react";
-import { useGetGroupsQuery, useGetWeeklyRankingsQuery } from "@/lib/store/api/adminApi";
+import {
+  useGetAdminRankingSystemInputsQuery,
+  useGetGroupsQuery,
+} from "@/lib/store/api/adminApi";
+import type { RankingSystemInput } from "@/lib/store/api/calendarApi";
+
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const scoreValue = (row: RankingSystemInput) =>
+  numberValue(row.final_api_response?.weekly_score ?? row.weekly_score);
+
+const rankValue = (row: RankingSystemInput) =>
+  row.final_api_response?.rank ?? row.rank;
+
+const sortByModelRank = (rows: RankingSystemInput[]) =>
+  [...rows].sort((a, b) => {
+    const rankDiff = rankValue(a) - rankValue(b);
+    if (rankDiff) return rankDiff;
+    const scoreDiff = (scoreValue(b) ?? -1) - (scoreValue(a) ?? -1);
+    if (scoreDiff) return scoreDiff;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""));
+  });
+
+const formatScore = (value: unknown) => {
+  const numeric = numberValue(value);
+  if (numeric === null) return "-";
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
+};
 
 export default function WeeklyRankingsPage() {
   const router = useRouter();
   const [selectedGroup, setSelectedGroup] = useState("all");
 
-  const { data, isLoading, isError, refetch } = useGetWeeklyRankingsQuery(
-    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 100 } : { limit: 100 }
+  const { data, isLoading, isError, refetch } = useGetAdminRankingSystemInputsQuery(
+    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 500 } : { limit: 500 }
   );
   const { data: groups } = useGetGroupsQuery({});
 
@@ -49,7 +83,12 @@ export default function WeeklyRankingsPage() {
     );
   }
 
-  const rankings = [...(data?.data ?? [])].sort((a, b) => a.rank - b.rank);
+  const rows = data?.data ?? [];
+  const latestWeek = rows
+    .map((row) => String(row.week_start || ""))
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a))[0];
+  const rankings = sortByModelRank(rows.filter((row) => row.week_start === latestWeek));
   const medalColor = (rank: number) =>
     rank === 1 ? "text-amber-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-600" : "";
 
@@ -57,7 +96,7 @@ export default function WeeklyRankingsPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Weekly Rankings"
-        description="Current week leaderboard by group."
+        description="Latest weekly Ranking System output, using the same model order shown to coaches."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
           { label: "Rankings" },
@@ -97,23 +136,25 @@ export default function WeeklyRankingsPage() {
             >
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="flex h-10 w-10 items-center justify-center">
-                  {ranking.rank <= 3 ? (
-                    <Medal className={`h-6 w-6 ${medalColor(ranking.rank)}`} />
+                  {rankValue(ranking) <= 3 ? (
+                    <Medal className={`h-6 w-6 ${medalColor(rankValue(ranking))}`} />
                   ) : (
-                    <span className="text-lg font-bold text-muted-foreground">#{ranking.rank}</span>
+                    <span className="text-lg font-bold text-muted-foreground">#{rankValue(ranking)}</span>
                   )}
                 </div>
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-primary/20 text-sm text-primary">
-                    {getInitials(ranking.player_name)}
+                    {getInitials(ranking.player_name || "Player")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground">{ranking.player_name}</p>
-                  <p className="text-xs text-muted-foreground">{ranking.group_name}</p>
+                  <p className="font-medium text-foreground">{ranking.player_name || "Player"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[ranking.position, ranking.role_family, latestWeek].filter(Boolean).join(" - ")}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-primary">{parseFloat(ranking.total_score).toFixed(1)}</p>
+                  <p className="text-lg font-bold text-primary">{formatScore(scoreValue(ranking))}</p>
                   <p className="text-[10px] text-muted-foreground">points</p>
                 </div>
               </CardContent>

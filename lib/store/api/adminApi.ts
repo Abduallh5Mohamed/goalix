@@ -1,5 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "./baseQuery";
+import type { RankingSystemInput } from "./calendarApi";
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
 export interface Pagination {
@@ -329,6 +330,23 @@ export interface AuthUser {
   totpVerifiedAt?: string | null;
 }
 
+export interface PasswordResetRequest {
+  id: string;
+  userId: string;
+  role: "admin" | "coach" | "player" | "parent";
+  username: string | null;
+  email: string | null;
+  phone: string | null;
+  playerId: string | null;
+  playerName: string | null;
+  displayName: string;
+  status: "pending" | "expired" | "resolved";
+  expiresAt: string;
+  isUsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Setup2FAResponse {
   secret: string;
   qrCode: string;
@@ -542,6 +560,10 @@ export interface BirthYearRange {
   fromYear: number;
   toYear: number;
   label?: string;
+  createdByRole?: "admin" | "coach";
+  createdByUserId?: string | null;
+  createdByCoachId?: string | null;
+  createdByName?: string | null;
 }
 
 export interface BirthYearGroup {
@@ -741,7 +763,7 @@ export interface AdminRoleInput {
 
 export interface CreateAdminAccessUserInput {
   fullName: string;
-  accountRole: "admin" | "coach" | "parent";
+  accountRole: "admin" | "coach";
   email?: string | null;
   phone: string;
   username: string;
@@ -978,6 +1000,23 @@ export const adminApi = createApi({
         return `/rankings/monthly?${params}`;
       },
       transformResponse: (res: ApiListResponse<RankingRow>) => toPaginated(res),
+      providesTags: ["Rankings"],
+    }),
+
+    getAdminRankingSystemInputs: builder.query<
+      PaginatedResponse<RankingSystemInput>,
+      { groupId?: string; page?: number; limit?: number } | void
+    >({
+      query: (args) => {
+        const params = new URLSearchParams({
+          page: String(args?.page ?? 1),
+          limit: String(args?.limit ?? 500),
+        });
+        if (args?.groupId) params.set("groupId", args.groupId);
+        return `/admin/ranking-system-inputs?${params}`;
+      },
+      transformResponse: (res: ApiListResponse<RankingSystemInput>) =>
+        toPaginated(res),
       providesTags: ["Rankings"],
     }),
 
@@ -1283,6 +1322,12 @@ export const adminApi = createApi({
       providesTags: ["AccessControl"],
     }),
 
+    getAdminPasswordResetRequests: builder.query<PasswordResetRequest[], void>({
+      query: () => "/admin/password-reset-requests",
+      transformResponse: (res: { data: PasswordResetRequest[] }) => res.data,
+      providesTags: ["AccessControl"],
+    }),
+
     createAdminRole: builder.mutation<AdminRole, AdminRoleInput>({
       query: (body) => ({ url: "/admin/settings/roles", method: "POST", body }),
       transformResponse: (res: { data: AdminRole }) => res.data,
@@ -1419,6 +1464,7 @@ export const {
   useGetAttendanceOverviewQuery,
   useGetWeeklyRankingsQuery,
   useGetMonthlyRankingsQuery,
+  useGetAdminRankingSystemInputsQuery,
   useGetNotificationsQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
@@ -1451,6 +1497,7 @@ export const {
   useCreateCoachAssignmentMutation,
   useUploadCoachAssignmentFileMutation,
   useGetAdminAccessControlQuery,
+  useGetAdminPasswordResetRequestsQuery,
   useCreateAdminRoleMutation,
   useCreateAdminAccessUserMutation,
   useUpdateAdminRoleMutation,

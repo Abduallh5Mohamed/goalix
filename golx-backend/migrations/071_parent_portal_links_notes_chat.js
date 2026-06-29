@@ -168,7 +168,7 @@ exports.up = async function up(knex) {
   await knex.raw(`
     ALTER TABLE chat_conversations
     ADD CONSTRAINT chat_conversations_type_check
-    CHECK (type IN ('admin_coach', 'coach_player', 'admin_player_session', 'parent_coach'))
+    CHECK (type IN ('admin_coach', 'coach_player', 'admin_player_session', 'chat_group', 'parent_coach'))
   `);
   await knex.raw(`
     CREATE UNIQUE INDEX IF NOT EXISTS chat_parent_coach_player_open_pair_idx

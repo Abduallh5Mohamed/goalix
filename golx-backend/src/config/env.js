@@ -23,6 +23,7 @@ const envSchema = z.object({
     AUTH_SESSION_LAST_SEEN_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(300),
     AUTH_SESSION_LAST_SEEN_JITTER_SECONDS: z.coerce.number().int().min(0).default(60),
     AUTH_USER_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).default(120),
+    AUTH_PERMISSIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(30),
     ACADEMY_BRANCHES_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).default(120),
     NOTIFICATION_UNREAD_COUNT_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(30),
     CHAT_CONVERSATIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(15),
@@ -65,8 +66,7 @@ const envSchema = z.object({
     ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
 
     // Cookie signing secret
-<<<<<<< HEAD
-    COOKIE_SECRET: z.string().min(32).default('change-this-to-a-random-32-char-secret-in-production'),
+    COOKIE_SECRET: z.string().min(32).default(DEFAULT_COOKIE_SECRET),
 
     // HTTP server
     HTTP_LISTEN_BACKLOG: z.coerce.number().int().min(128).default(8192),
@@ -78,9 +78,6 @@ const envSchema = z.object({
     SLOW_QUERY_LOG_MS: z.coerce.number().int().min(0).default(250),
     SLOW_QUERY_SQL_MAX_CHARS: z.coerce.number().int().min(200).default(2000),
     SLOW_REQUEST_LOG_MS: z.coerce.number().int().min(0).default(1000),
-=======
-    COOKIE_SECRET: z.string().min(32).default(DEFAULT_COOKIE_SECRET),
->>>>>>> de89f1e66e55b89ad33d06e72b75d3e4a875aef6
 });
 
 let env;

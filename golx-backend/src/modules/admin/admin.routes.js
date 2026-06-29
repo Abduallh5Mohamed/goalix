@@ -34,6 +34,7 @@ function adminRoutes(controller) {
     );
 
     router.get('/settings/access-control', rbac('manage_roles'), controller.getAccessControl);
+    router.get('/password-reset-requests', rbac('manage_users'), controller.listPasswordResetRequests);
     router.post('/settings/users', rbac('manage_roles'), validate({ body: createAccessUserSchema }), controller.createAccessUser);
     router.post('/settings/roles', rbac('manage_roles'), validate({ body: roleBodySchema }), controller.createRole);
     router.patch('/settings/roles/:id', rbac('manage_roles'), validate({ params: uuidParam, body: roleUpdateSchema }), controller.updateRole);

@@ -34,15 +34,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/auth/auth-context";
-import { forgetAuthSession, hasAuthSessionMarker, rememberAuthSession } from "@/lib/auth/session";
+import { hasAuthSessionMarker } from "@/lib/auth/session";
+import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { getApiBaseUrl, getSocketBaseUrl } from "@/lib/api/baseUrl";
-
-const API_BASE = getApiBaseUrl();
-
-type ChatRole = "admin" | "coach" | "player";
-type ContactType = "admin" | "coach" | "player";
-import { getApiBaseUrl } from "@/lib/api/baseUrl";
 import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
+import { useAppDispatch } from "@/lib/store/hooks";
+import { loginSuccess, logout } from "@/lib/store/slices/authSlice";
+import type { UserRole } from "@/lib/types";
 
 const API_BASE = getApiBaseUrl();
 
@@ -90,6 +88,7 @@ const copy = {
     admins: "Admins",
     players: "Players",
     parents: "Parents",
+    groupSearch: "Search people to add...",
     imageTooLarge: "Chat image must be 8MB or smaller.",
     deleteFailed: "Unable to delete message",
     read: "Read",
@@ -144,6 +143,7 @@ const copy = {
     admins: "الإدارة",
     players: "اللاعبون",
     parents: "أولياء الأمور",
+    groupSearch: "ابحث عن الأشخاص لإضافتهم...",
     imageTooLarge: "يجب ألا تتجاوز صورة الشات 8 ميجابايت.",
     deleteFailed: "تعذر حذف الرسالة",
     read: "تمت القراءة",
@@ -161,14 +161,6 @@ type ChatCopy = Record<keyof typeof copy.en, string>;
 
 type ChatRole = "admin" | "coach" | "player" | "parent";
 type ContactType = "admin" | "coach" | "player" | "parent";
-
-function getSocketBaseUrl() {
-  if (API_BASE) return API_BASE;
-  if (typeof window === "undefined" || process.env.NODE_ENV !== "development") {
-    return API_BASE;
-  }
-  return `${window.location.protocol}//${window.location.hostname}:3000`;
-}
 
 type ConversationType =
   | "admin_coach"
@@ -259,6 +251,27 @@ type ApiEnvelope<T> = {
   error?: { message?: string };
 };
 
+function mapApiUser(apiUser: Record<string, unknown>) {
+  return {
+    id: apiUser.id as string,
+    email: (apiUser.email as string) ?? "",
+    username: (apiUser.username as string) ?? undefined,
+    fullName:
+      (apiUser.full_name as string) ??
+      (apiUser.fullName as string) ??
+      (apiUser.username as string) ??
+      (apiUser.email as string),
+    role: apiUser.role as UserRole,
+    avatarUrl: (apiUser.avatar_url as string) ?? "",
+    phone: (apiUser.phone as string) ?? "",
+    linkedPlayerId:
+      (apiUser.linkedPlayerId as string | null) ??
+      (apiUser.linked_player_id as string | null) ??
+      null,
+    createdAt: (apiUser.created_at as string) ?? new Date().toISOString(),
+  };
+}
+
 async function apiJson<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   const headers = new Headers(init?.headers);
   if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -272,16 +285,8 @@ async function apiJson<T>(path: string, init?: RequestInit, retry = true): Promi
   });
 
   if (res.status === 401 && retry && hasAuthSessionMarker()) {
-    const refresh = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => null);
-    if (!refresh?.ok) {
-      forgetAuthSession();
-    } else {
-      rememberAuthSession();
-    }
-    return apiJson<T>(path, init, false);
+    const refresh = await refreshAuthSession();
+    if (refresh.ok) return apiJson<T>(path, init, false);
   }
 
   const payload = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
@@ -310,7 +315,10 @@ function conversationLabel(conversation: Conversation, t: ChatCopy) {
     return groupMembersPreview(conversation);
   }
   if (conversation.type === "admin_player_session") return t.adminSession;
-  if (conversation.type === "admin_coach") return t.admin;
+  if (conversation.target.type === "admin") return t.admin;
+  if (conversation.target.type === "coach") return t.coach;
+  if (conversation.target.type === "player") return t.player;
+  if (conversation.target.type === "parent") return t.parent;
   if (conversation.type === "parent_coach") {
     return conversation.context?.playerName
       ? `${t.familyChat} - ${conversation.context.playerName}`
@@ -360,6 +368,13 @@ function formatContactSubtitle(subtitle: string | null | undefined, t: ChatCopy)
   return labels[normalized] || subtitle.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function contactRoleLabel(type: ContactType, t: ChatCopy) {
+  if (type === "admin") return t.admin;
+  if (type === "coach") return t.coach;
+  if (type === "player") return t.player;
+  return t.parent;
+}
+
 function chatErrorMessage(error: unknown, t: ChatCopy, fallback: string) {
   const message = error instanceof Error ? error.message : "";
   if (/cannot contact coaches|can only chat about linked children/i.test(message)) {
@@ -401,7 +416,8 @@ const maxChatImageBytes = 8 * 1024 * 1024;
 export function ChatWorkspace({ role }: { role: ChatRole }) {
   const language = useDashboardLanguage();
   const t = copy[language];
-  const { user, isAuthenticated } = useCurrentUser();
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated, isInitialized } = useCurrentUser();
   const [contacts, setContacts] = useState<ContactsResponse>({});
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -418,9 +434,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const [connectionWarning, setConnectionWarning] = useState("");
   const [groupComposerOpen, setGroupComposerOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
   const [groupMemberUserIds, setGroupMemberUserIds] = useState<string[]>([]);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
+  const [realtimeReady, setRealtimeReady] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const selectedRef = useRef<string | null>(null);
   const readMarkingRef = useRef<string | null>(null);
@@ -488,16 +506,35 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     setEditingMessage((current) => (current?.id === message.id ? null : current));
   }, []);
 
+  const ensureFreshSession = useCallback(async () => {
+    if (!hasAuthSessionMarker()) return true;
+    const refresh = await refreshAuthSession();
+    if (refresh.ok) {
+      const refreshedUser = mapApiUser(refresh.user);
+      dispatch(loginSuccess({ user: refreshedUser, role: refreshedUser.role }));
+      return true;
+    }
+    if (refresh.unauthorized) {
+      dispatch(logout());
+      return false;
+    }
+    return true;
+  }, [dispatch]);
+
   const loadConversations = useCallback(async () => {
+    const canContinue = await ensureFreshSession();
+    if (!canContinue) return;
     const conversationsData = await apiJson<Conversation[]>("/conversations");
     setConversations(conversationsData);
     setSelectedId((current) => current || conversationsData[0]?.id || null);
-  }, []);
+  }, [ensureFreshSession]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
+      const canContinue = await ensureFreshSession();
+      if (!canContinue) return;
       const [contactsData, conversationsData] = await Promise.all([
         apiJson<ContactsResponse>("/contacts"),
         apiJson<Conversation[]>("/conversations"),
@@ -510,9 +547,10 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureFreshSession]);
 
   useEffect(() => {
+    if (!isInitialized) return;
     if (!isAuthenticated) {
       setLoading(false);
       setContacts({});
@@ -520,16 +558,35 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setMessages([]);
       setSelectedId(null);
       setConnectionWarning("");
+      setRealtimeReady(false);
       return;
     }
     void load();
-  }, [isAuthenticated, load]);
+  }, [isAuthenticated, isInitialized, load]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isInitialized || !isAuthenticated) return;
+    let cancelled = false;
+    setRealtimeReady(false);
+
+    const refreshBeforeRealtime = async () => {
+      const canContinue = await ensureFreshSession();
+
+      if (!cancelled && canContinue) setRealtimeReady(true);
+    };
+
+    void refreshBeforeRealtime();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureFreshSession, isAuthenticated, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated || !realtimeReady) return;
     const socket = io(getSocketBaseUrl(), {
       withCredentials: true,
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       reconnectionAttempts: 5,
     });
     socketRef.current = socket;
@@ -555,7 +612,15 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [handleMessageDeleted, isAuthenticated, loadConversations, upsertMessage, upsertMessages]);
+  }, [
+    handleMessageDeleted,
+    isAuthenticated,
+    isInitialized,
+    loadConversations,
+    realtimeReady,
+    upsertMessage,
+    upsertMessages,
+  ]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -567,7 +632,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   }, [selectedId]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedId) {
+    if (!isInitialized || !isAuthenticated || !selectedId) {
       setMessages([]);
       return;
     }
@@ -577,10 +642,10 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       .then(setMessages)
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to load messages"))
       .finally(() => setMessagesLoading(false));
-  }, [isAuthenticated, selectedId]);
+  }, [isAuthenticated, isInitialized, selectedId]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedId || !user?.id) return;
+    if (!isInitialized || !isAuthenticated || !selectedId || !user?.id) return;
     if (
       !messages.some(
         (message) => message.sender_user_id !== user.id && !message.read_at,
@@ -598,7 +663,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           readMarkingRef.current = null;
         }
       });
-  }, [isAuthenticated, messages, selectedId, upsertMessages, user?.id]);
+  }, [isAuthenticated, isInitialized, messages, selectedId, upsertMessages, user?.id]);
 
   const filteredContacts = useMemo(() => {
     const needle = normalizeSearch(query);
@@ -630,12 +695,27 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const groupCandidateContacts = useMemo(() => {
     if (role !== "coach") return [];
     const byUserId = new Map<string, Contact>();
-    [...(contacts.admins || []), ...(contacts.players || [])].forEach((contact) => {
+    [
+      ...(contacts.admins || []),
+      ...(contacts.coaches || []),
+      ...(contacts.players || []),
+      ...(contacts.parents || []),
+    ].forEach((contact) => {
       if (!contact.user_id || contact.user_id === user?.id) return;
       byUserId.set(contact.user_id, contact);
     });
     return [...byUserId.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [contacts.admins, contacts.players, role, user?.id]);
+  }, [contacts.admins, contacts.coaches, contacts.parents, contacts.players, role, user?.id]);
+
+  const filteredGroupCandidateContacts = useMemo(() => {
+    const needle = normalizeSearch(groupSearch);
+    if (!needle) return groupCandidateContacts;
+    return groupCandidateContacts.filter((contact) =>
+      normalizeSearch(
+        `${contact.name} ${contact.subtitle || ""} ${contactRoleLabel(contact.type, t)}`,
+      ).includes(needle),
+    );
+  }, [groupCandidateContacts, groupSearch, t]);
 
   const toggleGroupMember = useCallback((userId: string) => {
     setGroupMemberUserIds((current) =>
@@ -648,6 +728,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const resetGroupComposer = useCallback(() => {
     setGroupComposerOpen(false);
     setGroupName("");
+    setGroupSearch("");
     setGroupMemberUserIds([]);
     setCreatingGroup(false);
   }, []);
@@ -715,6 +796,22 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           parentUserId: contact.user_id,
           playerId: contact.player_id,
         };
+      } else if (role === "coach" && contact.type === "coach") {
+        const conversation = await apiJson<Conversation>("/conversations", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "chat_group",
+            groupName: contact.name,
+            memberUserIds: [contact.user_id],
+          }),
+        });
+        upsertConversation(conversation);
+        setSelectedId(conversation.id);
+        setGroupDetailsOpen(false);
+        setEditingMessage(null);
+        setBody("");
+        setImage(null);
+        return;
       } else {
         return;
       }
@@ -843,7 +940,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     ? selected.group_members || []
     : [];
 
-  if (!isAuthenticated) {
+  if (!isInitialized || !isAuthenticated) {
     return (
       <div className="goalix-chat-empty-auth">
         {t.signInAgain}
@@ -1266,8 +1363,17 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                   placeholder="Group name"
                   className="goalix-chat-group-input"
                 />
+                <div className="goalix-chat-search is-group">
+                  <Search />
+                  <Input
+                    value={groupSearch}
+                    onChange={(event) => setGroupSearch(event.target.value)}
+                    className="goalix-chat-search-input"
+                    placeholder={t.groupSearch}
+                  />
+                </div>
                 <div className="goalix-chat-group-member-list">
-                  {groupCandidateContacts.map((contact) => {
+                  {filteredGroupCandidateContacts.map((contact) => {
                     const selectedMember = groupMemberUserIds.includes(
                       contact.user_id,
                     );
@@ -1292,6 +1398,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                         <span className="goalix-chat-list-copy">
                           <span className="goalix-chat-list-title">
                             {contact.name}
+                            <Badge variant="outline" className="goalix-chat-role-badge">
+                              {contactRoleLabel(contact.type, t)}
+                            </Badge>
                           </span>
                           {contact.subtitle && (
                             <span className="goalix-chat-list-subtitle">
@@ -1305,9 +1414,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       </label>
                     );
                   })}
-                  {groupCandidateContacts.length === 0 && (
+                  {filteredGroupCandidateContacts.length === 0 && (
                     <div className="goalix-chat-empty-state is-compact">
-                      No people available.
+                      {groupCandidateContacts.length === 0 ? "No people available." : t.noContacts}
                     </div>
                   )}
                 </div>
@@ -1354,6 +1463,14 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             <ContactSection
               title={t.admins}
               contacts={filteredContacts.admins || []}
+              onOpen={openConversation}
+              t={t}
+            />
+          )}
+          {role === "coach" && (
+            <ContactSection
+              title={t.coaches}
+              contacts={filteredContacts.coaches || []}
               onOpen={openConversation}
               t={t}
             />
@@ -1435,6 +1552,9 @@ function ContactSection({
             <span className="goalix-chat-list-copy">
               <span className="goalix-chat-list-title">
                 {contact.name}
+                <Badge variant="outline" className="goalix-chat-role-badge">
+                  {contactRoleLabel(contact.type, t)}
+                </Badge>
               </span>
               {contact.subtitle && (
                 <span className="goalix-chat-list-subtitle">

@@ -203,8 +203,24 @@ class ChatRepository {
   }
 
   async listCoachContacts(coachId, academyId) {
-    const [admins, players] = await Promise.all([
+    const [admins, coaches, players] = await Promise.all([
       this.listAcademyAdmins(academyId),
+      this.db("coach_profiles as cp")
+        .join("auth_users as au", "cp.user_id", "au.id")
+        .where("cp.academy_id", academyId)
+        .whereNot("cp.id", coachId)
+        .where("au.role", "coach")
+        .where("au.is_active", true)
+        .whereNull("cp.deleted_at")
+        .whereNull("au.deleted_at")
+        .select(
+          this.db.raw("'coach' as type"),
+          "cp.id",
+          "cp.user_id",
+          "cp.full_name as name",
+          "cp.specialization as subtitle",
+        )
+        .orderBy("cp.full_name", "asc"),
       this.findCoachScopedPlayers(coachId, academyId, {
         requireUser: true,
       }),
@@ -240,6 +256,7 @@ class ChatRepository {
       : [];
     return {
       admins,
+      coaches,
       players: players.map((player) => ({
         type: "player",
         id: player.id,
@@ -504,6 +521,8 @@ class ChatRepository {
         ),
         this.db.raw(
           "COALESCE(parent_user.username, parent_user.email, parent_user.phone, 'Parent') as parent_name",
+        ),
+        this.db.raw(
           `(SELECT COALESCE(array_agg(cgm.user_id::text ORDER BY cgm.created_at), ARRAY[]::text[])
               FROM chat_group_members cgm
              WHERE cgm.conversation_id = c.id) as group_member_user_ids`,
@@ -584,10 +603,16 @@ class ChatRepository {
             },
           );
         } else if (user.role === "player") {
-          q.where("c.player_user_id", user.userId);
-        } else if (user.role === "parent") {
-          q.where("c.parent_user_id", user.userId);
           q.where("c.player_user_id", user.userId).orWhereExists(
+            function groupMembership() {
+              this.select("cgm.conversation_id")
+                .from("chat_group_members as cgm")
+                .whereRaw("cgm.conversation_id = c.id")
+                .where("cgm.user_id", user.userId);
+            },
+          );
+        } else if (user.role === "parent") {
+          q.where("c.parent_user_id", user.userId).orWhereExists(
             function groupMembership() {
               this.select("cgm.conversation_id")
                 .from("chat_group_members as cgm")

@@ -42,6 +42,13 @@ class CoachesController {
         } catch (err) { next(err); }
     };
 
+    getMeManageBranches = async (req, res, next) => {
+        try {
+            const data = await this.service.getMyManageBranches(req.user.userId, req.user.academyId);
+            res.json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
     getMeBirthdays = async (req, res, next) => {
         try {
             const data = await this.service.getMyBirthdays(req.user.userId, req.user.academyId);
@@ -60,6 +67,13 @@ class CoachesController {
         try {
             const data = await this.service.createMyBirthYear(req.user.userId, req.user.academyId, req.body);
             res.status(201).json(ApiResponse.success(data));
+        } catch (err) { next(err); }
+    };
+
+    deleteMeBirthYear = async (req, res, next) => {
+        try {
+            const data = await this.service.deleteMyBirthYear(req.user.userId, req.user.academyId, req.params.id);
+            res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
     };
 

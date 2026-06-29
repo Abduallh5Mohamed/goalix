@@ -40,7 +40,11 @@ const refreshSchema = z.object({
 });
 
 const forgotPasswordSchema = z.object({
-    email: z.string().email('Invalid email format'),
+    email: z.string().email('Invalid email format').optional(),
+    username: usernameSchema.optional(),
+}).refine((data) => data.email || data.username, {
+    message: 'Email or username is required',
+    path: ['email'],
 });
 
 const resetPasswordSchema = z.object({

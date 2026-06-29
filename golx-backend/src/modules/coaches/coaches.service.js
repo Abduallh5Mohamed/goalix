@@ -242,7 +242,28 @@ class CoachesService {
         await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
             branchIds: [data.branchId],
         });
-        return this.academyService.createBirthYear(data, academyId);
+        return this.academyService.createBirthYear(data, academyId, {
+            role: 'coach',
+            userId,
+            coachId: coach.id,
+        });
+    }
+
+    async deleteMyBirthYear(userId, academyId, birthYearId) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const birthYear = await this.repo.findBirthYearById(birthYearId, academyId);
+        if (!birthYear) throw new NotFoundError('BirthYear', birthYearId);
+
+        await this._assertCoachPermission(coach, academyId, 'can_manage_groups', {
+            branchIds: [birthYear.branch_id],
+        });
+
+        if (birthYear.created_by_role !== 'coach' || birthYear.created_by_coach_id !== coach.id) {
+            throw new ForbiddenError('You can only delete birth years you created');
+        }
+
+        await this.academyService.deleteBirthYear(birthYearId, academyId);
+        return { message: 'Birth year deleted' };
     }
 
     async getMyGroupDetail(userId, academyId, groupId, options = {}) {
@@ -1196,6 +1217,24 @@ class CoachesService {
         return this.repo.findCoachAccessStatus(coach.id, academyId);
     }
 
+    async getMyManageBranches(userId, academyId) {
+        const coach = await this._getCurrentCoach(userId, academyId);
+        const rules = await this.repo.findCoachAccessRules(coach.id, academyId);
+        const branchesById = new Map();
+
+        rules
+            .filter((rule) => rule.can_manage_groups === true)
+            .forEach((rule) => {
+                if (!rule.branch_id) return;
+                branchesById.set(rule.branch_id, {
+                    id: rule.branch_id,
+                    name: rule.branch_name || 'Branch',
+                });
+            });
+
+        return [...branchesById.values()].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     async getMyBirthdays(userId, academyId) {
         const coach = await this._getCurrentCoach(userId, academyId);
         const rows = await this.repo.findCoachAccessBirthYears(coach.id, academyId);
@@ -1210,6 +1249,11 @@ class CoachesService {
             accessType: row.access_type,
             groupCount: Number(row.group_count || 0),
             playerCount: Number(row.player_count || 0),
+            createdByRole: row.created_by_role || 'admin',
+            createdByUserId: row.created_by_user_id || null,
+            createdByCoachId: row.created_by_coach_id || null,
+            createdByName: row.created_by_name || (row.created_by_role === 'coach' ? 'Coach' : 'Admin'),
+            canDelete: row.created_by_role === 'coach' && row.created_by_coach_id === coach.id,
         }));
     }
 

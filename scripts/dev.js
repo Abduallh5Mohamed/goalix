@@ -248,7 +248,7 @@ async function runManagedDev() {
 
 async function main() {
   runNodeScript("ensure-python-models.js");
-  runNodeScript("ensure-golx-redis.js");
+  runNodeScript("ensure-golx-redis.js", { GOALIX_REDIS_OPTIONAL: "true" });
 
   const apiAlreadyRunning = await isGoalixApiRunning();
   if (apiAlreadyRunning) {

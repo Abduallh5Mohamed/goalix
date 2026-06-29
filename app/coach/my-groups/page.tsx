@@ -34,6 +34,24 @@ import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
 import { Clock, ChevronRight, Loader2, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 
+const getApiErrorMessage = (err: unknown, fallback: string) => {
+  const apiError = err as {
+    data?: {
+      error?: {
+        message?: string;
+        details?: Array<{ message?: string }>;
+      };
+      errors?: Array<{ message?: string }>;
+    };
+  };
+  return (
+    apiError.data?.error?.details?.[0]?.message ??
+    apiError.data?.errors?.[0]?.message ??
+    apiError.data?.error?.message ??
+    fallback
+  );
+};
+
 export default function CoachMyGroupsPage() {
   const { can } = useCoachPermissions();
   const canManageGroups = can("can_manage_groups");
@@ -117,6 +135,7 @@ export default function CoachMyGroupsPage() {
     toYear: "",
     label: "",
   });
+  const [birthYearFormError, setBirthYearFormError] = useState("");
   const [
     createBirthYear,
     { isLoading: isCreatingBirthYear, error: birthYearError },
@@ -142,6 +161,7 @@ export default function CoachMyGroupsPage() {
       birthYearId: "",
       playerIds: [],
     }));
+    setBirthYearFormError("");
     setPlayerSearch("");
   };
 
@@ -196,6 +216,7 @@ export default function CoachMyGroupsPage() {
 
   const handleCreateBirthYear = async () => {
     if (!canCreateBirthYear) return;
+    setBirthYearFormError("");
     try {
       const result = await createBirthYear({
         branchId: form.branchId,
@@ -205,8 +226,13 @@ export default function CoachMyGroupsPage() {
       }).unwrap();
       setForm((prev) => ({ ...prev, birthYearId: result.id }));
       setBirthYearForm({ fromYear: "", toYear: "", label: "" });
-    } catch {
-      // Error handled via birthYearError state
+    } catch (err) {
+      setBirthYearFormError(
+        getApiErrorMessage(
+          err,
+          "Could not create the birth year. Please check the values.",
+        ),
+      );
     }
   };
 
@@ -432,9 +458,10 @@ export default function CoachMyGroupsPage() {
                   {isCreatingBirthYear ? "Adding..." : "Add"}
                 </Button>
               </div>
-              {birthYearError && (
+              {(birthYearFormError || birthYearError) && (
                 <p className="mt-2 text-xs text-red-400">
-                  Could not create the birth year. Please check the values.
+                  {birthYearFormError ||
+                    "Could not create the birth year. Please check the values."}
                 </p>
               )}
             </div>

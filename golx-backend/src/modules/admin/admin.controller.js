@@ -48,6 +48,15 @@ class AdminController {
         }
     };
 
+    listPasswordResetRequests = async (req, res, next) => {
+        try {
+            const data = await this.service.listPasswordResetRequests(req.user.academyId || null);
+            res.json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
     createAccessUser = async (req, res, next) => {
         try {
             const data = await this.service.createAccessUser(

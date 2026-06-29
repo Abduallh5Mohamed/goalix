@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { DashboardFrame } from "@/components/layout/DashboardFrame";
 import { DashboardAccessState } from "@/components/auth/DashboardAccessState";
 import { useCurrentUser } from "@/lib/auth/auth-context";
 import { ROLE_ROUTES } from "@/lib/constants";
+
+function destinationForRole(role: string, pathname: string) {
+  const adminPlayerMatch = pathname.match(/^\/admin\/players\/([^/]+)$/);
+  if (role === "coach" && adminPlayerMatch) {
+    return `/coach/players/${adminPlayerMatch[1]}`;
+  }
+  if (role === "coach" && pathname === "/admin/players") {
+    return "/coach/players";
+  }
+  return ROLE_ROUTES[role];
+}
 
 export default function AdminLayout({
   children,
@@ -12,6 +24,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isInitialized, role } = useCurrentUser();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -20,12 +33,12 @@ export default function AdminLayout({
       ? "/admin-login"
       : role !== "admin"
         ? role
-          ? ROLE_ROUTES[role]
+          ? destinationForRole(role, pathname)
           : "/admin-login"
         : null;
 
     if (destination) window.location.replace(destination);
-  }, [isAuthenticated, isInitialized, role]);
+  }, [isAuthenticated, isInitialized, pathname, role]);
 
   if (!isInitialized || !isAuthenticated || role !== "admin") {
     return (

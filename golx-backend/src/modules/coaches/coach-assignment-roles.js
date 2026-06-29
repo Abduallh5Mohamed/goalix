@@ -256,6 +256,10 @@ const ROLE_BY_VALUE = new Map(
 const COACH_ASSIGNMENT_ROLE_VALUES = Object.freeze(
   ROLE_DEFINITIONS.map((role) => role.value),
 );
+const ASSIGNABLE_COACH_ACCESS_ROLE_VALUES = Object.freeze([
+  "head_coach",
+  "assistant_coach",
+]);
 const PERMISSION_COLUMNS = Object.freeze(
   PERMISSIONS.map(({ column }) => column),
 );
@@ -278,7 +282,9 @@ const permissionColumnsForRole = (role) => {
 };
 
 const publicRoleCatalog = () =>
-  ROLE_DEFINITIONS.map((role) => ({
+  ROLE_DEFINITIONS
+    .filter((role) => ASSIGNABLE_COACH_ACCESS_ROLE_VALUES.includes(role.value))
+    .map((role) => ({
     value: role.value,
     label: role.label,
     description: role.description,
@@ -290,6 +296,7 @@ const publicRoleCatalog = () =>
   }));
 
 module.exports = {
+  ASSIGNABLE_COACH_ACCESS_ROLE_VALUES,
   COACH_ASSIGNMENT_ROLE_VALUES,
   PERMISSIONS,
   PERMISSION_COLUMNS,

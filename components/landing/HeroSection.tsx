@@ -1,15 +1,13 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
   BrainCircuit,
   ClipboardList,
-  FileText,
-  LineChart,
   PlaySquare,
   Target,
   Trophy,
@@ -457,13 +455,6 @@ const workSteps = [
   { icon: BrainCircuit, title: "Analyze", text: "Our AI processes every movement and event." },
   { icon: ClipboardList, title: "Insights", text: "Get clear, actionable insights instantly." },
   { icon: BarChart3, title: "Improve", text: "Make smarter decisions and elevate performance." },
-];
-
-const mvpCards = [
-  { icon: Target, title: "Match Analysis", text: "Break down matches with AI-powered event detection and heatmaps." },
-  { icon: Users, title: "Player Performance", text: "Track key metrics and evaluate individual performance." },
-  { icon: LineChart, title: "Team Insights", text: "Identify strengths, weaknesses and improvement areas." },
-  { icon: FileText, title: "Custom Reports", text: "Generate and share reports with your coaching staff." },
 ];
 
 function GoalixAddedSections({
