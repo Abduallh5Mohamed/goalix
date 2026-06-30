@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const db = require('../infrastructure/database');
 const { redis } = require('../infrastructure/redis');
@@ -10,6 +9,7 @@ const {
     getCachedSession,
     markSessionSeen,
 } = require('../shared/auth-session-cache');
+const { verifyAccessToken } = require('../shared/jwt');
 
 const readAccessToken = (req) => {
     const authHeader = req.headers.authorization;
@@ -98,13 +98,37 @@ const assertActiveAdminAccount = async (decoded) => {
     }
 };
 
-const authenticateAccessToken = async (token) => {
+const mfaEnforcedRoles = new Set(
+    String(env.MFA_ENFORCED_ROLES || '')
+        .split(',')
+        .map((role) => role.trim())
+        .filter(Boolean),
+);
+
+const assertActiveAuthUser = async (decoded) => {
+    const user = await db('auth_users')
+        .where({ id: decoded.userId, is_active: true })
+        .whereNull('deleted_at')
+        .first('id', 'role', 'totp_enabled', 'totp_verified_at');
+
+    if (!user) {
+        throw new UnauthorizedError('Account is deactivated');
+    }
+    return user;
+};
+
+const authenticateAccessToken = async (token, { allowMfaSetup = false } = {}) => {
     if (!token) {
         throw new UnauthorizedError('Missing access token');
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
+    const decoded = verifyAccessToken(token);
     await assertActiveAccessSession(decoded);
+    const activeUser = await assertActiveAuthUser(decoded);
+    const mfaRequired = mfaEnforcedRoles.has(activeUser.role) && !activeUser.totp_enabled;
+    if (mfaRequired && !allowMfaSetup) {
+        throw new UnauthorizedError('MFA setup required');
+    }
     await assertActiveAdminAccount(decoded);
     return createAbility({
         userId: decoded.userId,
@@ -113,7 +137,19 @@ const authenticateAccessToken = async (token) => {
         branchId: decoded.branchId,
         linkedPlayerId: decoded.linkedPlayerId,
         sessionId: decoded.jti,
+        totpEnabled: Boolean(activeUser.totp_enabled),
+        mfaRequired,
     }, db);
+};
+
+const isMfaSetupRoute = (req) => {
+    const url = req.originalUrl || '';
+    return [
+        '/api/v1/auth/me',
+        '/api/v1/auth/logout',
+        '/api/v1/auth/2fa/setup',
+        '/api/v1/auth/2fa/verify-setup',
+    ].some((prefix) => url.startsWith(prefix));
 };
 
 /**
@@ -124,7 +160,9 @@ const authMiddleware = async (req, _res, next) => {
     const token = readAccessToken(req);
 
     try {
-        req.user = await authenticateAccessToken(token);
+        req.user = await authenticateAccessToken(token, {
+            allowMfaSetup: isMfaSetupRoute(req),
+        });
         return next();
     } catch (err) {
         if (err instanceof UnauthorizedError) return next(err);
@@ -147,7 +185,7 @@ const optionalAuth = (req, _res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
+        const decoded = verifyAccessToken(token);
         req.user = createAbility({
             userId: decoded.userId,
             role: decoded.role,

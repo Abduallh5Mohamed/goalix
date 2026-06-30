@@ -230,7 +230,6 @@ class CoachesRepository extends BaseRepository {
                     ) as main_position
                 `),
                 'pp.preferred_foot',
-                'pp.photo_url',
                 'pp.guardian_name',
                 'pp.guardian_phone',
                 'pp.profile_status',

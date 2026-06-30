@@ -11,11 +11,31 @@ function emitToUsers(userIds, event, payload) {
   }
 }
 
-function emitMessage(message, conversation, userIds) {
+function metadataFor(event) {
+  if (!event) return {};
+  return {
+    eventId: event.id,
+    sequence: Number(event.sequence),
+    occurredAt: event.occurred_at,
+    eventType: event.event_type,
+  };
+}
+
+function withMetadata(payload, event) {
+  const metadata = metadataFor(event);
+  if (!Object.keys(metadata).length) return payload;
+  if (Array.isArray(payload)) {
+    return payload.map((item) => ({ ...item, ...metadata }));
+  }
+  return { ...payload, ...metadata };
+}
+
+function emitMessage(message, conversation, userIds, event) {
   if (!io) return;
-  io.to(`chat:${message.conversation_id}`).emit("chat:message", message);
-  emitToUsers(userIds, "chat:message", message);
-  emitToUsers(userIds, "chat:conversation", conversation);
+  const payload = withMetadata(message, event);
+  io.to(`chat:${message.conversation_id}`).emit("chat:message", payload);
+  emitToUsers(userIds, "chat:message", payload);
+  emitToUsers(userIds, "chat:conversation", withMetadata(conversation, event));
 }
 
 function emitMessageUpdated(message, conversation, userIds) {
@@ -54,10 +74,11 @@ function emitNotificationsReadAll(userId) {
   emitToUsers([userId], "notification:read_all", { user_id: userId });
 }
 
-function emitMessagesRead(messages, conversation, userIds) {
+function emitMessagesRead(messages, conversation, userIds, event) {
   if (!io || !messages.length) return;
-  io.to(`chat:${conversation.id}`).emit("chat:messages_read", messages);
-  emitToUsers(userIds, "chat:messages_read", messages);
+  const payload = withMetadata(messages, event);
+  io.to(`chat:${conversation.id}`).emit("chat:messages_read", payload);
+  emitToUsers(userIds, "chat:messages_read", payload);
 }
 
 function emitConversation(conversation, userIds) {

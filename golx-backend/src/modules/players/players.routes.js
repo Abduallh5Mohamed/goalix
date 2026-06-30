@@ -1,5 +1,4 @@
 const { Router } = require("express");
-const multer = require("multer");
 const validate = require("../../middleware/validate.middleware");
 const { authMiddleware } = require("../../middleware/auth.middleware");
 const { rbac, rbacAny } = require("../../middleware/rbac.middleware");
@@ -14,39 +13,6 @@ const {
 
 function playersRoutes(controller) {
   const router = Router();
-  const playerImageUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-    fileFilter: (_req, file, cb) => {
-      if (
-        ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(
-          file.mimetype,
-        )
-      ) {
-        return cb(null, true);
-      }
-      return cb(new Error("Only PNG, JPG, JPEG, and WEBP images are allowed."));
-    },
-  }).single("image");
-  const handlePlayerImageUpload = (req, res, next) => {
-    playerImageUpload(req, res, (err) => {
-      if (!err) return next();
-      if (err instanceof multer.MulterError) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error: { code: "UPLOAD_ERROR", message: err.message },
-          });
-      }
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: { code: "UPLOAD_ERROR", message: err.message },
-        });
-    });
-  };
 
   router.use(authMiddleware);
 
@@ -61,12 +27,6 @@ function playersRoutes(controller) {
     rbacAny("manage_players", "manage_training_sessions"),
     validate({ body: createPlayerSchema }),
     controller.create,
-  );
-  router.post(
-    "/images",
-    rbacAny("manage_players", "manage_training_sessions"),
-    handlePlayerImageUpload,
-    controller.uploadPlayerImage,
   );
   router.get(
     "/:id",

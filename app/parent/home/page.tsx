@@ -374,12 +374,7 @@ export default function ParentHomePage() {
   const canViewProgress = child?.can_view_progress !== false;
   const canMessageCoach = child?.can_message_coach !== false;
   const coaches = data?.coaches ?? child?.coaches ?? [];
-  const childPhoto =
-    child?.photo_url && !/^https?:\/\//i.test(child.photo_url)
-      ? child.photo_url.startsWith("/")
-        ? child.photo_url
-        : `/${child.photo_url}`
-      : "/Player.png";
+  const childPhoto = "/Player.png";
 
   const metrics = useMemo(() => {
     const p = progress;

@@ -37,7 +37,7 @@ export interface PlayerRow {
   date_of_birth: string | null;
   level: "A" | "B" | "C" | "D" | "F" | null;
   position: string | null;
-  photo_url: string | null;
+  photo_url?: string | null;
   is_active?: boolean | null;
   profile_status?: "incomplete" | "complete";
   profile_completed_at?: string | null;
@@ -55,7 +55,7 @@ export interface PlayerDetail {
   level: string | null;
   position: string | null;
   preferred_foot: string | null;
-  photo_url: string | null;
+  photo_url?: string | null;
   date_joined?: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
@@ -88,7 +88,6 @@ export interface CreatePlayerInput {
   gender?: "male" | "female" | "other";
   address?: string;
   nationality?: string;
-  photoUrl?: string;
   isActive?: boolean;
   branchId: string;
   groupId?: string;
@@ -348,12 +347,25 @@ export interface PasswordResetRequest {
 }
 
 export interface Setup2FAResponse {
+  deviceId?: string;
+  deviceName?: string;
+  issuer?: string;
   secret: string;
   qrCode: string;
 }
 
 export interface Verify2FASetupResponse {
   backupCodes: string[];
+}
+
+export interface MfaDevice {
+  id: string;
+  deviceName: string;
+  status: "pending" | "active" | "revoked";
+  isPrimary: boolean;
+  verifiedAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
 }
 
 export interface RegisterUserInput {
@@ -415,8 +427,6 @@ export interface CoachImageUploadResponse {
   sizeBytes: number;
 }
 
-export type PlayerImageUploadResponse = CoachImageUploadResponse;
-
 // ─── Payments ────────────────────────────────────────────────────────────────
 export interface PaymentOverviewItem {
   status: string;
@@ -448,17 +458,81 @@ export interface Invoice {
 // ─── Attendance ───────────────────────────────────────────────────────────────
 export interface AttendanceOverview {
   totalTrainings: number;
+  totalRecords?: number;
+  attendedCount?: number;
+  missedCount?: number;
   avgRate: number;
   presentCount: number;
   absentCount: number;
   lateCount: number;
   excusedCount: number;
   injuredCount: number;
+  statusCounts?: {
+    present: number;
+    late: number;
+    absent: number;
+    excused: number;
+    injured: number;
+  };
+  trainingStatusCounts?: {
+    scheduled: number;
+    completed: number;
+    cancelled: number;
+  };
   byGroup: {
     groupId: string;
     groupName: string;
     rate: number;
     total: number;
+    attended?: number;
+    present?: number;
+    late?: number;
+    absent?: number;
+    excused?: number;
+    injured?: number;
+  }[];
+  byBranch?: {
+    branchId: string;
+    branchName: string;
+    rate: number;
+    total: number;
+    attended: number;
+    present: number;
+    late: number;
+    absent: number;
+    excused: number;
+    injured: number;
+  }[];
+  recentSessions?: {
+    id: string;
+    title: string;
+    startDatetime: string;
+    endDatetime: string;
+    location: string | null;
+    status: string;
+    trainingFocus: string | null;
+    intensityLevel: string | null;
+    coachName: string | null;
+    groupNames: string | null;
+    recordedCount: number;
+    attendedCount: number;
+    absentCount: number;
+    injuredCount: number;
+    rate: number;
+  }[];
+  lowAttendancePlayers?: {
+    playerId: string;
+    playerName: string;
+    position: string | null;
+    groupId: string;
+    groupName: string;
+    branchName: string;
+    total: number;
+    attended: number;
+    absent: number;
+    injured: number;
+    lastSessionAt: string | null;
+    rate: number;
   }[];
 }
 
@@ -848,7 +922,7 @@ export const adminApi = createApi({
     >({
       query: ({ id, body }) => ({ url: `/players/${id}`, method: "PUT", body }),
       transformResponse: (res: { data: PlayerDetail }) => res.data,
-      invalidatesTags: ["Players"],
+      invalidatesTags: ["Players", "AccessControl"],
     }),
 
     deletePlayer: builder.mutation<void, string>({
@@ -909,15 +983,6 @@ export const adminApi = createApi({
         return { url: "/coaches/images", method: "POST", body };
       },
       transformResponse: (res: { data: CoachImageUploadResponse }) => res.data,
-    }),
-
-    uploadPlayerImage: builder.mutation<PlayerImageUploadResponse, File>({
-      query: (file) => {
-        const body = new FormData();
-        body.append("image", file);
-        return { url: "/players/images", method: "POST", body };
-      },
-      transformResponse: (res: { data: PlayerImageUploadResponse }) => res.data,
     }),
 
     // ── Payments overview ────────────────────────────────────────────────
@@ -1010,7 +1075,7 @@ export const adminApi = createApi({
       query: (args) => {
         const params = new URLSearchParams({
           page: String(args?.page ?? 1),
-          limit: String(args?.limit ?? 500),
+          limit: String(args?.limit ?? 150),
         });
         if (args?.groupId) params.set("groupId", args.groupId);
         return `/admin/ranking-system-inputs?${params}`;
@@ -1441,6 +1506,49 @@ export const adminApi = createApi({
       transformResponse: (res: { data: { message: string } }) => res.data,
       invalidatesTags: ["CurrentUser"],
     }),
+
+    getMfaDevices: builder.query<MfaDevice[], void>({
+      query: () => "/auth/2fa/devices",
+      transformResponse: (res: { data: MfaDevice[] }) => res.data,
+      providesTags: ["CurrentUser"],
+    }),
+
+    setupMfaDevice: builder.mutation<Setup2FAResponse, { deviceName?: string } | void>({
+      query: (body) => ({
+        url: "/auth/2fa/devices/setup",
+        method: "POST",
+        body: body ?? {},
+      }),
+      transformResponse: (res: { data: Setup2FAResponse }) => res.data,
+    }),
+
+    verifyMfaDevice: builder.mutation<MfaDevice, { deviceId: string; token: string }>({
+      query: (body) => ({
+        url: "/auth/2fa/devices/verify",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: MfaDevice }) => res.data,
+      invalidatesTags: ["CurrentUser"],
+    }),
+
+    revokeMfaDevice: builder.mutation<MfaDevice, string>({
+      query: (deviceId) => ({
+        url: `/auth/2fa/devices/${deviceId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (res: { data: MfaDevice }) => res.data,
+      invalidatesTags: ["CurrentUser"],
+    }),
+
+    regenerateMfaBackupCodes: builder.mutation<Verify2FASetupResponse, string>({
+      query: (password) => ({
+        url: "/auth/2fa/backup-codes/regenerate",
+        method: "POST",
+        body: { password },
+      }),
+      transformResponse: (res: { data: Verify2FASetupResponse }) => res.data,
+    }),
   }),
 });
 
@@ -1457,7 +1565,6 @@ export const {
   useDeleteCoachMutation,
   useHardDeleteCoachMutation,
   useUploadCoachImageMutation,
-  useUploadPlayerImageMutation,
   useGetPaymentOverviewQuery,
   useGetSubscriptionsQuery,
   useGetInvoicesQuery,
@@ -1511,4 +1618,9 @@ export const {
   useSetup2FAMutation,
   useVerifySetup2FAMutation,
   useDisable2FAMutation,
+  useGetMfaDevicesQuery,
+  useSetupMfaDeviceMutation,
+  useVerifyMfaDeviceMutation,
+  useRevokeMfaDeviceMutation,
+  useRegenerateMfaBackupCodesMutation,
 } = adminApi;

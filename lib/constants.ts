@@ -89,12 +89,12 @@ export const NAV_ITEMS = {
         { label: "Archive", href: "/admin/matches/archive" },
       ],
     },
-    { label: "Registrations", href: "/admin/registrations", icon: "UserPlus" },
     { label: "Attendance", href: "/admin/attendance", icon: "ClipboardCheck" },
     {
       label: "Rankings",
       icon: "Trophy",
       children: [
+        { label: "Overview", href: "/admin/rankings" },
         { label: "Weekly", href: "/admin/rankings/weekly" },
         { label: "Monthly", href: "/admin/rankings/monthly" },
       ],
@@ -132,7 +132,6 @@ export const NAV_ITEMS = {
       icon: "Settings",
       children: [
         { label: "Academy Profile", href: "/admin/settings" },
-        { label: "Player Options", href: "/admin/settings/player-options" },
         { label: "Roles & Permissions", href: "/admin/settings/roles" },
         { label: "Integrations", href: "/admin/settings/integrations" },
       ],
@@ -169,7 +168,6 @@ export const NAV_ITEMS = {
         { label: "Configuration", href: "/coach/matches/configuration" },
       ],
     },
-    { label: "Player Options", href: "/coach/player-options", icon: "Star" },
     { label: "Rankings", href: "/coach/rankings", icon: "Trophy" },
     { label: "Settings", href: "/coach/settings", icon: "Settings" },
   ],

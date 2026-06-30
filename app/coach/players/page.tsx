@@ -41,7 +41,6 @@ import {
   useGetCoachPlayerCustomProfileQuery,
   useGetCoachPlayersScopedQuery,
   useGetCustomCategoriesQuery,
-  useUploadCoachPlayerImageMutation,
 } from "@/lib/store/api/calendarApi";
 import {
   useGetCoachAccessStatusQuery,
@@ -198,13 +197,10 @@ function CoachPlayersContent() {
     guardianRelation: "",
   });
   const [basic, setBasic] = useState(emptyBasicForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [createError, setCreateError] = useState("");
   const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
   const [createPlayer, { isLoading: creating }] =
     useCreateCoachBasicPlayerMutation();
-  const [uploadPlayerImage, { isLoading: uploadingImage }] =
-    useUploadCoachPlayerImageMutation();
   const [completeProfile, { isLoading: completing }] =
     useCompleteCoachPlayerProfileMutation();
   const [completeError, setCompleteError] = useState("");
@@ -258,7 +254,7 @@ function CoachPlayersContent() {
       basic.guardianRelation,
     ];
     if (requiredValues.some((value) => !value)) {
-      setCreateError("Fill all required player basics. Photo is optional.");
+      setCreateError("Fill all required player basics.");
       return;
     }
     if (Number(basic.heightCm) <= 0 || Number(basic.weightKg) <= 0) {
@@ -267,18 +263,13 @@ function CoachPlayersContent() {
     }
 
     try {
-      const uploadedImage = imageFile
-        ? await uploadPlayerImage(imageFile).unwrap()
-        : null;
       await createPlayer({
         ...basic,
-        photoUrl: uploadedImage?.image,
         heightCm: Number(basic.heightCm),
         weightKg: Number(basic.weightKg),
       }).unwrap();
       setAddOpen(false);
       setBasic(emptyBasicForm());
-      setImageFile(null);
     } catch (err) {
       setCreateError(getApiErrorMessage(err, "Could not create player."));
     }
@@ -711,7 +702,6 @@ function CoachPlayersContent() {
         open={addOpen}
         onOpenChange={(nextOpen) => {
           setAddOpen(nextOpen);
-          if (!nextOpen) setImageFile(null);
         }}
       >
         <DialogContent className="max-w-3xl">
@@ -923,19 +913,6 @@ function CoachPlayersContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Photo (optional)</Label>
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                />
-                {imageFile && (
-                  <p className="text-xs text-muted-foreground">
-                    Selected {imageFile.name}
-                  </p>
-                )}
-              </div>
             </div>
             <div className="space-y-2">
               <Label>Guardian Name</Label>
@@ -965,15 +942,12 @@ function CoachPlayersContent() {
                 type="submit"
                 disabled={
                   creating ||
-                  uploadingImage ||
                   !basic.branchId ||
                   !hasAssignments
                 }
                 className="gap-2"
               >
-                {(creating || uploadingImage) && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
+                {creating && <Loader2 className="h-4 w-4 animate-spin" />}
                 Save Basic Info
               </Button>
             </DialogFooter>

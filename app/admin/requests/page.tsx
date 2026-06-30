@@ -45,6 +45,12 @@ const resetStatusVariant = (status: PasswordResetRequest["status"]) => {
   return "secondary" as const;
 };
 
+const resetStatusLabel = (status: PasswordResetRequest["status"]) => {
+  if (status === "resolved") return "Password changed";
+  if (status === "expired") return "Expired";
+  return "Pending";
+};
+
 export default function AdminRequestsPage() {
   const { data, isLoading, isError, refetch } =
     useGetAdminEvaluationEditRequestsQuery({ limit: 100 });
@@ -156,13 +162,22 @@ export default function AdminRequestsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {request.playerId && (
+                  {request.status === "pending" && request.playerId ? (
                     <Button asChild size="sm" className="gap-1.5">
                       <Link href={`/admin/players/${request.playerId}`}>
                         <KeyRound className="h-4 w-4" />
                         Reset Password
                       </Link>
                     </Button>
+                  ) : (
+                    <Badge variant={resetStatusVariant(request.status)} className="gap-1.5">
+                      {request.status === "resolved" ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clock className="h-3.5 w-3.5" />
+                      )}
+                      {resetStatusLabel(request.status)}
+                    </Badge>
                   )}
                 </div>
               </CardContent>

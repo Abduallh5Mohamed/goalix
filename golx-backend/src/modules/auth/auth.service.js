@@ -1,7 +1,13 @@
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
 const env = require('../../config/env');
+const {
+    decode,
+    signAccessToken,
+    signRefreshToken,
+    verifyAccessToken,
+    verifyRefreshToken,
+} = require('../../shared/jwt');
 const eventBus = require('../../events/eventBus');
 const AUTH_EVENTS = require('./auth.events');
 const {
@@ -29,6 +35,12 @@ const {
 const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 const authPermissionsCacheKey = (user) =>
     `goalix:auth:permissions:v1:${user.userId}:${user.academyId || 'global'}`;
+const mfaEnforcedRoles = new Set(
+    String(env.MFA_ENFORCED_ROLES || '')
+        .split(',')
+        .map((role) => role.trim())
+        .filter(Boolean),
+);
 
 class AuthService {
     constructor(authRepository, redis) {
@@ -237,10 +249,9 @@ class AuthService {
         // Check if 2FA is required
         if (user.totp_enabled) {
             // Return a temporary token for 2FA verification
-            const tempToken = jwt.sign(
+            const tempToken = signAccessToken(
                 { userId: user.id, purpose: '2fa' },
-                env.JWT_SECRET,
-                { expiresIn: '5m', algorithm: 'HS256' },
+                { expiresIn: '5m' },
             );
 
             return {
@@ -253,6 +264,7 @@ class AuthService {
         const loggedInAt = new Date();
         const loggedInUser = { ...user, last_login_at: loggedInAt };
         const tokens = await this._generateTokens(loggedInUser, ip, userAgent);
+        const sanitizedUser = this._sanitizeUser(await this._attachProfileName(loggedInUser));
 
         eventBus.publish(AUTH_EVENTS.USER_LOGGED_IN, {
             userId: user.id,
@@ -263,7 +275,8 @@ class AuthService {
         this._recordSuccessfulLogin(user, ip, userAgent, 'login', loggedInAt);
 
         return {
-            user: this._sanitizeUser(await this._attachProfileName(loggedInUser)),
+            user: sanitizedUser,
+            mfaSetupRequired: mfaEnforcedRoles.has(user.role) && !user.totp_enabled,
             ...tokens,
         };
     }
@@ -272,7 +285,7 @@ class AuthService {
     async completeLoginAfter2FA(tempToken, ip, userAgent) {
         let decoded;
         try {
-            decoded = jwt.verify(tempToken, env.JWT_SECRET);
+            decoded = verifyAccessToken(tempToken);
         } catch {
             throw new UnauthorizedError('Invalid or expired 2FA token');
         }
@@ -363,7 +376,7 @@ class AuthService {
     async refreshToken(refreshToken) {
         let decoded;
         try {
-            decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
+            decoded = verifyRefreshToken(refreshToken);
         } catch {
             throw new UnauthorizedError('Invalid or expired refresh token');
         }
@@ -543,15 +556,13 @@ class AuthService {
             jti: accessJti,
         };
 
-        const accessToken = jwt.sign(payload, env.JWT_SECRET, {
+        const accessToken = signAccessToken(payload, {
             expiresIn: env.JWT_ACCESS_EXPIRY,
-            algorithm: 'HS256',
         });
 
-        const refreshToken = jwt.sign(
+        const refreshToken = signRefreshToken(
             { userId: user.id, jti: refreshJti },
-            env.JWT_REFRESH_SECRET,
-            { expiresIn: env.JWT_REFRESH_EXPIRY, algorithm: 'HS256' },
+            { expiresIn: env.JWT_REFRESH_EXPIRY },
         );
 
         // Store refresh token hash in DB
@@ -568,7 +579,7 @@ class AuthService {
 
         // Cache in Redis for quick lookup (best-effort)
         try {
-            const decodedAccessToken = jwt.decode(accessToken);
+            const decodedAccessToken = decode(accessToken);
             const sanitizedUser = this._sanitizeUser(user);
             await Promise.all([
                 this.redis.set(

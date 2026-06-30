@@ -96,7 +96,7 @@ export default function CoachBirthdaysPage() {
   const canManageGroups = can("can_manage_groups");
   const { data: birthdays = [], isLoading: loadingBirthdays } = useGetCoachBirthdaysQuery();
   const { data: manageBranches = [], isLoading: loadingBranches } = useGetCoachManageBranchesQuery();
-  const { data: playersRes, isLoading: loadingPlayers } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: playersRes, isLoading: loadingPlayers } = useGetCoachPlayersScopedQuery({ limit: 200 });
   const [createCoachBirthYear, { isLoading: isCreating }] = useCreateCoachBirthYearMutation();
   const [deleteCoachBirthYear, { isLoading: isDeleting }] = useDeleteCoachBirthYearMutation();
   const [createOpen, setCreateOpen] = useState(false);

@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const validate = require('../../middleware/validate.middleware');
 const { authMiddleware, optionalAuth } = require('../../middleware/auth.middleware');
-const { rbac, rbacAny } = require('../../middleware/rbac.middleware');
+const { rbacAny } = require('../../middleware/rbac.middleware');
 const { authLimiter, adminAuthLimiter } = require('../../middleware/rateLimit.middleware');
 const {
     registerSchema,
@@ -13,8 +13,12 @@ const {
     resetPasswordSchema,
     verify2FASchema,
     verifySetup2FASchema,
+    setup2FADeviceSchema,
+    verify2FADeviceSchema,
+    totpDeviceParamSchema,
     backupCodeSchema,
     disable2FASchema,
+    regenerateBackupCodesSchema,
 } = require('./auth.schema');
 
 /**
@@ -26,6 +30,13 @@ function authRoutes(controller) {
     const allowLoginRoles = (...roles) => (req, _res, next) => {
         req.allowedLoginRoles = roles;
         next();
+    };
+    const allow2FASelfService = (req, res, next) => {
+        if (['admin', 'coach'].includes(req.user?.role)) return next();
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: '2FA self-service is not available for this role' },
+        });
     };
     const adminLoginLimiter = process.env.NODE_ENV === 'development'
         ? (_req, _res, next) => next()
@@ -120,14 +131,14 @@ function authRoutes(controller) {
     router.post(
         '/2fa/setup',
         authMiddleware,
-        rbac('access_admin_dashboard'),
+        allow2FASelfService,
         controller.setup2FA,
     );
 
     router.post(
         '/2fa/verify-setup',
         authMiddleware,
-        rbac('access_admin_dashboard'),
+        allow2FASelfService,
         validate({ body: verifySetup2FASchema }),
         controller.verifySetup2FA,
     );
@@ -147,11 +158,50 @@ function authRoutes(controller) {
     );
 
     router.post(
+        '/2fa/backup-codes/regenerate',
+        authMiddleware,
+        allow2FASelfService,
+        validate({ body: regenerateBackupCodesSchema }),
+        controller.regenerateBackupCodes,
+    );
+
+    router.post(
         '/2fa/disable',
         authMiddleware,
-        rbac('access_admin_dashboard'),
+        allow2FASelfService,
         validate({ body: disable2FASchema }),
         controller.disable2FA,
+    );
+
+    router.get(
+        '/2fa/devices',
+        authMiddleware,
+        allow2FASelfService,
+        controller.list2FADevices,
+    );
+
+    router.post(
+        '/2fa/devices/setup',
+        authMiddleware,
+        allow2FASelfService,
+        validate({ body: setup2FADeviceSchema }),
+        controller.setup2FADevice,
+    );
+
+    router.post(
+        '/2fa/devices/verify',
+        authMiddleware,
+        allow2FASelfService,
+        validate({ body: verify2FADeviceSchema }),
+        controller.verify2FADevice,
+    );
+
+    router.delete(
+        '/2fa/devices/:id',
+        authMiddleware,
+        allow2FASelfService,
+        validate({ params: totpDeviceParamSchema }),
+        controller.revoke2FADevice,
     );
 
     return router;

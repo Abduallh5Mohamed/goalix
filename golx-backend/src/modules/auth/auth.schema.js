@@ -67,12 +67,29 @@ const verifySetup2FASchema = z.object({
     token: z.string().length(6, 'TOTP code must be 6 digits').regex(/^\d{6}$/, 'TOTP code must be 6 digits'),
 });
 
+const setup2FADeviceSchema = z.object({
+    deviceName: z.string().trim().min(2).max(120).optional(),
+});
+
+const verify2FADeviceSchema = z.object({
+    deviceId: z.string().uuid('Invalid device ID'),
+    token: z.string().length(6, 'TOTP code must be 6 digits').regex(/^\d{6}$/, 'TOTP code must be 6 digits'),
+});
+
+const totpDeviceParamSchema = z.object({
+    id: z.string().uuid('Invalid device ID'),
+});
+
 const backupCodeSchema = z.object({
     tempToken: z.string().min(1, 'Temp token is required'),
     code: z.string().min(1, 'Backup code is required'),
 });
 
 const disable2FASchema = z.object({
+    password: z.string().min(1, 'Password is required'),
+});
+
+const regenerateBackupCodesSchema = z.object({
     password: z.string().min(1, 'Password is required'),
 });
 
@@ -109,8 +126,12 @@ module.exports = {
     resetPasswordSchema,
     verify2FASchema,
     verifySetup2FASchema,
+    setup2FADeviceSchema,
+    verify2FADeviceSchema,
+    totpDeviceParamSchema,
     backupCodeSchema,
     disable2FASchema,
+    regenerateBackupCodesSchema,
     signupSchema,
     registrationStatusSchema,
 };

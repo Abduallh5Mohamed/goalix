@@ -49,9 +49,18 @@ next-env.d.ts
 /db-dumps/
 /golx_main_data_*.sql
 /golx_main_data_*.zip
+*.dump
+*.backup
+*.sql.gz
+*.sql.zip
+*.sql.7z
+/DATA FOR PROJECT/*.sql
+/DATA FOR PROJECT/*.dump
+/DATA FOR PROJECT/*.backup
 /uploads/
 /migrations/
 /golx-backend/uploads/
+/golx-backend/load-tests/*.local.json
 /golx-backend/migrations/052_chat_and_match_request_cleanup.js
 /golx-backend/migrations/053_chat_message_edit_metadata.js
 /golx-backend/migrations/054_chat_message_read_receipts.js

@@ -16,83 +16,33 @@ import {
 } from "@/components/ui/select";
 import { BarChart } from "@/components/charts/BarChart";
 import { getInitials } from "@/lib/utils";
-import { Medal, RefreshCw } from "lucide-react";
+import { CalendarDays, Goal, Medal, RefreshCw, Shield, User } from "lucide-react";
 import {
   useGetAdminRankingSystemInputsQuery,
   useGetGroupsQuery,
 } from "@/lib/store/api/adminApi";
-import type { RankingSystemInput } from "@/lib/store/api/calendarApi";
+import {
+  buildMonthlyRankingRows,
+  latestRankingMonthKey,
+  numberValue,
+  rankingMonthRange,
+  rankingWeeksInMonthLabel,
+  type MonthlyRankingRow,
+} from "@/lib/rankings/monthlyRanking";
 
-type MonthlyRankingRow = {
-  id: string;
-  playerId: string;
-  playerName: string;
-  position: string | null;
-  roleFamily: RankingSystemInput["role_family"];
-  score: number | null;
-  rank: number;
-  weekCount: number;
-};
+type RoleKey = Exclude<MonthlyRankingRow["roleFamily"], "unknown">;
 
-const numberValue = (value: unknown) => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
-const scoreValue = (row: RankingSystemInput) =>
-  numberValue(row.final_api_response?.weekly_score ?? row.weekly_score);
-
-const monthKey = (value: string | null | undefined) =>
-  String(value || "").slice(0, 7);
-
-const average = (values: Array<number | null>) => {
-  const numeric = values.filter((value): value is number => value !== null);
-  if (!numeric.length) return null;
-  return Number(
-    (numeric.reduce((sum, value) => sum + value, 0) / numeric.length).toFixed(2),
-  );
-};
-
-const buildLatestMonthlyRows = (rows: RankingSystemInput[]): MonthlyRankingRow[] => {
-  const latestMonth = rows
-    .map((row) => monthKey(row.week_start))
-    .filter(Boolean)
-    .sort((a, b) => b.localeCompare(a))[0];
-  const monthRows = rows.filter((row) => monthKey(row.week_start) === latestMonth);
-  const byPlayer = new Map<string, RankingSystemInput[]>();
-  monthRows.forEach((row) => {
-    if (!byPlayer.has(row.player_id)) byPlayer.set(row.player_id, []);
-    byPlayer.get(row.player_id)?.push(row);
-  });
-
-  const displayRows = [...byPlayer.entries()].map(([playerId, playerRows]) => {
-    const latest = playerRows
-      .slice()
-      .sort((a, b) => String(b.week_start || "").localeCompare(String(a.week_start || "")))[0];
-    return {
-      id: `${latestMonth}:${playerId}`,
-      playerId,
-      playerName: latest?.player_name || "Player",
-      position: latest?.position || null,
-      roleFamily: latest?.role_family || "unknown",
-      score: average(playerRows.map(scoreValue)),
-      rank: 0,
-      weekCount: new Set(playerRows.map((row) => row.week_start)).size,
-    };
-  });
-
-  return displayRows
-    .sort((a, b) => {
-      const scoreDiff = (b.score ?? -1) - (a.score ?? -1);
-      if (scoreDiff) return scoreDiff;
-      return a.playerName.localeCompare(b.playerName);
-    })
-    .map((row, index) => ({ ...row, rank: index + 1 }));
-};
+const roleCards: Array<{
+  role: RoleKey;
+  title: string;
+  icon: typeof Goal;
+  className: string;
+}> = [
+  { role: "attack", title: "Best Attack", icon: Goal, className: "border-rose-400/35 bg-rose-500/10 text-rose-100" },
+  { role: "midfield", title: "Best Midfield", icon: Medal, className: "border-cyan-400/35 bg-cyan-500/10 text-cyan-100" },
+  { role: "defense", title: "Best Defense", icon: Shield, className: "border-emerald-400/35 bg-emerald-500/10 text-emerald-100" },
+  { role: "goalkeeper", title: "Best Goalkeeper", icon: User, className: "border-amber-400/35 bg-amber-500/10 text-amber-100" },
+];
 
 const formatScore = (value: unknown) => {
   const numeric = numberValue(value);
@@ -105,7 +55,7 @@ export default function MonthlyRankingsPage() {
   const [selectedGroup, setSelectedGroup] = useState("all");
 
   const { data, isLoading, isError, refetch } = useGetAdminRankingSystemInputsQuery(
-    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 500 } : { limit: 500 }
+    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 200 } : { limit: 200 }
   );
   const { data: groups } = useGetGroupsQuery({});
 
@@ -131,8 +81,16 @@ export default function MonthlyRankingsPage() {
     );
   }
 
-  const sorted = buildLatestMonthlyRows(data?.data ?? []);
+  const rows = data?.data ?? [];
+  const latestMonth = latestRankingMonthKey(rows);
+  const sorted = buildMonthlyRankingRows(rows, latestMonth);
+  const monthRange = rankingMonthRange(latestMonth);
+  const monthlyWeekStarts = [...new Set(sorted.flatMap((row) => row.weekStarts))].sort();
+  const monthlyWeeksLabel = monthlyWeekStarts.length
+    ? rankingWeeksInMonthLabel(monthlyWeekStarts, latestMonth)
+    : "No completed weeks";
   const top10 = sorted.slice(0, 10);
+  const roleLeader = (role: RoleKey) => sorted.find((row) => row.roleFamily === role);
   const medalColor = (rank: number) =>
     rank === 1 ? "text-amber-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-600" : "";
 
@@ -140,7 +98,7 @@ export default function MonthlyRankingsPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Monthly Rankings"
-        description="Monthly overview from the same Ranking System output used by coaches."
+        description="Monthly ranking from each player's completed weekly Ranking System scores in the selected month."
         breadcrumbs={[
           { label: "Dashboard", href: "/admin/dashboard" },
           { label: "Rankings" },
@@ -163,10 +121,66 @@ export default function MonthlyRankingsPage() {
         }
       />
 
+      <Card className="border-border/50 bg-card">
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Month
+            </p>
+            <p className="mt-2 text-2xl font-black">{monthRange.label}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="text-xs text-muted-foreground">Period</p>
+            <p className="mt-2 font-semibold">
+              {monthRange.start ? `${monthRange.start} to ${monthRange.end}` : "-"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="text-xs text-muted-foreground">Weeks counted</p>
+            <p className="mt-2 text-sm font-semibold">{monthlyWeeksLabel}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {roleCards.map((config) => {
+          const leader = roleLeader(config.role);
+          const Icon = config.icon;
+          return (
+            <Card key={config.role} className={`border ${config.className}`}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold">{config.title}</p>
+                    <p className="mt-1 text-xs text-current/75">Monthly role leader</p>
+                  </div>
+                  <span className="rounded-md bg-black/15 p-2">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </div>
+                {leader ? (
+                  <div className="mt-4">
+                    <p className="truncate font-semibold">{leader.playerName}</p>
+                    <p className="text-xs text-current/75">
+                      #{leader.rank} - {formatScore(leader.score)} pts - {rankingWeeksInMonthLabel(leader.weekStarts, leader.month)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-current/75">No player data yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
       {top10.length > 0 && (
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Top 10 Players - Score Comparison</CardTitle>
+            <CardTitle className="text-base">
+              Top 10 Players - {monthRange.label} weekly average
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <BarChart
@@ -208,7 +222,7 @@ export default function MonthlyRankingsPage() {
             <div className="min-w-0 flex-1">
               <p className="font-medium">{ranking.playerName}</p>
               <p className="text-xs text-muted-foreground">
-                {[ranking.position, ranking.roleFamily, `${ranking.weekCount} weeks`].filter(Boolean).join(" - ")}
+                {[ranking.position, ranking.roleFamily, rankingWeeksInMonthLabel(ranking.weekStarts, ranking.month)].filter(Boolean).join(" - ")}
               </p>
             </div>
             <div className="text-right">

@@ -1,6 +1,9 @@
 const { Server } = require("socket.io");
+const { createAdapter } = require("@socket.io/redis-adapter");
 const { corsOrigin } = require("../config/cors");
 const { authenticateAccessToken } = require("../middleware/auth.middleware");
+const { redis, isRedisAvailable } = require("../infrastructure/redis");
+const logger = require("../shared/logger");
 const { setChatRealtime } = require("./chat.realtime");
 
 function parseCookies(header = "") {
@@ -34,6 +37,23 @@ function setupChatSocket(server, chatService) {
     },
     maxHttpBufferSize: 64 * 1024,
   });
+
+  if (isRedisAvailable() && typeof redis.duplicate === "function") {
+    const pubClient = redis.duplicate();
+    const subClient = redis.duplicate();
+    Promise.all([pubClient.connect(), subClient.connect()])
+      .then(() => {
+        io.adapter(createAdapter(pubClient, subClient));
+        logger.info("Socket.IO Redis adapter enabled");
+      })
+      .catch((err) => {
+        logger.warn({ err }, "Socket.IO Redis adapter unavailable; realtime is local to this API instance");
+        pubClient.disconnect();
+        subClient.disconnect();
+      });
+  } else {
+    logger.warn("Socket.IO Redis adapter disabled; realtime is local to this API instance");
+  }
 
   io.use(async (socket, next) => {
     try {

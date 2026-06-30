@@ -436,12 +436,7 @@ function LatestEvaluation({
 export default function PlayerHomePage() {
   const profileQuery = useGetPlayerProfileQuery();
   const progressQuery = useGetPlayerProgressQuery();
-  const matchesQuery = useGetPlayerMatchesQuery(undefined, {
-    pollingInterval: 15000,
-    skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const matchesQuery = useGetPlayerMatchesQuery();
   const calendarQuery = useGetPlayerCalendarEventsQuery();
   const trainingsQuery = useGetPlayerTrainingsQuery();
   const evaluationsQuery = useGetPlayerEvaluationsQuery();

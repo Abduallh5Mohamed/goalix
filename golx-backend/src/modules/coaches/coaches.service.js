@@ -10,6 +10,7 @@ const {
     permissionColumnsForRole,
     publicRoleCatalog,
 } = require('./coach-assignment-roles');
+const storage = require('../../shared/storage');
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
@@ -155,7 +156,7 @@ class CoachesService {
             mainPosition,
             rawPosition: player.position || null,
             preferredFoot: player.preferred_foot || null,
-            avatarUrl: player.photo_url || '',
+            avatarUrl: '',
             branchId: player.branch_id,
             branchName: player.branch_name,
             groupId: player.group_id,
@@ -616,16 +617,18 @@ class CoachesService {
         }
 
         const fileName = sanitizeFileName(originalName);
-        const academySegment = String(user.academyId || 'shared').replace(/[^a-zA-Z0-9-]/g, '');
-        const storedName = `${Date.now()}-${randomUUID()}${typeInfo.extension}`;
-        const uploadDir = path.resolve(__dirname, '../../../uploads/assignments', academySegment);
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(path.join(uploadDir, storedName), buffer);
+        const upload = await storage.putUpload({
+            scope: 'assignments',
+            academyId: user.academyId,
+            extension: typeInfo.extension,
+            buffer,
+            contentType: normalizedMimeType,
+        });
 
         return {
             fileType: typeInfo.fileType,
             fileName,
-            fileUrl: `/uploads/assignments/${academySegment}/${storedName}`,
+            fileUrl: upload.url,
             mimeType: normalizedMimeType,
             sizeBytes: buffer.length,
         };

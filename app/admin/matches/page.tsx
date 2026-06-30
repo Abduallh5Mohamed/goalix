@@ -95,12 +95,6 @@ export default function AdminMatchesPage() {
     {
       limit: 100,
     },
-    {
-      pollingInterval: 15000,
-      skipPollingIfUnfocused: true,
-      refetchOnFocus: true,
-      refetchOnMountOrArgChange: true,
-    },
   );
   const { data: coachesRes } = useGetCoachesQuery({ limit: 100 });
   const coaches = useMemo(() => coachesRes?.data ?? [], [coachesRes?.data]);

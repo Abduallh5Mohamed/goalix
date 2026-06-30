@@ -211,6 +211,72 @@ class AuthRepository extends BaseRepository {
             });
     }
 
+    async createTotpDevice(userId, { deviceName, secret, status = 'pending', isPrimary = false }) {
+        const [row] = await this.db('auth_totp_devices')
+            .insert({
+                user_id: userId,
+                device_name: deviceName || 'Authenticator app',
+                secret,
+                status,
+                is_primary: isPrimary,
+                verified_at: status === 'active' ? new Date() : null,
+            })
+            .returning('*');
+        return row;
+    }
+
+    async findTotpDeviceById(userId, deviceId) {
+        return this.db('auth_totp_devices')
+            .where({ id: deviceId, user_id: userId })
+            .whereNull('revoked_at')
+            .first();
+    }
+
+    async findActiveTotpDevices(userId) {
+        return this.db('auth_totp_devices')
+            .where({ user_id: userId, status: 'active' })
+            .whereNull('revoked_at')
+            .orderBy('created_at', 'asc');
+    }
+
+    async activateTotpDevice(userId, deviceId) {
+        const [row] = await this.db('auth_totp_devices')
+            .where({ id: deviceId, user_id: userId, status: 'pending' })
+            .whereNull('revoked_at')
+            .update({
+                status: 'active',
+                verified_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async touchTotpDevice(id) {
+        return this.db('auth_totp_devices')
+            .where({ id })
+            .update({ last_used_at: new Date(), updated_at: new Date() });
+    }
+
+    async revokeTotpDevice(userId, deviceId) {
+        const [row] = await this.db('auth_totp_devices')
+            .where({ id: deviceId, user_id: userId })
+            .whereNull('revoked_at')
+            .update({
+                status: 'revoked',
+                revoked_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    }
+
+    async deletePendingTotpDevices(userId) {
+        return this.db('auth_totp_devices')
+            .where({ user_id: userId, status: 'pending' })
+            .del();
+    }
+
     async createBackupCodes(userId, codeHashes) {
         const rows = codeHashes.map((hash) => ({
             user_id: userId,

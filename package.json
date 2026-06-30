@@ -18,7 +18,8 @@
     "dev:backend": "cd golx-backend && npm run dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "security:scan-dumps": "node scripts/check-no-dumps.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

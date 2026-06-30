@@ -62,26 +62,6 @@ class PlayersController {
     }
   };
 
-  uploadPlayerImage = async (req, res, next) => {
-    try {
-      if (!req.file) {
-        return res
-          .status(400)
-          .json(
-            ApiResponse.error("VALIDATION_ERROR", "Image file is required"),
-          );
-      }
-      const data = await this.service.storePlayerImageUpload(req.user, {
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        buffer: req.file.buffer,
-      });
-      return res.status(201).json(ApiResponse.success(data));
-    } catch (err) {
-      return next(err);
-    }
-  };
-
   update = async (req, res, next) => {
     try {
       const player = await this.service.updatePlayer(

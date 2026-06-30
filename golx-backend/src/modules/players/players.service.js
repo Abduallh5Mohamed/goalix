@@ -9,23 +9,8 @@ const { ConflictError } = require("../../shared/errors");
 const bcrypt = require("bcrypt");
 const env = require("../../config/env");
 const { ensureIamForAuthUser } = require("../../shared/iam-sync");
-const fs = require("fs/promises");
-const path = require("path");
-const { randomUUID } = require("crypto");
-
-const playerImageTypes = {
-  "image/png": { extension: ".png" },
-  "image/jpeg": { extension: ".jpg" },
-  "image/jpg": { extension: ".jpg" },
-  "image/webp": { extension: ".webp" },
-};
-
-const sanitizeFileName = (value = "player-image") =>
-  String(value)
-    .replace(/[/\\?%*:|"<>]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 160) || "player-image";
+const { auditAccessDenied } = require("../../shared/access-audit");
+const { canAccessPlayerRecord } = require("../../shared/access-policy");
 
 const technicalSkillMap = {
   ballControl: "ball_control",
@@ -171,16 +156,21 @@ class PlayersService {
   async _assertPlayerAccess(user, player, { write = false } = {}) {
     if (user.academyId && player.academy_id !== user.academyId)
       throw new NotFoundError("Player", player.id);
-    if (user.role === "admin") return;
-    if (user.role === "player" && player.user_id === user.userId && !write)
-      return;
-    if (user.role === "parent" && player.id === user.linkedPlayerId && !write)
-      return;
+    if (canAccessPlayerRecord(user, player, { write })) return;
     if (user.role === "coach") {
       const coach = await this.repo.findCoachProfileByUserId(user.userId);
-      if (coach && (await this.repo.coachCanAccessPlayer(coach.id, player.id)))
+      const coachCanAccess = coach
+        ? await this.repo.coachCanAccessPlayer(coach.id, player.id)
+        : false;
+      if (canAccessPlayerRecord(user, player, { write, coachCanAccess }))
         return;
     }
+    await auditAccessDenied(this.repo.db, user, {
+      action: "player_access_denied",
+      entityType: "player_profiles",
+      entityId: player.id,
+      reason: write ? "write_policy_denied" : "read_policy_denied",
+    });
     throw new ForbiddenError("You cannot access this player");
   }
 
@@ -347,7 +337,6 @@ class PlayersService {
           playing_style: data.playingStyle || null,
           years_experience: data.yearsExperience ?? null,
           previous_club_academy: data.previousClubAcademy || null,
-          photo_url: data.photoUrl || null,
           guardian_name: data.guardianName || null,
           guardian_phone: data.guardianPhone || null,
           guardian_relation: data.guardianRelation || null,
@@ -661,7 +650,6 @@ class PlayersService {
       updateData.years_experience = data.yearsExperience;
     if (data.previousClubAcademy !== undefined)
       updateData.previous_club_academy = data.previousClubAcademy;
-    if (data.photoUrl !== undefined) updateData.photo_url = data.photoUrl;
     if (data.isActive !== undefined) updateData.is_active = data.isActive;
     if (data.guardianName !== undefined)
       updateData.guardian_name = data.guardianName;
@@ -756,43 +744,6 @@ class PlayersService {
       playerId: id,
       academyId: player.academy_id,
     });
-  }
-
-  async storePlayerImageUpload(user, { originalName, mimeType, buffer }) {
-    const normalizedMimeType = String(mimeType || "").toLowerCase();
-    const typeInfo = playerImageTypes[normalizedMimeType];
-    if (!typeInfo) {
-      throw new BadRequestError(
-        "Player image must be PNG, JPG, JPEG, or WEBP.",
-      );
-    }
-    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-      throw new BadRequestError("Uploaded image is empty.");
-    }
-    if (buffer.length > 5 * 1024 * 1024) {
-      throw new BadRequestError("Player image must be 5MB or smaller.");
-    }
-
-    const fileName = sanitizeFileName(originalName || "player-image");
-    const academySegment = String(user.academyId || "shared").replace(
-      /[^a-zA-Z0-9-]/g,
-      "",
-    );
-    const storedName = `${Date.now()}-${randomUUID()}${typeInfo.extension}`;
-    const uploadDir = path.resolve(
-      __dirname,
-      "../../../uploads/players",
-      academySegment,
-    );
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, storedName), buffer);
-
-    return {
-      fileName,
-      image: `/uploads/players/${academySegment}/${storedName}`,
-      mimeType: normalizedMimeType,
-      sizeBytes: buffer.length,
-    };
   }
 
   async hardDeletePlayer(id, academyId) {

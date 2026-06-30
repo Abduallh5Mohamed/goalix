@@ -13,6 +13,17 @@ import {
   useGetParentRankingSystemInputsQuery,
 } from "@/lib/store/api/calendarApi";
 import type { PlayerEvaluationRecord, RankingSystemInput } from "@/lib/store/api/calendarApi";
+import {
+  buildMonthlyRankingHistory,
+  buildMonthlyRankingRows,
+  buildWeeklyRankingHistory,
+  isActualCompletedRankingRow,
+  latestCompletedRankingWeekKey,
+  latestRankingMonthKey,
+  rankingDateKey,
+  rankingWeekLabel,
+  rankingWeeksInMonthLabel,
+} from "@/lib/rankings/monthlyRanking";
 import { formatDate } from "@/lib/utils";
 
 const copy = {
@@ -182,23 +193,56 @@ export default function ParentChildRankingPage() {
     { skip: !childId || !canViewProgress },
   );
   const rankingSystemQuery = useGetParentRankingSystemInputsQuery(
-    childId ? { childId, limit: 500 } : undefined,
+    childId ? { childId, limit: 200 } : undefined,
     { skip: !childId || !canViewProgress },
   );
 
   const rankingRows = rankingSystemQuery.data?.data ?? [];
-  const latestWeek = rankingRows
-    .map((row) => String(row.week_start || ""))
-    .filter(Boolean)
-    .sort((a, b) => b.localeCompare(a))[0];
-  const modelRanking = rankingRows.find(
-    (row) => row.player_id === childId && row.week_start === latestWeek,
+  const completedRankingRows = rankingRows.filter((row) =>
+    isActualCompletedRankingRow(row),
   );
-  const ranking = modelRanking
+  const latestWeek = latestCompletedRankingWeekKey(rankingRows);
+  const modelRanking = completedRankingRows.find(
+    (row) =>
+      row.player_id === childId &&
+      rankingDateKey(row.week_start) === latestWeek,
+  );
+  const latestMonth = latestRankingMonthKey(rankingRows);
+  const monthlyRanking = buildMonthlyRankingRows(rankingRows, latestMonth).find(
+    (row) => row.playerId === childId,
+  );
+  const weeklyHistory = buildWeeklyRankingHistory(rankingRows)
+    .map((period) => ({
+      ...period,
+      row: period.rows.find((row) => row.player_id === childId),
+    }))
+    .filter((period) => period.row);
+  const monthlyHistory = buildMonthlyRankingHistory(rankingRows)
+    .map((period) => ({
+      ...period,
+      row: period.rows.find((row) => row.playerId === childId),
+    }))
+    .filter((period) => period.row);
+  const ranking = monthlyRanking
+    ? {
+        rank: monthlyRanking.rank,
+        total_score: monthlyRanking.score,
+        period: rankingWeeksInMonthLabel(monthlyRanking.weekStarts, monthlyRanking.month),
+        trend: monthlyRanking.latestRow?.final_api_response?.trend ?? monthlyRanking.latestRow?.trend,
+        calculated_at: monthlyRanking.latestRow?.week_end || monthlyRanking.latestRow?.week_start,
+        breakdown: {
+          coach_eval_score: monthlyRanking.breakdown.coachScore,
+          attendance_score: monthlyRanking.breakdown.attendanceScore,
+          discipline_score: monthlyRanking.score,
+          match_score: monthlyRanking.breakdown.matchScore,
+          ai_score: monthlyRanking.breakdown.weeklyAiScore,
+        },
+      }
+    : modelRanking
     ? {
         rank: rankingRank(modelRanking),
         total_score: rankingScore(modelRanking),
-        period: latestWeek,
+        period: rankingWeekLabel(latestWeek),
         trend: modelRanking.final_api_response?.trend ?? modelRanking.trend,
         calculated_at: modelRanking.week_end || modelRanking.week_start,
         breakdown: {
@@ -363,6 +407,74 @@ export default function ParentChildRankingPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Ranking History</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Previous weekly and monthly ranks for the selected player.
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Weekly
+                </p>
+                {weeklyHistory.slice(0, 8).map((period) => {
+                  const row = period.row;
+                  if (!row) return null;
+                  return (
+                    <div key={period.key} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/20 p-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{period.label}</p>
+                        <p className="text-xs text-muted-foreground">{period.rangeLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-lg font-bold text-primary">
+                          #{rankingRank(row)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{scoreText(rankingScore(row))} pts</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!weeklyHistory.length && (
+                  <div className="rounded-lg border border-dashed border-border/40 p-5 text-center text-sm text-muted-foreground">
+                    No weekly ranking history yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                  Monthly
+                </p>
+                {monthlyHistory.slice(0, 8).map((period) => {
+                  const row = period.row;
+                  if (!row) return null;
+                  return (
+                    <div key={period.key} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/20 p-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{period.label}</p>
+                        <p className="text-xs text-muted-foreground">{period.weeksLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-lg font-bold text-primary">
+                          #{row.rank}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{scoreText(row.score)} pts</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!monthlyHistory.length && (
+                  <div className="rounded-lg border border-dashed border-border/40 p-5 text-center text-sm text-muted-foreground">
+                    No monthly ranking history yet.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {latestEvaluation && (
             <Card className="border-border/50 bg-card">

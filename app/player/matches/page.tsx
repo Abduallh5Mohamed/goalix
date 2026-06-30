@@ -382,12 +382,7 @@ export default function PlayerMatchesPage() {
     getServerPlayerMatchesClockSnapshot,
   );
   const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
-  const { data, isLoading, isFetching } = useGetPlayerMatchesQuery(undefined, {
-    pollingInterval: 15000,
-    skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const { data, isLoading, isFetching } = useGetPlayerMatchesQuery();
   const matches = (data?.data ?? [])
     .slice()
     .sort((a, b) => matchTimestamp(a) - matchTimestamp(b));

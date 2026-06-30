@@ -140,6 +140,7 @@ const paginationQuery = z.object({
 });
 
 const rankingSystemInputsQuery = paginationQuery.extend({
+  limit: z.coerce.number().int().positive().max(2000).optional(),
   groupId: uuid.optional(),
 });
 
@@ -835,7 +836,6 @@ const coachBasicPlayerSchema = z
     heightCm: z.number().positive().optional(),
     weightKg: z.number().positive().optional(),
     preferredFoot: z.enum(["left", "right", "both"]).optional(),
-    photoUrl: z.string().max(1000).optional(),
     guardianName: z.string().max(100).optional(),
     guardianPhone: z.string().max(20).optional(),
     guardianRelation: z.string().max(50).optional(),

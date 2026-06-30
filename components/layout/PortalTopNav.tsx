@@ -222,18 +222,16 @@ export function PortalTopNav({ role }: { role: UserRole }) {
     authState.isAuthenticated && authState.role === role;
   const { data: notificationsData } = useGetNotificationsQuery(undefined, {
     skip: !notificationsEnabled || !notificationsOpen,
-    pollingInterval: 60000,
+    pollingInterval: 120000,
     skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(
     undefined,
     {
       skip: !notificationsEnabled,
-      pollingInterval: 60000,
+      pollingInterval: 120000,
       skipPollingIfUnfocused: true,
-      refetchOnFocus: true,
       refetchOnReconnect: true,
     },
   );

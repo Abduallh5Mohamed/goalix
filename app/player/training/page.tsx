@@ -250,22 +250,9 @@ export default function PlayerTrainingPage() {
     getServerPlayerTrainingClockSnapshot,
   );
   const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
-  const trainingsQuery = useGetPlayerTrainingsQuery(undefined, {
-    pollingInterval: 15000,
-    skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
-  const evaluationsQuery = useGetPlayerEvaluationsQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
-  const attendanceQuery = useGetPlayerAttendanceQuery(undefined, {
-    pollingInterval: 15000,
-    skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const trainingsQuery = useGetPlayerTrainingsQuery();
+  const evaluationsQuery = useGetPlayerEvaluationsQuery();
+  const attendanceQuery = useGetPlayerAttendanceQuery();
 
   const trainings = trainingsQuery.data?.data ?? [];
   const evaluations = evaluationsQuery.data?.data ?? [];

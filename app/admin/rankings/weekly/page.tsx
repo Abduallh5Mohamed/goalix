@@ -14,13 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getInitials } from "@/lib/utils";
+import { formatDate, getInitials } from "@/lib/utils";
 import { Medal, RefreshCw, Trophy } from "lucide-react";
 import {
   useGetAdminRankingSystemInputsQuery,
   useGetGroupsQuery,
 } from "@/lib/store/api/adminApi";
 import type { RankingSystemInput } from "@/lib/store/api/calendarApi";
+import {
+  isActualCompletedRankingRow,
+  latestCompletedRankingWeekKey,
+  rankingDateKey,
+  rankingWeekLabel,
+} from "@/lib/rankings/monthlyRanking";
 
 const numberValue = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -57,7 +63,7 @@ export default function WeeklyRankingsPage() {
   const [selectedGroup, setSelectedGroup] = useState("all");
 
   const { data, isLoading, isError, refetch } = useGetAdminRankingSystemInputsQuery(
-    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 500 } : { limit: 500 }
+    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 200 } : { limit: 200 }
   );
   const { data: groups } = useGetGroupsQuery({});
 
@@ -84,11 +90,12 @@ export default function WeeklyRankingsPage() {
   }
 
   const rows = data?.data ?? [];
-  const latestWeek = rows
-    .map((row) => String(row.week_start || ""))
-    .filter(Boolean)
-    .sort((a, b) => b.localeCompare(a))[0];
-  const rankings = sortByModelRank(rows.filter((row) => row.week_start === latestWeek));
+  const completedRows = rows.filter((row) => isActualCompletedRankingRow(row));
+  const latestWeek = latestCompletedRankingWeekKey(rows);
+  const rankings = sortByModelRank(
+    completedRows.filter((row) => rankingDateKey(row.week_start) === latestWeek),
+  );
+  const latestWeekEnd = rankings[0]?.week_end;
   const medalColor = (rank: number) =>
     rank === 1 ? "text-amber-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-600" : "";
 
@@ -128,6 +135,24 @@ export default function WeeklyRankingsPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          <Card className="border-border/50 bg-card">
+            <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Week</p>
+                <p className="mt-1 font-semibold">{rankingWeekLabel(latestWeek)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="mt-1 font-semibold">
+                  {latestWeek ? `${formatDate(latestWeek)} to ${formatDate(latestWeekEnd)}` : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Players ranked</p>
+                <p className="mt-1 font-semibold">{rankings.length}</p>
+              </div>
+            </CardContent>
+          </Card>
           {rankings.map((ranking) => (
             <Card
               key={ranking.id}
@@ -150,7 +175,7 @@ export default function WeeklyRankingsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{ranking.player_name || "Player"}</p>
                   <p className="text-xs text-muted-foreground">
-                    {[ranking.position, ranking.role_family, latestWeek].filter(Boolean).join(" - ")}
+                    {[ranking.position, ranking.role_family, rankingWeekLabel(latestWeek)].filter(Boolean).join(" - ")}
                   </p>
                 </div>
                 <div className="text-right">

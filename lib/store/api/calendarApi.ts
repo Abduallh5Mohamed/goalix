@@ -1152,13 +1152,6 @@ export interface PlayerCustomProfile {
   missingRequiredFieldIds: string[];
 }
 
-export interface PlayerImageUploadResponse {
-  fileName: string;
-  image: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-
 export interface PlayerAssignmentUpload {
   fileType: "pdf" | "word" | "image";
   fileName: string;
@@ -1593,14 +1586,6 @@ export const calendarApi = createApi({
       query: (body) => ({ url: "/coach/players", method: "POST", body }),
       transformResponse: (res: { data: CoachPlayer }) => res.data,
       invalidatesTags: ["CoachPlayers"],
-    }),
-    uploadCoachPlayerImage: builder.mutation<PlayerImageUploadResponse, File>({
-      query: (file) => {
-        const body = new FormData();
-        body.append("image", file);
-        return { url: "/players/images", method: "POST", body };
-      },
-      transformResponse: (res: { data: PlayerImageUploadResponse }) => res.data,
     }),
     completeCoachPlayerProfile: builder.mutation<
       CoachPlayer,
@@ -2308,6 +2293,7 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: { unread: number } }) =>
         res.data.unread,
       providesTags: ["Notifications"],
+      keepUnusedDataFor: 60,
     }),
     markNotificationRead: builder.mutation<NotificationRow, string>({
       query: (id) => ({ url: `/notifications/${id}/read`, method: "PATCH" }),
@@ -2753,7 +2739,6 @@ export const {
   useGetInjuryRiskPredictionsQuery,
   useRunInjuryRiskPredictionsMutation,
   useCreateCoachBasicPlayerMutation,
-  useUploadCoachPlayerImageMutation,
   useCompleteCoachPlayerProfileMutation,
   useCreateCoachTrainingEventMutation,
   useGetCoachTrainingEventQuery,

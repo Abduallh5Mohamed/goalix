@@ -388,7 +388,6 @@ class CalendarRepository {
         "pp.player_code",
         "pp.position",
         "pp.level",
-        "pp.photo_url",
         "ag.name as group_name",
       )
       .orderBy("pp.full_name", "asc");

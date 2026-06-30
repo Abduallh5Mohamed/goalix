@@ -332,7 +332,6 @@ Contacts: "جهات الاتصال",
   Matches: "المباريات",
   "All Matches": "كل المباريات",
   Archive: "الأرشيف",
-  Registrations: "التسجيلات",
   Attendance: "الحضور",
   Overview: "نظرة عامة",
   Sessions: "الحصص",
@@ -347,7 +346,6 @@ Contacts: "جهات الاتصال",
   Compose: "إنشاء",
   "Player Progress": "تقدم اللاعب",
   "Academy Profile": "ملف الأكاديمية",
-  "Player Options": "خيارات اللاعبين",
   "Roles & Permissions": "الأدوار والصلاحيات",
   Integrations: "التكاملات",
   Home: "الرئيسية",
@@ -1252,8 +1250,8 @@ const adminNavPermissions: Record<string, string[]> = {
   "/admin/calendar": ["manage_schedules", "calendar.manage.academy"],
   "/admin/matches": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
   "/admin/matches/archive": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
-  "/admin/registrations": ["manage_users", "admin.user.create", "admin.user.update"],
   "/admin/attendance": ["manage_attendance", "attendance.view.academy", "attendance.export"],
+  "/admin/rankings": ["rankings:read", "ranking.read.academy", "ranking.read.branch"],
   "/admin/rankings/weekly": ["rankings:read", "ranking.read.academy", "ranking.read.branch"],
   "/admin/rankings/monthly": ["rankings:read", "ranking.read.academy", "ranking.read.branch"],
   "/admin/payments": ["view_financial_reports", "payment.read.academy"],
@@ -1267,7 +1265,6 @@ const adminNavPermissions: Record<string, string[]> = {
   "/admin/reports/attendance": ["manage_attendance", "attendance.export", "attendance.view.academy"],
   "/admin/reports/coach": ["manage_coaches", "coach.read.academy"],
   "/admin/settings": ["manage_academy_settings", "admin.settings.update"],
-  "/admin/settings/player-options": ["manage_players", "player.update"],
   "/admin/settings/roles": ["manage_roles", "manage_permissions", "admin.role.manage"],
   "/admin/settings/integrations": ["manage_academy_settings", "admin.settings.update"],
 };
@@ -1316,7 +1313,6 @@ const coachNavPermissions: Record<string, CoachPermission> = {
   "/coach/injury-risk-ai": "can_view_injury_risk",
   "/coach/matches/evaluation": "can_evaluate_players",
   "/coach/matches/configuration": "can_manage_matches",
-  "/coach/player-options": "can_manage_groups",
 };
 
 function filterCoachNav(
@@ -1550,7 +1546,6 @@ export function DashboardFrame({
     isFetching: adminPermissionsFetching,
   } = useGetCurrentPermissionsQuery(user?.id, {
     skip: role !== "admin" || !authState.isAuthenticated,
-    refetchOnMountOrArgChange: true,
   });
   const adminPermissionSet = useMemo(
     () => new Set(currentPermissions?.permissions ?? []),
@@ -1899,16 +1894,14 @@ export function DashboardFrame({
     refetch: refetchNotifications,
   } = useGetNotificationsQuery(undefined, {
     skip: !notificationsEnabled || !notificationsOpen,
-    pollingInterval: 60000,
+    pollingInterval: 120000,
     skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   const { data: unreadCountFromApi } = useGetUnreadNotificationsCountQuery(undefined, {
     skip: !notificationsEnabled,
-    pollingInterval: 60000,
+    pollingInterval: 120000,
     skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
     refetchOnReconnect: true,
   });
   const [markNotificationRead] = useMarkNotificationReadMutation();

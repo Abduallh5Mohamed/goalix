@@ -7,7 +7,6 @@ import { dashboardApi } from "./api/dashboardApi";
 import { adminApi } from "./api/adminApi";
 import { coachApi } from "./api/coachApi";
 import { calendarApi } from "./api/calendarApi";
-import { registrationsApi } from "./api/registrationsApi";
 import authReducer from "./slices/authSlice";
 import uiReducer from "./slices/uiSlice";
 
@@ -20,7 +19,6 @@ export const store = configureStore({
     [adminApi.reducerPath]: adminApi.reducer,
     [coachApi.reducerPath]: coachApi.reducer,
     [calendarApi.reducerPath]: calendarApi.reducer,
-    [registrationsApi.reducerPath]: registrationsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -28,8 +26,7 @@ export const store = configureStore({
       .concat(dashboardApi.middleware)
       .concat(adminApi.middleware)
       .concat(coachApi.middleware)
-      .concat(calendarApi.middleware)
-      .concat(registrationsApi.middleware),
+      .concat(calendarApi.middleware),
 });
 
 setupListeners(store.dispatch);

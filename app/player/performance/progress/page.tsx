@@ -119,14 +119,8 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export default function PlayerProgressPage() {
-  const progressQuery = useGetPlayerProgressQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
-  const matchesQuery = useGetPlayerMatchesQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const progressQuery = useGetPlayerProgressQuery();
+  const matchesQuery = useGetPlayerMatchesQuery();
   const matchEvaluations = (matchesQuery.data?.data ?? [])
     .flatMap((match) =>
       (match.stats ?? []).map((stats) => ({
