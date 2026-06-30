@@ -708,26 +708,99 @@ class ChatRepository {
 
   async insertMessage(conversation, data) {
     const now = new Date();
-    const [row] = await this.db.transaction(async (trx) => {
-      const [message] = await trx("chat_messages")
-        .insert({
-          conversation_id: conversation.id,
-          academy_id: conversation.academy_id,
-          sender_user_id: data.senderUserId,
-          body: data.body || null,
-          attachment_url: data.attachmentUrl || null,
-          attachment_original_name: data.attachmentOriginalName || null,
-          attachment_mime_type: data.attachmentMimeType || null,
-          attachment_size: data.attachmentSize || null,
-          delivered_at: now,
-        })
-        .returning("*");
-      await trx("chat_conversations")
-        .where({ id: conversation.id })
-        .update({ last_message_at: now, updated_at: now });
-      return [message];
-    });
-    return this.findMessageById(row.id);
+    let insertResult;
+    try {
+      insertResult = await this.db.transaction(async (trx) => {
+        if (data.clientMessageId) {
+          const existing = await trx("chat_messages")
+            .where({
+              conversation_id: conversation.id,
+              sender_user_id: data.senderUserId,
+              client_message_id: data.clientMessageId,
+            })
+            .whereNull("deleted_at")
+            .first("id");
+          if (existing) {
+            return { message: existing, event: null, idempotent: true };
+          }
+        }
+
+        const [message] = await trx("chat_messages")
+          .insert({
+            conversation_id: conversation.id,
+            academy_id: conversation.academy_id,
+            sender_user_id: data.senderUserId,
+            client_message_id: data.clientMessageId || null,
+            body: data.body || null,
+            attachment_url: data.attachmentUrl || null,
+            attachment_original_name: data.attachmentOriginalName || null,
+            attachment_mime_type: data.attachmentMimeType || null,
+            attachment_size: data.attachmentSize || null,
+            delivered_at: now,
+          })
+          .returning("*");
+        await trx("chat_conversations")
+          .where({ id: conversation.id })
+          .update({ last_message_at: now, updated_at: now });
+        const realtimeEvent = await this.createRealtimeEvent(trx, {
+          eventType: "chat.message.created",
+          entityType: "chat_messages",
+          entityId: message.id,
+          academyId: conversation.academy_id,
+          payload: {
+            conversationId: conversation.id,
+            messageId: message.id,
+            senderUserId: data.senderUserId,
+          },
+        });
+        return { message, event: realtimeEvent, idempotent: false };
+      });
+    } catch (err) {
+      if (data.clientMessageId && err.code === "23505") {
+        const existing = await this.db("chat_messages")
+          .where({
+            conversation_id: conversation.id,
+            sender_user_id: data.senderUserId,
+            client_message_id: data.clientMessageId,
+          })
+          .whereNull("deleted_at")
+          .first("id");
+        if (existing) {
+          const message = await this.findMessageById(existing.id);
+          return { message, event: null, idempotent: true };
+        }
+      }
+      throw err;
+    }
+    const { message: row, event, idempotent } = insertResult;
+    const message = await this.findMessageById(row.id);
+    return { message, event, idempotent };
+  }
+
+  async createRealtimeEvent(trx, {
+    eventType,
+    entityType,
+    entityId,
+    academyId,
+    payload = {},
+  }) {
+    const [row] = await trx("realtime_outbox")
+      .insert({
+        event_type: eventType,
+        entity_type: entityType,
+        entity_id: entityId || null,
+        academy_id: academyId || null,
+        payload,
+      })
+      .returning([
+        "id",
+        "sequence",
+        "event_type",
+        "entity_type",
+        "entity_id",
+        "occurred_at",
+      ]);
+    return row;
   }
 
   messageBaseQuery({ includeDeleted = false, viewerUserId = null } = {}) {
@@ -841,20 +914,37 @@ class ChatRepository {
 
   async markConversationRead(conversationId, userId) {
     const now = new Date();
-    const rows = await this.db("chat_messages")
-      .where({ conversation_id: conversationId })
-      .whereNot("sender_user_id", userId)
-      .whereNull("deleted_at")
-      .whereNull("read_at")
-      .update({
-        delivered_at: this.db.raw("COALESCE(delivered_at, ?)", [now]),
-        read_at: now,
-        updated_at: now,
-      })
-      .returning("id");
+    const { rows, event } = await this.db.transaction(async (trx) => {
+      const updatedRows = await trx("chat_messages")
+        .where({ conversation_id: conversationId })
+        .whereNot("sender_user_id", userId)
+        .whereNull("deleted_at")
+        .whereNull("read_at")
+        .update({
+          delivered_at: this.db.raw("COALESCE(delivered_at, ?)", [now]),
+          read_at: now,
+          updated_at: now,
+        })
+        .returning("id");
+      if (!updatedRows.length) return { rows: updatedRows, event: null };
+      const realtimeEvent = await this.createRealtimeEvent(trx, {
+        eventType: "chat.messages.read",
+        entityType: "chat_conversations",
+        entityId: conversationId,
+        payload: {
+          conversationId,
+          readerUserId: userId,
+          messageIds: updatedRows.map((row) => row.id || row),
+        },
+      });
+      return { rows: updatedRows, event: realtimeEvent };
+    });
 
     const messageIds = rows.map((row) => row.id || row);
-    return this.findMessagesByIds(messageIds);
+    return {
+      messages: await this.findMessagesByIds(messageIds),
+      event,
+    };
   }
 
   conversationUserIds(conversation) {

@@ -94,12 +94,7 @@ export default function CoachMatchesPage() {
     isLoading,
     isError: matchesError,
     refetch: refetchMatches,
-  } = useGetCoachMatchesQuery(undefined, {
-    pollingInterval: 15000,
-    skipPollingIfUnfocused: true,
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  } = useGetCoachMatchesQuery();
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
   const nowMs = useSyncExternalStore(
     subscribeMatchClock,

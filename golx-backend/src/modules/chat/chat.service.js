@@ -1,6 +1,3 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
-const { randomUUID } = require("node:crypto");
 const env = require("../../config/env");
 const { redis } = require("../../infrastructure/redis");
 const {
@@ -13,6 +10,12 @@ const {
   getJsonCache,
   setJsonCache,
 } = require("../../shared/redis-json-cache");
+const {
+  canAccessAttachment,
+  canAccessConversation,
+} = require("../../shared/access-policy");
+const { auditAccessDenied } = require("../../shared/access-audit");
+const storage = require("../../shared/storage");
 
 const chatImageTypes = {
   "image/png": ".png",
@@ -132,43 +135,7 @@ class ChatService {
   }
 
   _canAccessConversation(user, conversation) {
-    if (!conversation || conversation.academy_id !== user.academyId) {
-      return false;
-    }
-    if (user.role === "admin") {
-      return (
-        ["admin_coach", "admin_player_session"].includes(conversation.type) &&
-        conversation.admin_user_id === user.userId
-      ) || (
-        conversation.type === "chat_group" &&
-        Array.isArray(conversation.group_member_user_ids) &&
-        conversation.group_member_user_ids.includes(user.userId)
-      );
-    }
-    if (user.role === "coach") {
-      return (
-        conversation.coach_user_id === user.userId ||
-        (
-          conversation.type === "chat_group" &&
-          Array.isArray(conversation.group_member_user_ids) &&
-          conversation.group_member_user_ids.includes(user.userId)
-        )
-      );
-    }
-    if (user.role === "player") {
-      return (
-        conversation.player_user_id === user.userId ||
-        (
-          conversation.type === "chat_group" &&
-          Array.isArray(conversation.group_member_user_ids) &&
-          conversation.group_member_user_ids.includes(user.userId)
-        )
-      );
-    }
-    if (user.role === "parent") {
-      return conversation.parent_user_id === user.userId;
-    }
-    return false;
+    return canAccessConversation(user, conversation);
   }
 
   async _allowedGroupMemberUserIds(user) {
@@ -213,6 +180,12 @@ class ChatService {
     this._assertChatRole(user);
     const conversation = await this.repo.findConversationById(conversationId);
     if (!conversation || !this._canAccessConversation(user, conversation)) {
+      await auditAccessDenied(this.repo.db, user, {
+        action: "chat_access_denied",
+        entityType: "chat_conversations",
+        entityId: conversationId,
+        reason: conversation ? "policy_denied" : "not_found",
+      });
       throw new NotFoundError("Conversation", conversationId);
     }
     return conversation;
@@ -608,18 +581,19 @@ class ChatService {
 
   async markConversationRead(user, conversationId) {
     const conversation = await this._requireConversation(user, conversationId);
-    const messages = await this.repo.markConversationRead(
+    const readResult = await this.repo.markConversationRead(
       conversation.id,
       user.userId,
     );
     return {
-      messages,
+      messages: readResult.messages,
       conversation: this._decorateConversation(conversation, user),
       recipientUserIds: this.repo.conversationUserIds(conversation),
+      event: readResult.event,
     };
   }
 
-  async sendMessage(user, conversationId, { body = "", image = null } = {}) {
+  async sendMessage(user, conversationId, { body = "", image = null, clientMessageId = null } = {}) {
     const conversation = await this._requireConversation(user, conversationId);
     await this._assertCurrentCoachPlayerAccess(conversation);
 
@@ -636,8 +610,9 @@ class ChatService {
       throw new BadRequestError("Message text or image is required");
     }
 
-    const message = await this.repo.insertMessage(conversation, {
+    const result = await this.repo.insertMessage(conversation, {
       senderUserId: user.userId,
+      clientMessageId,
       body: trimmedBody,
       attachmentUrl: attachment?.attachmentUrl,
       attachmentOriginalName: attachment?.fileName,
@@ -645,11 +620,15 @@ class ChatService {
       attachmentSize: attachment?.sizeBytes,
     });
     const updatedConversation = await this.repo.findConversationById(conversation.id);
-    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+    if (!result.idempotent) {
+      await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+    }
     return {
-      message,
+      message: result.message,
       conversation: this._decorateConversation(updatedConversation, user),
       recipientUserIds: this.repo.conversationUserIds(conversation),
+      event: result.event,
+      idempotent: result.idempotent,
     };
   }
 
@@ -744,22 +723,17 @@ class ChatService {
       throw new BadRequestError("Chat image must be 8MB or smaller.");
     }
 
-    const academySegment = String(user.academyId || "shared").replace(
-      /[^a-zA-Z0-9-]/g,
-      "",
-    );
-    const storedName = `${Date.now()}-${randomUUID()}${extension}`;
-    const uploadDir = path.resolve(
-      __dirname,
-      "../../../uploads/chat",
-      academySegment,
-    );
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, storedName), buffer);
+    const upload = await storage.putUpload({
+      scope: "chat",
+      academyId: user.academyId,
+      extension,
+      buffer,
+      contentType: normalizedMimeType,
+    });
 
     return {
       fileName: sanitizeFileName(originalName || "chat-image"),
-      attachmentUrl: `/uploads/chat/${academySegment}/${storedName}`,
+      attachmentUrl: upload.url,
       mimeType: normalizedMimeType,
       sizeBytes: buffer.length,
     };
@@ -774,7 +748,16 @@ class ChatService {
     const message = await this.repo.findMessageByAttachmentUrl(attachmentUrl);
     if (!message) return false;
     const conversation = await this.repo.findConversationById(message.conversation_id);
-    return this._canAccessConversation(user, conversation);
+    const allowed = canAccessAttachment(user, message, conversation);
+    if (!allowed) {
+      await auditAccessDenied(this.repo.db, user, {
+        action: "chat_attachment_access_denied",
+        entityType: "chat_messages",
+        entityId: message.id,
+        reason: "policy_denied",
+      });
+    }
+    return allowed;
   }
 }
 

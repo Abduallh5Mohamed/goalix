@@ -136,18 +136,9 @@ function EmptyState({ text }: { text: string }) {
 export default function PlayerTrainingDetailPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
-  const trainingsQuery = useGetPlayerTrainingsQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
-  const attendanceQuery = useGetPlayerAttendanceQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
-  const evaluationsQuery = useGetPlayerEvaluationsQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const trainingsQuery = useGetPlayerTrainingsQuery();
+  const attendanceQuery = useGetPlayerAttendanceQuery();
+  const evaluationsQuery = useGetPlayerEvaluationsQuery();
 
   const training = (trainingsQuery.data?.data ?? []).find(
     (event) => event.id === eventId,

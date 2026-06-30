@@ -90,6 +90,7 @@ const messagesQuery = z.object({
 
 const messageBodySchema = z.object({
   body: z.string().trim().max(4000).optional().default(""),
+  clientMessageId: z.string().trim().min(1).max(120).optional(),
 });
 
 const editMessageSchema = z.object({

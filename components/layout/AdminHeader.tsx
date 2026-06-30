@@ -27,7 +27,7 @@ export function AdminHeader() {
     authState.isAuthenticated && authState.role === "admin";
   const { data: unreadCount = 0 } = useGetUnreadNotificationsCountQuery(undefined, {
     skip: !notificationsEnabled,
-    pollingInterval: 60000,
+    pollingInterval: 120000,
     skipPollingIfUnfocused: true,
   });
 

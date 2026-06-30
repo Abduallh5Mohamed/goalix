@@ -80,7 +80,7 @@ const toggleId = (items: string[], id: string) =>
 export default function CreateTrainingEventPage() {
   const { data: groups = [] } = useGetCoachGroupsScopedQuery();
   const { data: birthYears = [] } = useGetCoachBirthdaysQuery();
-  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 200 });
   const players = useMemo(() => playersRes?.data ?? [], [playersRes?.data]);
   const [createTraining, { isLoading }] = useCreateCoachTrainingEventMutation();
   const [playerSearch, setPlayerSearch] = useState("");

@@ -5,9 +5,7 @@ const {
   NotFoundError,
 } = require("../../shared/errors");
 const bcrypt = require("bcrypt");
-const fs = require("node:fs/promises");
-const path = require("node:path");
-const { createHmac, randomUUID, timingSafeEqual } = require("node:crypto");
+const { createHmac, timingSafeEqual } = require("node:crypto");
 const QRCode = require("qrcode");
 const env = require("../../config/env");
 const {
@@ -25,6 +23,9 @@ const {
   normalizeAssignmentRole,
   permissionColumnsForRole,
 } = require("../coaches/coach-assignment-roles");
+const storage = require("../../shared/storage");
+const { auditAccessDenied } = require("../../shared/access-audit");
+const { canParentAccessChild } = require("../../shared/access-policy");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -158,7 +159,7 @@ const isGoalkeeperPosition = (position) => {
   return normalized === "gk" || normalized.includes("goalkeeper");
 };
 const ATTENDANCE_QR_WINDOW_MINUTES = 15;
-const DEFAULT_MATCH_DAY_UNLOCK_MINUTES = 15;
+const DEFAULT_MATCH_DAY_UNLOCK_MINUTES = 5;
 const academyMatchDayUnlockMinutes = (academySettings) => {
   const raw =
     academySettings?.matchDayOpenMinutesBeforeKickoff ??
@@ -409,7 +410,13 @@ class CalendarService {
       childId,
       academyId,
     );
-    if (!player) {
+    if (!player || !canParentAccessChild(parentUserId, player)) {
+      await auditAccessDenied(this.repo.db, { userId: parentUserId, role: "parent", academyId }, {
+        action: "parent_child_access_denied",
+        entityType: "player_profiles",
+        entityId: childId,
+        reason: "not_linked_child",
+      });
       throw new ForbiddenError("Parent can only access their linked child");
     }
     return player;
@@ -417,7 +424,13 @@ class CalendarService {
 
   async _assertParentCanViewProgress(parentUserId, childId, academyId) {
     const player = await this._assertParentChild(parentUserId, childId, academyId);
-    if (player.can_view_progress === false) {
+    if (!canParentAccessChild(parentUserId, player, "progress")) {
+      await auditAccessDenied(this.repo.db, { userId: parentUserId, role: "parent", academyId }, {
+        action: "parent_progress_access_denied",
+        entityType: "player_profiles",
+        entityId: childId,
+        reason: "progress_disabled",
+      });
       throw new ForbiddenError("Parent cannot access progress for this child");
     }
     return player;
@@ -425,7 +438,13 @@ class CalendarService {
 
   async _assertParentCanMessageCoach(parentUserId, childId, academyId) {
     const player = await this._assertParentChild(parentUserId, childId, academyId);
-    if (player.can_message_coach === false) {
+    if (!canParentAccessChild(parentUserId, player, "message_coach")) {
+      await auditAccessDenied(this.repo.db, { userId: parentUserId, role: "parent", academyId }, {
+        action: "parent_message_coach_denied",
+        entityType: "player_profiles",
+        entityId: childId,
+        reason: "message_coach_disabled",
+      });
       throw new ForbiddenError("Parent cannot contact coaches for this child");
     }
     return player;
@@ -922,11 +941,23 @@ class CalendarService {
   async _notifyCoachWeeklyRankingReady(coach, rows) {
     if (!coach?.user_id || !rows?.length) return;
 
-    const latestWeekStart = rows[0]?.week_start;
+    const { rows: currentWeekRows } = await this.repo.db.raw(
+      "SELECT date_trunc('week', now())::date::text AS week_start",
+    );
+    const currentWeekStart = currentWeekRows[0]?.week_start || null;
+    const completedRows = rows.filter((row) => {
+      const weekStart = String(row.week_start || "").slice(0, 10);
+      const isCarryForward = Boolean(
+        row.carry_forward || row.final_api_response?.carry_forward,
+      );
+      return weekStart && !isCarryForward && (!currentWeekStart || weekStart < currentWeekStart);
+    });
+
+    const latestWeekStart = completedRows[0]?.week_start;
     if (!latestWeekStart) return;
 
-    const latestRows = rows.filter(
-      (row) => String(row.week_start) === String(latestWeekStart),
+    const latestRows = completedRows.filter(
+      (row) => String(row.week_start).slice(0, 10) === String(latestWeekStart).slice(0, 10),
     );
     if (!latestRows.length) return;
 
@@ -8594,16 +8625,18 @@ class CalendarService {
     }
 
     const fileName = sanitizeFileName(originalName);
-    const academySegment = String(user.academyId || "shared").replace(/[^a-zA-Z0-9-]/g, "");
-    const storedName = `${Date.now()}-${randomUUID()}${typeInfo.extension}`;
-    const uploadDir = path.resolve(__dirname, "../../../uploads/player-assignments", academySegment);
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, storedName), buffer);
+    const upload = await storage.putUpload({
+      scope: "player-assignments",
+      academyId: user.academyId,
+      extension: typeInfo.extension,
+      buffer,
+      contentType: normalizedMimeType,
+    });
 
     return {
       fileType: typeInfo.fileType,
       fileName,
-      fileUrl: `/uploads/player-assignments/${academySegment}/${storedName}`,
+      fileUrl: upload.url,
       mimeType: normalizedMimeType,
       sizeBytes: buffer.length,
     };
@@ -9140,7 +9173,6 @@ class CalendarService {
       player_code: row.player_code || null,
       position: row.position || null,
       level: row.level || null,
-      photo_url: row.photo_url || null,
       date_of_birth: row.date_of_birth || null,
       height_cm: row.height_cm || null,
       weight_kg: row.weight_kg || null,

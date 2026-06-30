@@ -8,230 +8,887 @@ Python model dependencies are ready.
 [backend] [33m[nodemon] watching path(s): *.*[39m
 [backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
 [backend] [32m[nodemon] starting `node src/server.js`[39m
-[backend] [2026-06-29 16:18:22.029 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[backend] [2026-06-29 19:46:00.520 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 16:18:22.032 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+[backend] [2026-06-29 19:46:00.523 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
 [backend]     service: "goalix-api"
 [backend]     message: ""
 [backend]     code: "ECONNREFUSED"
-[backend] [2026-06-29 16:18:22.032 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend] [2026-06-29 19:46:00.523 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 16:18:22.036 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+[backend] [2026-06-29 19:46:00.527 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
 [backend]     service: "goalix-api"
 [frontend] ▲ Next.js 16.2.6 (Turbopack)
 [frontend] - Local:         http://localhost:3001
 [frontend] - Network:       http://0.0.0.0:3001
-[frontend] ✓ Ready in 838ms
+[frontend] ✓ Ready in 782ms
 [frontend] Creating turbopack project { dir: 'D:\\Goalix\\goalix', testMode: true }
-[frontend] ○ Compiling /coach/birthdays ...
-[frontend]  GET /admin/academy/birth-years 200 in 8.8s (next.js: 7.8s, proxy.ts: 406ms, application-code: 531ms)
-[frontend]  GET /coach/birthdays 200 in 3.4s (next.js: 3.3s, proxy.ts: 10ms, application-code: 102ms)
-[frontend] ✓ Finished writing to filesystem cache in 17.1s
-[frontend] ✓ Finished filesystem cache database compaction in 16.0s
-[backend] [32m[nodemon] restarting due to changes...[39m
+[frontend] ✓ Finished writing to filesystem cache in 14.9s
+[frontend]  GET /admin/rankings/monthly 200 in 5.5s (next.js: 193ms, proxy.ts: 395ms, application-code: 5.0s)
+[frontend]  GET /coach/rankings 200 in 5.6s (next.js: 1457ms, proxy.ts: 404ms, application-code: 3.7s)
+[frontend]  GET /parent/child/ranking 200 in 5.6s (next.js: 3.7s, proxy.ts: 397ms, application-code: 1451ms)
+[frontend]  GET /player/performance/ranking 200 in 5.6s (next.js: 4.0s, proxy.ts: 425ms, application-code: 1142ms)
+[frontend]  GET /admin/registrations 404 in 5.6s (next.js: 4.9s, proxy.ts: 406ms, application-code: 284ms)
+[frontend] ✓ Finished filesystem cache database compaction in 15.7s
+[frontend] ✓ Finished filesystem cache database compaction in 10.9s
+[frontend]  GET /coach/rankings 200 in 1327ms (next.js: 80ms, proxy.ts: 91ms, application-code: 1156ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 7.5s (next.js: 7.2s, application-code: 250ms)
+[frontend]  GET /api/v1/academy 200 in 210ms (next.js: 11ms, application-code: 199ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 217ms (next.js: 17ms, application-code: 200ms)
+[frontend]  GET /api/v1/coach/permissions 200 in 221ms (next.js: 5ms, application-code: 217ms)
+[frontend]  GET /api/v1/coach/ranking-system-inputs?page=1&limit=500 200 in 6.4s (next.js: 10ms, application-code: 6.4s)
+[backend] [2026-06-29 19:55:49.726 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "435c6c33-e073-4ff5-8065-28fb829bda27"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/coach/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 6385.32
+[frontend]  GET /api/v1/notifications/unread-count 200 in 80ms (next.js: 11ms, application-code: 69ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 29ms (next.js: 14ms, application-code: 15ms)
+[frontend]  GET /admin-login 200 in 244ms (next.js: 103ms, proxy.ts: 6ms, application-code: 135ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 113ms (next.js: 14ms, application-code: 99ms)
+[frontend]  POST /api/v1/auth/admin/login 200 in 291ms (next.js: 11ms, application-code: 280ms)
+[frontend]  GET /coach/home 200 in 98ms (next.js: 62ms, proxy.ts: 8ms, application-code: 28ms)
+[frontend]  GET /api/v1/coach/groups 200 in 71ms (next.js: 4ms, application-code: 67ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 200 in 136ms (next.js: 8ms, application-code: 128ms)
+[frontend]  GET /api/v1/academy 200 in 165ms (next.js: 85ms, application-code: 81ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 186ms (next.js: 101ms, application-code: 85ms)
+[frontend]  GET /api/v1/coach/permissions 200 in 211ms (next.js: 61ms, application-code: 150ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 200 in 243ms (next.js: 14ms, application-code: 229ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 287ms (next.js: 41ms, application-code: 246ms)
+[frontend]  GET /coach/rankings 200 in 36ms (next.js: 9ms, proxy.ts: 4ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/ranking-system-inputs?page=1&limit=500 200 in 8.0s (next.js: 19ms, application-code: 8.0s)
+[backend] [2026-06-29 20:50:03.690 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "de6505ec-6985-45a5-b1cd-a3cdbd2fecee"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/coach/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 7943.23
+[frontend]  GET /admin-login 200 in 63ms (next.js: 5ms, proxy.ts: 5ms, application-code: 53ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 59ms (next.js: 18ms, application-code: 41ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 4ms, application-code: 19ms)
+[frontend]  POST /api/v1/auth/admin/login 200 in 244ms (next.js: 14ms, application-code: 230ms)
+[frontend]  GET /admin/dashboard 200 in 111ms (next.js: 72ms, proxy.ts: 4ms, application-code: 35ms)
+[frontend]  GET /api/v1/academy 200 in 60ms (next.js: 8ms, application-code: 51ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 66ms (next.js: 27ms, application-code: 39ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 94ms (next.js: 41ms, application-code: 53ms)
+[frontend]  GET /api/v1/admin/dashboard 200 in 94ms (next.js: 9ms, application-code: 86ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 30ms (next.js: 8ms, application-code: 23ms)
+[frontend]  GET /admin/rankings/weekly 200 in 91ms (next.js: 61ms, proxy.ts: 4ms, application-code: 25ms)
+[frontend]  GET /api/v1/academy/groups?limit=100 200 in 138ms (next.js: 61ms, application-code: 77ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 165ms (next.js: 144ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 42ms (next.js: 26ms, application-code: 16ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 8.2s (next.js: 35ms, application-code: 8.2s)
+[backend] [2026-06-29 20:50:54.412 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "d62606cd-aab3-4897-a028-dd8cc37a7510"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 8165.44
+[frontend]  GET /api/v1/notifications/unread-count 200 in 31ms (next.js: 11ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 29ms (next.js: 14ms, application-code: 15ms)
+[frontend]  GET /admin/rankings/monthly 200 in 38ms (next.js: 9ms, proxy.ts: 4ms, application-code: 24ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 22ms (next.js: 9ms, application-code: 12ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 25ms (next.js: 10ms, application-code: 15ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 10ms, application-code: 13ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 26ms (next.js: 11ms, application-code: 14ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 27ms (next.js: 12ms, application-code: 15ms)
+[frontend]  GET /admin/rankings/weekly 200 in 54ms (next.js: 8ms, proxy.ts: 7ms, application-code: 38ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 10ms, application-code: 13ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 18ms (next.js: 7ms, application-code: 10ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 19ms (next.js: 8ms, application-code: 11ms)
+[frontend] ✓ Compiled in 797ms
+[frontend]  GET /admin/rankings/weekly 200 in 4.3s (next.js: 282ms, proxy.ts: 3.8s, application-code: 278ms)
+[frontend]  GET /coach/rankings 200 in 4.3s (next.js: 481ms, proxy.ts: 3.8s, application-code: 112ms)
+[frontend]  GET /admin/rankings/weekly 200 in 129ms (next.js: 21ms, proxy.ts: 6ms, application-code: 103ms)
+[frontend]  GET /coach/rankings 200 in 116ms (next.js: 9ms, proxy.ts: 6ms, application-code: 101ms)
+[frontend]  GET /admin/rankings/weekly 200 in 117ms (next.js: 35ms, proxy.ts: 7ms, application-code: 76ms)
+[frontend]  GET /admin/rankings/weekly 200 in 89ms (next.js: 8ms, proxy.ts: 6ms, application-code: 75ms)
+[frontend]  GET /coach/rankings 200 in 85ms (next.js: 7ms, proxy.ts: 3ms, application-code: 75ms)
+[frontend]  GET /coach/rankings 200 in 45ms (next.js: 6ms, proxy.ts: 5ms, application-code: 34ms)
+[frontend] ✓ Compiled in 22.5s
+[frontend]  GET /coach/rankings 200 in 6.0s (next.js: 4.0s, proxy.ts: 195ms, application-code: 1812ms)
+[frontend]  GET /admin/rankings/weekly 200 in 6.0s (next.js: 5.3s, proxy.ts: 192ms, application-code: 475ms)
+[frontend]  GET /coach/rankings 200 in 438ms (next.js: 51ms, proxy.ts: 23ms, application-code: 364ms)
+[frontend]  GET /admin/rankings/weekly 200 in 445ms (next.js: 14ms, proxy.ts: 18ms, application-code: 413ms)
+[frontend]  GET /coach/rankings 200 in 445ms (next.js: 32ms, proxy.ts: 23ms, application-code: 391ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 250ms (next.js: 4ms, application-code: 246ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 338ms (next.js: 66ms, application-code: 271ms)
+[frontend]  GET /admin/dashboard 200 in 421ms (next.js: 115ms, proxy.ts: 7ms, application-code: 300ms)
+[frontend]  GET /api/v1/academy 200 in 63ms (next.js: 19ms, application-code: 44ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 83ms (next.js: 6ms, application-code: 77ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 92ms (next.js: 33ms, application-code: 59ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 36ms (next.js: 10ms, application-code: 27ms)
+[frontend]  GET /api/v1/academy 200 in 28ms (next.js: 12ms, application-code: 17ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 34ms (next.js: 5ms, application-code: 28ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 35ms (next.js: 20ms, application-code: 15ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 18ms (next.js: 4ms, application-code: 14ms)
+[frontend]  GET /api/v1/admin/dashboard 200 in 102ms (next.js: 11ms, application-code: 91ms)
+[frontend] ✓ Finished writing to filesystem cache in 12.4s
+[frontend] ✓ Finished filesystem cache database compaction in 22.5s
+[frontend]  GET /admin/dashboard 200 in 7.6s (next.js: 3.6s, proxy.ts: 153ms, application-code: 3.8s)
+[frontend] ✓ Compiled in 4.7s
+[frontend]  GET /admin/rankings/weekly 200 in 10.1s (next.js: 5.8s, proxy.ts: 154ms, application-code: 4.2s)
+[frontend]  GET /admin/rankings/weekly 200 in 2.1s (next.js: 743ms, proxy.ts: 1158ms, application-code: 168ms)
+[frontend]  GET /admin/rankings/weekly 200 in 905ms (next.js: 46ms, proxy.ts: 4ms, application-code: 855ms)
+[frontend]  GET /admin/rankings/weekly 200 in 814ms (next.js: 19ms, proxy.ts: 15ms, application-code: 781ms)
+[frontend]  GET /admin/rankings/weekly 200 in 841ms (next.js: 51ms, proxy.ts: 15ms, application-code: 775ms)
+[frontend]  GET /admin/rankings/weekly 200 in 840ms (next.js: 130ms, proxy.ts: 16ms, application-code: 694ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1052ms (next.js: 310ms, proxy.ts: 224ms, application-code: 518ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1053ms (next.js: 423ms, proxy.ts: 224ms, application-code: 405ms)
+[frontend]  GET /admin/rankings/weekly 200 in 475ms (next.js: 62ms, proxy.ts: 8ms, application-code: 404ms)
+[frontend]  GET /admin/rankings/weekly 200 in 226ms (next.js: 16ms, proxy.ts: 22ms, application-code: 188ms)
+[frontend]  GET /admin/rankings/weekly 200 in 226ms (next.js: 51ms, proxy.ts: 22ms, application-code: 153ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 84ms, proxy.ts: 25ms, application-code: 120ms)
+[frontend]  GET /admin/rankings/weekly 200 in 257ms (next.js: 51ms, proxy.ts: 82ms, application-code: 125ms)
+[frontend]  GET /admin/rankings/weekly 200 in 260ms (next.js: 52ms, proxy.ts: 111ms, application-code: 97ms)
+[frontend]  GET /admin/rankings/weekly 200 in 237ms (next.js: 20ms, proxy.ts: 5ms, application-code: 211ms)
+[frontend]  GET /admin/rankings/weekly 200 in 272ms (next.js: 17ms, proxy.ts: 49ms, application-code: 206ms)
+[frontend]  GET /admin/rankings/weekly 200 in 271ms (next.js: 46ms, proxy.ts: 47ms, application-code: 178ms)
+[frontend]  GET /admin/rankings/weekly 200 in 275ms (next.js: 83ms, proxy.ts: 20ms, application-code: 172ms)
+[frontend]  GET /admin/rankings/weekly 200 in 264ms (next.js: 49ms, proxy.ts: 79ms, application-code: 136ms)
+[frontend]  GET /admin/rankings/weekly 200 in 205ms (next.js: 64ms, proxy.ts: 42ms, application-code: 99ms)
+[frontend]  GET /admin/rankings/weekly 200 in 203ms (next.js: 18ms, proxy.ts: 8ms, application-code: 177ms)
+[frontend]  GET /admin/rankings/weekly 200 in 219ms (next.js: 24ms, proxy.ts: 37ms, application-code: 158ms)
+[frontend]  GET /admin/rankings/weekly 200 in 219ms (next.js: 50ms, proxy.ts: 38ms, application-code: 130ms)
+[frontend]  GET /admin/rankings/weekly 200 in 211ms (next.js: 11ms, proxy.ts: 76ms, application-code: 123ms)
+[frontend]  GET /admin/rankings/weekly 200 in 206ms (next.js: 39ms, proxy.ts: 73ms, application-code: 94ms)
+[frontend]  GET /admin/rankings/weekly 200 in 197ms (next.js: 38ms, proxy.ts: 34ms, application-code: 125ms)
+[frontend]  GET /admin/rankings/weekly 200 in 168ms (next.js: 12ms, proxy.ts: 29ms, application-code: 127ms)
+[frontend]  GET /admin/rankings/weekly 200 in 205ms (next.js: 17ms, proxy.ts: 33ms, application-code: 155ms)
+[frontend]  GET /admin/rankings/weekly 200 in 204ms (next.js: 40ms, proxy.ts: 33ms, application-code: 131ms)
+[frontend]  GET /admin/rankings/weekly 200 in 200ms (next.js: 10ms, proxy.ts: 59ms, application-code: 132ms)
+[frontend]  GET /admin/rankings/weekly 200 in 201ms (next.js: 36ms, proxy.ts: 57ms, application-code: 108ms)
+[frontend]  GET /admin/rankings/weekly 200 in 223ms (next.js: 43ms, proxy.ts: 31ms, application-code: 149ms)
+[frontend]  GET /admin/rankings/weekly 200 in 304ms (next.js: 11ms, proxy.ts: 34ms, application-code: 259ms)
+[frontend]  GET /admin/rankings/weekly 200 in 303ms (next.js: 12ms, proxy.ts: 34ms, application-code: 257ms)
+[frontend]  GET /admin/rankings/weekly 200 in 302ms (next.js: 40ms, proxy.ts: 34ms, application-code: 228ms)
+[frontend]  GET /admin/rankings/weekly 200 in 307ms (next.js: 19ms, proxy.ts: 85ms, application-code: 203ms)
+[frontend]  GET /admin/rankings/weekly 200 in 235ms (next.js: 111ms, proxy.ts: 11ms, application-code: 113ms)
+[frontend]  GET /admin/rankings/weekly 200 in 282ms (next.js: 43ms, proxy.ts: 108ms, application-code: 131ms)
+[frontend]  GET /admin/rankings/weekly 200 in 173ms (next.js: 11ms, proxy.ts: 35ms, application-code: 127ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 14ms, proxy.ts: 35ms, application-code: 181ms)
+[frontend]  GET /admin/rankings/weekly 200 in 232ms (next.js: 35ms, proxy.ts: 35ms, application-code: 162ms)
+[frontend]  GET /admin/rankings/weekly 200 in 172ms (next.js: 10ms, proxy.ts: 8ms, application-code: 154ms)
+[frontend]  GET /admin/rankings/weekly 200 in 173ms (next.js: 32ms, proxy.ts: 10ms, application-code: 131ms)
+[frontend]  GET /admin/rankings/weekly 200 in 219ms (next.js: 8ms, proxy.ts: 52ms, application-code: 159ms)
+[frontend]  GET /admin/rankings/weekly 200 in 258ms (next.js: 10ms, proxy.ts: 72ms, application-code: 176ms)
+[frontend]  GET /admin/rankings/weekly 200 in 215ms (next.js: 9ms, proxy.ts: 29ms, application-code: 176ms)
+[frontend]  GET /admin/rankings/weekly 200 in 222ms (next.js: 34ms, proxy.ts: 29ms, application-code: 159ms)
+[frontend]  GET /admin/rankings/weekly 200 in 203ms (next.js: 30ms, proxy.ts: 36ms, application-code: 137ms)
+[frontend]  GET /admin/rankings/weekly 200 in 205ms (next.js: 9ms, proxy.ts: 36ms, application-code: 160ms)
+[frontend]  GET /admin/rankings/weekly 200 in 236ms (next.js: 10ms, proxy.ts: 89ms, application-code: 138ms)
+[frontend]  GET /admin/rankings/weekly 200 in 219ms (next.js: 15ms, proxy.ts: 28ms, application-code: 176ms)
+[frontend]  GET /admin/rankings/weekly 200 in 222ms (next.js: 18ms, proxy.ts: 35ms, application-code: 169ms)
+[frontend]  GET /admin/rankings/weekly 200 in 201ms (next.js: 49ms, proxy.ts: 6ms, application-code: 147ms)
+[frontend]  GET /admin/rankings/weekly 200 in 197ms (next.js: 14ms, proxy.ts: 38ms, application-code: 146ms)
+[frontend]  GET /admin/rankings/weekly 200 in 197ms (next.js: 41ms, proxy.ts: 38ms, application-code: 117ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 11ms, proxy.ts: 66ms, application-code: 152ms)
+[frontend]  GET /admin/rankings/weekly 200 in 234ms (next.js: 16ms, proxy.ts: 38ms, application-code: 179ms)
+[frontend]  GET /admin/rankings/weekly 200 in 194ms (next.js: 12ms, proxy.ts: 36ms, application-code: 146ms)
+[frontend]  GET /admin/rankings/weekly 200 in 192ms (next.js: 50ms, proxy.ts: 10ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 182ms (next.js: 14ms, proxy.ts: 36ms, application-code: 132ms)
+[frontend]  GET /admin/rankings/weekly 200 in 182ms (next.js: 42ms, proxy.ts: 37ms, application-code: 103ms)
+[frontend]  GET /admin/rankings/weekly 200 in 204ms (next.js: 10ms, proxy.ts: 64ms, application-code: 130ms)
+[frontend]  GET /admin/rankings/weekly 200 in 195ms (next.js: 39ms, proxy.ts: 6ms, application-code: 150ms)
+[frontend]  GET /admin/rankings/weekly 200 in 172ms (next.js: 12ms, proxy.ts: 38ms, application-code: 122ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 36ms, proxy.ts: 9ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 188ms (next.js: 35ms, proxy.ts: 56ms, application-code: 97ms)
+[frontend]  GET /admin/rankings/weekly 200 in 190ms (next.js: 12ms, proxy.ts: 55ms, application-code: 122ms)
+[frontend]  GET /admin/rankings/weekly 200 in 137ms (next.js: 10ms, proxy.ts: 8ms, application-code: 120ms)
+[frontend]  GET /admin/rankings/weekly 200 in 193ms (next.js: 33ms, proxy.ts: 6ms, application-code: 154ms)
+[frontend]  GET /admin/rankings/weekly 200 in 167ms (next.js: 11ms, proxy.ts: 34ms, application-code: 122ms)
+[frontend]  GET /admin/rankings/weekly 200 in 171ms (next.js: 37ms, proxy.ts: 12ms, application-code: 123ms)
+[frontend]  GET /admin/rankings/weekly 200 in 190ms (next.js: 11ms, proxy.ts: 56ms, application-code: 123ms)
+[frontend]  GET /admin/rankings/weekly 200 in 166ms (next.js: 34ms, proxy.ts: 31ms, application-code: 101ms)
+[frontend]  GET /admin/rankings/weekly 200 in 219ms (next.js: 9ms, proxy.ts: 61ms, application-code: 149ms)
+[frontend]  GET /admin/rankings/weekly 200 in 288ms (next.js: 11ms, proxy.ts: 31ms, application-code: 246ms)
+[frontend]  GET /admin/rankings/weekly 200 in 282ms (next.js: 14ms, proxy.ts: 33ms, application-code: 236ms)
+[frontend]  GET /admin/rankings/weekly 200 in 313ms (next.js: 40ms, proxy.ts: 10ms, application-code: 264ms)
+[frontend]  GET /admin/rankings/weekly 200 in 341ms (next.js: 19ms, proxy.ts: 78ms, application-code: 244ms)
+[frontend]  GET /admin/rankings/weekly 200 in 320ms (next.js: 64ms, proxy.ts: 55ms, application-code: 201ms)
+[frontend]  GET /admin/rankings/weekly 200 in 286ms (next.js: 24ms, proxy.ts: 86ms, application-code: 176ms)
+[frontend]  GET /admin/rankings/weekly 200 in 263ms (next.js: 72ms, proxy.ts: 21ms, application-code: 170ms)
+[frontend]  GET /admin/rankings/weekly 200 in 213ms (next.js: 14ms, proxy.ts: 38ms, application-code: 161ms)
+[frontend]  GET /admin/rankings/weekly 200 in 192ms (next.js: 49ms, proxy.ts: 9ms, application-code: 135ms)
+[frontend]  GET /admin/rankings/weekly 200 in 216ms (next.js: 13ms, proxy.ts: 73ms, application-code: 130ms)
+[frontend]  GET /admin/rankings/weekly 200 in 183ms (next.js: 38ms, proxy.ts: 41ms, application-code: 105ms)
+[frontend]  GET /admin/rankings/weekly 200 in 202ms (next.js: 10ms, proxy.ts: 59ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 209ms (next.js: 10ms, proxy.ts: 36ms, application-code: 163ms)
+[frontend]  GET /admin/rankings/weekly 200 in 232ms (next.js: 11ms, proxy.ts: 36ms, application-code: 185ms)
+[frontend]  GET /admin/rankings/weekly 200 in 237ms (next.js: 32ms, proxy.ts: 9ms, application-code: 195ms)
+[frontend]  GET /admin/rankings/weekly 200 in 258ms (next.js: 38ms, proxy.ts: 29ms, application-code: 191ms)
+[frontend]  GET /admin/rankings/weekly 200 in 241ms (next.js: 37ms, proxy.ts: 35ms, application-code: 170ms)
+[frontend]  GET /admin/rankings/weekly 200 in 236ms (next.js: 59ms, proxy.ts: 46ms, application-code: 130ms)
+[frontend]  GET /admin/rankings/weekly 200 in 174ms (next.js: 10ms, proxy.ts: 40ms, application-code: 124ms)
+[frontend]  GET /admin/rankings/weekly 200 in 162ms (next.js: 12ms, proxy.ts: 34ms, application-code: 116ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 33ms, proxy.ts: 12ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 185ms (next.js: 35ms, proxy.ts: 32ms, application-code: 117ms)
+[frontend]  GET /admin/rankings/weekly 200 in 161ms (next.js: 35ms, proxy.ts: 34ms, application-code: 93ms)
+[frontend]  GET /admin/rankings/weekly 200 in 158ms (next.js: 32ms, proxy.ts: 6ms, application-code: 120ms)
+[frontend]  GET /admin/rankings/weekly 200 in 161ms (next.js: 9ms, proxy.ts: 33ms, application-code: 119ms)
+[frontend]  GET /admin/rankings/weekly 200 in 182ms (next.js: 11ms, proxy.ts: 29ms, application-code: 142ms)
+[frontend]  GET /admin/rankings/weekly 200 in 158ms (next.js: 30ms, proxy.ts: 8ms, application-code: 120ms)
+[frontend]  GET /admin/rankings/weekly 200 in 189ms (next.js: 38ms, proxy.ts: 29ms, application-code: 122ms)
+[frontend]  GET /admin/rankings/weekly 200 in 143ms (next.js: 10ms, proxy.ts: 35ms, application-code: 99ms)
+[frontend]  GET /admin/rankings/weekly 200 in 164ms (next.js: 32ms, proxy.ts: 7ms, application-code: 125ms)
+[frontend]  GET /admin/rankings/weekly 200 in 202ms (next.js: 14ms, proxy.ts: 34ms, application-code: 155ms)
+[frontend]  GET /admin/rankings/weekly 200 in 200ms (next.js: 12ms, proxy.ts: 34ms, application-code: 154ms)
+[frontend]  GET /admin/rankings/weekly 200 in 200ms (next.js: 33ms, proxy.ts: 31ms, application-code: 136ms)
+[frontend]  GET /admin/rankings/weekly 200 in 183ms (next.js: 17ms, proxy.ts: 53ms, application-code: 113ms)
+[frontend]  GET /admin/rankings/weekly 200 in 194ms (next.js: 38ms, proxy.ts: 15ms, application-code: 141ms)
+[frontend]  GET /admin/rankings/weekly 200 in 214ms (next.js: 36ms, proxy.ts: 33ms, application-code: 144ms)
+[frontend]  GET /admin/rankings/weekly 200 in 192ms (next.js: 16ms, proxy.ts: 13ms, application-code: 164ms)
+[frontend]  GET /admin/rankings/weekly 200 in 190ms (next.js: 47ms, proxy.ts: 10ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 209ms (next.js: 38ms, proxy.ts: 41ms, application-code: 129ms)
+[frontend]  GET /admin/rankings/weekly 200 in 179ms (next.js: 13ms, proxy.ts: 60ms, application-code: 106ms)
+[frontend]  GET /admin/rankings/weekly 200 in 209ms (next.js: 39ms, proxy.ts: 9ms, application-code: 162ms)
+[frontend]  GET /admin/rankings/weekly 200 in 212ms (next.js: 11ms, proxy.ts: 40ms, application-code: 161ms)
+[frontend]  GET /admin/rankings/weekly 200 in 227ms (next.js: 14ms, proxy.ts: 31ms, application-code: 182ms)
+[frontend]  GET /admin/rankings/weekly 200 in 209ms (next.js: 59ms, proxy.ts: 10ms, application-code: 140ms)
+[frontend]  GET /admin/rankings/weekly 200 in 231ms (next.js: 59ms, proxy.ts: 46ms, application-code: 126ms)
+[frontend]  GET /admin/rankings/weekly 200 in 193ms (next.js: 9ms, proxy.ts: 81ms, application-code: 102ms)
+[frontend]  GET /admin/rankings/weekly 200 in 170ms (next.js: 8ms, proxy.ts: 34ms, application-code: 127ms)
+[frontend]  GET /admin/rankings/weekly 200 in 199ms (next.js: 9ms, proxy.ts: 35ms, application-code: 155ms)
+[frontend]  GET /admin/rankings/weekly 200 in 178ms (next.js: 11ms, proxy.ts: 33ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 182ms (next.js: 31ms, proxy.ts: 9ms, application-code: 142ms)
+[frontend]  GET /admin/rankings/weekly 200 in 229ms (next.js: 39ms, proxy.ts: 31ms, application-code: 159ms)
+[frontend]  GET /admin/rankings/weekly 200 in 208ms (next.js: 38ms, proxy.ts: 36ms, application-code: 134ms)
+[frontend]  GET /admin/rankings/weekly 200 in 208ms (next.js: 17ms, proxy.ts: 36ms, application-code: 155ms)
+[frontend]  GET /admin/rankings/weekly 200 in 243ms (next.js: 46ms, proxy.ts: 10ms, application-code: 187ms)
+[frontend]  GET /admin/rankings/weekly 200 in 236ms (next.js: 14ms, proxy.ts: 53ms, application-code: 169ms)
+[frontend]  GET /admin/rankings/weekly 200 in 197ms (next.js: 41ms, proxy.ts: 11ms, application-code: 145ms)
+[frontend]  GET /admin/rankings/weekly 200 in 224ms (next.js: 19ms, proxy.ts: 63ms, application-code: 141ms)
+[frontend]  GET /admin/rankings/weekly 200 in 195ms (next.js: 45ms, proxy.ts: 36ms, application-code: 114ms)
+[frontend]  GET /admin/rankings/weekly 200 in 209ms (next.js: 9ms, proxy.ts: 66ms, application-code: 134ms)
+[frontend]  GET /admin/rankings/weekly 200 in 207ms (next.js: 17ms, proxy.ts: 32ms, application-code: 158ms)
+[frontend]  GET /admin/rankings/weekly 200 in 198ms (next.js: 12ms, proxy.ts: 39ms, application-code: 147ms)
+[frontend]  GET /admin/rankings/weekly 200 in 170ms (next.js: 36ms, proxy.ts: 14ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 181ms (next.js: 13ms, proxy.ts: 54ms, application-code: 114ms)
+[frontend]  GET /admin/rankings/weekly 200 in 157ms (next.js: 37ms, proxy.ts: 30ms, application-code: 91ms)
+[frontend]  GET /admin/rankings/weekly 200 in 184ms (next.js: 7ms, proxy.ts: 63ms, application-code: 114ms)
+[frontend]  GET /admin/rankings/weekly 200 in 172ms (next.js: 10ms, proxy.ts: 26ms, application-code: 136ms)
+[frontend]  GET /admin/rankings/weekly 200 in 148ms (next.js: 9ms, proxy.ts: 29ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 161ms (next.js: 37ms, proxy.ts: 9ms, application-code: 116ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 30ms, proxy.ts: 35ms, application-code: 100ms)
+[frontend]  GET /admin/rankings/weekly 200 in 177ms (next.js: 30ms, proxy.ts: 35ms, application-code: 112ms)
+[frontend]  GET /admin/rankings/weekly 200 in 202ms (next.js: 8ms, proxy.ts: 28ms, application-code: 166ms)
+[frontend]  GET /admin/rankings/weekly 200 in 242ms (next.js: 12ms, proxy.ts: 44ms, application-code: 185ms)
+[frontend]  GET /admin/rankings/weekly 200 in 203ms (next.js: 17ms, proxy.ts: 39ms, application-code: 148ms)
+[frontend]  GET /admin/rankings/weekly 200 in 234ms (next.js: 51ms, proxy.ts: 41ms, application-code: 142ms)
+[frontend]  GET /admin/rankings/weekly 200 in 232ms (next.js: 49ms, proxy.ts: 47ms, application-code: 136ms)
+[frontend]  GET /admin/rankings/weekly 200 in 198ms (next.js: 39ms, proxy.ts: 47ms, application-code: 113ms)
+[frontend]  GET /admin/rankings/weekly 200 in 180ms (next.js: 11ms, proxy.ts: 35ms, application-code: 134ms)
+[frontend]  GET /admin/rankings/weekly 200 in 175ms (next.js: 19ms, proxy.ts: 35ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 11ms, proxy.ts: 37ms, application-code: 117ms)
+[frontend]  GET /admin/rankings/weekly 200 in 179ms (next.js: 38ms, proxy.ts: 32ms, application-code: 109ms)
+[frontend]  GET /admin/rankings/weekly 200 in 155ms (next.js: 32ms, proxy.ts: 34ms, application-code: 89ms)
+[frontend]  GET /admin/rankings/weekly 200 in 182ms (next.js: 35ms, proxy.ts: 31ms, application-code: 116ms)
+[frontend]  GET /admin/rankings/weekly 200 in 157ms (next.js: 8ms, proxy.ts: 28ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 161ms (next.js: 10ms, proxy.ts: 29ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 171ms (next.js: 35ms, proxy.ts: 7ms, application-code: 129ms)
+[frontend]  GET /admin/rankings/weekly 200 in 200ms (next.js: 32ms, proxy.ts: 33ms, application-code: 135ms)
+[frontend]  GET /admin/rankings/weekly 200 in 175ms (next.js: 7ms, proxy.ts: 58ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 179ms (next.js: 9ms, proxy.ts: 32ms, application-code: 139ms)
+[frontend]  GET /admin/rankings/weekly 200 in 176ms (next.js: 11ms, proxy.ts: 40ms, application-code: 126ms)
+[frontend]  GET /admin/rankings/weekly 200 in 166ms (next.js: 10ms, proxy.ts: 38ms, application-code: 118ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 34ms, proxy.ts: 10ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 190ms (next.js: 37ms, proxy.ts: 32ms, application-code: 120ms)
+[frontend]  GET /admin/rankings/weekly 200 in 162ms (next.js: 9ms, proxy.ts: 33ms, application-code: 119ms)
+[frontend]  GET /admin/rankings/weekly 200 in 156ms (next.js: 8ms, proxy.ts: 30ms, application-code: 118ms)
+[frontend]  GET /admin/rankings/weekly 200 in 162ms (next.js: 15ms, proxy.ts: 32ms, application-code: 115ms)
+[frontend]  GET /admin/rankings/weekly 200 in 158ms (next.js: 32ms, proxy.ts: 11ms, application-code: 116ms)
+[frontend]  GET /admin/rankings/weekly 200 in 180ms (next.js: 31ms, proxy.ts: 28ms, application-code: 121ms)
+[frontend]  GET /admin/rankings/weekly 200 in 181ms (next.js: 15ms, proxy.ts: 29ms, application-code: 138ms)
+[frontend]  GET /admin/rankings/weekly 200 in 189ms (next.js: 35ms, proxy.ts: 10ms, application-code: 144ms)
+[frontend]  GET /admin/rankings/weekly 200 in 186ms (next.js: 11ms, proxy.ts: 29ms, application-code: 147ms)
+[frontend]  GET /admin/rankings/weekly 200 in 195ms (next.js: 12ms, proxy.ts: 35ms, application-code: 148ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 52ms, proxy.ts: 36ms, application-code: 142ms)
+[frontend]  GET /admin/rankings/weekly 200 in 240ms (next.js: 36ms, proxy.ts: 47ms, application-code: 157ms)
+[frontend]  GET /admin/rankings/weekly 200 in 174ms (next.js: 9ms, proxy.ts: 34ms, application-code: 131ms)
+[frontend]  GET /admin/rankings/weekly 200 in 210ms (next.js: 16ms, proxy.ts: 34ms, application-code: 160ms)
+[frontend]  GET /admin/rankings/weekly 200 in 210ms (next.js: 11ms, proxy.ts: 47ms, application-code: 152ms)
+[frontend]  GET /admin/rankings/weekly 200 in 199ms (next.js: 12ms, proxy.ts: 48ms, application-code: 139ms)
+[frontend]  GET /admin/rankings/weekly 200 in 191ms (next.js: 48ms, proxy.ts: 10ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 216ms (next.js: 36ms, proxy.ts: 44ms, application-code: 136ms)
+[frontend]  GET /admin/rankings/weekly 200 in 181ms (next.js: 37ms, proxy.ts: 32ms, application-code: 112ms)
+[frontend]  GET /admin/rankings/weekly 200 in 189ms (next.js: 10ms, proxy.ts: 35ms, application-code: 144ms)
+[frontend]  GET /admin/rankings/weekly 200 in 191ms (next.js: 44ms, proxy.ts: 7ms, application-code: 140ms)
+[frontend]  GET /admin/rankings/weekly 200 in 211ms (next.js: 12ms, proxy.ts: 34ms, application-code: 164ms)
+[frontend]  GET /admin/rankings/weekly 200 in 183ms (next.js: 37ms, proxy.ts: 8ms, application-code: 138ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 19ms, proxy.ts: 64ms, application-code: 147ms)
+[frontend]  GET /admin/rankings/weekly 200 in 181ms (next.js: 36ms, proxy.ts: 15ms, application-code: 129ms)
+[frontend]  GET /admin/rankings/weekly 200 in 240ms (next.js: 8ms, proxy.ts: 35ms, application-code: 197ms)
+[frontend]  GET /admin/rankings/weekly 200 in 263ms (next.js: 16ms, proxy.ts: 34ms, application-code: 213ms)
+[frontend]  GET /admin/rankings/weekly 200 in 320ms (next.js: 24ms, proxy.ts: 50ms, application-code: 246ms)
+[frontend]  GET /admin/rankings/weekly 200 in 282ms (next.js: 55ms, proxy.ts: 17ms, application-code: 210ms)
+[frontend]  GET /admin/rankings/weekly 200 in 318ms (next.js: 26ms, proxy.ts: 103ms, application-code: 189ms)
+[frontend]  GET /admin/rankings/weekly 200 in 227ms (next.js: 55ms, proxy.ts: 19ms, application-code: 153ms)
+[frontend]  GET /admin/rankings/weekly 200 in 275ms (next.js: 16ms, proxy.ts: 87ms, application-code: 172ms)
+[frontend]  GET /admin/rankings/weekly 200 in 195ms (next.js: 49ms, proxy.ts: 11ms, application-code: 135ms)
+[frontend]  GET /admin/rankings/weekly 200 in 246ms (next.js: 15ms, proxy.ts: 52ms, application-code: 178ms)
+[frontend]  GET /admin/rankings/weekly 200 in 211ms (next.js: 48ms, proxy.ts: 17ms, application-code: 145ms)
+[frontend]  GET /admin/rankings/weekly 200 in 191ms (next.js: 10ms, proxy.ts: 38ms, application-code: 143ms)
+[frontend]  GET /admin/rankings/weekly 200 in 165ms (next.js: 49ms, proxy.ts: 7ms, application-code: 109ms)
+[frontend]  GET /admin/rankings/weekly 200 in 218ms (next.js: 9ms, proxy.ts: 77ms, application-code: 132ms)
+[frontend]  GET /admin/rankings/weekly 200 in 151ms (next.js: 9ms, proxy.ts: 35ms, application-code: 107ms)
+[frontend]  GET /admin/rankings/weekly 200 in 220ms (next.js: 14ms, proxy.ts: 33ms, application-code: 173ms)
+[frontend]  GET /admin/rankings/weekly 200 in 196ms (next.js: 40ms, proxy.ts: 9ms, application-code: 147ms)
+[frontend]  GET /admin/rankings/weekly 200 in 211ms (next.js: 12ms, proxy.ts: 62ms, application-code: 137ms)
+[frontend]  GET /admin/rankings/weekly 200 in 160ms (next.js: 40ms, proxy.ts: 13ms, application-code: 107ms)
+[frontend]  GET /admin/rankings/weekly 200 in 259ms (next.js: 51ms, proxy.ts: 38ms, application-code: 169ms)
+[frontend]  GET /admin/rankings/weekly 200 in 192ms (next.js: 7ms, proxy.ts: 34ms, application-code: 150ms)
+[frontend]  GET /admin/rankings/weekly 200 in 255ms (next.js: 10ms, proxy.ts: 7ms, application-code: 238ms)
+[frontend]  GET /admin/rankings/weekly 200 in 256ms (next.js: 81ms, proxy.ts: 7ms, application-code: 168ms)
+[frontend]  GET /admin/rankings/weekly 200 in 269ms (next.js: 13ms, proxy.ts: 86ms, application-code: 171ms)
+[frontend]  GET /admin/rankings/weekly 200 in 269ms (next.js: 40ms, proxy.ts: 86ms, application-code: 143ms)
+[frontend]  GET /admin/rankings/weekly 200 in 213ms (next.js: 10ms, proxy.ts: 74ms, application-code: 128ms)
+[frontend]  GET /admin/rankings/weekly 200 in 217ms (next.js: 11ms, proxy.ts: 52ms, application-code: 154ms)
+[frontend]  GET /admin/rankings/weekly 200 in 192ms (next.js: 12ms, proxy.ts: 46ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 151ms (next.js: 33ms, proxy.ts: 7ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 174ms (next.js: 29ms, proxy.ts: 57ms, application-code: 88ms)
+[frontend]  GET /admin/rankings/weekly 200 in 175ms (next.js: 8ms, proxy.ts: 57ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 172ms (next.js: 8ms, proxy.ts: 52ms, application-code: 113ms)
+[frontend]  GET /admin/rankings/weekly 200 in 176ms (next.js: 8ms, proxy.ts: 26ms, application-code: 142ms)
+[frontend]  GET /admin/rankings/weekly 200 in 153ms (next.js: 11ms, proxy.ts: 32ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 149ms (next.js: 31ms, proxy.ts: 7ms, application-code: 111ms)
+[frontend]  GET /admin/rankings/weekly 200 in 171ms (next.js: 10ms, proxy.ts: 51ms, application-code: 110ms)
+[frontend]  GET /admin/rankings/weekly 200 in 171ms (next.js: 30ms, proxy.ts: 52ms, application-code: 89ms)
+[frontend]  GET /admin/rankings/weekly 200 in 184ms (next.js: 8ms, proxy.ts: 54ms, application-code: 122ms)
+[frontend]  GET /admin/rankings/weekly 200 in 181ms (next.js: 32ms, proxy.ts: 4ms, application-code: 145ms)
+[frontend]  GET /admin/rankings/weekly 200 in 151ms (next.js: 11ms, proxy.ts: 27ms, application-code: 113ms)
+[frontend]  GET /admin/rankings/weekly 200 in 151ms (next.js: 39ms, proxy.ts: 28ms, application-code: 84ms)
+[frontend]  GET /admin/rankings/weekly 200 in 119ms (next.js: 8ms, proxy.ts: 62ms, application-code: 48ms)
+[frontend]  GET /admin/rankings/weekly 200 in 91ms (next.js: 30ms, proxy.ts: 35ms, application-code: 26ms)
+[frontend]  GET /api/v1/academy/groups?limit=100 200 in 291ms (next.js: 72ms, application-code: 219ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 8.0s (next.js: 57ms, application-code: 7.9s)
+[backend] [2026-06-29 21:07:16.184 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "b6ab968e-5a1e-4e20-a4ba-7dca2c322737"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 7910.46
+[frontend]  GET /admin/rankings/weekly 200 in 184ms (next.js: 79ms, proxy.ts: 61ms, application-code: 45ms)
+[frontend]  GET /admin/rankings/weekly 200 in 790ms (next.js: 264ms, proxy.ts: 193ms, application-code: 333ms)
+[frontend]  GET /admin/rankings/weekly 200 in 120ms (next.js: 47ms, proxy.ts: 4ms, application-code: 69ms)
+[frontend]  GET /admin/rankings/weekly 200 in 30ms (next.js: 5ms, proxy.ts: 3ms, application-code: 21ms)
+[frontend]  GET /admin/rankings/monthly 200 in 542ms (next.js: 136ms, proxy.ts: 8ms, application-code: 399ms)
+[frontend]  GET /coach/rankings 200 in 406ms (next.js: 117ms, proxy.ts: 8ms, application-code: 281ms)
+[frontend] ○ Compiling /admin/rankings ...
+[frontend]  GET /admin/rankings 200 in 50s (next.js: 47s, proxy.ts: 7ms, application-code: 3.1s)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 370ms (next.js: 199ms, application-code: 172ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 208ms (next.js: 7ms, application-code: 201ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 38ms (next.js: 5ms, application-code: 34ms)
 [backend] [32m[nodemon] restarting due to changes...[39m
 [backend] [32m[nodemon] starting `node src/server.js`[39m
-[backend] [2026-06-29 16:20:27.583 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[backend] [2026-06-29 21:26:18.767 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 16:20:27.586 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+[backend] [2026-06-29 21:26:18.770 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
 [backend]     service: "goalix-api"
 [backend]     message: ""
 [backend]     code: "ECONNREFUSED"
-[backend] [2026-06-29 16:20:27.587 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend] [2026-06-29 21:26:18.771 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 16:20:27.591 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+[backend] [2026-06-29 21:26:18.775 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
 [backend]     service: "goalix-api"
-[frontend]  GET /admin/academy/birth-years 200 in 129ms (next.js: 19ms, proxy.ts: 19ms, application-code: 91ms)
-[frontend]  GET /coach/birthdays 200 in 141ms (next.js: 69ms, proxy.ts: 21ms, application-code: 52ms)
-[frontend]  GET /admin-login 200 in 535ms (next.js: 250ms, proxy.ts: 44ms, application-code: 241ms)
-[frontend]  POST /api/v1/auth/refresh 200 in 2.2s (next.js: 1388ms, application-code: 829ms)
-[frontend]  POST /api/v1/auth/admin/login 200 in 317ms (next.js: 13ms, application-code: 304ms)
-[frontend]  GET /coach/home 200 in 105ms (next.js: 62ms, proxy.ts: 8ms, application-code: 36ms)
-[frontend]  GET /api/v1/coach/groups 200 in 60ms (next.js: 9ms, application-code: 52ms)
-[frontend]  GET /api/v1/coach/permissions 200 in 46ms (next.js: 5ms, application-code: 41ms)
-[frontend]  GET /api/v1/academy 200 in 33ms (next.js: 6ms, application-code: 27ms)
-[frontend]  GET /api/v1/coach/players?page=1&limit=200 200 in 173ms (next.js: 21ms, application-code: 152ms)
-[frontend]  GET /api/v1/coach/matches?limit=100 200 in 147ms (next.js: 16ms, application-code: 132ms)
-[frontend]  GET /api/v1/coach/calendar-events?limit=100 200 in 152ms (next.js: 4ms, application-code: 148ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 33ms (next.js: 4ms, application-code: 29ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 26ms (next.js: 10ms, application-code: 16ms)
-[frontend]  GET /coach/birthdays 200 in 32ms (next.js: 5ms, proxy.ts: 5ms, application-code: 23ms)
-[frontend]  GET /api/v1/coach/players?page=1&limit=500 200 in 104ms (next.js: 17ms, application-code: 87ms)
-[frontend]  GET /api/v1/coaches/me/birthdays 200 in 170ms (next.js: 35ms, application-code: 135ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 24ms (next.js: 12ms, application-code: 12ms)
-[frontend]  GET /api/v1/notifications/unread-count 401 in 23ms (next.js: 10ms, application-code: 13ms)
-[frontend]  POST /api/v1/auth/refresh 200 in 53ms (next.js: 3ms, application-code: 50ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 12ms (next.js: 3ms, application-code: 9ms)
-[frontend]  GET /coach/birthdays 200 in 67ms (next.js: 10ms, proxy.ts: 9ms, application-code: 48ms)
-[frontend]  POST /api/v1/auth/refresh 200 in 53ms (next.js: 20ms, application-code: 33ms)
-[frontend]  GET /api/v1/coaches/me/birthdays 200 in 81ms (next.js: 5ms, application-code: 76ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 117ms (next.js: 61ms, application-code: 55ms)
-[frontend]  GET /api/v1/academy 200 in 135ms (next.js: 44ms, application-code: 92ms)
-[frontend]  GET /api/v1/coach/permissions 200 in 152ms (next.js: 31ms, application-code: 121ms)
-[frontend]  GET /api/v1/coach/players?page=1&limit=500 200 in 192ms (next.js: 15ms, application-code: 178ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 25ms (next.js: 5ms, application-code: 20ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 26ms (next.js: 12ms, application-code: 14ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 37ms (next.js: 18ms, application-code: 19ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 77ms (next.js: 34ms, application-code: 43ms)
-[frontend]  GET /coach/my-groups 200 in 134ms (next.js: 90ms, proxy.ts: 15ms, application-code: 30ms)
-[frontend]  GET /api/v1/coaches/me/groups 200 in 153ms (next.js: 16ms, application-code: 137ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 38ms (next.js: 17ms, application-code: 21ms)
-[backend] [32m[nodemon] restarting due to changes...[39m
+[frontend]  GET /admin/rankings/monthly 200 in 1594ms (next.js: 226ms, proxy.ts: 115ms, application-code: 1253ms)
+[frontend]  GET /coach/rankings 200 in 1591ms (next.js: 397ms, proxy.ts: 116ms, application-code: 1078ms)
+[frontend]  GET /admin/rankings 200 in 1599ms (next.js: 1022ms, proxy.ts: 116ms, application-code: 462ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1607ms (next.js: 1162ms, proxy.ts: 115ms, application-code: 329ms)
+[frontend]  GET /parent/child/ranking 200 in 362ms (next.js: 131ms, proxy.ts: 5ms, application-code: 226ms)
+[frontend]  GET /player/performance/ranking 200 in 424ms (next.js: 151ms, proxy.ts: 11ms, application-code: 262ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1669ms (next.js: 119ms, proxy.ts: 86ms, application-code: 1464ms)
+[frontend]  GET /admin/rankings 200 in 1681ms (next.js: 636ms, proxy.ts: 87ms, application-code: 958ms)
+[frontend]  GET /admin/rankings/monthly 200 in 1694ms (next.js: 963ms, proxy.ts: 83ms, application-code: 648ms)
+[frontend]  GET /coach/rankings 200 in 1699ms (next.js: 1098ms, proxy.ts: 84ms, application-code: 518ms)
+[frontend]  GET /player/performance/ranking 200 in 451ms (next.js: 123ms, proxy.ts: 7ms, application-code: 321ms)
+[frontend]  GET /parent/child/ranking 200 in 371ms (next.js: 128ms, proxy.ts: 11ms, application-code: 232ms)
 [backend] [32m[nodemon] restarting due to changes...[39m
 [backend] [32m[nodemon] starting `node src/server.js`[39m
-[frontend]  GET /api/v1/notifications/unread-count 200 in 34ms (next.js: 8ms, application-code: 26ms)
-[backend] [2026-06-29 17:25:07.744 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[backend] [2026-06-29 21:35:21.584 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:07.747 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+[backend] [2026-06-29 21:35:21.588 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
 [backend]     service: "goalix-api"
 [backend]     message: ""
 [backend]     code: "ECONNREFUSED"
-[backend] [2026-06-29 17:25:07.747 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend] [2026-06-29 21:35:21.588 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:07.751 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+[backend] [2026-06-29 21:35:21.593 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
 [backend]     service: "goalix-api"
-[backend] [32m[nodemon] restarting due to changes...[39m
-[backend] [32m[nodemon] starting `node src/server.js`[39m
-[backend] [2026-06-29 17:25:25.409 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[frontend]  GET /coach/rankings 200 in 314ms (next.js: 27ms, proxy.ts: 16ms, application-code: 271ms)
+[frontend]  GET /admin/rankings/weekly 200 in 340ms (next.js: 81ms, proxy.ts: 15ms, application-code: 244ms)
+[frontend]  GET /admin/rankings 200 in 349ms (next.js: 114ms, proxy.ts: 16ms, application-code: 219ms)
+[frontend]  GET /admin/rankings/monthly 200 in 354ms (next.js: 140ms, proxy.ts: 20ms, application-code: 194ms)
+[frontend]  GET /player/performance/ranking 200 in 102ms (next.js: 16ms, proxy.ts: 7ms, application-code: 79ms)
+[frontend]  GET /parent/child/ranking 200 in 103ms (next.js: 15ms, proxy.ts: 6ms, application-code: 82ms)
+[frontend]  GET / 200 in 351ms (next.js: 110ms, proxy.ts: 13ms, application-code: 227ms)
+[frontend]  GET /api/v1/academy/public-profile 200 in 136ms (next.js: 71ms, application-code: 66ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 691ms (next.js: 93ms, application-code: 598ms)
+[backend] [2026-06-29 21:37:36.885 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
 [backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:25.412 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
-[backend]     service: "goalix-api"
-[backend]     message: ""
-[backend]     code: "ECONNREFUSED"
-[backend] [2026-06-29 17:25:25.412 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
-[backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:25.416 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
-[backend]     service: "goalix-api"
-[frontend]  GET /api/v1/notifications/unread-count 200 in 37ms (next.js: 12ms, application-code: 26ms)
-[backend] [32m[nodemon] restarting due to changes...[39m
-[backend] [32m[nodemon] starting `node src/server.js`[39m
-[backend] [2026-06-29 17:25:37.521 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
-[backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:37.524 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
-[backend]     service: "goalix-api"
-[backend]     message: ""
-[backend]     code: "ECONNREFUSED"
-[backend] [2026-06-29 17:25:37.525 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
-[backend]     service: "goalix-api"
-[backend] [2026-06-29 17:25:37.528 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
-[backend]     service: "goalix-api"
-[frontend]  GET /api/v1/notifications/unread-count 200 in 30ms (next.js: 11ms, application-code: 19ms)
-[frontend] ✓ Compiled in 16.2s
-[frontend]  GET /coach/my-groups 200 in 948ms (next.js: 509ms, proxy.ts: 141ms, application-code: 298ms)
-[frontend]  GET /coach/my-groups 200 in 614ms (next.js: 256ms, proxy.ts: 5ms, application-code: 353ms)
-[backend] [2026-06-29 17:26:13.789 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
-[backend]     service: "goalix-api"
-[backend]     durationMs: 474.4
-[backend]     sql: "select * from \"auth_refresh_tokens\" where \"token_hash\" = $1 and \"is_revoked\" = $2 and \"expires_at\" > $3 limit $4"
-[frontend]  POST /api/v1/auth/refresh 200 in 1813ms (next.js: 70ms, application-code: 1743ms)
-[frontend]  GET /api/v1/coach/permissions 200 in 45ms (next.js: 6ms, application-code: 39ms)
-[frontend]  GET /api/v1/coaches/me/groups 200 in 125ms (next.js: 15ms, application-code: 110ms)
-[frontend]  GET /api/v1/academy 200 in 55ms (next.js: 4ms, application-code: 52ms)
-[frontend]  GET /api/v1/coaches/me/birthdays 200 in 189ms (next.js: 25ms, application-code: 164ms)
-[frontend]  GET /api/v1/coach/players?page=1&limit=500 200 in 143ms (next.js: 5ms, application-code: 138ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 18ms (next.js: 3ms, application-code: 16ms)
-[backend] [2026-06-29 17:26:14.939 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
-[backend]     service: "goalix-api"
-[backend]     durationMs: 1148.31
+[backend]     durationMs: 425.96
 [backend]     sql: "update \"auth_refresh_tokens\" set \"is_revoked\" = $1, \"revoke_reason\" = $2 where \"id\" = $3"
-[backend] [2026-06-29 17:26:14.974 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[frontend]  GET /login 200 in 99ms (next.js: 64ms, proxy.ts: 6ms, application-code: 28ms)
+[frontend]  GET /admin-login 200 in 640ms (next.js: 208ms, proxy.ts: 6ms, application-code: 426ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 30ms (next.js: 10ms, application-code: 21ms)
+[frontend]  POST /api/v1/auth/admin/login 200 in 281ms (next.js: 10ms, application-code: 272ms)
+[frontend]  GET /admin/dashboard 200 in 81ms (next.js: 50ms, proxy.ts: 5ms, application-code: 26ms)
+[frontend]  GET /api/v1/academy 200 in 45ms (next.js: 19ms, application-code: 26ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 33ms (next.js: 4ms, application-code: 28ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 71ms (next.js: 8ms, application-code: 62ms)
+[frontend]  GET /api/v1/admin/dashboard 200 in 267ms (next.js: 13ms, application-code: 254ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 31ms (next.js: 8ms, application-code: 22ms)
+[frontend]  GET /admin/rankings 200 in 40ms (next.js: 8ms, proxy.ts: 5ms, application-code: 27ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=1000 422 in 101ms (next.js: 15ms, application-code: 85ms)
+[frontend]  GET /api/v1/academy/groups?limit=100 200 in 100ms (next.js: 3ms, application-code: 97ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=1000 422 in 1392ms (next.js: 1350ms, application-code: 42ms)
+[frontend]  GET /admin/rankings/weekly 200 in 31ms (next.js: 5ms, proxy.ts: 3ms, application-code: 23ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 49ms (next.js: 11ms, application-code: 38ms)
+[frontend] ✓ Finished filesystem cache database compaction in 15.2s
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 38.2s (next.js: 6ms, application-code: 38.2s)
+[backend] [2026-06-29 21:39:10.654 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
 [backend]     service: "goalix-api"
-[backend]     requestId: "4cf79d6d-0904-4ad8-8731-bd2944a28b83"
+[backend]     requestId: "42c4c6b1-b4a5-4bbf-b02f-7298b7ba261f"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 38167.05
+[frontend]  GET /admin/rankings 200 in 36ms (next.js: 8ms, proxy.ts: 4ms, application-code: 24ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=1000 422 in 44ms (next.js: 11ms, application-code: 32ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 29ms (next.js: 12ms, application-code: 17ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 32ms (next.js: 13ms, application-code: 19ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 29ms (next.js: 15ms, application-code: 14ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 35ms (next.js: 17ms, application-code: 17ms)
+[frontend] ✓ Compiled in 683ms
+[frontend]  GET /admin/rankings 200 in 412ms (next.js: 263ms, proxy.ts: 92ms, application-code: 57ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 1298ms (next.js: 1085ms, application-code: 212ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 401 in 20ms (next.js: 9ms, application-code: 11ms)
+[frontend]  GET /admin/rankings 200 in 564ms (next.js: 7ms, proxy.ts: 5ms, application-code: 553ms)
+[frontend] ✓ Compiled in 9.2s
+[frontend]  GET /admin/rankings 200 in 2.1s (next.js: 530ms, proxy.ts: 1072ms, application-code: 448ms)
+[frontend]  GET /admin/rankings 200 in 68ms (next.js: 5ms, proxy.ts: 10ms, application-code: 53ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 2.6s (next.js: 41ms, application-code: 2.6s)
+[frontend]  GET /api/v1/academy 200 in 68ms (next.js: 5ms, application-code: 62ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 89ms (next.js: 38ms, application-code: 50ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 201ms (next.js: 58ms, application-code: 143ms)
+[backend] [2026-06-29 21:42:20.320 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "f21b1533-028f-408f-984c-c34c41d7a3f8"
 [backend]     method: "POST"
 [backend]     url: "/api/v1/auth/refresh"
 [backend]     statusCode: 200
-[backend]     durationMs: 1721.42
-[frontend]  GET /api/v1/notifications/unread-count 200 in 12ms (next.js: 3ms, application-code: 9ms)
-[frontend] ✓ Finished filesystem cache database compaction in 12.5s
-[frontend]  GET /coach/my-groups 200 in 388ms (next.js: 111ms, proxy.ts: 76ms, application-code: 201ms)
-[frontend]  GET /coach/my-groups 200 in 96ms (next.js: 13ms, proxy.ts: 22ms, application-code: 61ms)
-[frontend]  GET /coach/my-groups 200 in 35ms (next.js: 4ms, proxy.ts: 3ms, application-code: 27ms)
-[frontend]  GET /coach/birthdays 200 in 700ms (next.js: 227ms, proxy.ts: 9ms, application-code: 464ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 132ms (next.js: 99ms, application-code: 33ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 40ms (next.js: 19ms, application-code: 20ms)
-[frontend]  GET /coach/birthdays 200 in 32ms (next.js: 5ms, proxy.ts: 4ms, application-code: 22ms)
-[frontend]  GET /api/v1/coaches/me/manage-branches 200 in 79ms (next.js: 11ms, application-code: 67ms)
-[frontend]  POST /api/v1/coaches/me/birth-years 201 in 189ms (next.js: 9ms, application-code: 180ms)
-[frontend]  GET /api/v1/coaches/me/manage-branches 200 in 80ms (next.js: 37ms, application-code: 42ms)
-[frontend]  GET /api/v1/coaches/me/birthdays 200 in 100ms (next.js: 15ms, application-code: 85ms)
-[frontend]  POST /api/v1/auth/logout 200 in 467ms (next.js: 12ms, application-code: 455ms)
-[frontend]  GET /admin-login 200 in 484ms (next.js: 172ms, proxy.ts: 9ms, application-code: 303ms)
-[frontend]  POST /api/v1/auth/admin/login 200 in 248ms (next.js: 10ms, application-code: 238ms)
-[frontend]  GET /admin/dashboard 200 in 100ms (next.js: 64ms, proxy.ts: 5ms, application-code: 32ms)
-[frontend]  GET /api/v1/academy 200 in 46ms (next.js: 22ms, application-code: 24ms)
-[frontend]  GET /api/v1/auth/permissions 200 in 65ms (next.js: 5ms, application-code: 60ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 67ms (next.js: 33ms, application-code: 35ms)
-[frontend]  GET /api/v1/admin/dashboard 200 in 123ms (next.js: 6ms, application-code: 117ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 20ms (next.js: 4ms, application-code: 16ms)
-[frontend]  GET /admin/academy/birth-years 200 in 144ms (next.js: 107ms, proxy.ts: 3ms, application-code: 34ms)
-[frontend]  GET /api/v1/academy/branches?limit=100 200 in 84ms (next.js: 14ms, application-code: 70ms)
-[frontend]  GET /api/v1/academy/birth-years?branchId=16e99694-61ce-40e0-9b8b-2f25049d21aa 200 in 54ms (next.js: 9ms, application-code: 45ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 38ms (next.js: 19ms, application-code: 19ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 39ms (next.js: 14ms, application-code: 25ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 10ms, application-code: 13ms)
-[frontend]  GET /admin/registrations 200 in 90ms (next.js: 52ms, proxy.ts: 4ms, application-code: 34ms)
-[frontend]  GET /api/v1/admin/registrations?status=pending 200 in 120ms (next.js: 31ms, application-code: 89ms)
-[frontend]  POST /api/v1/auth/logout 200 in 49ms (next.js: 20ms, application-code: 29ms)
-[frontend]  GET /admin-login 200 in 132ms (next.js: 53ms, proxy.ts: 11ms, application-code: 69ms)
-[frontend]  GET /admin-login 200 in 139ms (next.js: 14ms, proxy.ts: 9ms, application-code: 115ms)
-[frontend]  GET /login 200 in 107ms (next.js: 77ms, proxy.ts: 5ms, application-code: 26ms)
-[frontend]  GET /forgot-password 200 in 168ms (next.js: 101ms, proxy.ts: 31ms, application-code: 36ms)
-[frontend] ✓ Compiled in 2.5s
-[frontend]  GET /forgot-password 200 in 5.0s (next.js: 2.1s, proxy.ts: 1089ms, application-code: 1768ms)
-[frontend]  GET /forgot-password 200 in 3.5s (next.js: 1774ms, proxy.ts: 75ms, application-code: 1696ms)
+[backend]     durationMs: 1423.98
+[frontend]  GET /admin/rankings 200 in 176ms (next.js: 8ms, proxy.ts: 9ms, application-code: 159ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 124ms (next.js: 28ms, application-code: 96ms)
+[frontend]  GET /api/v1/academy/groups?limit=100 200 in 280ms (next.js: 87ms, application-code: 193ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 9.0s (next.js: 55ms, application-code: 8.9s)
+[backend] [2026-06-29 21:43:28.039 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "efc30934-1c44-4aac-b59a-7fcf8dec8910"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 8891.11
+[frontend]  GET /admin/rankings/weekly 200 in 136ms (next.js: 48ms, proxy.ts: 33ms, application-code: 55ms)
+[frontend]  GET /admin/rankings 200 in 31ms (next.js: 6ms, proxy.ts: 3ms, application-code: 22ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 30ms (next.js: 10ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 22ms (next.js: 9ms, application-code: 13ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 22ms (next.js: 9ms, application-code: 12ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 19ms (next.js: 8ms, application-code: 11ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 30ms (next.js: 10ms, application-code: 20ms)
+[frontend] ✓ Compiled in 623ms
+[frontend]  GET /admin/rankings 200 in 1627ms (next.js: 1396ms, proxy.ts: 113ms, application-code: 118ms)
+[frontend]  GET /admin/rankings 200 in 273ms (next.js: 9ms, proxy.ts: 5ms, application-code: 260ms)
+[frontend]  GET /admin/rankings 200 in 214ms (next.js: 35ms, proxy.ts: 40ms, application-code: 139ms)
+[frontend]  GET /admin/rankings 200 in 79ms (next.js: 5ms, proxy.ts: 5ms, application-code: 69ms)
+[frontend]  GET /admin/rankings 200 in 109ms (next.js: 7ms, proxy.ts: 6ms, application-code: 96ms)
+[frontend]  GET /admin/rankings 200 in 70ms (next.js: 7ms, proxy.ts: 6ms, application-code: 58ms)
+[frontend] ✓ Compiled in 246ms
+[frontend]  GET /admin/rankings 200 in 211ms (next.js: 111ms, proxy.ts: 64ms, application-code: 37ms)
+[frontend] ✓ Compiled in 188ms
+[frontend]  GET /admin/rankings 200 in 195ms (next.js: 87ms, proxy.ts: 60ms, application-code: 48ms)
+[frontend]  GET /admin/rankings 200 in 192ms (next.js: 82ms, proxy.ts: 54ms, application-code: 57ms)
+[frontend]  GET /admin/rankings 200 in 755ms (next.js: 457ms, proxy.ts: 257ms, application-code: 41ms)
+[frontend]  GET /admin/rankings 200 in 210ms (next.js: 93ms, proxy.ts: 59ms, application-code: 57ms)
+[frontend]  GET /admin/rankings 200 in 188ms (next.js: 83ms, proxy.ts: 57ms, application-code: 48ms)
+[frontend]  GET /admin/rankings 200 in 268ms (next.js: 161ms, proxy.ts: 58ms, application-code: 49ms)
+[frontend]  GET /admin/rankings 200 in 219ms (next.js: 81ms, proxy.ts: 97ms, application-code: 41ms)
+[frontend]  GET /admin/rankings 200 in 215ms (next.js: 110ms, proxy.ts: 63ms, application-code: 42ms)
+[frontend]  GET /admin/rankings 200 in 178ms (next.js: 77ms, proxy.ts: 67ms, application-code: 34ms)
+[frontend]  GET /admin/rankings 200 in 352ms (next.js: 170ms, proxy.ts: 69ms, application-code: 114ms)
+[frontend]  GET /admin/rankings 200 in 170ms (next.js: 82ms, proxy.ts: 59ms, application-code: 29ms)
+[frontend] ✓ Compiled in 184ms
+[frontend]  GET /admin/rankings 200 in 259ms (next.js: 160ms, proxy.ts: 58ms, application-code: 41ms)
+[frontend]  GET /admin/rankings 200 in 202ms (next.js: 99ms, proxy.ts: 68ms, application-code: 35ms)
+[frontend]  GET /admin/rankings 200 in 224ms (next.js: 109ms, proxy.ts: 67ms, application-code: 49ms)
+[frontend] ✓ Compiled in 181ms
+[frontend]  GET /admin/rankings 200 in 193ms (next.js: 92ms, proxy.ts: 67ms, application-code: 33ms)
+[frontend]  GET /coach/rankings 200 in 1911ms (next.js: 145ms, proxy.ts: 11ms, application-code: 1755ms)
+[frontend]  GET /admin/rankings/monthly 200 in 1916ms (next.js: 288ms, proxy.ts: 12ms, application-code: 1616ms)
+[frontend]  GET /admin/rankings 200 in 1916ms (next.js: 1245ms, proxy.ts: 8ms, application-code: 663ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1920ms (next.js: 1421ms, proxy.ts: 9ms, application-code: 490ms)
+[frontend]  GET /parent/child/ranking 200 in 689ms (next.js: 114ms, proxy.ts: 5ms, application-code: 570ms)
+[frontend]  GET /player/performance/ranking 200 in 694ms (next.js: 462ms, proxy.ts: 5ms, application-code: 227ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 108ms (next.js: 75ms, application-code: 33ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 182ms (next.js: 6ms, application-code: 177ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 615ms (next.js: 12ms, application-code: 602ms)
+[backend] [2026-06-29 22:26:56.527 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+[backend]     service: "goalix-api"
+[backend]     durationMs: 569.8
+[backend]     sql: "select count(\"id\") as \"count\" from \"notification_inbox\" where \"user_id\" = $1 and \"is_read\" = $2"
+[frontend]  GET /api/v1/notifications/unread-count 200 in 48ms (next.js: 19ms, application-code: 29ms)
+[frontend]  GET /admin/rankings/weekly 200 in 117ms (next.js: 24ms, proxy.ts: 20ms, application-code: 73ms)
+[frontend]  GET /admin/rankings 200 in 51ms (next.js: 19ms, proxy.ts: 5ms, application-code: 26ms)
+[frontend]  GET /admin/rankings/monthly 200 in 52ms (next.js: 14ms, proxy.ts: 7ms, application-code: 31ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 105ms (next.js: 11ms, application-code: 95ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 30ms (next.js: 5ms, application-code: 24ms)
+[frontend]  GET /admin/rankings/weekly 200 in 50ms (next.js: 7ms, proxy.ts: 5ms, application-code: 37ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 21ms (next.js: 8ms, application-code: 12ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 584ms (next.js: 347ms, application-code: 237ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 34ms (next.js: 11ms, application-code: 23ms)
+[frontend] ✓ Compiled in 884ms
+[frontend]  GET /admin/rankings/weekly 200 in 913ms (next.js: 444ms, proxy.ts: 400ms, application-code: 68ms)
+[frontend]  GET /admin/rankings/weekly 200 in 84ms (next.js: 7ms, proxy.ts: 6ms, application-code: 70ms)
+[frontend]  GET /admin/rankings/weekly 200 in 42ms (next.js: 6ms, proxy.ts: 4ms, application-code: 32ms)
+[frontend]  GET /admin/rankings/weekly 200 in 69ms (next.js: 8ms, proxy.ts: 4ms, application-code: 57ms)
+[frontend]  GET /admin/rankings/weekly 200 in 42ms (next.js: 6ms, proxy.ts: 4ms, application-code: 32ms)
+[frontend]  GET /admin/rankings/weekly 200 in 46ms (next.js: 7ms, proxy.ts: 4ms, application-code: 34ms)
+[frontend]  GET /admin/rankings/weekly 200 in 37ms (next.js: 6ms, proxy.ts: 4ms, application-code: 27ms)
+[frontend] ✓ Compiled in 312ms
+[frontend]  GET /admin/rankings/weekly 200 in 960ms (next.js: 151ms, proxy.ts: 37ms, application-code: 771ms)
+[frontend] ✓ Compiled in 222ms
+[frontend]  GET /admin/rankings/weekly 200 in 232ms (next.js: 124ms, proxy.ts: 43ms, application-code: 65ms)
+[frontend]  GET /admin/rankings/weekly 200 in 203ms (next.js: 101ms, proxy.ts: 34ms, application-code: 69ms)
+[frontend]  GET /admin/rankings/weekly 200 in 187ms (next.js: 109ms, proxy.ts: 34ms, application-code: 44ms)
+[frontend]  GET /admin/rankings/weekly 200 in 230ms (next.js: 144ms, proxy.ts: 38ms, application-code: 48ms)
+[frontend]  GET /admin/rankings/weekly 200 in 164ms (next.js: 90ms, proxy.ts: 30ms, application-code: 45ms)
+[frontend]  GET /admin/rankings/weekly 200 in 335ms (next.js: 133ms, proxy.ts: 47ms, application-code: 155ms)
+[frontend]  GET /admin/rankings/weekly 200 in 199ms (next.js: 116ms, proxy.ts: 34ms, application-code: 49ms)
+[frontend]  GET /admin/rankings/weekly 200 in 1688ms (next.js: 12ms, proxy.ts: 8ms, application-code: 1668ms)
+[frontend]  GET /admin/rankings 200 in 1709ms (next.js: 837ms, proxy.ts: 10ms, application-code: 861ms)
+[frontend]  GET /admin/rankings/monthly 200 in 1714ms (next.js: 964ms, proxy.ts: 9ms, application-code: 740ms)
+[frontend]  GET /coach/rankings 200 in 1717ms (next.js: 1172ms, proxy.ts: 10ms, application-code: 536ms)
+[frontend]  GET /player/performance/ranking 200 in 407ms (next.js: 133ms, proxy.ts: 9ms, application-code: 264ms)
+[frontend]  GET /parent/child/ranking 200 in 389ms (next.js: 123ms, proxy.ts: 11ms, application-code: 254ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 238ms (next.js: 105ms, application-code: 133ms)
+[frontend]  GET /admin/rankings/weekly 200 in 111ms (next.js: 53ms, proxy.ts: 6ms, application-code: 52ms)
+[frontend]  GET /admin/players/81319e89-ae12-4913-b729-478521fdb869 200 in 192ms (proxy.ts: 5ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 1692ms (next.js: 8ms, application-code: 1684ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 95ms (next.js: 23ms, application-code: 72ms)
+[frontend]  GET /api/v1/auth/permissions 200 in 101ms (next.js: 13ms, application-code: 89ms)
+[frontend]  GET /api/v1/academy 200 in 107ms (next.js: 37ms, application-code: 70ms)
+[frontend]  GET /api/v1/academy/groups?limit=100 200 in 148ms (next.js: 33ms, application-code: 115ms)
+[backend] [2026-06-29 22:40:51.287 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "7a113b84-b658-45c7-8a7f-ff40f884e716"
+[backend]     method: "POST"
+[backend]     url: "/api/v1/auth/refresh"
+[backend]     statusCode: 200
+[backend]     durationMs: 1524.27
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 8.8s (next.js: 8ms, application-code: 8.8s)
+[backend] [2026-06-29 22:41:00.317 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "b061a8f6-0663-424e-a90d-69828763604d"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 8772.53
+[frontend]  GET /api/v1/notifications/unread-count 200 in 33ms (next.js: 10ms, application-code: 23ms)
+[frontend]  GET /admin/rankings/monthly 200 in 51ms (next.js: 12ms, proxy.ts: 5ms, application-code: 34ms)
+[frontend]  GET /admin/rankings 200 in 32ms (next.js: 9ms, proxy.ts: 4ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 9ms, application-code: 14ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 9ms, application-code: 13ms)
+[backend] [32m[nodemon] restarting due to changes...[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[frontend]  GET /api/v1/notifications/unread-count 200 in 64ms (next.js: 9ms, application-code: 55ms)
+[backend] [2026-06-29 22:43:40.688 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[backend]     service: "goalix-api"
+[backend] [2026-06-29 22:43:40.691 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+[backend]     service: "goalix-api"
+[backend]     message: ""
+[backend]     code: "ECONNREFUSED"
+[backend] [2026-06-29 22:43:40.691 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend]     service: "goalix-api"
+[backend] [2026-06-29 22:43:40.696 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "goalix-api"
+[frontend] ✓ Compiled in 351ms
+[frontend]  GET /admin/rankings 200 in 277ms (next.js: 154ms, proxy.ts: 62ms, application-code: 62ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=2000 200 in 10.6s (next.js: 73ms, application-code: 10.6s)
+[backend] [2026-06-29 22:43:59.249 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "f3c149fa-3b4d-4b4d-9980-95643093faa7"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=2000"
+[backend]     statusCode: 200
+[backend]     durationMs: 10519.2
+[frontend] ✓ Compiled in 1585ms
+[frontend]  GET /admin/rankings 200 in 7.1s (next.js: 2.5s, proxy.ts: 255ms, application-code: 4.3s)
+[frontend]  GET /admin/rankings 200 in 1075ms (next.js: 17ms, proxy.ts: 854ms, application-code: 204ms)
+[frontend] ✓ Compiled in 358ms
+[frontend]  GET /admin/rankings 200 in 2.4s (next.js: 1087ms, proxy.ts: 36ms, application-code: 1288ms)
 [frontend] ✓ Finished filesystem cache database compaction in 11.2s
-[frontend]  POST /api/v1/auth/forgot-password 200 in 138ms (next.js: 68ms, application-code: 71ms)
-[frontend]  GET /login 200 in 77ms (next.js: 32ms, proxy.ts: 14ms, application-code: 32ms)
-[frontend]  GET /login 200 in 688ms (next.js: 158ms, proxy.ts: 110ms, application-code: 419ms)
-[frontend]  GET /admin-login 200 in 697ms (next.js: 239ms, proxy.ts: 111ms, application-code: 347ms)
-[frontend]  POST /api/v1/auth/admin/login 200 in 278ms (next.js: 39ms, application-code: 239ms)
-[frontend]  GET /admin/dashboard 200 in 65ms (next.js: 27ms, proxy.ts: 6ms, application-code: 32ms)
-[frontend]  GET /api/v1/academy 200 in 51ms (next.js: 22ms, application-code: 29ms)
-[frontend]  GET /api/v1/auth/permissions 200 in 60ms (next.js: 11ms, application-code: 49ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 61ms (next.js: 35ms, application-code: 26ms)
-[frontend]  GET /api/v1/admin/dashboard 200 in 237ms (next.js: 10ms, application-code: 227ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 33ms (next.js: 7ms, application-code: 26ms)
-[frontend]  GET /admin/requests 200 in 95ms (next.js: 60ms, proxy.ts: 5ms, application-code: 30ms)
-[frontend]  GET /api/v1/admin/evaluation-edit-requests?page=1&limit=100 200 in 193ms (next.js: 37ms, application-code: 156ms)
-[frontend]  GET /api/v1/admin/password-reset-requests 200 in 244ms (next.js: 61ms, application-code: 183ms)
-[frontend]  GET /admin/players/9111cfdf-dc86-4f79-bea8-c245036cee9a 200 in 1177ms (next.js: 1090ms, proxy.ts: 4ms, application-code: 83ms)
-[frontend]  GET /api/v1/academy/branches?limit=100 200 in 96ms (next.js: 35ms, application-code: 62ms)
-[frontend]  GET /api/v1/admin/players/9111cfdf-dc86-4f79-bea8-c245036cee9a/detail 200 in 382ms (next.js: 70ms, application-code: 312ms)
-[frontend]  PUT /api/v1/players/9111cfdf-dc86-4f79-bea8-c245036cee9a 200 in 434ms (next.js: 18ms, application-code: 417ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 43ms (next.js: 21ms, application-code: 22ms)
-[frontend]  POST /api/v1/auth/logout 200 in 40ms (next.js: 12ms, application-code: 29ms)
-[frontend]  GET /admin-login 200 in 85ms (next.js: 12ms, proxy.ts: 3ms, application-code: 70ms)
-[frontend]  GET /coach/birthdays 200 in 458ms (next.js: 113ms, proxy.ts: 4ms, application-code: 342ms)
-[frontend]  GET /admin/academy/birth-years 200 in 590ms (next.js: 273ms, proxy.ts: 12ms, application-code: 304ms)
-[frontend]  GET /login 200 in 593ms (next.js: 24ms, proxy.ts: 15ms, application-code: 554ms)
-[frontend]  POST /api/v1/auth/login 200 in 254ms (next.js: 14ms, application-code: 240ms)
-[frontend]  GET /player/home 200 in 107ms (next.js: 63ms, proxy.ts: 5ms, application-code: 39ms)
-[frontend]  GET /api/v1/player/profile 200 in 151ms (next.js: 11ms, application-code: 140ms)
-[frontend]  GET /api/v1/player/progress 200 in 186ms (next.js: 27ms, application-code: 159ms)
-[frontend]  GET /api/v1/academy 200 in 62ms (next.js: 5ms, application-code: 57ms)
-[frontend]  GET /api/v1/player/evaluations?limit=100 200 in 177ms (next.js: 52ms, application-code: 126ms)
-[frontend]  GET /api/v1/player/matches?limit=100 200 in 225ms (next.js: 27ms, application-code: 198ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 72ms (next.js: 13ms, application-code: 60ms)
-[frontend]  GET /api/v1/player/calendar-events?limit=100 200 in 213ms (next.js: 20ms, application-code: 194ms)
-[frontend]  GET /api/v1/player/trainings?limit=100 200 in 221ms (next.js: 31ms, application-code: 189ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 16ms (next.js: 4ms, application-code: 12ms)
-[frontend]  GET /login 200 in 121ms (next.js: 7ms, proxy.ts: 5ms, application-code: 109ms)
-[frontend]  GET /admin-login 200 in 67ms (next.js: 7ms, proxy.ts: 6ms, application-code: 54ms)
-[frontend]  POST /api/v1/auth/admin/login 200 in 244ms (next.js: 11ms, application-code: 233ms)
-[frontend]  GET /admin/dashboard 200 in 35ms (next.js: 5ms, proxy.ts: 6ms, application-code: 24ms)
-[frontend]  GET /api/v1/academy 200 in 27ms (next.js: 5ms, application-code: 22ms)
-[frontend]  GET /api/v1/auth/permissions 200 in 58ms (next.js: 10ms, application-code: 48ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 51ms (next.js: 10ms, application-code: 41ms)
-[frontend]  GET /api/v1/admin/dashboard 200 in 74ms (next.js: 4ms, application-code: 71ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 21ms (next.js: 3ms, application-code: 18ms)
-[frontend]  GET /admin/academy/birth-years 200 in 32ms (next.js: 5ms, proxy.ts: 3ms, application-code: 23ms)
-[frontend]  GET /api/v1/academy/branches?limit=100 200 in 60ms (next.js: 11ms, application-code: 49ms)
-[frontend]  GET /api/v1/academy/birth-years?branchId=16e99694-61ce-40e0-9b8b-2f25049d21aa 200 in 41ms (next.js: 9ms, application-code: 32ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 25ms (next.js: 11ms, application-code: 14ms)
-[frontend]  GET /admin/academy/birth-years 200 in 557ms (next.js: 70ms, proxy.ts: 243ms, application-code: 244ms)
-[frontend]  POST /api/v1/auth/refresh 200 in 178ms (next.js: 31ms, application-code: 147ms)
-[frontend]  GET /api/v1/auth/permissions 200 in 66ms (next.js: 6ms, application-code: 60ms)
-[frontend]  GET /api/v1/academy 200 in 104ms (next.js: 13ms, application-code: 91ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 88ms (next.js: 28ms, application-code: 60ms)
-[frontend]  GET /api/v1/notifications/unread-count 200 in 26ms (next.js: 5ms, application-code: 22ms)
-[frontend]  GET /api/v1/academy/branches?limit=100 200 in 35ms (next.js: 15ms, application-code: 20ms)
+[frontend] ✓ Compiled in 253ms
+[frontend]  GET /admin/rankings 200 in 242ms (next.js: 143ms, proxy.ts: 48ms, application-code: 50ms)
+[frontend]  GET /admin/rankings 200 in 811ms (next.js: 7ms, proxy.ts: 5ms, application-code: 799ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=2000 401 in 111ms (next.js: 71ms, application-code: 40ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 168ms (next.js: 16ms, application-code: 152ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 2.4s (next.js: 486ms, application-code: 1911ms)
+[backend] [2026-06-29 22:47:54.470 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+[backend]     service: "goalix-api"
+[backend]     durationMs: 293.29
+[backend]     sql: "select \"id\", \"expires_at\", \"last_seen_at\" from \"auth_refresh_tokens\" where \"user_id\" = $1 and \"access_jti\" = $2 and \"is_revoked\" = $3 and \"expires_at\" > $4 limit $5"
+[backend] [2026-06-29 22:47:55.251 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "d0e6e819-6d39-43fc-af1e-db96eb6132bf"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/notifications/unread-count"
+[backend]     statusCode: 200
+[backend]     durationMs: 1410.14
+[frontend]  GET /api/v1/notifications/unread-count 200 in 59ms (next.js: 24ms, application-code: 35ms)
+[frontend]  GET /admin/rankings/weekly 200 in 377ms (next.js: 226ms, proxy.ts: 26ms, application-code: 126ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=500 200 in 8.4s (next.js: 23ms, application-code: 8.3s)
+[backend] [2026-06-29 22:49:14.540 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "a694bc2e-7299-4f65-bc8c-697a0c8caf0e"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 8316.66
+[frontend]  GET /admin/rankings/monthly 200 in 508ms (next.js: 412ms, proxy.ts: 7ms, application-code: 89ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 85ms (next.js: 25ms, application-code: 59ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 52ms (next.js: 21ms, application-code: 31ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 55ms (next.js: 26ms, application-code: 29ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 50ms (next.js: 26ms, application-code: 24ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 152ms (next.js: 67ms, application-code: 85ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 164ms (next.js: 18ms, application-code: 146ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 36ms (next.js: 12ms, application-code: 24ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 95ms (next.js: 46ms, application-code: 49ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 93ms (next.js: 24ms, application-code: 69ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 55ms (next.js: 32ms, application-code: 23ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 41ms (next.js: 19ms, application-code: 22ms)
+[frontend]  GET /admin/matches/archive 200 in 703ms (next.js: 440ms, proxy.ts: 41ms, application-code: 222ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 284ms (next.js: 35ms, application-code: 249ms)
+[frontend]  GET /api/v1/admin/matches/48f918ce-ea23-4a30-aa1c-ce3259cb9c7d 200 in 310ms (next.js: 12ms, application-code: 298ms)
+[frontend]  GET /admin/attendance 200 in 244ms (next.js: 146ms, proxy.ts: 5ms, application-code: 92ms)
+[frontend]  GET /api/v1/attendance/overview 200 in 177ms (next.js: 32ms, application-code: 145ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 40ms (next.js: 20ms, application-code: 21ms)
+[frontend]  GET /admin/rankings 200 in 81ms (next.js: 24ms, proxy.ts: 9ms, application-code: 49ms)
+[frontend]  GET /api/v1/admin/ranking-system-inputs?page=1&limit=2000 200 in 12.4s (next.js: 35ms, application-code: 12.3s)
+[backend] [2026-06-29 23:06:54.990 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "6e856a09-bfa3-46ff-9243-643e8f9a731e"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/admin/ranking-system-inputs?page=1&limit=2000"
+[backend]     statusCode: 200
+[backend]     durationMs: 12237.61
+[frontend]  GET /api/v1/notifications/unread-count 200 in 63ms (next.js: 22ms, application-code: 41ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 25ms (next.js: 12ms, application-code: 13ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 37ms (next.js: 20ms, application-code: 17ms)
+[frontend]  GET /api/v1/notifications?limit=20 200 in 45ms (next.js: 16ms, application-code: 29ms)
+[frontend]  GET /admin/reports/s 200 in 222ms (next.js: 143ms, proxy.ts: 9ms, application-code: 70ms)
+[frontend]  GET /api/v1/academy/branches?limit=100 200 in 136ms (next.js: 15ms, application-code: 121ms)
+[frontend]  GET /api/v1/admin/reports/overview?dateFrom=2026-04-01&dateTo=2026-06-29 200 in 458ms (next.js: 10ms, application-code: 448ms)
+[frontend]  GET /api/v1/admin/reports/overview?branchId=16e99694-61ce-40e0-9b8b-2f25049d21aa&dateFrom=2026-04-01&dateTo=2026-06-29 200 in 213ms (next.js: 13ms, application-code: 200ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 67ms (next.js: 35ms, application-code: 32ms)
+[frontend]  GET /admin/reports/player-progress 200 in 195ms (next.js: 123ms, proxy.ts: 11ms, application-code: 61ms)
+[frontend]  GET /admin/reports/attendance 200 in 236ms (next.js: 114ms, proxy.ts: 3ms, application-code: 118ms)
+[frontend]  GET /api/v1/admin/reports/overview?dateFrom=2026-04-01&dateTo=2026-06-29 200 in 83ms (next.js: 37ms, application-code: 46ms)
+[frontend]  GET /admin/reports/coach 200 in 229ms (next.js: 116ms, proxy.ts: 5ms, application-code: 108ms)
+[frontend]  GET /admin/settings 200 in 236ms (next.js: 112ms, proxy.ts: 4ms, application-code: 120ms)
+[frontend]  GET /api/v1/auth/me 200 in 80ms (next.js: 19ms, application-code: 61ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 27ms (next.js: 10ms, application-code: 17ms)
+[frontend]  GET /admin/settings/roles 200 in 357ms (next.js: 87ms, proxy.ts: 16ms, application-code: 254ms)
+[frontend]  GET /api/v1/admin/settings/access-control 200 in 358ms (next.js: 104ms, application-code: 253ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 35ms (next.js: 13ms, application-code: 22ms)
+[frontend] ○ Compiling /admin/help ...
+[frontend]  GET /api/v1/notifications/unread-count 200 in 292ms (next.js: 264ms, application-code: 28ms)
+[frontend]  GET /admin/help 200 in 32.2s (next.js: 32.1s, proxy.ts: 5ms, application-code: 65ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 24ms (next.js: 10ms, application-code: 14ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 42ms (next.js: 23ms, application-code: 19ms)
+[frontend]  GET /admin/matches 200 in 178ms (next.js: 109ms, proxy.ts: 12ms, application-code: 57ms)
+[frontend]  GET /api/v1/coaches?page=1&limit=100 200 in 230ms (next.js: 8ms, application-code: 222ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 252ms (next.js: 15ms, application-code: 237ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 45ms (next.js: 13ms, application-code: 33ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 60ms (next.js: 20ms, application-code: 40ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 42ms (next.js: 10ms, application-code: 32ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 71ms (next.js: 27ms, application-code: 44ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 53ms (next.js: 26ms, application-code: 27ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 49ms (next.js: 9ms, application-code: 40ms)
+[frontend]  POST /api/v1/admin/matches 201 in 739ms (next.js: 17ms, application-code: 722ms)
+[frontend]  GET /api/v1/admin/matches?page=1&limit=100 200 in 141ms (next.js: 12ms, application-code: 129ms)
+[frontend]  POST /api/v1/auth/logout 200 in 90ms (next.js: 12ms, application-code: 78ms)
+[frontend]  GET /admin-login 200 in 477ms (next.js: 161ms, proxy.ts: 31ms, application-code: 286ms)
+[frontend]  GET /admin-login 200 in 485ms (next.js: 83ms, proxy.ts: 27ms, application-code: 374ms)
+[frontend]  POST /api/v1/auth/admin/login 200 in 280ms (next.js: 19ms, application-code: 261ms)
+[frontend]  GET /coach/home 200 in 677ms (next.js: 594ms, proxy.ts: 8ms, application-code: 74ms)
+[frontend]  GET /api/v1/coach/groups 200 in 71ms (next.js: 20ms, application-code: 51ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 200 in 108ms (next.js: 7ms, application-code: 102ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 161ms (next.js: 6ms, application-code: 155ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 200 in 144ms (next.js: 4ms, application-code: 140ms)
+[frontend]  GET /api/v1/coach/permissions 200 in 79ms (next.js: 26ms, application-code: 53ms)
+[frontend]  GET /api/v1/academy 200 in 111ms (next.js: 14ms, application-code: 97ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 104ms (next.js: 14ms, application-code: 89ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 35ms (next.js: 20ms, application-code: 15ms)
+[frontend]  GET /coach/matches 200 in 116ms (next.js: 84ms, proxy.ts: 4ms, application-code: 29ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 131ms (next.js: 29ms, application-code: 102ms)
+[frontend]  GET /api/v1/coach/match-requests?limit=100 200 in 42ms (next.js: 4ms, application-code: 38ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 200 in 70ms (next.js: 11ms, application-code: 59ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 91ms (next.js: 7ms, application-code: 84ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 42ms (next.js: 22ms, application-code: 19ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 244ms (next.js: 14ms, application-code: 230ms)
+[frontend]  GET /coach/matches/configuration?matchId=24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 188ms (next.js: 101ms, proxy.ts: 13ms, application-code: 74ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=500 200 in 145ms (next.js: 12ms, application-code: 133ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 213ms (next.js: 30ms, application-code: 183ms)
+[frontend]  GET /api/v1/coach/injury-risk/predictions 200 in 219ms (next.js: 53ms, application-code: 166ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 61ms (next.js: 24ms, application-code: 36ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 43ms (next.js: 9ms, application-code: 33ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 48ms (next.js: 21ms, application-code: 27ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 55ms (next.js: 14ms, application-code: 41ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 76ms (next.js: 14ms, application-code: 62ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 51ms (next.js: 16ms, application-code: 35ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 46ms (next.js: 24ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 56ms (next.js: 13ms, application-code: 43ms)
+[frontend]  PATCH /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/targets 200 in 516ms (next.js: 11ms, application-code: 505ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 72ms (next.js: 8ms, application-code: 64ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 98ms (next.js: 5ms, application-code: 93ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/tactics 200 in 90ms (next.js: 9ms, application-code: 81ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 182ms (next.js: 31ms, application-code: 152ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 196ms (next.js: 50ms, application-code: 146ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/squad 200 in 409ms (next.js: 19ms, application-code: 390ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 292ms (next.js: 23ms, application-code: 269ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 384ms (next.js: 9ms, application-code: 375ms)
+[frontend]  GET /coach/matches 200 in 63ms (next.js: 9ms, proxy.ts: 13ms, application-code: 42ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 91ms (next.js: 12ms, application-code: 78ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 318ms (next.js: 81ms, application-code: 237ms)
+[frontend] ○ Compiling /coach/matches/match-day/[matchId] ...
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 207ms (next.js: 139ms, application-code: 69ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 1592ms (next.js: 318ms, application-code: 1274ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 1680ms (next.js: 715ms, application-code: 965ms)
+[frontend]  GET /api/v1/notifications?limit=20 200 in 1635ms (next.js: 925ms, application-code: 711ms)
+[backend] [2026-06-29 23:17:47.946 +0300] [33mWARN[39m: [36mSlow PostgreSQL query[39m
+[backend]     service: "goalix-api"
+[backend]     durationMs: 443.39
+[backend]     sql: "select \"id\", \"expires_at\", \"last_seen_at\" from \"auth_refresh_tokens\" where \"user_id\" = $1 and \"access_jti\" = $2 and \"is_revoked\" = $3 and \"expires_at\" > $4 limit $5"
+[frontend]  GET /coach/matches/match-day/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 38.3s (next.js: 33.6s, proxy.ts: 3ms, application-code: 4.7s)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 841ms (next.js: 130ms, application-code: 710ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 559ms (next.js: 507ms, application-code: 51ms)
+[frontend] ✓ Finished filesystem cache database compaction in 12.5s
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 199ms (next.js: 27ms, application-code: 172ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 363ms (next.js: 8ms, application-code: 355ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 56ms (next.js: 5ms, application-code: 51ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 216ms (next.js: 9ms, application-code: 207ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 69ms (next.js: 7ms, application-code: 62ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 180ms (next.js: 3ms, application-code: 178ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 111ms (next.js: 5ms, application-code: 106ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 228ms (next.js: 9ms, application-code: 219ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 83ms (next.js: 5ms, application-code: 78ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 152ms (next.js: 19ms, application-code: 133ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 474ms (next.js: 45ms, application-code: 429ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 113ms (next.js: 18ms, application-code: 95ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 125ms (next.js: 12ms, application-code: 113ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 237ms (next.js: 30ms, application-code: 207ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 87ms (next.js: 8ms, application-code: 79ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 188ms (next.js: 31ms, application-code: 157ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 106ms (next.js: 8ms, application-code: 97ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 104ms (next.js: 12ms, application-code: 92ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 115ms (next.js: 10ms, application-code: 105ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 65ms (next.js: 9ms, application-code: 56ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 148ms (next.js: 9ms, application-code: 138ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 177ms (next.js: 31ms, application-code: 146ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 95ms (next.js: 11ms, application-code: 84ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 206ms (next.js: 12ms, application-code: 194ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 100ms (next.js: 15ms, application-code: 85ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 188ms (next.js: 14ms, application-code: 174ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 130ms (next.js: 14ms, application-code: 116ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 120ms (next.js: 25ms, application-code: 95ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 104ms (next.js: 12ms, application-code: 93ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 138ms (next.js: 21ms, application-code: 117ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 110ms (next.js: 13ms, application-code: 97ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/attendance 200 in 176ms (next.js: 33ms, application-code: 143ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 99ms (next.js: 6ms, application-code: 93ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 53ms (next.js: 15ms, application-code: 38ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 31ms (next.js: 15ms, application-code: 15ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 59ms (next.js: 11ms, application-code: 48ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 79ms (next.js: 18ms, application-code: 61ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 46ms (next.js: 9ms, application-code: 37ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 55ms (next.js: 15ms, application-code: 41ms)
+[frontend]  PATCH /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/live-status 200 in 174ms (next.js: 14ms, application-code: 160ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 81ms (next.js: 3ms, application-code: 78ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 86ms (next.js: 37ms, application-code: 48ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 698ms (next.js: 15ms, application-code: 683ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 117ms (next.js: 21ms, application-code: 96ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 64ms (next.js: 7ms, application-code: 57ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 83ms (next.js: 9ms, application-code: 74ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 27ms (next.js: 12ms, application-code: 15ms)
+[frontend]  POST /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/goals 201 in 135ms (next.js: 10ms, application-code: 125ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 98ms (next.js: 3ms, application-code: 95ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 179ms (next.js: 26ms, application-code: 153ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 80ms (next.js: 11ms, application-code: 68ms)
+[frontend]  PATCH /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/live-status 200 in 66ms (next.js: 4ms, application-code: 61ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 98ms (next.js: 8ms, application-code: 90ms)
+[frontend]  PATCH /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9/live-status 200 in 294ms (next.js: 23ms, application-code: 270ms)
+[frontend]  GET /api/v1/coach/matches/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 87ms (next.js: 3ms, application-code: 84ms)
+[frontend]  GET /coach/matches/evaluation/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 1813ms (next.js: 1716ms, proxy.ts: 17ms, application-code: 80ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 50ms (next.js: 19ms, application-code: 31ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 19ms (next.js: 7ms, application-code: 13ms)
+[frontend] ○ Compiling /coach/matches/archive ...
+[frontend]  GET /coach/matches/archive 200 in 24.9s (next.js: 24.7s, proxy.ts: 12ms, application-code: 141ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 200 in 135ms (next.js: 32ms, application-code: 103ms)
+[frontend]  GET /api/v1/coach/matches/48f918ce-ea23-4a30-aa1c-ce3259cb9c7d 200 in 118ms (next.js: 12ms, application-code: 105ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 44ms (next.js: 10ms, application-code: 34ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 74ms (next.js: 36ms, application-code: 38ms)
+[frontend]  GET /coach/matches/evaluation 200 in 272ms (next.js: 91ms, proxy.ts: 35ms, application-code: 146ms)
+[frontend]  GET /coach/matches/evaluation/24f8e9b7-58b2-4c5c-be5a-d6f59b6ed5c9 200 in 79ms (next.js: 24ms, proxy.ts: 11ms, application-code: 44ms)
+[frontend]  GET /admin-login 200 in 444ms (next.js: 20ms, proxy.ts: 9ms, application-code: 414ms)
+[frontend]  GET /login 200 in 1143ms (next.js: 60ms, proxy.ts: 14ms, application-code: 1068ms)
+[frontend]  POST /api/v1/auth/login 200 in 570ms (next.js: 287ms, application-code: 283ms)
+[frontend]  GET /player/home 200 in 139ms (next.js: 104ms, proxy.ts: 4ms, application-code: 30ms)
+[frontend]  GET /api/v1/player/profile 200 in 225ms (next.js: 7ms, application-code: 218ms)
+[frontend]  GET /api/v1/player/progress 200 in 407ms (next.js: 15ms, application-code: 392ms)
+[frontend]  GET /api/v1/player/evaluations?limit=100 200 in 347ms (next.js: 20ms, application-code: 326ms)
+[frontend]  GET /api/v1/player/calendar-events?limit=100 200 in 454ms (next.js: 12ms, application-code: 442ms)
+[frontend]  GET /api/v1/player/matches?limit=100 200 in 488ms (next.js: 5ms, application-code: 483ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 286ms (next.js: 23ms, application-code: 263ms)
+[frontend]  GET /api/v1/player/trainings?limit=100 200 in 486ms (next.js: 44ms, application-code: 442ms)
+[frontend]  GET /api/v1/academy 200 in 107ms (next.js: 24ms, application-code: 84ms)
+[frontend]  GET /api/v1/notifications?limit=20 200 in 52ms (next.js: 12ms, application-code: 39ms)
+[frontend]  GET /api/v1/player/matches?limit=100 200 in 244ms (next.js: 34ms, application-code: 210ms)
+[frontend]  GET /player/assignments 200 in 122ms (next.js: 82ms, proxy.ts: 5ms, application-code: 35ms)
+[frontend]  GET /api/v1/player/assignments?page=1&limit=100 200 in 114ms (next.js: 23ms, application-code: 91ms)
+[frontend] ✓ Finished filesystem cache database compaction in 10.3s
+[frontend]  GET /player/performance/ranking 200 in 191ms (next.js: 86ms, proxy.ts: 8ms, application-code: 98ms)
+[frontend]  GET /api/v1/player/ranking-system-inputs?page=1&limit=500 200 in 14.8s (next.js: 30ms, application-code: 14.7s)
+[backend] [2026-06-29 23:26:15.194 +0300] [33mWARN[39m: [36mSlow HTTP request[39m
+[backend]     service: "goalix-api"
+[backend]     requestId: "093f54ce-9f78-41af-a402-366a7e125108"
+[backend]     method: "GET"
+[backend]     url: "/api/v1/player/ranking-system-inputs?page=1&limit=500"
+[backend]     statusCode: 200
+[backend]     durationMs: 14681
+[frontend]  GET /api/v1/notifications/unread-count 200 in 47ms (next.js: 10ms, application-code: 36ms)
+[frontend]  GET /player/performance/progress 200 in 284ms (next.js: 168ms, proxy.ts: 19ms, application-code: 98ms)
+[frontend]  GET /api/v1/player/progress 200 in 384ms (next.js: 34ms, application-code: 350ms)
+[frontend]  GET /api/v1/player/matches?limit=100 200 in 553ms (next.js: 67ms, application-code: 486ms)
+[frontend]  GET /player/training 200 in 216ms (next.js: 176ms, proxy.ts: 3ms, application-code: 38ms)
+[frontend]  GET /api/v1/player/attendance-qr 200 in 150ms (next.js: 20ms, application-code: 130ms)
+[frontend]  GET /api/v1/player/evaluations?limit=100 200 in 68ms (next.js: 8ms, application-code: 60ms)
+[frontend]  GET /api/v1/player/trainings?limit=100 200 in 271ms (next.js: 38ms, application-code: 233ms)
+[frontend]  GET /api/v1/player/attendance?page=1&limit=100 200 in 116ms (next.js: 20ms, application-code: 96ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 118ms (next.js: 32ms, application-code: 87ms)
+[frontend]  GET /api/v1/player/trainings?limit=100 200 in 109ms (next.js: 20ms, application-code: 89ms)
+[frontend]  GET /api/v1/player/attendance?page=1&limit=100 200 in 74ms (next.js: 11ms, application-code: 62ms)
+[frontend]  GET /player/attendance 200 in 121ms (next.js: 79ms, proxy.ts: 4ms, application-code: 39ms)
+[frontend]  GET /api/v1/player/attendance?page=1&limit=500 200 in 117ms (next.js: 19ms, application-code: 98ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 32ms (next.js: 11ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 8ms, application-code: 15ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 33ms (next.js: 13ms, application-code: 20ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 25ms (next.js: 8ms, application-code: 17ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 28ms (next.js: 12ms, application-code: 16ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 23ms (next.js: 10ms, application-code: 13ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 19ms (next.js: 7ms, application-code: 12ms)
+[frontend]  GET /api/v1/notifications/unread-count 200 in 35ms (next.js: 19ms, application-code: 16ms)
+[frontend] [?25h

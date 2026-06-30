@@ -230,8 +230,7 @@ export default function PlayerProfilePage() {
     profileValue(profile, ["weight", "weight_kg", "weight kg"]) ||
     textValue(latestMeasurement?.weight_kg);
   const age = ageFromBirthDate(profile?.date_of_birth);
-  const photoValue = textValue(profile?.photo_url);
-  const photoSrc = photoValue?.startsWith("/") ? photoValue : "/Player.png";
+  const photoSrc = "/Player.png";
   const customFields = (profile?.customProfile ?? []).filter((field) =>
     textValue(field.value),
   );

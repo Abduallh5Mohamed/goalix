@@ -31,6 +31,15 @@ import {
   type RankingSystemInput,
   useGetCoachRankingSystemInputsQuery,
 } from "@/lib/store/api/calendarApi";
+import {
+  buildMonthlyRankingRows,
+  isActualCompletedRankingRow,
+  rankingDateKey,
+  rankingMonthKey,
+  rankingMonthRange,
+  rankingWeekLabel,
+  rankingWeeksInMonthLabel,
+} from "@/lib/rankings/monthlyRanking";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 
 const roleLabels: Record<RankingSystemInput["role_family"], string> = {
@@ -122,6 +131,7 @@ type RankingDisplayRow = {
   trend: RankingSystemInput["trend"];
   rank: number;
   weekCount: number;
+  weekLabel?: string;
 };
 type PeriodSummary = {
   key: string;
@@ -166,21 +176,10 @@ const gradeValue = (row: RankingSystemInput) =>
 const rankValue = (row: RankingSystemInput) =>
   row.final_api_response?.rank ?? row.rank;
 
-const isCarryForwardRow = (row: RankingSystemInput) =>
-  Boolean(row.carry_forward || row.final_api_response?.carry_forward);
-
 const formatScore = (value: unknown) => {
   const numeric = numberValue(value);
   if (numeric === null) return "-";
   return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
-};
-
-const average = (values: Array<number | null>) => {
-  const numeric = values.filter((value): value is number => value !== null);
-  if (!numeric.length) return null;
-  return Number(
-    (numeric.reduce((sum, value) => sum + value, 0) / numeric.length).toFixed(2),
-  );
 };
 
 const gradeForScore = (score: number | null): RankingSystemInput["grade"] => {
@@ -243,9 +242,6 @@ const roleTopFromRows = (
   ).slice(0, 3),
 });
 
-const monthKey = (value: string | null | undefined) =>
-  String(value || "").slice(0, 7);
-
 const monthLabel = (key: string) => {
   const [year, month] = key.split("-").map(Number);
   if (!year || !month) return key || "Unknown month";
@@ -255,22 +251,10 @@ const monthLabel = (key: string) => {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 };
 
-const dateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const currentWeekStartKey = () => {
-  const now = new Date();
-  const utcDate = new Date(
-    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
-  );
-  const day = utcDate.getUTCDay() || 7;
-  utcDate.setUTCDate(utcDate.getUTCDate() - day + 1);
-  return dateKey(utcDate);
-};
-
 const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
   const byWeek = new Map<string, RankingSystemInput[]>();
   rows.forEach((row) => {
-    const key = String(row.week_start || "");
+    const key = rankingDateKey(row.week_start);
     if (!key) return;
     if (!byWeek.has(key)) byWeek.set(key, []);
     byWeek.get(key)?.push(row);
@@ -283,7 +267,7 @@ const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
       const weekEnd = weekRows[0]?.week_end;
       return {
         key,
-        label: `Week of ${formatDate(key)}`,
+        label: rankingWeekLabel(key),
         subLabel: `${formatDate(key)} to ${formatDate(weekEnd)}`,
         rows: rankedRows,
         roleTop: roleTopFromRows(rankedRows),
@@ -295,7 +279,7 @@ const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
 const buildMonthlyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
   const byMonth = new Map<string, RankingSystemInput[]>();
   rows.forEach((row) => {
-    const key = monthKey(row.week_start);
+    const key = rankingMonthKey(row.week_start);
     if (!key) return;
     if (!byMonth.has(key)) byMonth.set(key, []);
     byMonth.get(key)?.push(row);
@@ -304,50 +288,31 @@ const buildMonthlyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
   return [...byMonth.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([key, monthRows]) => {
-      const byPlayer = new Map<string, RankingSystemInput[]>();
-      monthRows.forEach((row) => {
-        if (!byPlayer.has(row.player_id)) byPlayer.set(row.player_id, []);
-        byPlayer.get(row.player_id)?.push(row);
-      });
-
-      const displayRows = [...byPlayer.entries()].map(([playerId, playerRows]) => {
-        const latest = playerRows
-          .slice()
-          .sort((a, b) =>
-            String(b.week_start || "").localeCompare(String(a.week_start || "")),
-          )[0];
-        const score = average(playerRows.map(scoreValue));
-        const predicted = average(playerRows.map(predictedValue));
-        const weekCount = new Set(playerRows.map((row) => row.week_start)).size;
-
-        return {
-          id: `${key}:${playerId}`,
-          playerId,
-          playerName: latest?.player_name || "Player",
-          position: latest?.position || null,
-          roleFamily: latest?.role_family || "unknown",
-          score,
-          predicted,
-          grade: gradeForScore(score),
-          trend: latest?.trend || "Stable",
-          rank: 0,
-          weekCount,
-        };
-      });
-
-      const rankedRows = displayRows
-        .sort((a, b) => {
-          const scoreDiff = (b.score ?? -1) - (a.score ?? -1);
-          if (scoreDiff) return scoreDiff;
-          return a.playerName.localeCompare(b.playerName);
-        })
-        .map((row, index) => ({ ...row, rank: index + 1 }));
-      const weekCount = new Set(monthRows.map((row) => row.week_start)).size;
+      const rankedRows = buildMonthlyRankingRows(monthRows, key).map((row) => ({
+        id: row.id,
+        playerId: row.playerId,
+        playerName: row.playerName,
+        position: row.position,
+        roleFamily: row.roleFamily,
+        score: row.score,
+        predicted: row.predicted,
+        grade: gradeForScore(row.score),
+        trend: row.latestRow?.trend || "Stable",
+        rank: row.rank,
+        weekCount: row.weekCount,
+        weekLabel: rankingWeeksInMonthLabel(row.weekStarts, row.month),
+      }));
+      const weekCount = new Set(
+        monthRows.map((row) => rankingDateKey(row.week_start)).filter(Boolean),
+      ).size;
+      const weekStarts = [
+        ...new Set(monthRows.map((row) => rankingDateKey(row.week_start)).filter(Boolean)),
+      ];
 
       return {
         key,
         label: monthLabel(key),
-        subLabel: `${weekCount} week${weekCount === 1 ? "" : "s"} aggregated by average score`,
+        subLabel: `${rankingWeeksInMonthLabel(weekStarts, key)} aggregated by average score`,
         rows: rankedRows,
         roleTop: roleTopFromRows(rankedRows),
         weekCount,
@@ -655,7 +620,7 @@ function CompactRankRow({
             )}
             {showWeeks && (
               <span className="text-[11px] text-muted-foreground">
-                {row.weekCount} wk{row.weekCount === 1 ? "" : "s"}
+                {row.weekLabel ?? `${row.weekCount} wk${row.weekCount === 1 ? "" : "s"}`}
               </span>
             )}
             <span className={cn("inline-flex items-center gap-1 text-[11px]", trendTone[row.trend])}>
@@ -876,26 +841,98 @@ function RankingHistory({
   );
 }
 
+function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
+  if (!summary) return null;
+  const range = rankingMonthRange(summary.key);
+
+  return (
+    <Card className="border-border/50 bg-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between gap-3 text-base font-semibold">
+          <span>Monthly Ranking Cycle</span>
+          <Badge variant="success" className="rounded-md">
+            {range.label}
+          </Badge>
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {range.start ? `${formatDate(range.start)} to ${formatDate(range.end)}` : summary.key} - monthly rank is recalculated from this month&apos;s completed weekly scores only.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="text-xs text-muted-foreground">Players</p>
+            <p className="mt-1 text-2xl font-black">{summary.rows.length}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="text-xs text-muted-foreground">Weeks counted</p>
+            <p className="mt-1 text-2xl font-black">{summary.weekCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{summary.subLabel}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+            <p className="text-xs text-muted-foreground">Reset</p>
+            <p className="mt-1 text-sm font-semibold">
+              Next month starts from zero. This month does not use old inputs.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {roleTopCards.map(({ role, title, icon: Icon }) => {
+            const leader = summary.roleTop[role][0];
+            return (
+              <div key={role} className="rounded-lg border border-border/40 bg-muted/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">{title}</p>
+                    <p className="text-xs text-muted-foreground">Monthly leader</p>
+                  </div>
+                  <span className={cn("rounded-md border p-2", roleTone[role])}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                </div>
+                {leader ? (
+                  <div className="mt-4 flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/15 text-xs text-primary">
+                        {getInitials(leader.playerName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{leader.playerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        #{leader.rank} - {formatScore(leader.score)} pts - {leader.weekLabel ?? `${leader.weekCount} wk${leader.weekCount === 1 ? "" : "s"}`}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-muted-foreground">No monthly player yet.</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CoachRankingsPage() {
   const { data, isLoading, isError, refetch } =
-    useGetCoachRankingSystemInputsQuery({ limit: 500 });
+    useGetCoachRankingSystemInputsQuery({ limit: 200 });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
-  const actualRows = useMemo(
-    () => rows.filter((row) => !isCarryForwardRow(row)),
+  const completedRows = useMemo(
+    () => rows.filter((row) => isActualCompletedRankingRow(row)),
     [rows],
   );
-  const weeklyHistory = useMemo(() => buildWeeklyHistory(actualRows), [actualRows]);
+  const weeklyHistory = useMemo(() => buildWeeklyHistory(completedRows), [completedRows]);
   const monthlyHistory = useMemo(
-    () => buildMonthlyHistory(actualRows),
-    [actualRows],
+    () => buildMonthlyHistory(completedRows),
+    [completedRows],
   );
   const [selectedWeek, setSelectedWeek] = useState("");
-  const currentWeek = useMemo(() => currentWeekStartKey(), []);
-  const defaultWeek =
-    weeklyHistory.find((summary) => summary.key < currentWeek)?.key ??
-    weeklyHistory[0]?.key ??
-    "";
+  const defaultWeek = weeklyHistory[0]?.key ?? "";
   const effectiveWeek = selectedWeek || defaultWeek;
   const selectedWeekSummary =
     weeklyHistory.find((summary) => summary.key === effectiveWeek) ??
@@ -903,9 +940,11 @@ export default function CoachRankingsPage() {
   const selectedRows = useMemo(
     () =>
       selectedWeekSummary
-        ? actualRows.filter((row) => row.week_start === selectedWeekSummary.key)
+        ? completedRows.filter(
+            (row) => rankingDateKey(row.week_start) === selectedWeekSummary.key,
+          )
         : [],
-    [actualRows, selectedWeekSummary],
+    [completedRows, selectedWeekSummary],
   );
   const modelRows = useMemo(() => sortByModelRank(selectedRows), [selectedRows]);
   const podiumPlayers = useMemo(() => modelRows.slice(0, 3), [modelRows]);
@@ -913,6 +952,7 @@ export default function CoachRankingsPage() {
     () => modelRows.map(toDisplayRow),
     [modelRows],
   );
+  const latestMonthlySummary = monthlyHistory[0];
 
   useEffect(() => {
     if (!defaultWeek) {
@@ -1016,6 +1056,8 @@ export default function CoachRankingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <MonthlyCycleSummary summary={latestMonthlySummary} />
 
           <WinnerPodium players={podiumPlayers} />
 

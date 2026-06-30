@@ -101,7 +101,7 @@ class PlayersRepository extends BaseRepository {
                     ) as position
                 `),
                 'player_profiles.preferred_foot',
-                'player_profiles.photo_url', 'player_profiles.is_active', 'player_profiles.profile_status',
+                'player_profiles.is_active', 'player_profiles.profile_status',
                 'player_profiles.profile_completed_at', 'player_profiles.date_joined', 'player_profiles.created_at',
             )
             .orderBy('player_profiles.full_name', 'asc')

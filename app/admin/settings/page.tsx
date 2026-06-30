@@ -20,12 +20,17 @@ import {
   useDisable2FAMutation,
   useGetAcademyQuery,
   useGetCurrentUserQuery,
+  useGetMfaDevicesQuery,
+  useRegenerateMfaBackupCodesMutation,
+  useRevokeMfaDeviceMutation,
   useSetup2FAMutation,
+  useSetupMfaDeviceMutation,
   useUpdateAcademyMutation,
   useVerifySetup2FAMutation,
+  useVerifyMfaDeviceMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
-import { CheckCircle, KeyRound, Loader2, Save, ShieldCheck, ShieldOff } from "lucide-react";
+import { CheckCircle, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 
 type AcademyDraft = {
   name?: string;
@@ -97,13 +102,25 @@ export default function AcademyProfilePage() {
   const [setup2FA, { isLoading: settingUp2FA }] = useSetup2FAMutation();
   const [verifySetup2FA, { isLoading: verifying2FA }] = useVerifySetup2FAMutation();
   const [disable2FA, { isLoading: disabling2FA }] = useDisable2FAMutation();
+  const { data: mfaDevices = [] } = useGetMfaDevicesQuery(undefined, {
+    skip: !currentUser?.totpEnabled,
+  });
+  const [setupMfaDevice, { isLoading: settingUpDevice }] = useSetupMfaDeviceMutation();
+  const [verifyMfaDevice, { isLoading: verifyingDevice }] = useVerifyMfaDeviceMutation();
+  const [revokeMfaDevice, { isLoading: revokingDevice }] = useRevokeMfaDeviceMutation();
+  const [regenerateBackupCodes, { isLoading: regeneratingBackupCodes }] =
+    useRegenerateMfaBackupCodesMutation();
 
   const [academyDraft, setAcademyDraft] = useState<AcademyDraft>({});
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [setupData, setSetupData] = useState<Setup2FAResponse | null>(null);
   const [setupCode, setSetupCode] = useState("");
+  const [newDeviceName, setNewDeviceName] = useState("Admin phone");
+  const [newDeviceSetup, setNewDeviceSetup] = useState<Setup2FAResponse | null>(null);
+  const [newDeviceCode, setNewDeviceCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
+  const [backupCodesPassword, setBackupCodesPassword] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [securityMessage, setSecurityMessage] = useState("");
   const [securityError, setSecurityError] = useState("");
@@ -261,6 +278,65 @@ export default function AcademyProfilePage() {
     }
   };
 
+  const handleStartDeviceSetup = async () => {
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      const result = await setupMfaDevice({ deviceName: newDeviceName.trim() || "Admin phone" }).unwrap();
+      setNewDeviceSetup(result);
+      setNewDeviceCode("");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not add MFA device."));
+    }
+  };
+
+  const handleVerifyDevice = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newDeviceSetup?.deviceId) return;
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      await verifyMfaDevice({
+        deviceId: newDeviceSetup.deviceId,
+        token: newDeviceCode.trim(),
+      }).unwrap();
+      setNewDeviceSetup(null);
+      setNewDeviceCode("");
+      setSecurityMessage("MFA device added.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Invalid device verification code."));
+    }
+  };
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      await revokeMfaDevice(deviceId).unwrap();
+      setSecurityMessage("MFA device removed.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not remove MFA device."));
+    }
+  };
+
+  const handleRegenerateBackupCodes = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      const result = await regenerateBackupCodes(backupCodesPassword).unwrap();
+      setBackupCodes(result.backupCodes);
+      setBackupCodesPassword("");
+      setSecurityMessage("New backup codes generated. Save them now.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not generate backup codes."));
+    }
+  };
+
   if (isLoading) return <LoadingSkeleton />;
 
   return (
@@ -299,25 +375,6 @@ export default function AcademyProfilePage() {
               <div className="space-y-2">
                 <Label>Address</Label>
                 <Input value={academyAddress} onChange={(event) => updateDraft("address", event.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="match-day-open-minutes">
-                  Match Day opens before kick-off
-                </Label>
-                <Input
-                  id="match-day-open-minutes"
-                  type="number"
-                  min={0}
-                  max={240}
-                  step={1}
-                  value={matchDayOpenMinutesBeforeKickoff}
-                  onChange={(event) =>
-                    updateDraft(
-                      "matchDayOpenMinutesBeforeKickoff",
-                      event.target.value,
-                    )
-                  }
-                />
               </div>
               <div className="flex items-center gap-3">
                 <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
@@ -416,6 +473,25 @@ export default function AcademyProfilePage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="match-day-open-minutes">
+                    Match Day opens before kick-off
+                  </Label>
+                  <Input
+                    id="match-day-open-minutes"
+                    type="number"
+                    min={0}
+                    max={240}
+                    step={1}
+                    value={matchDayOpenMinutesBeforeKickoff}
+                    onChange={(event) =>
+                      updateDraft(
+                        "matchDayOpenMinutesBeforeKickoff",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="community-whatsapp-url">WhatsApp Community Link</Label>
                   <Input
@@ -481,27 +557,180 @@ export default function AcademyProfilePage() {
             </CardHeader>
             <CardContent className="space-y-5">
               {totpEnabled ? (
-                <form onSubmit={handleDisable2FA} className="space-y-3">
+                <div className="space-y-5">
                   <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
                     <ShieldCheck className="h-4 w-4" />
                     Admin login requires a 2FA code.
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="disable-2fa-password">Admin password</Label>
-                    <Input
-                      id="disable-2fa-password"
-                      type="password"
-                      value={disablePassword}
-                      onChange={(event) => setDisablePassword(event.target.value)}
-                      autoComplete="current-password"
-                      required
-                    />
+
+                  <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">Authenticator devices</p>
+                        <p className="text-xs text-muted-foreground">
+                          Scan a new QR code to add another phone. It will show as Goalix Academy Admin.
+                        </p>
+                      </div>
+                      {!newDeviceSetup && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleStartDeviceSetup}
+                          disabled={settingUpDevice}
+                          className="gap-1.5"
+                        >
+                          {settingUpDevice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          Add device
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {mfaDevices.map((device) => (
+                        <div
+                          key={device.id}
+                          className="flex flex-col gap-2 rounded-lg border border-border/40 bg-background/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium">{device.deviceName}</p>
+                              {device.isPrimary && <Badge variant="success">Primary</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Added {new Date(device.createdAt).toLocaleString()}
+                              {device.lastUsedAt ? ` - Last used ${new Date(device.lastUsedAt).toLocaleString()}` : ""}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRevokeDevice(device.id)}
+                            disabled={revokingDevice || device.isPrimary}
+                            className="gap-1.5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                      {!mfaDevices.length && (
+                        <p className="rounded-lg border border-dashed border-border/40 p-3 text-sm text-muted-foreground">
+                          Your existing MFA device is still active. Add a new device to manage devices here.
+                        </p>
+                      )}
+                    </div>
+
+                    {!newDeviceSetup && (
+                      <div className="space-y-2">
+                        <Label htmlFor="new-mfa-device-name">New device name</Label>
+                        <Input
+                          id="new-mfa-device-name"
+                          value={newDeviceName}
+                          onChange={(event) => setNewDeviceName(event.target.value)}
+                          placeholder="Admin phone"
+                        />
+                      </div>
+                    )}
+
+                    {newDeviceSetup && (
+                      <form onSubmit={handleVerifyDevice} className="space-y-4">
+                        <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+                          <div className="rounded-lg border border-border/50 bg-white p-2">
+                            <Image
+                              src={newDeviceSetup.qrCode}
+                              alt="New MFA device QR code"
+                              width={164}
+                              height={164}
+                              unoptimized
+                              className="h-[164px] w-[164px]"
+                            />
+                          </div>
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label>Authenticator label</Label>
+                              <Input value={newDeviceSetup.issuer ?? "Goalix Academy Admin"} readOnly />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Secret</Label>
+                              <Input value={newDeviceSetup.secret} readOnly className="font-mono text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="new-device-code">Verification code</Label>
+                              <Input
+                                id="new-device-code"
+                                value={newDeviceCode}
+                                onChange={(event) => setNewDeviceCode(event.target.value.replace(/\D/g, ""))}
+                                inputMode="numeric"
+                                maxLength={6}
+                                required
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="submit" disabled={verifyingDevice || newDeviceCode.length !== 6} className="gap-1.5">
+                            {verifyingDevice && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Verify device
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => setNewDeviceSetup(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    )}
                   </div>
-                  <Button type="submit" variant="outline" disabled={disabling2FA} className="gap-1.5">
-                    {disabling2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
-                    Disable 2FA
-                  </Button>
-                </form>
+
+                  <form
+                    onSubmit={handleRegenerateBackupCodes}
+                    className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold">MFA backup codes</p>
+                      <p className="text-xs text-muted-foreground">
+                        Existing codes cannot be viewed again. Generate new codes to replace the old ones.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-backup-codes-password">Admin password</Label>
+                      <Input
+                        id="admin-backup-codes-password"
+                        type="password"
+                        value={backupCodesPassword}
+                        onChange={(event) => setBackupCodesPassword(event.target.value)}
+                        autoComplete="current-password"
+                        required
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={regeneratingBackupCodes || !backupCodesPassword}
+                      className="gap-1.5"
+                    >
+                      {regeneratingBackupCodes ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                      Generate new backup codes
+                    </Button>
+                  </form>
+
+                  <form onSubmit={handleDisable2FA} className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="disable-2fa-password">Admin password</Label>
+                      <Input
+                        id="disable-2fa-password"
+                        type="password"
+                        value={disablePassword}
+                        onChange={(event) => setDisablePassword(event.target.value)}
+                        autoComplete="current-password"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" variant="outline" disabled={disabling2FA} className="gap-1.5">
+                      {disabling2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                      Disable 2FA
+                    </Button>
+                  </form>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-300">
@@ -527,6 +756,10 @@ export default function AcademyProfilePage() {
                           />
                         </div>
                         <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label>Authenticator label</Label>
+                            <Input value={setupData.issuer ?? "Goalix Academy Admin"} readOnly />
+                          </div>
                           <div className="space-y-2">
                             <Label>Secret</Label>
                             <Input value={setupData.secret} readOnly className="font-mono text-xs" />

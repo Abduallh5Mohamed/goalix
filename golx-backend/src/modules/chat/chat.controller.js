@@ -62,6 +62,7 @@ class ChatController {
         readResult.messages,
         readResult.conversation,
         readResult.recipientUserIds,
+        readResult.event,
       );
       const readById = new Map(
         readResult.messages.map((message) => [message.id, message]),
@@ -86,6 +87,7 @@ class ChatController {
         result.messages,
         result.conversation,
         result.recipientUserIds,
+        result.event,
       );
       res.json(ApiResponse.success(result.messages));
     } catch (err) {
@@ -97,6 +99,7 @@ class ChatController {
     try {
       const result = await this.service.sendMessage(req.user, req.params.id, {
         body: req.body.body,
+        clientMessageId: req.body.clientMessageId,
         image: req.file
           ? {
               originalName: req.file.originalname,
@@ -105,11 +108,14 @@ class ChatController {
             }
           : null,
       });
-      emitMessage(
-        result.message,
-        result.conversation,
-        result.recipientUserIds,
-      );
+      if (!result.idempotent) {
+        emitMessage(
+          result.message,
+          result.conversation,
+          result.recipientUserIds,
+          result.event,
+        );
+      }
       res.status(201).json(ApiResponse.success(result.message));
     } catch (err) {
       next(err);

@@ -196,6 +196,30 @@ class NotificationsRepository extends BaseRepository {
         const [row] = await this.db('notification_logs').insert(data).returning('*');
         return row;
     }
+
+    async deleteOlderThan(cutoffDate) {
+        return this.db.transaction(async (trx) => {
+            const oldNotifications = trx('notification_inbox')
+                .select('id')
+                .where('created_at', '<', cutoffDate);
+            let deletedLogs = 0;
+
+            if (
+                await trx.schema.hasTable('notification_logs') &&
+                await trx.schema.hasColumn('notification_logs', 'notification_id')
+            ) {
+                deletedLogs = await trx('notification_logs')
+                    .whereIn('notification_id', oldNotifications.clone())
+                    .del();
+            }
+
+            const deletedNotifications = await trx('notification_inbox')
+                .where('created_at', '<', cutoffDate)
+                .del();
+
+            return { deletedNotifications, deletedLogs };
+        });
+    }
 }
 
 module.exports = NotificationsRepository;

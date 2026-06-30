@@ -1,7 +1,6 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const { randomUUID } = require('node:crypto');
-const path = require('node:path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -13,132 +12,18 @@ const env = require('./config/env');
 const { corsOrigin, isAllowedOrigin } = require('./config/cors');
 const logger = require('./shared/logger');
 const db = require('./infrastructure/database');
-const { redis } = require('./infrastructure/redis');
-const { rankingsQueue, notificationsQueue, paymentsQueue, aiQueue } = require('./infrastructure/queue');
+const { isRedisAvailable } = require('./infrastructure/redis');
 const errorHandler = require('./middleware/errorHandler.middleware');
 const { authMiddleware } = require('./middleware/auth.middleware');
 const { apiLimiter } = require('./middleware/rateLimit.middleware');
+const { requireCsrfToken, setCsrfCookie } = require('./middleware/csrf.middleware');
+const storage = require('./shared/storage');
+const { createApplicationServices } = require('./bootstrap/service-factory');
+const { mountApplicationRoutes } = require('./bootstrap/route-registry');
 
-// ─── Repositories ─────────────────────────────────────────────────────
-const AuthRepository = require('./modules/auth/auth.repository');
-const AcademyRepository = require('./modules/academy/academy.repository');
-const PlayersRepository = require('./modules/players/players.repository');
-const CoachesRepository = require('./modules/coaches/coaches.repository');
-const AttendanceRepository = require('./modules/attendance/attendance.repository');
-const RankingsRepository = require('./modules/rankings/rankings.repository');
-const PaymentsRepository = require('./modules/payments/payments.repository');
-const NotificationsRepository = require('./modules/notifications/notifications.repository');
-const AiRepository = require('./modules/ai/ai.repository');
-const AdminRepository = require('./modules/admin/admin.repository');
-const CalendarRepository = require('./modules/calendar/calendar.repository');
-const CustomDataRepository = require('./modules/custom-data/custom-data.repository');
-const ChatRepository = require('./modules/chat/chat.repository');
+const { controllers, services } = createApplicationServices();
+const { calendarService, chatService, notificationsService } = services;
 
-// ─── Services ─────────────────────────────────────────────────────────
-const AuthService = require('./modules/auth/auth.service');
-const TotpService = require('./modules/auth/totp.service');
-const AcademyService = require('./modules/academy/academy.service');
-const PlayersService = require('./modules/players/players.service');
-const CoachesService = require('./modules/coaches/coaches.service');
-const AttendanceService = require('./modules/attendance/attendance.service');
-const RankingsService = require('./modules/rankings/rankings.service');
-const PaymentsService = require('./modules/payments/payments.service');
-const NotificationsService = require('./modules/notifications/notifications.service');
-const AiService = require('./modules/ai/ai.service');
-const AdminService = require('./modules/admin/admin.service');
-const CalendarService = require('./modules/calendar/calendar.service');
-const CustomDataService = require('./modules/custom-data/custom-data.service');
-const ChatService = require('./modules/chat/chat.service');
-
-// ─── Controllers ──────────────────────────────────────────────────────
-const AuthController = require('./modules/auth/auth.controller');
-const AcademyController = require('./modules/academy/academy.controller');
-const PlayersController = require('./modules/players/players.controller');
-const CoachesController = require('./modules/coaches/coaches.controller');
-const AttendanceController = require('./modules/attendance/attendance.controller');
-const RankingsController = require('./modules/rankings/rankings.controller');
-const PaymentsController = require('./modules/payments/payments.controller');
-const NotificationsController = require('./modules/notifications/notifications.controller');
-const AiController = require('./modules/ai/ai.controller');
-const AdminController = require('./modules/admin/admin.controller');
-const CalendarController = require('./modules/calendar/calendar.controller');
-const CustomDataController = require('./modules/custom-data/custom-data.controller');
-const ChatController = require('./modules/chat/chat.controller');
-
-// ─── Routes ───────────────────────────────────────────────────────────
-const authRoutes = require('./modules/auth/auth.routes');
-const academyRoutes = require('./modules/academy/academy.routes');
-const playersRoutes = require('./modules/players/players.routes');
-const coachesRoutes = require('./modules/coaches/coaches.routes');
-const attendanceRoutes = require('./modules/attendance/attendance.routes');
-const rankingsRoutes = require('./modules/rankings/rankings.routes');
-const paymentsRoutes = require('./modules/payments/payments.routes');
-const notificationsRoutes = require('./modules/notifications/notifications.routes');
-const aiRoutes = require('./modules/ai/ai.routes');
-const adminRoutes = require('./modules/admin/admin.routes');
-const customDataRoutes = require('./modules/custom-data/custom-data.routes');
-const chatRoutes = require('./modules/chat/chat.routes');
-const {
-    adminCalendarRoutes,
-    coachCalendarRoutes,
-    playerCalendarRoutes,
-    parentCalendarRoutes,
-} = require('./modules/calendar/calendar.routes');
-
-// ─── DI: wire repositories ───────────────────────────────────────────
-const authRepo = new AuthRepository(db);
-const academyRepo = new AcademyRepository(db);
-const playersRepo = new PlayersRepository(db);
-const coachesRepo = new CoachesRepository(db);
-const attendanceRepo = new AttendanceRepository(db, redis);
-const rankingsRepo = new RankingsRepository(db);
-const paymentsRepo = new PaymentsRepository(db);
-const notificationsRepo = new NotificationsRepository(db);
-const aiRepo = new AiRepository(db);
-const adminRepo = new AdminRepository(db);
-const calendarRepo = new CalendarRepository(db);
-const customDataRepo = new CustomDataRepository(db);
-const chatRepo = new ChatRepository(db);
-
-// ─── DI: wire services ───────────────────────────────────────────────
-const authService = new AuthService(authRepo, redis);
-const totpService = new TotpService(authRepo);
-const academyService = new AcademyService(academyRepo);
-const playersService = new PlayersService(playersRepo);
-const coachesService = new CoachesService(coachesRepo, academyService);
-const attendanceService = new AttendanceService(attendanceRepo, redis);
-const rankingsService = new RankingsService(rankingsRepo, rankingsQueue);
-const paymentsService = new PaymentsService(paymentsRepo, paymentsQueue);
-const notificationsService = new NotificationsService(notificationsRepo, notificationsQueue);
-const aiService = new AiService(aiRepo, aiQueue);
-const adminService = new AdminService(adminRepo);
-const customDataService = new CustomDataService(customDataRepo);
-const calendarService = new CalendarService(
-    calendarRepo,
-    playersService,
-    customDataService,
-    redis,
-);
-const chatService = new ChatService(chatRepo);
-
-// ─── DI: wire controllers ────────────────────────────────────────────
-const authController = new AuthController(authService, totpService);
-const academyController = new AcademyController(academyService);
-const playersController = new PlayersController(playersService);
-const coachesController = new CoachesController(coachesService);
-const attendanceController = new AttendanceController(attendanceService);
-const rankingsController = new RankingsController(rankingsService);
-const paymentsController = new PaymentsController(paymentsService);
-const notificationsController = new NotificationsController(notificationsService);
-const aiController = new AiController(aiService);
-const adminController = new AdminController(adminService);
-const calendarController = new CalendarController(calendarService);
-const customDataController = new CustomDataController(customDataService);
-const chatController = new ChatController(chatService);
-
-// ═══════════════════════════════════════════════════════════════════════
-//  Express App
-// ═══════════════════════════════════════════════════════════════════════
 const app = express();
 app.locals.services = { chatService };
 
@@ -215,12 +100,47 @@ if (env.NODE_ENV !== 'test' && injuryRiskAutomationEnabled) {
     injuryRiskWeeklyInterval.unref?.();
 }
 
-// Trust first proxy so req.ip reflects the real client IP (needed for
-// accurate rate-limiting and audit logging behind nginx / load balancers).
+if (env.NODE_ENV !== 'test') {
+    let notificationCleanupRunning = false;
+    const runNotificationCleanup = async () => {
+        if (notificationCleanupRunning) {
+            logger.debug('Notification retention cleanup skipped because the previous run is still active');
+            return;
+        }
+
+        notificationCleanupRunning = true;
+        try {
+            const result = await notificationsService.cleanupExpiredNotifications();
+            if (result.deletedNotifications || result.deletedLogs) {
+                logger.info({ result }, 'Expired notifications cleaned up');
+            } else {
+                logger.debug({ result }, 'Expired notification cleanup completed with no deletions');
+            }
+        } catch (err) {
+            logger.error({ err }, 'Expired notification cleanup failed');
+        } finally {
+            notificationCleanupRunning = false;
+        }
+    };
+
+    const notificationCleanupInitialDelay = Number(
+        process.env.NOTIFICATION_CLEANUP_INITIAL_DELAY_MS || 10 * 1000,
+    );
+    const notificationCleanupInterval = env.NOTIFICATION_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
+    const notificationCleanupTimeout = setTimeout(
+        runNotificationCleanup,
+        notificationCleanupInitialDelay,
+    );
+    const notificationCleanupTimer = setInterval(
+        runNotificationCleanup,
+        notificationCleanupInterval,
+    );
+    notificationCleanupTimeout.unref?.();
+    notificationCleanupTimer.unref?.();
+}
+
 app.set('trust proxy', 1);
 
-// ─── Global Middleware ────────────────────────────────────────────────
-// Attach a request ID before body parsing so parse errors are traceable too.
 app.use((req, res, next) => {
     req.id = req.get('x-request-id') || randomUUID();
     res.setHeader('X-Request-ID', req.id);
@@ -252,7 +172,7 @@ app.use((req, res, next) => {
 
 app.use(helmet({
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-    contentSecurityPolicy: false, // CSP handled by frontend / reverse proxy
+    contentSecurityPolicy: false,
 }));
 app.use(cors({
     origin: corsOrigin,
@@ -263,6 +183,7 @@ app.use(cors({
 app.use(compression());
 app.use(hpp());
 app.use(cookieParser(env.COOKIE_SECRET));
+app.use(setCsrfCookie);
 app.use(express.json({ limit: '512kb' }));
 app.use(express.urlencoded({ extended: true, limit: '512kb' }));
 
@@ -277,6 +198,7 @@ app.use((req, res, next) => {
         error: { code: 'CSRF_ORIGIN_REJECTED', message: 'Request origin is not allowed' },
     });
 });
+app.use(requireCsrfToken);
 
 const sensitiveAuditTargets = [
     { prefix: '/api/v1/admin', entityType: 'admin_api' },
@@ -320,21 +242,38 @@ app.use((req, res, next) => {
     return next();
 });
 
-// Rate limiting
 app.use('/api/', apiLimiter);
 
-// ─── Health Check ─────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/ready', async (_req, res) => {
+    const checks = {
+        postgres: { ok: false },
+        redis: { ok: isRedisAvailable(), optional: true },
+    };
+
+    try {
+        await db.raw('SELECT 1');
+        checks.postgres.ok = true;
+    } catch (err) {
+        checks.postgres.error = err.message;
+    }
+
+    const ok = checks.postgres.ok;
+    res.status(ok ? 200 : 503).json({
+        status: ok && checks.redis.ok ? 'ready' : ok ? 'degraded' : 'not_ready',
+        timestamp: new Date().toISOString(),
+        checks,
+    });
 });
 
 app.get('/uploads/*', authMiddleware, async (req, res, next) => {
     try {
-        const uploadsRoot = path.resolve(__dirname, '../uploads');
         const relativePath = req.params[0] || '';
-        const requestedPath = path.resolve(uploadsRoot, relativePath);
-
-        if (!requestedPath.startsWith(`${uploadsRoot}${path.sep}`)) {
+        const upload = await storage.getUpload(relativePath);
+        if (!upload) {
             return res.status(400).json({
                 success: false,
                 error: { code: 'INVALID_FILE_PATH', message: 'Invalid file path' },
@@ -354,7 +293,13 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
 
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'private, max-age=604800');
-        return res.sendFile(requestedPath, (err) => {
+        if (upload.type === 'stream') {
+            if (upload.contentType) res.setHeader('Content-Type', upload.contentType);
+            if (upload.contentLength) res.setHeader('Content-Length', String(upload.contentLength));
+            upload.body.on('error', next);
+            return upload.body.pipe(res);
+        }
+        return res.sendFile(upload.path, (err) => {
             if (err) next(err);
         });
     } catch (err) {
@@ -362,35 +307,8 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
     }
 });
 
-// ─── API v1 Routes ────────────────────────────────────────────────────
-app.use('/api/v1/auth', authRoutes(authController));
-app.use('/api/v1/academy', academyRoutes(academyController));
-app.use('/api/v1/players', playersRoutes(playersController));
-app.use('/api/v1/coaches', coachesRoutes(coachesController));
-app.use('/api/v1/attendance', attendanceRoutes(attendanceController));
-app.use('/api/v1/rankings', rankingsRoutes(rankingsController));
-app.use('/api/v1/payments', paymentsRoutes(paymentsController));
-app.use('/api/v1/notifications', notificationsRoutes(notificationsController));
-app.use('/api/v1/ai', aiRoutes(aiController));
-app.use('/api/v1/chat', chatRoutes(chatController));
-app.use('/api/v1/admin', adminRoutes(adminController));
-app.use('/api/v1/admin', adminCalendarRoutes(calendarController));
-app.use('/api/v1/admin', customDataRoutes(customDataController, 'admin'));
-app.use('/api/v1/coach', coachCalendarRoutes(calendarController));
-app.use('/api/v1/coach', customDataRoutes(customDataController, 'coach'));
-app.use('/api/v1/player', playerCalendarRoutes(calendarController));
-app.use('/api/v1/parent', parentCalendarRoutes(calendarController));
+mountApplicationRoutes(app, controllers);
 
-// Role-based aliases matching the product API contract without the /v1 prefix.
-app.use('/api/admin', adminRoutes(adminController));
-app.use('/api/admin', adminCalendarRoutes(calendarController));
-app.use('/api/admin', customDataRoutes(customDataController, 'admin'));
-app.use('/api/coach', coachCalendarRoutes(calendarController));
-app.use('/api/coach', customDataRoutes(customDataController, 'coach'));
-app.use('/api/player', playerCalendarRoutes(calendarController));
-app.use('/api/parent', parentCalendarRoutes(calendarController));
-
-// ─── 404 ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -398,7 +316,6 @@ app.use((req, res) => {
     });
 });
 
-// ─── Global Error Handler ─────────────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;

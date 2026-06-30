@@ -56,6 +56,7 @@ class AuthController {
 
             res.json(ApiResponse.success({
                 user: result.user,
+                mfaSetupRequired: result.mfaSetupRequired || false,
             }));
         } catch (err) {
             next(err);
@@ -86,11 +87,10 @@ class AuthController {
         try {
             const { tempToken, token } = req.body;
             // Verify TOTP first
-            const jwt = require('jsonwebtoken');
-            const env = require('../../config/env');
+            const { verifyAccessToken } = require('../../shared/jwt');
             let decoded;
             try {
-                decoded = jwt.verify(tempToken, env.JWT_SECRET);
+                decoded = verifyAccessToken(tempToken);
             } catch {
                 return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid or expired 2FA token'));
             }
@@ -118,11 +118,10 @@ class AuthController {
     verifyBackupCode = async (req, res, next) => {
         try {
             const { tempToken, code } = req.body;
-            const jwt = require('jsonwebtoken');
-            const env = require('../../config/env');
+            const { verifyAccessToken } = require('../../shared/jwt');
             let decoded;
             try {
-                decoded = jwt.verify(tempToken, env.JWT_SECRET);
+                decoded = verifyAccessToken(tempToken);
             } catch {
                 return res.status(401).json(ApiResponse.error('UNAUTHORIZED', 'Invalid or expired 2FA token'));
             }
@@ -150,6 +149,58 @@ class AuthController {
     disable2FA = async (req, res, next) => {
         try {
             const result = await this.totpService.disable(req.user.userId, req.body.password);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    list2FADevices = async (req, res, next) => {
+        try {
+            const result = await this.totpService.listDevices(req.user.userId);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    setup2FADevice = async (req, res, next) => {
+        try {
+            const result = await this.totpService.setupDevice(req.user.userId, req.body);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    verify2FADevice = async (req, res, next) => {
+        try {
+            const result = await this.totpService.verifyDevice(
+                req.user.userId,
+                req.body.deviceId,
+                req.body.token,
+            );
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    revoke2FADevice = async (req, res, next) => {
+        try {
+            const result = await this.totpService.revokeDevice(req.user.userId, req.params.id);
+            res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    regenerateBackupCodes = async (req, res, next) => {
+        try {
+            const result = await this.totpService.regenerateBackupCodes(
+                req.user.userId,
+                req.body.password,
+            );
             res.json(ApiResponse.success(result));
         } catch (err) {
             next(err);

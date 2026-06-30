@@ -414,7 +414,8 @@ class RankingsRepository extends BaseRepository {
                     date_trunc('month', ws.week_start)::date AS month_start,
                     ROUND(AVG(ws.weekly_score)::numeric, 2) AS total_score
                 FROM weekly_scores ws
-                WHERE (:monthPeriod::text IS NULL OR to_char(ws.week_start, 'YYYY-MM') = :monthPeriod::text)
+                WHERE ws.week_start < date_trunc('week', CURRENT_DATE)::date
+                    AND (:monthPeriod::text IS NULL OR to_char(ws.week_start, 'YYYY-MM') = :monthPeriod::text)
                 GROUP BY ws.player_id, date_trunc('month', ws.week_start)::date
             ),
             latest_month AS (

@@ -107,12 +107,6 @@ class AdminService {
         });
     }
 
-    // ─── Pending Registrations ───────────────────────────────────────────
-
-    async getPendingRegistrations({ status, academyId } = {}) {
-        return this.repo.getPendingRegistrations({ status, academyId });
-    }
-
     async listPasswordResetRequests(academyId) {
         if (!academyId) throw new BadRequestError('Academy context is required');
         return this.repo.listPasswordResetRequests(academyId);
@@ -310,25 +304,6 @@ class AdminService {
         };
     }
 
-    async approveRegistration(id, reviewedBy, _ip, _userAgent) {
-        const pending = await this.repo.findPendingRegistrationById(id);
-        if (!pending) throw Object.assign(new Error('Registration not found'), { statusCode: 404 });
-        if (pending.status !== 'pending') {
-            throw Object.assign(new Error(`Registration is already ${pending.status}`), { statusCode: 400 });
-        }
-        const user = await this.repo.approvePendingRegistration(id, reviewedBy);
-        return { message: 'Registration approved', userId: user.id };
-    }
-
-    async rejectRegistration(id, reviewedBy, reason, _ip, _userAgent) {
-        const pending = await this.repo.findPendingRegistrationById(id);
-        if (!pending) throw Object.assign(new Error('Registration not found'), { statusCode: 404 });
-        if (pending.status !== 'pending') {
-            throw Object.assign(new Error(`Registration is already ${pending.status}`), { statusCode: 400 });
-        }
-        await this.repo.rejectPendingRegistration(id, reviewedBy, reason);
-        return { message: 'Registration rejected' };
-    }
 }
 
 module.exports = AdminService;

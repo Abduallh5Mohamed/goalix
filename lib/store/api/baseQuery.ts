@@ -8,10 +8,72 @@ import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
 const API_BASE = getApiBaseUrl();
 
+function readCookie(name: string) {
+  if (typeof document === "undefined") return "";
+  return document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1) ?? "";
+}
+
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: `${API_BASE}/api/v1`,
   credentials: "include",
+  prepareHeaders: (headers) => {
+    const csrfToken = readCookie("csrfToken");
+    if (csrfToken) headers.set("X-CSRF-Token", decodeURIComponent(csrfToken));
+    return headers;
+  },
 });
+
+function describeQueryArgs(args: string | FetchArgs) {
+  if (typeof args === "string") return args;
+  return `${args.method ?? "GET"} ${args.url}`;
+}
+
+function countResponseRows(data: unknown) {
+  if (Array.isArray(data)) return data.length;
+  if (!data || typeof data !== "object") return undefined;
+  const record = data as Record<string, unknown>;
+  if (Array.isArray(record.data)) return record.data.length;
+  if (
+    record.data &&
+    typeof record.data === "object" &&
+    Array.isArray((record.data as Record<string, unknown>).data)
+  ) {
+    return ((record.data as Record<string, unknown>).data as unknown[]).length;
+  }
+  return undefined;
+}
+
+function approximatePayloadBytes(data: unknown) {
+  try {
+    return new TextEncoder().encode(JSON.stringify(data)).length;
+  } catch {
+    return undefined;
+  }
+}
+
+function logQueryTiming(
+  args: string | FetchArgs,
+  endpoint: string,
+  startedAt: number,
+  result: { data?: unknown; error?: FetchBaseQueryError },
+) {
+  if (process.env.NODE_ENV === "production" || typeof window === "undefined") return;
+  const durationMs = Math.round((performance.now() - startedAt) * 10) / 10;
+  const status = result.error?.status ?? "ok";
+  const rows = countResponseRows(result.data);
+  const bytes = approximatePayloadBytes(result.data);
+  const message = `[api] ${endpoint} ${describeQueryArgs(args)} ${durationMs}ms`;
+  const details = { endpoint, url: describeQueryArgs(args), status, durationMs, rows, bytes };
+  if (durationMs >= 800) {
+    console.warn(message, details);
+  } else {
+    console.debug(message, details);
+  }
+}
 
 function mapApiUser(apiUser: Record<string, unknown>) {
   return {
@@ -39,6 +101,10 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
   api,
   extraOptions,
 ) => {
+  const startedAt =
+    process.env.NODE_ENV !== "production" && typeof performance !== "undefined"
+      ? performance.now()
+      : 0;
   let result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error?.status === 401) {
@@ -59,6 +125,10 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     const user = mapApiUser(refreshResult.user);
     api.dispatch(loginSuccess({ user, role: user.role }));
     result = await rawBaseQuery(args, api, extraOptions);
+  }
+
+  if (startedAt) {
+    logQueryTiming(args, api.endpoint, startedAt, result);
   }
 
   return result;

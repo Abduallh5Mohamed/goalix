@@ -46,7 +46,6 @@ import {
   useHardDeletePlayerMutation,
   useGetPlayersQuery,
   useUpdatePlayerMutation,
-  useUploadPlayerImageMutation,
   type PlayerRow,
 } from "@/lib/store/api/adminApi";
 
@@ -118,7 +117,6 @@ export default function PlayersPage() {
     branchId: "",
   });
   const [form, setForm] = useState(emptyCreateForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formError, setFormError] = useState("");
   const [deletePlayerRow, setDeletePlayerRow] = useState<PlayerRow | null>(
     null,
@@ -131,8 +129,6 @@ export default function PlayersPage() {
   });
   const { data: branches = [] } = useGetBranchesQuery();
   const [createPlayer, { isLoading: isCreating }] = useCreatePlayerMutation();
-  const [uploadPlayerImage, { isLoading: isUploadingImage }] =
-    useUploadPlayerImageMutation();
   const [updatePlayer, { isLoading: isUpdating }] = useUpdatePlayerMutation();
   const [hardDeletePlayer, { isLoading: isHardDeleting }] =
     useHardDeletePlayerMutation();
@@ -322,7 +318,7 @@ export default function PlayersPage() {
       form.guardianRelation,
     ];
     if (requiredValues.some((value) => !value)) {
-      setFormError("Fill all required player basics. Photo is optional.");
+      setFormError("Fill all required player basics.");
       return;
     }
     if (Number(form.heightCm) <= 0 || Number(form.weightKg) <= 0) {
@@ -331,9 +327,6 @@ export default function PlayersPage() {
     }
 
     try {
-      const uploadedImage = imageFile
-        ? await uploadPlayerImage(imageFile).unwrap()
-        : null;
       await createPlayer({
         fullName: form.fullName.trim(),
         birthDate: form.birthDate,
@@ -350,11 +343,9 @@ export default function PlayersPage() {
         guardianPhone: form.guardianPhone.trim() || undefined,
         guardianRelation: form.guardianRelation.trim() || undefined,
         address: form.address.trim(),
-        photoUrl: uploadedImage?.image,
         branchId: form.branchId,
       }).unwrap();
       setForm(emptyCreateForm());
-      setImageFile(null);
       setOpen(false);
     } catch (err) {
       setFormError(
@@ -441,7 +432,6 @@ export default function PlayersPage() {
         open={open}
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
-          if (!nextOpen) setImageFile(null);
         }}
       >
         <DialogContent className="max-w-3xl">
@@ -667,22 +657,6 @@ export default function PlayersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="player-photo">Photo (optional)</Label>
-                <Input
-                  id="player-photo"
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  onChange={(event) =>
-                    setImageFile(event.target.files?.[0] ?? null)
-                  }
-                />
-                {imageFile && (
-                  <p className="text-xs text-muted-foreground">
-                    Selected {imageFile.name}
-                  </p>
-                )}
-              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="player-address">Address</Label>
                 <Input
@@ -708,16 +682,13 @@ export default function PlayersPage() {
                 type="submit"
                 disabled={
                   isCreating ||
-                  isUploadingImage ||
                   !form.fullName.trim() ||
                   !form.birthDate ||
                   !form.branchId
                 }
                 className="gap-2"
               >
-                {(isCreating || isUploadingImage) && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
+                {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                 Create Player
               </Button>
             </DialogFooter>

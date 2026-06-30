@@ -87,7 +87,7 @@ export default function CoachGroupDetailPage() {
   const groupId = params.groupId as string;
   const { data, isLoading, isError } = useGetCoachGroupQuery({ groupId }, { skip: !groupId });
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
-  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 200 });
   const { data: permissionGroups = [] } = useGetCoachGroupsScopedQuery();
   const groupPermissions = permissionGroups.find(
     (assignment) => assignment.group_id === groupId,

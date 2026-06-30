@@ -57,10 +57,35 @@ describe("security configuration", () => {
       {
         NODE_ENV: "production",
         COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+        TOTP_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         CORS_ORIGINS: "https://app.goalix.local",
       },
     );
 
     expect(result.status).toBe(0);
+  });
+
+  it("requires a TOTP encryption key in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+      TOTP_ENCRYPTION_KEY: null,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("TOTP_ENCRYPTION_KEY");
+  });
+
+  it("rejects S3 upload storage without required credentials", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "development",
+      STORAGE_PROVIDER: "s3",
+      S3_BUCKET: null,
+      S3_ACCESS_KEY_ID: null,
+      S3_SECRET_ACCESS_KEY: null,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("S3 storage requires");
   });
 });

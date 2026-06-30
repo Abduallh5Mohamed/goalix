@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getInitials } from "@/lib/utils";
-import { AlertTriangle, Loader2, Pencil, Plus, RefreshCw, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserX } from "lucide-react";
 import {
   useCreateCoachMutation,
   useGetCoachesQuery,
@@ -30,7 +30,6 @@ import {
   type CoachRole,
   type CoachRow,
 } from "@/lib/store/api/adminApi";
-import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
 type CoachForm = {
   firstName: string;
@@ -51,7 +50,6 @@ type CoachEditForm = {
   role: CoachRole | "";
   specialization: string;
   bio: string;
-  image: string;
   isActive: "active" | "inactive";
 };
 
@@ -74,7 +72,6 @@ const emptyCoachEditForm: CoachEditForm = {
   role: "",
   specialization: "",
   bio: "",
-  image: "",
   isActive: "active",
 };
 
@@ -106,8 +103,6 @@ type ApiErrorDetails = {
 };
 
 const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
-const API_BASE = getApiBaseUrl();
-
 function getApiErrorMessage(err: unknown, fallback: string) {
   const apiError = err as ApiErrorDetails;
   const detailMessages = apiError.data?.error?.details
@@ -162,19 +157,6 @@ const baseColumns: Column<CoachRow>[] = [
     sortable: true,
     sortValue: (row) => (row.is_active === false ? "inactive" : "active"),
   },
-  {
-    key: "rating",
-    header: "Rating",
-    accessor: (row) => (
-      <div className="flex items-center gap-1.5">
-        <Star className="h-3.5 w-3.5 text-amber-400" />
-        <span className="font-semibold">{row.rating ?? "-"}</span>
-        {row.rating != null && <span className="text-xs text-muted-foreground">/5</span>}
-      </div>
-    ),
-    sortable: true,
-    sortValue: (row) => row.rating ?? 0,
-  },
 ];
 
 export default function CoachesPage() {
@@ -187,16 +169,15 @@ export default function CoachesPage() {
   const [deleteCoachRow, setDeleteCoachRow] = useState<CoachRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formError, setFormError] = useState("");
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [registerUser, { isLoading: isRegistering }] = useRegisterUserMutation();
   const [createCoach, { isLoading: isCreatingCoach }] = useCreateCoachMutation();
   const [updateCoach, { isLoading: isUpdatingCoach }] = useUpdateCoachMutation();
   const [hardDeleteCoach, { isLoading: isDeletingCoach }] = useHardDeleteCoachMutation();
   const { data, isLoading, isError, refetch } = useGetCoachesQuery({ limit: 50 });
   const { data: branches } = useGetBranchesQuery();
-  const isSaving = isRegistering || isCreatingCoach || isUploadingImage;
+  const isSaving = isRegistering || isCreatingCoach;
 
   const updateForm = (field: keyof CoachForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -212,7 +193,6 @@ export default function CoachesPage() {
       role: coach.role ?? "",
       specialization: coach.specialization ?? "",
       bio: coach.bio ?? "",
-      image: coach.image ?? coach.photo_url ?? "",
       isActive: coach.is_active === false ? "inactive" : "active",
     });
   };
@@ -237,7 +217,6 @@ export default function CoachesPage() {
           role: editForm.role as CoachRole,
           specialization: editForm.specialization.trim() || (editForm.role as CoachRole),
           bio: editForm.bio.trim() || null,
-          image: editForm.image.trim() || null,
           isActive: editForm.isActive === "active",
         },
       }).unwrap();
@@ -266,6 +245,18 @@ export default function CoachesPage() {
     }
   };
 
+  const handleToggleCoachStatus = async (coach: CoachRow) => {
+    setActionError("");
+    try {
+      await updateCoach({
+        id: coach.id,
+        body: { isActive: coach.is_active === false },
+      }).unwrap();
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, "Could not update coach status."));
+    }
+  };
+
   const handleCreateCoach = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError("");
@@ -283,22 +274,6 @@ export default function CoachesPage() {
 
     try {
       const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
-      let uploadedImage: { image: string } | null = null;
-      if (imageFile) {
-        setIsUploadingImage(true);
-        const body = new FormData();
-        body.append("image", imageFile);
-        const response = await fetch(`${API_BASE}/api/v1/coaches/images`, {
-          method: "POST",
-          body,
-          credentials: "include",
-        });
-        const result = await response.json();
-        if (!response.ok) {
-          throw result;
-        }
-        uploadedImage = result.data;
-      }
       const user = await registerUser({
         username: form.username.trim(),
         email: form.email.trim(),
@@ -316,18 +291,14 @@ export default function CoachesPage() {
         email: form.email.trim(),
         phone: form.phone.trim(),
         role: form.role as CoachRole,
-        image: uploadedImage?.image ?? null,
         fullName,
         bio: form.bio.trim() || null,
       }).unwrap();
 
       setForm(emptyCoachForm);
-      setImageFile(null);
       setOpen(false);
     } catch (err) {
       setFormError(getApiErrorMessage(err, "Could not create coach account."));
-    } finally {
-      setIsUploadingImage(false);
     }
   };
 
@@ -363,6 +334,21 @@ export default function CoachesPage() {
       className: "w-[220px]",
       accessor: (row) => (
         <div className="flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+          <Button
+            type="button"
+            size="sm"
+            variant={row.is_active === false ? "default" : "outline"}
+            className="gap-1.5"
+            disabled={isUpdatingCoach}
+            onClick={() => handleToggleCoachStatus(row)}
+          >
+            {row.is_active === false ? (
+              <UserCheck className="h-3.5 w-3.5" />
+            ) : (
+              <UserX className="h-3.5 w-3.5" />
+            )}
+            {row.is_active === false ? "Activate" : "Deactivate"}
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -422,6 +408,7 @@ export default function CoachesPage() {
         searchKey={(row) => `${row.full_name} ${row.username ?? ""} ${row.specialization ?? ""}`}
         onRowClick={(row) => router.push(`/admin/coaches/${row.id}`)}
       />
+      {actionError && <p className="text-sm text-red-400">{actionError}</p>}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
@@ -519,15 +506,6 @@ export default function CoachesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="coach-image">Image</Label>
-                <Input
-                  id="coach-image"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="coach-bio">Bio</Label>
@@ -641,15 +619,6 @@ export default function CoachesPage() {
                   id="edit-coach-specialization"
                   value={editForm.specialization}
                   onChange={(event) => setEditForm((current) => ({ ...current, specialization: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="edit-coach-image">Image URL</Label>
-                <Input
-                  id="edit-coach-image"
-                  value={editForm.image}
-                  onChange={(event) => setEditForm((current) => ({ ...current, image: event.target.value }))}
-                  placeholder="https://..."
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">

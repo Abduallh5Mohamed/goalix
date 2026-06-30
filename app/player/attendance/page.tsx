@@ -264,7 +264,7 @@ function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
 
 export default function PlayerAttendancePage() {
   const attendanceQuery = useGetPlayerAttendanceQuery({
-    limit: 500,
+    limit: 200,
   });
 
   const records = useMemo(

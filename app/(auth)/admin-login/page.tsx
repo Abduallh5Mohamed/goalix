@@ -75,11 +75,15 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const completeLogin = (apiUser: ApiUser) => {
+  const completeLogin = (apiUser: ApiUser, mfaSetupRequired = false) => {
     const user = mapApiUser(apiUser, identifier.trim());
     rememberAuthSession();
     resetApiState(dispatch);
     dispatch(loginSuccess({ user, role: user.role }));
+    if (mfaSetupRequired && (user.role === "admin" || user.role === "coach")) {
+      router.push(user.role === "admin" ? "/admin/settings" : "/coach/settings");
+      return;
+    }
     router.push(ROLE_ROUTES[user.role]);
   };
 
@@ -119,7 +123,7 @@ export default function AdminLoginPage() {
 
       const apiUser: ApiUser | undefined = json.data?.user;
       if (apiUser) {
-        completeLogin(apiUser);
+        completeLogin(apiUser, Boolean(json.data?.mfaSetupRequired));
         return;
       }
 

@@ -1,6 +1,7 @@
 const eventBus = require('../../events/eventBus');
 const AI_EVENTS = require('./ai.events');
 const { NotFoundError } = require('../../shared/errors');
+const { auditAccessDenied } = require('../../shared/access-audit');
 
 class AiService {
     constructor(aiRepository, aiQueue) {
@@ -8,18 +9,30 @@ class AiService {
         this.queue = aiQueue;
     }
 
-    // ─── Performance Score ──────────────────────────────────────────────
-    async getPerformanceScore(playerId, academyId) {
+    async _assertAiPlayerOwnership(playerId, academyId, user, action) {
         const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+        if (!owned) {
+            await auditAccessDenied(this.repo.db, user, {
+                action: action || 'ai_player_access_denied',
+                entityType: 'player_profiles',
+                entityId: playerId,
+                reason: 'academy_ownership_failed',
+            });
+            throw new NotFoundError('Player', playerId);
+        }
+        return owned;
+    }
+
+    // ─── Performance Score ──────────────────────────────────────────────
+    async getPerformanceScore(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_performance_access_denied');
         const score = await this.repo.getAiScore(playerId);
         if (!score) throw new NotFoundError('AI Score', playerId);
         return score;
     }
 
-    async calculatePerformanceScore(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async calculatePerformanceScore(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_performance_calculate_denied');
         await this.queue.add('calculate-performance', { playerId });
         return { message: 'Performance score calculation queued', playerId };
     }
@@ -41,24 +54,21 @@ class AiService {
     }
 
     // ─── Injury Risk Assessment ─────────────────────────────────────────
-    async assessInjuryRisk(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async assessInjuryRisk(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_injury_risk_assess_denied');
         await this.queue.add('assess-injury-risk', { playerId });
         return { message: 'Injury risk assessment queued', playerId };
     }
 
-    async getInjuryRisk(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async getInjuryRisk(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_injury_risk_access_denied');
         const risk = await this.repo.getLatestInjuryRisk(playerId);
         if (!risk) throw new NotFoundError('Injury Risk Assessment', playerId);
         return risk;
     }
 
-    async getInjuryRiskHistory(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async getInjuryRiskHistory(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_injury_risk_history_denied');
         return this.repo.getInjuryRisks(playerId);
     }
 
@@ -81,24 +91,21 @@ class AiService {
     }
 
     // ─── Nutrition Plan ─────────────────────────────────────────────────
-    async generateNutritionPlan(playerId, academyId, options) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async generateNutritionPlan(playerId, academyId, options, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_nutrition_generate_denied');
         await this.queue.add('generate-nutrition-plan', { playerId, ...options });
         return { message: 'Nutrition plan generation queued', playerId };
     }
 
-    async getNutritionPlan(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async getNutritionPlan(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_nutrition_access_denied');
         const plan = await this.repo.getLatestNutritionPlan(playerId);
         if (!plan) throw new NotFoundError('Nutrition Plan', playerId);
         return plan;
     }
 
-    async getNutritionPlanHistory(playerId, academyId) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) throw new NotFoundError('Player', playerId);
+    async getNutritionPlanHistory(playerId, academyId, user = null) {
+        await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_nutrition_history_denied');
         return this.repo.getNutritionPlans(playerId);
     }
 

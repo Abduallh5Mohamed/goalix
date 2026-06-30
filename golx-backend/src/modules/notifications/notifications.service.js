@@ -117,6 +117,17 @@ class NotificationsService {
     async getLogs(filters) {
         return this.repo.findLogs(filters);
     }
+
+    async cleanupExpiredNotifications({ now = new Date(), retentionMonths = env.NOTIFICATION_RETENTION_MONTHS } = {}) {
+        const cutoffDate = new Date(now);
+        cutoffDate.setUTCMonth(cutoffDate.getUTCMonth() - retentionMonths);
+        const result = await this.repo.deleteOlderThan(cutoffDate);
+        return {
+            ...result,
+            cutoffDate: cutoffDate.toISOString(),
+            retentionMonths,
+        };
+    }
 }
 
 module.exports = NotificationsService;

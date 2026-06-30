@@ -56,18 +56,6 @@ const playerBaseSchema = z.object({
   playingStyle: z.string().max(500).optional(),
   yearsExperience: z.number().int().min(0).max(50).optional(),
   previousClubAcademy: z.string().max(255).optional(),
-  photoUrl: z
-    .string()
-    .refine(
-      (u) =>
-        u.startsWith("/uploads/") ||
-        u.startsWith("https://") ||
-        u.startsWith("http://"),
-      {
-        message: "Photo URL must be an uploaded file path or HTTP/HTTPS URL",
-      },
-    )
-    .optional(),
   notes: z.string().max(1000).optional(),
   guardianName: z.string().max(100).optional(),
   guardianPhone: z.string().max(20).optional(),

@@ -182,14 +182,9 @@ const getApiMessage = (error: unknown, fallback: string) => {
 
 export default function CoachMatchConfigurationPage() {
   const { data: matchesRes, isLoading: loadingMatches } =
-    useGetCoachMatchesQuery(undefined, {
-      pollingInterval: 15000,
-      skipPollingIfUnfocused: true,
-      refetchOnFocus: true,
-      refetchOnMountOrArgChange: true,
-    });
+    useGetCoachMatchesQuery();
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
-  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 500 });
+  const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 200 });
   const { data: injuryRiskRows = [] } = useGetInjuryRiskPredictionsQuery();
   const { data: groups = [] } = useGetCoachGroupsScopedQuery();
   const { data: birthdays = [] } = useGetCoachBirthdaysQuery();

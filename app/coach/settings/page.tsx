@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
@@ -7,6 +8,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Dumbbell,
+  KeyRound,
   Languages,
   ListChecks,
   Loader2,
@@ -15,13 +17,16 @@ import {
   Moon,
   Move,
   PanelLeftClose,
+  Plus,
   RotateCcw,
   Search,
   Settings,
   ShieldCheck,
+  ShieldOff,
   Sparkles,
   Star,
   Sun,
+  Trash2,
   Users,
   ZapOff,
 } from "lucide-react";
@@ -29,7 +34,21 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useCurrentUser } from "@/lib/auth/auth-context";
+import {
+  useDisable2FAMutation,
+  useGetCurrentUserQuery,
+  useGetMfaDevicesQuery,
+  useRegenerateMfaBackupCodesMutation,
+  useRevokeMfaDeviceMutation,
+  useSetup2FAMutation,
+  useSetupMfaDeviceMutation,
+  useVerifyMfaDeviceMutation,
+  useVerifySetup2FAMutation,
+  type Setup2FAResponse,
+} from "@/lib/store/api/adminApi";
 import {
   type CoachGroup,
   useGetCoachGroupsScopedQuery,
@@ -149,6 +168,24 @@ const titleCase = (value: string | null | undefined) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+function getApiErrorMessage(err: unknown, fallback: string) {
+  if (
+    typeof err === "object" &&
+    err &&
+    "data" in err &&
+    typeof err.data === "object" &&
+    err.data &&
+    "error" in err.data &&
+    typeof err.data.error === "object" &&
+    err.data.error &&
+    "message" in err.data.error
+  ) {
+    return String(err.data.error.message);
+  }
+
+  return fallback;
+}
+
 function PermissionStat({
   label,
   value,
@@ -234,6 +271,18 @@ function CoachGroupPermissionRow({ group }: { group: CoachGroup }) {
 
 export default function CoachSettingsPage() {
   const { user } = useCurrentUser();
+  const { data: currentUser } = useGetCurrentUserQuery();
+  const [setup2FA, { isLoading: settingUp2FA }] = useSetup2FAMutation();
+  const [verifySetup2FA, { isLoading: verifying2FA }] = useVerifySetup2FAMutation();
+  const [disable2FA, { isLoading: disabling2FA }] = useDisable2FAMutation();
+  const { data: mfaDevices = [] } = useGetMfaDevicesQuery(undefined, {
+    skip: !currentUser?.totpEnabled,
+  });
+  const [setupMfaDevice, { isLoading: settingUpDevice }] = useSetupMfaDeviceMutation();
+  const [verifyMfaDevice, { isLoading: verifyingDevice }] = useVerifyMfaDeviceMutation();
+  const [revokeMfaDevice, { isLoading: revokingDevice }] = useRevokeMfaDeviceMutation();
+  const [regenerateBackupCodes, { isLoading: regeneratingBackupCodes }] =
+    useRegenerateMfaBackupCodesMutation();
   const [settingsReady, setSettingsReady] = useState(false);
   const [language, setLanguage] = useState<DashboardLanguage>("en");
   const [theme, setTheme] = useState<DashboardTheme>("light");
@@ -246,10 +295,17 @@ export default function CoachSettingsPage() {
   const [browserNotifications, setBrowserNotifications] = useState(false);
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission | "unsupported">("default");
-  const groupsQuery = useGetCoachGroupsScopedQuery(undefined, {
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-  });
+  const [setupData, setSetupData] = useState<Setup2FAResponse | null>(null);
+  const [setupCode, setSetupCode] = useState("");
+  const [newDeviceName, setNewDeviceName] = useState("Coach phone");
+  const [newDeviceSetup, setNewDeviceSetup] = useState<Setup2FAResponse | null>(null);
+  const [newDeviceCode, setNewDeviceCode] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const [backupCodesPassword, setBackupCodesPassword] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [securityMessage, setSecurityMessage] = useState("");
+  const [securityError, setSecurityError] = useState("");
+  const groupsQuery = useGetCoachGroupsScopedQuery();
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
   const permissionCounts = useMemo(
     () =>
@@ -269,6 +325,7 @@ export default function CoachSettingsPage() {
     groupsQuery.isLoading || (groupsQuery.isFetching && groups.length === 0);
   const evaluationOptionsDisabled =
     !permissionsLoading && permissionCounts.evaluation === 0;
+  const totpEnabled = Boolean(currentUser?.totpEnabled);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -338,6 +395,112 @@ export default function CoachSettingsPage() {
     window.localStorage.setItem(keys.notifications, enabled ? "on" : "off");
   };
 
+  const handleStart2FA = async () => {
+    setSecurityError("");
+    setSecurityMessage("");
+    setBackupCodes([]);
+
+    try {
+      const result = await setup2FA().unwrap();
+      setSetupData(result);
+      setSetupCode("");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not start 2FA setup."));
+    }
+  };
+
+  const handleVerify2FA = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      const result = await verifySetup2FA(setupCode.trim()).unwrap();
+      setBackupCodes(result.backupCodes);
+      setSetupData(null);
+      setSetupCode("");
+      setSecurityMessage("2FA enabled.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Invalid verification code."));
+    }
+  };
+
+  const handleDisable2FA = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      await disable2FA(disablePassword).unwrap();
+      setDisablePassword("");
+      setBackupCodes([]);
+      setSetupData(null);
+      setNewDeviceSetup(null);
+      setSecurityMessage("2FA disabled.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not disable 2FA."));
+    }
+  };
+
+  const handleStartDeviceSetup = async () => {
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      const result = await setupMfaDevice({ deviceName: newDeviceName.trim() || "Coach phone" }).unwrap();
+      setNewDeviceSetup(result);
+      setNewDeviceCode("");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not add MFA device."));
+    }
+  };
+
+  const handleVerifyDevice = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newDeviceSetup?.deviceId) return;
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      await verifyMfaDevice({
+        deviceId: newDeviceSetup.deviceId,
+        token: newDeviceCode.trim(),
+      }).unwrap();
+      setNewDeviceSetup(null);
+      setNewDeviceCode("");
+      setSecurityMessage("MFA device added.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Invalid device verification code."));
+    }
+  };
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      await revokeMfaDevice(deviceId).unwrap();
+      setSecurityMessage("MFA device removed.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not remove MFA device."));
+    }
+  };
+
+  const handleRegenerateBackupCodes = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSecurityError("");
+    setSecurityMessage("");
+
+    try {
+      const result = await regenerateBackupCodes(backupCodesPassword).unwrap();
+      setBackupCodes(result.backupCodes);
+      setBackupCodesPassword("");
+      setSecurityMessage("New backup codes generated. Save them now.");
+    } catch (err) {
+      setSecurityError(getApiErrorMessage(err, "Could not generate backup codes."));
+    }
+  };
+
   const resetPreferences = () => {
     setLanguage("en");
     setTheme("light");
@@ -371,6 +534,267 @@ export default function CoachSettingsPage() {
           { label: "Settings" },
         ]}
       />
+
+      <Card className="border-white/10 bg-white/[0.045] shadow-none">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-3 text-base">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-lime-300" />
+              Coach Login Security
+            </span>
+            <Badge variant={totpEnabled ? "success" : "secondary"}>
+              {totpEnabled ? "2FA On" : "2FA Off"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {totpEnabled ? (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">
+                Coach login requires an authenticator code.
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-white">Authenticator devices</p>
+                    <p className="text-sm text-slate-400">
+                      New devices show as Goalix Academy Coach in the authenticator app.
+                    </p>
+                  </div>
+                  {!newDeviceSetup && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleStartDeviceSetup}
+                      disabled={settingUpDevice}
+                      className="gap-1.5"
+                    >
+                      {settingUpDevice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Add device
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {mfaDevices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="flex flex-col gap-2 rounded-lg border border-white/10 bg-black/10 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-white">{device.deviceName}</p>
+                          {device.isPrimary && <Badge variant="success">Primary</Badge>}
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          Added {new Date(device.createdAt).toLocaleString()}
+                          {device.lastUsedAt ? ` - Last used ${new Date(device.lastUsedAt).toLocaleString()}` : ""}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevokeDevice(device.id)}
+                        disabled={revokingDevice || device.isPrimary}
+                        className="gap-1.5"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  {!mfaDevices.length && (
+                    <p className="rounded-lg border border-dashed border-white/10 p-3 text-sm text-slate-400">
+                      Your existing MFA device is still active. Add a new device to manage devices here.
+                    </p>
+                  )}
+                </div>
+
+                {!newDeviceSetup && (
+                  <div className="space-y-2">
+                    <Label htmlFor="coach-mfa-device-name">New device name</Label>
+                    <Input
+                      id="coach-mfa-device-name"
+                      value={newDeviceName}
+                      onChange={(event) => setNewDeviceName(event.target.value)}
+                      placeholder="Coach phone"
+                    />
+                  </div>
+                )}
+
+                {newDeviceSetup && (
+                  <form onSubmit={handleVerifyDevice} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+                      <div className="rounded-lg border border-white/10 bg-white p-2">
+                        <Image
+                          src={newDeviceSetup.qrCode}
+                          alt="New MFA device QR code"
+                          width={164}
+                          height={164}
+                          unoptimized
+                          className="h-[164px] w-[164px]"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label>Authenticator label</Label>
+                          <Input value={newDeviceSetup.issuer ?? "Goalix Academy Coach"} readOnly />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Secret</Label>
+                          <Input value={newDeviceSetup.secret} readOnly className="font-mono text-xs" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="coach-new-device-code">Verification code</Label>
+                          <Input
+                            id="coach-new-device-code"
+                            value={newDeviceCode}
+                            onChange={(event) => setNewDeviceCode(event.target.value.replace(/\D/g, ""))}
+                            inputMode="numeric"
+                            maxLength={6}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={verifyingDevice || newDeviceCode.length !== 6} className="gap-1.5">
+                        {verifyingDevice && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Verify device
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setNewDeviceSetup(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              <form
+                onSubmit={handleRegenerateBackupCodes}
+                className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+              >
+                <div>
+                  <p className="font-semibold text-white">MFA backup codes</p>
+                  <p className="text-sm text-slate-400">
+                    Existing codes cannot be viewed again. Generate new codes to replace the old ones.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="coach-backup-codes-password">Coach password</Label>
+                  <Input
+                    id="coach-backup-codes-password"
+                    type="password"
+                    value={backupCodesPassword}
+                    onChange={(event) => setBackupCodesPassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={regeneratingBackupCodes || !backupCodesPassword}
+                  className="gap-1.5"
+                >
+                  {regeneratingBackupCodes ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  Generate new backup codes
+                </Button>
+              </form>
+
+              <form onSubmit={handleDisable2FA} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="coach-disable-2fa-password">Coach password</Label>
+                  <Input
+                    id="coach-disable-2fa-password"
+                    type="password"
+                    value={disablePassword}
+                    onChange={(event) => setDisablePassword(event.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+                <Button type="submit" variant="outline" disabled={disabling2FA} className="gap-1.5">
+                  {disabling2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                  Disable 2FA
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {!setupData ? (
+                <Button onClick={handleStart2FA} disabled={settingUp2FA} className="gap-1.5">
+                  {settingUp2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  Enable 2FA
+                </Button>
+              ) : (
+                <form onSubmit={handleVerify2FA} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+                    <div className="rounded-lg border border-white/10 bg-white p-2">
+                      <Image
+                        src={setupData.qrCode}
+                        alt="2FA QR code"
+                        width={164}
+                        height={164}
+                        unoptimized
+                        className="h-[164px] w-[164px]"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Authenticator label</Label>
+                        <Input value={setupData.issuer ?? "Goalix Academy Coach"} readOnly />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Secret</Label>
+                        <Input value={setupData.secret} readOnly className="font-mono text-xs" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="coach-setup-2fa-code">Verification code</Label>
+                        <Input
+                          id="coach-setup-2fa-code"
+                          value={setupCode}
+                          onChange={(event) => setSetupCode(event.target.value.replace(/\D/g, ""))}
+                          inputMode="numeric"
+                          maxLength={6}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={verifying2FA || setupCode.length !== 6} className="gap-1.5">
+                      {verifying2FA && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Verify & Enable
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setSetupData(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {backupCodes.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-sm font-medium text-white">Backup codes</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {backupCodes.map((code) => (
+                  <code key={code} className="rounded bg-black/20 px-2 py-1 text-sm text-lime-100">
+                    {code}
+                  </code>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {securityMessage && <p className="text-sm text-emerald-300">{securityMessage}</p>}
+          {securityError && <p className="text-sm text-red-300">{securityError}</p>}
+        </CardContent>
+      </Card>
 
       <Card className="border-white/10 bg-white/[0.045] shadow-none">
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">

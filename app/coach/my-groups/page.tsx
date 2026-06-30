@@ -92,7 +92,7 @@ export default function CoachMyGroupsPage() {
     [birthdays, form.branchId],
   );
   const { data: playersRes, isLoading: loadingPlayers } =
-    useGetCoachPlayersScopedQuery({ limit: 500 });
+    useGetCoachPlayersScopedQuery({ limit: 200 });
   const selectedBirthYear = birthYearOptions.find(
     (year) => year.id === form.birthYearId,
   );
