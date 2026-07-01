@@ -347,6 +347,8 @@ export interface PasswordResetRequest {
   phone: string | null;
   playerId: string | null;
   playerName: string | null;
+  coachId: string | null;
+  coachName: string | null;
   displayName: string;
   status: "pending" | "expired" | "resolved";
   expiresAt: string;
@@ -431,6 +433,7 @@ export interface UpdateCoachInput {
   specialization?: string | null;
   bio?: string | null;
   isActive?: boolean;
+  password?: string;
 }
 
 export interface CoachImageUploadResponse {

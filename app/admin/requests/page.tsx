@@ -130,7 +130,7 @@ export default function AdminRequestsPage() {
             <ShieldCheck className="mb-3 h-10 w-10 text-muted-foreground/40" />
             <p className="text-sm font-medium">No requests right now.</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Evaluation edit requests and player password reset requests will appear here.
+              Evaluation edit requests and player/coach password reset requests will appear here.
             </p>
           </CardContent>
         </Card>
@@ -165,6 +165,13 @@ export default function AdminRequestsPage() {
                   {request.status === "pending" && request.playerId ? (
                     <Button asChild size="sm" className="gap-1.5">
                       <Link href={`/admin/players/${request.playerId}`}>
+                        <KeyRound className="h-4 w-4" />
+                        Reset Password
+                      </Link>
+                    </Button>
+                  ) : request.status === "pending" && request.coachId ? (
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href={`/admin/coaches/${request.coachId}?resetPassword=1`}>
                         <KeyRound className="h-4 w-4" />
                         Reset Password
                       </Link>

@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         <CardHeader>
           <CardTitle className="text-lg">Forgot Password</CardTitle>
           <CardDescription>
-            Enter your username or email. Player reset requests go to the academy admin.
+            Enter your username or email. Player and coach reset requests go to the academy admin.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="identifier"
                   type="text"
-                  placeholder="player.username or admin@email.com"
+                  placeholder="player.username, coach.username, or email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required
