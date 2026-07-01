@@ -2,6 +2,13 @@ const { z } = require('zod');
 
 const uuidParam = z.object({ id: z.string().uuid() });
 
+const archiveQuery = z.object({
+    includeArchive: z
+        .enum(['true', 'false'])
+        .optional()
+        .transform((value) => value === 'true'),
+});
+
 const performanceScoreQuery = z.object({
     playerId: z.string().uuid(),
 });
@@ -23,6 +30,7 @@ const chatSchema = z.object({
 
 module.exports = {
     uuidParam,
+    archiveQuery,
     performanceScoreQuery,
     injuryRiskSchema,
     nutritionPlanSchema,

@@ -60,10 +60,11 @@ function startBackgroundAutomations({
     }
 
     const timers = [];
-    const { calendarService, notificationsService } = services || {};
+    const { calendarService, notificationsService, dataLifecycleService } = services || {};
     const backgroundAutomationsEnabled = env.BACKGROUND_AUTOMATIONS_ENABLED ?? false;
     const injuryRiskAutomationEnabled = env.INJURY_RISK_AUTOMATION_ENABLED ?? false;
     const notificationCleanupEnabled = env.NOTIFICATION_CLEANUP_ENABLED ?? true;
+    const dataLifecycleEnabled = env.DATA_LIFECYCLE_ENABLED ?? false;
 
     if (backgroundAutomationsEnabled && calendarService) {
         let reminderScanRunning = false;
@@ -164,10 +165,10 @@ function startBackgroundAutomations({
                     log,
                     task: async () => {
                         const result = await notificationsService.cleanupExpiredNotifications();
-                        if (result.deletedNotifications || result.deletedLogs) {
-                            log.info({ result }, 'Expired notifications cleaned up');
+                        if (result.archivedNotifications || result.archivedLogs || result.removedHotNotifications || result.removedHotLogs) {
+                            log.info({ result }, 'Expired notifications archived and removed from hot storage');
                         } else {
-                            log.debug({ result }, 'Expired notification cleanup completed with no deletions');
+                            log.debug({ result }, 'Expired notification cleanup completed with no archival work');
                         }
                     },
                 });
@@ -183,6 +184,44 @@ function startBackgroundAutomations({
             runNotificationCleanup,
             env.NOTIFICATION_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000,
             Number(process.env.NOTIFICATION_CLEANUP_INITIAL_DELAY_MS || 10 * 1000),
+        );
+    }
+
+    if (dataLifecycleEnabled && dataLifecycleService) {
+        let dataLifecycleRunning = false;
+        const runDataLifecycle = async () => {
+            if (dataLifecycleRunning) {
+                log.debug('Data lifecycle run skipped because the previous run is still active');
+                return;
+            }
+
+            dataLifecycleRunning = true;
+            try {
+                await runWithClusterLock({
+                    key: 'goalix:automation:data-lifecycle',
+                    ttlMs: Math.min(
+                        env.DATA_LIFECYCLE_INTERVAL_HOURS * 60 * 60 * 1000,
+                        60 * 60 * 1000,
+                    ),
+                    redisClient,
+                    log,
+                    task: async () => {
+                        const result = await dataLifecycleService.runLifecycle();
+                        log.info({ result }, 'Data lifecycle run completed');
+                    },
+                });
+            } catch (err) {
+                log.error({ err }, 'Data lifecycle run failed');
+            } finally {
+                dataLifecycleRunning = false;
+            }
+        };
+
+        scheduleInterval(
+            timers,
+            runDataLifecycle,
+            env.DATA_LIFECYCLE_INTERVAL_HOURS * 60 * 60 * 1000,
+            Number(process.env.DATA_LIFECYCLE_INITIAL_DELAY_MS || 20 * 1000),
         );
     }
 

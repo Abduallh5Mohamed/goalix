@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import {
   Check,
@@ -857,9 +857,8 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     }
   }
 
-  async function sendMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected || sending) return;
+  async function submitMessage() {
+    if (!selected || !selected.canSend || sending) return;
     if (editingMessage && !body.trim()) return;
     if (!editingMessage && !body.trim() && !image) return;
     setSending(true);
@@ -900,6 +899,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     }
   }
 
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await submitMessage();
+  }
+
   function startEdit(message: Message) {
     setEditingMessage(message);
     setImage(null);
@@ -931,6 +935,14 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     setImage(file);
   }
 
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const isEnter = event.key === "Enter" || event.code === "Enter" || event.keyCode === 13;
+    if (!isEnter || event.shiftKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void submitMessage();
+  }
+
   async function deleteMessage(message: Message, scope: "me" | "everyone") {
     if (!selected || deletingId) return;
     setDeletingId(message.id);
@@ -952,6 +964,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const selectedGroupMembers = selectedIsGroup
     ? selected.group_members || []
     : [];
+  const canSubmitMessage = Boolean(
+    selected?.canSend &&
+    !sending &&
+    (editingMessage ? body.trim() : body.trim() || image),
+  );
 
   if (!isInitialized || !isAuthenticated) {
     return (
@@ -1298,6 +1315,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               ref={textRef}
               value={body}
               onChange={(event) => setBody(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
               rows={2}
               maxLength={4000}
               disabled={!selected?.canSend || sending}
@@ -1306,11 +1324,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             />
             <Button
               type="submit"
-              disabled={
-                !selected?.canSend ||
-                sending ||
-                (editingMessage ? !body.trim() : !body.trim() && !image)
-              }
+              disabled={!canSubmitMessage}
               className="goalix-chat-send-button"
             >
               {sending ? (

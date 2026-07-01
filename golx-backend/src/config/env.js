@@ -49,6 +49,9 @@ const envSchema = z.object({
     BULLMQ_WORKERS_ENABLED: optionalBoolean,
     BACKGROUND_AUTOMATIONS_ENABLED: optionalBoolean,
     INJURY_RISK_AUTOMATION_ENABLED: optionalBoolean,
+    DATA_LIFECYCLE_ENABLED: optionalBoolean,
+    DATA_LIFECYCLE_INTERVAL_HOURS: z.coerce.number().int().min(1).default(24),
+    DATA_LIFECYCLE_BATCH_SIZE: z.coerce.number().int().min(1).max(10000).default(1000),
 
     // CORS
     CORS_ORIGINS: z.string().default('http://localhost:3001'),
@@ -135,6 +138,27 @@ try {
     }
     if (env.NODE_ENV === 'production' && !env.TOTP_ENCRYPTION_KEY) {
         throw configIssue('TOTP_ENCRYPTION_KEY', 'TOTP_ENCRYPTION_KEY is required in production for app-level TOTP secret encryption');
+    }
+    if (env.NODE_ENV === 'production' && !env.CSRF_SECRET) {
+        throw configIssue('CSRF_SECRET', 'CSRF_SECRET is required in production');
+    }
+    if (env.NODE_ENV === 'production' && env.BCRYPT_ROUNDS < 12) {
+        throw configIssue('BCRYPT_ROUNDS', 'BCRYPT_ROUNDS must be at least 12 in production');
+    }
+    if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
+        throw configIssue('JWT_REFRESH_SECRET', 'JWT_REFRESH_SECRET must be different from JWT_SECRET');
+    }
+    if (env.JWT_SECRET_PREVIOUS && env.JWT_SECRET_PREVIOUS === env.JWT_SECRET) {
+        throw configIssue('JWT_SECRET_PREVIOUS', 'JWT_SECRET_PREVIOUS must be different from JWT_SECRET');
+    }
+    if (env.JWT_REFRESH_SECRET_PREVIOUS && env.JWT_REFRESH_SECRET_PREVIOUS === env.JWT_REFRESH_SECRET) {
+        throw configIssue('JWT_REFRESH_SECRET_PREVIOUS', 'JWT_REFRESH_SECRET_PREVIOUS must be different from JWT_REFRESH_SECRET');
+    }
+    if (
+        env.NODE_ENV === 'production' &&
+        env.CORS_ORIGINS.split(',').some((origin) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(origin))
+    ) {
+        throw configIssue('CORS_ORIGINS', 'Production CORS_ORIGINS must not include localhost or wildcard development hosts');
     }
     if (env.TOTP_ENCRYPTION_KEY && !isValidAes256Key(env.TOTP_ENCRYPTION_KEY)) {
         throw configIssue('TOTP_ENCRYPTION_KEY', 'TOTP_ENCRYPTION_KEY must be a 32-byte base64 value or 64-character hex value');

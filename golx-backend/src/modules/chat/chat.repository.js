@@ -803,16 +803,21 @@ class ChatRepository {
     return row;
   }
 
-  messageBaseQuery({ includeDeleted = false, viewerUserId = null } = {}) {
+  messageBaseQuery({
+    includeDeleted = false,
+    viewerUserId = null,
+    tableName = "chat_messages",
+    userDeletionsTableName = "chat_message_user_deletions",
+  } = {}) {
     const db = this.db;
-    return this.db("chat_messages as cm")
+    return this.db(`${tableName} as cm`)
       .leftJoin("auth_users as au", "cm.sender_user_id", "au.id")
       .leftJoin("coach_profiles as cp", "cp.user_id", "au.id")
       .leftJoin("player_profiles as pp", "pp.user_id", "au.id")
       .modify((q) => {
         if (!includeDeleted) q.whereNull("cm.deleted_at");
         if (viewerUserId) {
-          q.leftJoin("chat_message_user_deletions as cmud", function joinDeletes() {
+          q.leftJoin(`${userDeletionsTableName} as cmud`, function joinDeletes() {
             this.on("cmud.message_id", "=", "cm.id").andOn(
               "cmud.user_id",
               "=",
@@ -899,17 +904,38 @@ class ChatRepository {
     return this.findConversationById(conversationId);
   }
 
-  listMessages(conversationId, userId, { limit = 50, before } = {}) {
-    return this.messageBaseQuery({
+  async listMessages(conversationId, userId, { limit = 50, before, includeArchive = false } = {}) {
+    const normalizedLimit = Number(limit) || 50;
+    const hasArchivedUserDeletions = includeArchive
+      ? await this.db.schema.hasTable("chat_message_user_deletions_archive")
+      : false;
+    const loadFromTable = (tableName) => this.messageBaseQuery({
       includeDeleted: true,
       viewerUserId: userId,
+      tableName,
+      userDeletionsTableName: tableName === "chat_messages_archive" && hasArchivedUserDeletions
+        ? "chat_message_user_deletions_archive"
+        : "chat_message_user_deletions",
     })
       .where("cm.conversation_id", conversationId)
       .modify((q) => {
         if (before) q.where("cm.created_at", "<", before);
       })
       .orderBy("cm.created_at", "desc")
-      .limit(limit);
+      .limit(normalizedLimit);
+
+    const hotMessages = await loadFromTable("chat_messages");
+    if (!includeArchive || hotMessages.length >= normalizedLimit) return hotMessages;
+    if (!(await this.db.schema.hasTable("chat_messages_archive"))) return hotMessages;
+
+    const archiveMessages = await loadFromTable("chat_messages_archive");
+    return [...hotMessages, ...archiveMessages]
+      .sort((a, b) => {
+        const dateDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return String(b.id).localeCompare(String(a.id));
+      })
+      .slice(0, normalizedLimit);
   }
 
   async markConversationRead(conversationId, userId) {
@@ -962,8 +988,14 @@ class ChatRepository {
     ].filter(Boolean);
   }
 
-  findMessageByAttachmentUrl(attachmentUrl) {
-    return this.db("chat_messages")
+  async findMessageByAttachmentUrl(attachmentUrl) {
+    const hotMessage = await this.db("chat_messages")
+      .where({ attachment_url: attachmentUrl })
+      .whereNull("deleted_at")
+      .first();
+    if (hotMessage) return hotMessage;
+    if (!(await this.db.schema.hasTable("chat_messages_archive"))) return null;
+    return this.db("chat_messages_archive")
       .where({ attachment_url: attachmentUrl })
       .whereNull("deleted_at")
       .first();

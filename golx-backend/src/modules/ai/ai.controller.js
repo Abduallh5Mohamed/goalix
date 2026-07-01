@@ -24,7 +24,11 @@ class AiController {
     getAllScores = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
-            const result = await this.service.getAllScores(req.user.academyId, { page, limit });
+            const result = await this.service.getAllScores(req.user.academyId, {
+                page,
+                limit,
+                includeArchive: req.query.includeArchive === true || req.query.includeArchive === 'true',
+            });
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };
@@ -46,7 +50,12 @@ class AiController {
 
     getInjuryRiskHistory = async (req, res, next) => {
         try {
-            const risks = await this.service.getInjuryRiskHistory(req.params.id, req.user.academyId, req.user);
+            const risks = await this.service.getInjuryRiskHistory(
+                req.params.id,
+                req.user.academyId,
+                req.user,
+                { includeArchive: req.query.includeArchive === true || req.query.includeArchive === 'true' },
+            );
             res.json(ApiResponse.success(risks));
         } catch (err) { next(err); }
     };
