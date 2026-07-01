@@ -10,6 +10,7 @@ const {
     publicRoleCatalog,
 } = require('./coach-assignment-roles');
 const storage = require('../../shared/storage');
+const { assertUploadSignature } = require('../../shared/upload-validation');
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
@@ -614,6 +615,7 @@ class CoachesService {
         if (buffer.length > 25 * 1024 * 1024) {
             throw new BadRequestError('Assignment files must be 25MB or smaller.');
         }
+        assertUploadSignature(normalizedMimeType, buffer);
 
         const fileName = sanitizeFileName(originalName);
         const upload = await storage.putUpload({
@@ -648,6 +650,7 @@ class CoachesService {
         if (buffer.length > 5 * 1024 * 1024) {
             throw new BadRequestError('Coach image must be 5MB or smaller.');
         }
+        assertUploadSignature(normalizedMimeType, buffer);
 
         const fileName = sanitizeFileName(originalName || 'coach-image');
         const upload = await storage.putUpload({

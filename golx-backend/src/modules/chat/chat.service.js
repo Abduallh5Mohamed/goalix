@@ -16,6 +16,7 @@ const {
 } = require("../../shared/access-policy");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const storage = require("../../shared/storage");
+const { assertUploadSignature } = require("../../shared/upload-validation");
 
 const chatImageTypes = {
   "image/png": ".png",
@@ -575,7 +576,12 @@ class ChatService {
 
   async listMessages(user, conversationId, filters) {
     const conversation = await this._requireConversation(user, conversationId);
-    const rows = await this.repo.listMessages(conversation.id, user.userId, filters);
+    const rows = await this.repo.listMessages(conversation.id, user.userId, {
+      ...filters,
+      includeArchive: filters?.includeArchive === true ||
+        filters?.includeArchive === "true" ||
+        Boolean(filters?.before),
+    });
     return rows.reverse();
   }
 
@@ -722,6 +728,7 @@ class ChatService {
     if (buffer.length > 8 * 1024 * 1024) {
       throw new BadRequestError("Chat image must be 8MB or smaller.");
     }
+    assertUploadSignature(normalizedMimeType, buffer);
 
     const upload = await storage.putUpload({
       scope: "chat",

@@ -99,8 +99,8 @@ class NotificationsRepository extends BaseRepository {
         return query;
     }
 
-    async _baseUserQuery(userId, { isRead, type } = {}, userContext = null) {
-        const query = this.db('notification_inbox')
+    async _baseUserQuery(userId, { isRead, type } = {}, userContext = null, sourceTable = 'notification_inbox') {
+        const query = this.db(`${sourceTable} as notification_inbox`)
             .where({ user_id: userId })
             .modify((q) => {
                 if (isRead !== undefined) q.where('is_read', isRead === 'true');
@@ -115,8 +115,29 @@ class NotificationsRepository extends BaseRepository {
         return { query };
     }
 
-    async findByUser(userId, { isRead, type, page = 1, limit = 20 } = {}, userContext = null) {
+    async findByUser(userId, { isRead, type, page = 1, limit = 20, includeArchive = false } = {}, userContext = null) {
         const { query } = await this._baseUserQuery(userId, { isRead, type }, userContext);
+
+        if (includeArchive && await this.db.schema.hasTable('notification_inbox_archive')) {
+            const { query: archiveQuery } = await this._baseUserQuery(
+                userId,
+                { isRead, type },
+                userContext,
+                'notification_inbox_archive',
+            );
+            const [{ count: hotCount }] = await query.clone().count('id as count');
+            const [{ count: archiveCount }] = await archiveQuery.clone().count('id as count');
+            const readLimit = page * limit;
+            const [hotRows, archiveRows] = await Promise.all([
+                query.clone().orderBy('created_at', 'desc').limit(readLimit),
+                archiveQuery.clone().orderBy('created_at', 'desc').limit(readLimit),
+            ]);
+            const data = [...hotRows, ...archiveRows]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice((page - 1) * limit, page * limit);
+            const total = Number(hotCount || 0) + Number(archiveCount || 0);
+            return { data, total, page, totalPages: Math.ceil(total / limit) || 1 };
+        }
 
         const [{ count }] = await query.clone().count('id as count');
         const data = await query
@@ -176,12 +197,32 @@ class NotificationsRepository extends BaseRepository {
         return +count;
     }
 
-    async findLogs({ channel, status, page = 1, limit = 20 } = {}) {
+    async findLogs({ channel, status, page = 1, limit = 20, includeArchive = false } = {}) {
         const query = this.db('notification_logs')
             .modify((q) => {
                 if (channel) q.where('channel', channel);
                 if (status) q.where('status', status);
             });
+
+        if (includeArchive && await this.db.schema.hasTable('notification_logs_archive')) {
+            const archiveQuery = this.db('notification_logs_archive')
+                .modify((q) => {
+                    if (channel) q.where('channel', channel);
+                    if (status) q.where('status', status);
+                });
+            const [{ count: hotCount }] = await query.clone().count('id as count');
+            const [{ count: archiveCount }] = await archiveQuery.clone().count('id as count');
+            const readLimit = page * limit;
+            const [hotRows, archiveRows] = await Promise.all([
+                query.clone().orderBy('created_at', 'desc').limit(readLimit),
+                archiveQuery.clone().orderBy('created_at', 'desc').limit(readLimit),
+            ]);
+            const data = [...hotRows, ...archiveRows]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice((page - 1) * limit, page * limit);
+            const total = Number(hotCount || 0) + Number(archiveCount || 0);
+            return { data, total, page, totalPages: Math.ceil(total / limit) || 1 };
+        }
 
         const [{ count }] = await query.clone().count('id as count');
         const data = await query
@@ -197,29 +238,6 @@ class NotificationsRepository extends BaseRepository {
         return row;
     }
 
-    async deleteOlderThan(cutoffDate) {
-        return this.db.transaction(async (trx) => {
-            const oldNotifications = trx('notification_inbox')
-                .select('id')
-                .where('created_at', '<', cutoffDate);
-            let deletedLogs = 0;
-
-            if (
-                await trx.schema.hasTable('notification_logs') &&
-                await trx.schema.hasColumn('notification_logs', 'notification_id')
-            ) {
-                deletedLogs = await trx('notification_logs')
-                    .whereIn('notification_id', oldNotifications.clone())
-                    .del();
-            }
-
-            const deletedNotifications = await trx('notification_inbox')
-                .where('created_at', '<', cutoffDate)
-                .del();
-
-            return { deletedNotifications, deletedLogs };
-        });
-    }
 }
 
 module.exports = NotificationsRepository;

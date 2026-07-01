@@ -42,6 +42,7 @@ const {
   weightedWeeklyScore,
 } = require("./ranking-inputs.helpers");
 const storage = require("../../shared/storage");
+const { assertUploadSignature } = require("../../shared/upload-validation");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const { canParentAccessChild } = require("../../shared/access-policy");
 const { normalizePagination } = require("../../shared/pagination");
@@ -8442,6 +8443,7 @@ class CalendarService {
     if (buffer.length > 25 * 1024 * 1024) {
       throw new BadRequestError("Assignment files must be 25MB or smaller.");
     }
+    assertUploadSignature(normalizedMimeType, buffer);
 
     const fileName = sanitizeFileName(originalName);
     const upload = await storage.putUpload({

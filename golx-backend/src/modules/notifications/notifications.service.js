@@ -15,6 +15,11 @@ class NotificationsService {
     constructor(notificationsRepository, notificationsQueue) {
         this.repo = notificationsRepository;
         this.queue = notificationsQueue;
+        this.dataLifecycleService = null;
+    }
+
+    setDataLifecycleService(dataLifecycleService) {
+        this.dataLifecycleService = dataLifecycleService;
     }
 
     async getUserNotifications(user, filters) {
@@ -119,12 +124,29 @@ class NotificationsService {
     }
 
     async cleanupExpiredNotifications({ now = new Date(), retentionMonths = env.NOTIFICATION_RETENTION_MONTHS } = {}) {
-        const cutoffDate = new Date(now);
-        cutoffDate.setUTCMonth(cutoffDate.getUTCMonth() - retentionMonths);
-        const result = await this.repo.deleteOlderThan(cutoffDate);
+        if (!this.dataLifecycleService) {
+            const cutoffDate = new Date(now);
+            cutoffDate.setUTCMonth(cutoffDate.getUTCMonth() - retentionMonths);
+            return {
+                skipped: true,
+                reason: 'data_lifecycle_service_unavailable',
+                cutoffDate: cutoffDate.toISOString(),
+                retentionMonths,
+                archivedNotifications: 0,
+                archivedLogs: 0,
+                removedHotNotifications: 0,
+                removedHotLogs: 0,
+                deletedNotifications: 0,
+                deletedLogs: 0,
+            };
+        }
+
+        const result = await this.dataLifecycleService.archiveNotifications({
+            now,
+            retentionMonths,
+        });
         return {
             ...result,
-            cutoffDate: cutoffDate.toISOString(),
             retentionMonths,
         };
     }

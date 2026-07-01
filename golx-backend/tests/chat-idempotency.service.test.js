@@ -75,4 +75,33 @@ describe('chat idempotency contract', () => {
         expect(result.event).toBeNull();
         expect(result.recipientUserIds).toEqual(['coach-user', 'player-user']);
     });
+
+    test('old message scroll requests archive-aware reads', async () => {
+        const conversation = {
+            id: 'conversation-1',
+            academy_id: 'academy-1',
+            type: 'admin_coach',
+            status: 'open',
+            admin_user_id: 'admin-user',
+            coach_user_id: 'coach-user',
+        };
+        const repo = {
+            db: jest.fn(),
+            findConversationById: jest.fn(async () => conversation),
+            listMessages: jest.fn(async () => []),
+        };
+        const service = new ChatService(repo);
+
+        await service.listMessages(
+            { role: 'admin', userId: 'admin-user', academyId: 'academy-1' },
+            conversation.id,
+            { before: '2026-01-01T00:00:00.000Z', limit: 50 },
+        );
+
+        expect(repo.listMessages).toHaveBeenCalledWith(
+            conversation.id,
+            'admin-user',
+            expect.objectContaining({ includeArchive: true }),
+        );
+    });
 });
