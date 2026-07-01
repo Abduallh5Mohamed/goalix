@@ -44,4 +44,35 @@ describe('chat idempotency contract', () => {
         expect(service._invalidateConversationCaches).not.toHaveBeenCalled();
         expect(result.idempotent).toBe(true);
     });
+
+    test('read receipts are idempotent and return no realtime event when nothing changes', async () => {
+        const conversation = {
+            id: 'conversation-1',
+            academy_id: 'academy-1',
+            type: 'coach_player',
+            status: 'open',
+            coach_user_id: 'coach-user',
+            player_user_id: 'player-user',
+        };
+        const repo = {
+            db: jest.fn(),
+            findConversationById: jest.fn(async () => conversation),
+            markConversationRead: jest.fn(async () => ({
+                messages: [],
+                event: null,
+            })),
+            conversationUserIds: jest.fn(() => ['coach-user', 'player-user']),
+        };
+        const service = new ChatService(repo);
+
+        const result = await service.markConversationRead(
+            { role: 'player', userId: 'player-user', academyId: 'academy-1' },
+            conversation.id,
+        );
+
+        expect(repo.markConversationRead).toHaveBeenCalledWith(conversation.id, 'player-user');
+        expect(result.messages).toEqual([]);
+        expect(result.event).toBeNull();
+        expect(result.recipientUserIds).toEqual(['coach-user', 'player-user']);
+    });
 });

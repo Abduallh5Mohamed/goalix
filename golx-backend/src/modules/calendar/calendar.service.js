@@ -3686,6 +3686,7 @@ class CalendarService {
       subscriptions,
       linkedParent,
       playerAssignments,
+      injuryRisk,
     ] = await Promise.all([
       db("player_group_assignments as pga")
         .leftJoin("academy_groups as ag", "pga.group_id", "ag.id")
@@ -3833,6 +3834,10 @@ class CalendarService {
         .orderBy("ps.starts_at", "desc"),
       this.repo.findPrimaryParentForPlayer(playerId, academyId),
       this._listManagedPlayerAssignments(academyId, player),
+      db("ai_analyses")
+        .where({ player_id: playerId, type: "injury_risk" })
+        .orderBy("created_at", "desc")
+        .first(),
     ]);
 
     const subscriptionIds = subscriptions.map((row) => row.id);
@@ -4013,6 +4018,16 @@ class CalendarService {
       rankings,
       coachRatings,
       playerAssignments,
+      injuryRisk: injuryRisk
+        ? {
+            player_id: injuryRisk.player_id,
+            analysis_id: injuryRisk.id,
+            input: injuryRisk.input_data || null,
+            prediction: injuryRisk.result || null,
+            model_version: injuryRisk.model_version || null,
+            created_at: injuryRisk.created_at || null,
+          }
+        : null,
       attendanceQr,
       payments: { subscriptions, invoices, transactions },
     };

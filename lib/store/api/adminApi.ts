@@ -93,13 +93,7 @@ export interface CreatePlayerInput {
   groupId?: string;
   level?: "A" | "B" | "C" | "D" | "F";
   position?: string;
-  secondaryPositions?: string[];
   preferredFoot?: "left" | "right" | "both";
-  currentTeam?: string;
-  shirtNumber?: number;
-  playingStyle?: string;
-  yearsExperience?: number;
-  previousClubAcademy?: string;
   guardianName?: string;
   guardianPhone?: string;
   guardianRelation?: string;
@@ -107,12 +101,7 @@ export interface CreatePlayerInput {
   weightKg?: number;
   bmi?: number;
   sprintSpeed?: number;
-  acceleration?: number;
   stamina?: number;
-  strength?: number;
-  agility?: number;
-  balance?: number;
-  jumpHeightCm?: number;
   flexibility?: number;
   ballControl?: number;
   firstTouch?: number;
