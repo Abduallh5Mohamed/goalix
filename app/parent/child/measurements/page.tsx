@@ -34,7 +34,8 @@ const copy = {
     history: "Measurement History",
     measuredAt: "Measured at",
     speed: "Speed",
-    agility: "Agility",
+    endurance: "Endurance",
+    flexibility: "Flexibility",
     noHistory: "No measurement history has been recorded yet.",
     left: "Left",
     right: "Right",
@@ -66,7 +67,8 @@ const copy = {
     history: "سجل القياسات",
     measuredAt: "وقت القياس",
     speed: "السرعة",
-    agility: "الرشاقة",
+    endurance: "التحمل",
+    flexibility: "المرونة",
     noHistory: "لم يتم تسجيل قياسات بعد.",
     left: "اليسرى",
     right: "اليمنى",
@@ -162,8 +164,8 @@ export default function ParentChildMeasurementsPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { label: t.height, value: child.height_cm ? `${child.height_cm} cm` : "-", Icon: Ruler, color: "text-primary" },
-              { label: t.weight, value: child.weight_kg ? `${child.weight_kg} kg` : "-", Icon: Scale, color: "text-accent" },
+              { label: t.height, value: latestMeasurement?.height_cm ? `${latestMeasurement.height_cm} cm` : "-", Icon: Ruler, color: "text-primary" },
+              { label: t.weight, value: latestMeasurement?.weight_kg ? `${latestMeasurement.weight_kg} kg` : "-", Icon: Scale, color: "text-accent" },
               { label: t.bmi, value: latestMeasurement?.bmi ?? "-", Icon: Activity, color: "text-lime-400" },
               {
                 label: t.preferredFoot,
@@ -198,7 +200,7 @@ export default function ParentChildMeasurementsPage() {
               {measurements.map((measurement) => (
                 <div
                   key={measurement.id}
-                  className="grid gap-3 rounded-lg border border-border/30 bg-muted/20 p-4 sm:grid-cols-6"
+                  className="grid gap-3 rounded-lg border border-border/30 bg-muted/20 p-4 sm:grid-cols-7"
                 >
                   <div className="sm:col-span-2">
                     <p className="text-xs text-muted-foreground">{t.measuredAt}</p>
@@ -208,7 +210,8 @@ export default function ParentChildMeasurementsPage() {
                     [t.height, measurement.height_cm ? `${measurement.height_cm} cm` : "-"],
                     [t.weight, measurement.weight_kg ? `${measurement.weight_kg} kg` : "-"],
                     [t.speed, measurement.sprint_speed ? `${measurement.sprint_speed}` : "-"],
-                    [t.agility, measurement.agility ?? "-"],
+                    [t.endurance, measurement.stamina ?? "-"],
+                    [t.flexibility, measurement.flexibility ?? "-"],
                   ].map(([label, value]) => (
                     <div key={String(label)}>
                       <p className="text-xs text-muted-foreground">{label}</p>

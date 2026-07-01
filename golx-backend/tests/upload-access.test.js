@@ -17,6 +17,10 @@ function dbForCoachAssignment({ coachProfile, assignment }) {
     });
 }
 
+function dbForPlayerAssignmentSubmission(submission) {
+    return jest.fn(() => queryReturning(submission));
+}
+
 describe('upload access policy', () => {
     test('admin and uploader keep direct access to sensitive media', async () => {
         const db = jest.fn();
@@ -79,5 +83,39 @@ describe('upload access policy', () => {
             },
             dbForCoachAssignment({ coachProfile: { id: 'coach-1' }, assignment: null }),
         )).resolves.toBe(false);
+    });
+
+    test('player assignment submission media is not exposed to same-academy parents by default', async () => {
+        const mediaFile = {
+            academy_id: 'academy-1',
+            scope: 'player-assignments',
+            entity_type: 'player_assignment_submission',
+            entity_id: 'submission-1',
+            is_sensitive: true,
+        };
+        const submission = {
+            player_id: 'player-profile-1',
+            submitted_by_user_id: 'player-user',
+            player_user_id: 'player-user',
+            coach_user_id: 'coach-user',
+        };
+
+        await expect(canAccessMediaFile(
+            { role: 'parent', userId: 'parent-user', academyId: 'academy-1' },
+            mediaFile,
+            dbForPlayerAssignmentSubmission(submission),
+        )).resolves.toBe(false);
+
+        await expect(canAccessMediaFile(
+            { role: 'player', userId: 'player-user', academyId: 'academy-1' },
+            mediaFile,
+            dbForPlayerAssignmentSubmission(submission),
+        )).resolves.toBe(true);
+
+        await expect(canAccessMediaFile(
+            { role: 'coach', userId: 'coach-user', academyId: 'academy-1' },
+            mediaFile,
+            dbForPlayerAssignmentSubmission(submission),
+        )).resolves.toBe(true);
     });
 });

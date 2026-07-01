@@ -5,6 +5,7 @@ const {
   optionMidpoint,
   roleFamily,
   weightedWeeklyScore,
+  weekEndKey,
 } = require('../ranking-inputs.helpers');
 
 describe('ranking input helpers', () => {
@@ -18,6 +19,15 @@ describe('ranking input helpers', () => {
       '2026-06-01',
       '2026-06-08',
       '2026-06-15',
+    ]);
+  });
+
+  test('keeps weekly input windows isolated to seven-day buckets', () => {
+    expect(weekEndKey('2026-06-29')).toBe('2026-07-05');
+    expect(weekEndKey('2026-07-06')).toBe('2026-07-12');
+    expect(buildContinuousWeekKeys(['2026-06-29'], '2026-07-06')).toEqual([
+      '2026-06-29',
+      '2026-07-06',
     ]);
   });
 

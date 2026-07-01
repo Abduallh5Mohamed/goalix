@@ -107,11 +107,7 @@ const trainingFocusSchema = z.enum([
 ]);
 const intensitySchema = z.enum(["low", "medium", "high"]);
 const opponentLevelSchema = z.enum(["weak", "medium", "strong"]);
-const optionFieldSchema = z.enum([
-  "position",
-  "secondary_position",
-  "playing_style",
-]);
+const optionFieldSchema = z.enum(["position"]);
 
 const idParam = z.object({ id: uuid });
 const matchParam = z.object({ matchId: uuid });
