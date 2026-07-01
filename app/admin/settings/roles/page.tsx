@@ -68,6 +68,21 @@ const emptyAccessUserDraft: NewAccessUserDraft = {
   notes: "",
 };
 
+const roleEditLockStorageKey = "goalix-admin-role-edit-locks";
+
+const readStoredEditLocks = () => {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const raw = window.localStorage.getItem(roleEditLockStorageKey);
+    const ids = raw ? JSON.parse(raw) : [];
+    return new Set<string>(
+      Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
+};
+
 const hiddenPortalRoleCodes = new Set([
   "coach",
   "head_coach",
@@ -135,6 +150,11 @@ const toRoleCode = (value: string) =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .replace(/^[0-9]+/, "");
+
+const editableCopyCode = (role: AdminRole) => {
+  const suffix = Math.random().toString(36).slice(2, 7);
+  return toRoleCode(`${role.code}_custom_${suffix}`).slice(0, 60);
+};
 
 const getApiErrorMessage = (err: unknown, fallback: string) => {
   if (
@@ -228,7 +248,14 @@ export default function RolesPage() {
   const [newUser, setNewUser] =
     useState<NewAccessUserDraft>(emptyAccessUserDraft);
   const selectedRole = roles.find((role) => role.id === selectedRoleId) ?? roles[0];
-  const editable = Boolean(selectedRole && !selectedRole.isSystem);
+  const [editLockedRoleIds, setEditLockedRoleIds] = useState<Set<string>>(
+    readStoredEditLocks,
+  );
+  const selectedRoleEditLocked = Boolean(
+    selectedRole && editLockedRoleIds.has(selectedRole.id),
+  );
+  const roleIsCustom = Boolean(selectedRole && !selectedRole.isSystem);
+  const editable = Boolean(roleIsCustom && !selectedRoleEditLocked);
   const [roleEdits, setRoleEdits] = useState<Record<string, RoleEdit>>({});
   const [newRole, setNewRole] = useState({ name: "", code: "" });
   const [message, setMessage] = useState("");
@@ -280,6 +307,11 @@ export default function RolesPage() {
     ? newUser.accountRole
     : recommendedAccountRole;
   const newUserLoginPath = "/admin-login";
+
+  const persistEditLocks = (ids: Set<string>) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(roleEditLockStorageKey, JSON.stringify(Array.from(ids)));
+  };
 
   const totalPermissionCount = useMemo(
     () => permissionGroups.reduce((sum, group) => sum + group.permissions.length, 0),
@@ -342,6 +374,30 @@ export default function RolesPage() {
     }));
   };
 
+  const handleToggleSelectedRoleEditLock = () => {
+    if (!selectedRole || selectedRole.isSystem) return;
+    setMessage("");
+    setError("");
+
+    setEditLockedRoleIds((current) => {
+      const next = new Set(current);
+      if (next.has(selectedRole.id)) {
+        next.delete(selectedRole.id);
+        setMessage("Role editing enabled.");
+      } else {
+        next.add(selectedRole.id);
+        setRoleEdits((edits) => {
+          const clean = { ...edits };
+          delete clean[selectedRole.id];
+          return clean;
+        });
+        setMessage("Role editing disabled.");
+      }
+      persistEditLocks(next);
+      return next;
+    });
+  };
+
   const handleCreateRole = async () => {
     setMessage("");
     setError("");
@@ -364,6 +420,26 @@ export default function RolesPage() {
       setMessage("Role created.");
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not create role."));
+    }
+  };
+
+  const handleCreateEditableCopy = async () => {
+    if (!selectedRole) return;
+    setMessage("");
+    setError("");
+
+    try {
+      const created = await createRole({
+        name: `${selectedRole.name} Custom`,
+        code: editableCopyCode(selectedRole),
+        description: selectedRole.description || `Editable copy of ${selectedRole.name}.`,
+        isActive: true,
+        permissionIds: Array.from(rolePermissionIds(selectedRole)),
+      }).unwrap();
+      setSelectedRoleId(created.id);
+      setMessage("Editable custom role created. You can now change permissions and save.");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not create editable copy."));
     }
   };
 
@@ -645,6 +721,11 @@ export default function RolesPage() {
                   <Badge variant={selectedRole.isActive ? "success" : "secondary"}>
                     {selectedRole.isActive ? "Active" : "Inactive"}
                   </Badge>
+                  {roleIsCustom && (
+                    <Badge variant={selectedRoleEditLocked ? "secondary" : "success"}>
+                      {selectedRoleEditLocked ? "Editing Off" : "Editing On"}
+                    </Badge>
+                  )}
                   <Badge variant="outline">
                     {selectedPermissionCount}/{totalPermissionCount}
                   </Badge>
@@ -689,8 +770,49 @@ export default function RolesPage() {
                   />
                 </label>
                 {!editable && (
-                  <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">
-                    System roles are read-only. Create a custom academy role for editable access control.
+                  <div className="flex flex-col gap-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {selectedRoleEditLocked
+                        ? "Editing is currently disabled for this custom role. Enable editing to change permissions."
+                        : "System roles are read-only. Create an editable custom copy to add or remove permissions."}
+                    </span>
+                    {selectedRoleEditLocked ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleToggleSelectedRoleEditLock}
+                        className="shrink-0 gap-1.5"
+                      >
+                        Enable Editing
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCreateEditableCopy}
+                        disabled={creating}
+                        className="shrink-0 gap-1.5"
+                      >
+                        {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Make Editable Copy
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {editable && (
+                  <div className="flex flex-col gap-3 rounded-lg border border-sky-400/20 bg-sky-400/10 p-3 text-sm text-sky-200 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      This custom role is editable. Disable editing when you want to protect it from accidental changes.
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleToggleSelectedRoleEditLock}
+                      className="shrink-0"
+                    >
+                      Disable Editing
+                    </Button>
                   </div>
                 )}
                 {!canAccessAdminDashboard && (
@@ -980,7 +1102,16 @@ export default function RolesPage() {
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Permissions</CardTitle>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base">Permissions</CardTitle>
+                {editable ? (
+                  <Badge variant="success">Editable</Badge>
+                ) : (
+                  <Badge variant="secondary">
+                    {selectedRoleEditLocked ? "Editing disabled" : "Read-only system role"}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {permissionGroups.map((group) => (
@@ -1000,7 +1131,14 @@ export default function RolesPage() {
                           selectedPermissionIds.has(permission.id)
                             ? "border-lime-300/50 bg-lime-300/10"
                             : "border-border/50 bg-muted/10"
-                        } ${editable ? "cursor-pointer" : "cursor-default opacity-80"}`}
+                        } ${editable ? "cursor-pointer hover:border-lime-300/70 hover:bg-lime-300/15" : "cursor-not-allowed opacity-70"}`}
+                        title={
+                          editable
+                            ? "Click to grant or remove this permission"
+                            : selectedRoleEditLocked
+                              ? "Editing is disabled for this custom role. Enable editing first."
+                              : "System role permissions are read-only. Make an editable copy first."
+                        }
                       >
                         <input
                           type="checkbox"
@@ -1029,6 +1167,13 @@ export default function RolesPage() {
           </Card>
 
           <div className="flex flex-wrap items-center gap-3">
+            {!editable && selectedRole && (
+              <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-300">
+                {selectedRoleEditLocked
+                  ? "Save/Delete are disabled because editing is off for this custom role."
+                  : "Save/Delete are disabled because this is a system role."}
+              </span>
+            )}
             <Button
               type="button"
               className="gap-1.5"

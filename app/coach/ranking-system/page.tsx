@@ -360,7 +360,7 @@ function GradeBadge({ grade }: { grade: RankingSystemInput["grade"] }) {
 
 export default function CoachRankingSystemPage() {
   const { data, isLoading, isError, refetch } =
-    useGetCoachRankingSystemInputsQuery({ limit: 200 });
+    useGetCoachRankingSystemInputsQuery({ limit: 100 });
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
     15,

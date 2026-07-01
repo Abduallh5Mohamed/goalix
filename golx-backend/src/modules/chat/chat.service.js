@@ -729,6 +729,9 @@ class ChatService {
       extension,
       buffer,
       contentType: normalizedMimeType,
+      uploaderId: user.userId,
+      entityType: "chat_message",
+      isSensitive: true,
     });
 
     return {

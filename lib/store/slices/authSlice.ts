@@ -7,6 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  mfaSetupRequired: boolean;
 }
 
 const initialState: AuthState = {
@@ -15,6 +16,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
   isInitialized: false,
+  mfaSetupRequired: false,
 };
 
 const authSlice = createSlice({
@@ -24,12 +26,13 @@ const authSlice = createSlice({
     loginStart(state) {
       state.isLoading = true;
     },
-    loginSuccess(state, action: PayloadAction<{ user: User; role: UserRole }>) {
+    loginSuccess(state, action: PayloadAction<{ user: User; role: UserRole; mfaSetupRequired?: boolean }>) {
       state.user = action.payload.user;
       state.role = action.payload.role;
       state.isAuthenticated = true;
       state.isLoading = false;
       state.isInitialized = true;
+      state.mfaSetupRequired = Boolean(action.payload.mfaSetupRequired);
     },
     loginFailure(state) {
       state.isLoading = false;
@@ -45,11 +48,15 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.isLoading = false;
       state.isInitialized = true;
+      state.mfaSetupRequired = false;
     },
     updateUser(state, action: PayloadAction<Partial<User>>) {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
       }
+    },
+    setMfaSetupRequired(state, action: PayloadAction<boolean>) {
+      state.mfaSetupRequired = action.payload;
     },
   },
 });
@@ -60,6 +67,7 @@ export const {
   loginFailure,
   authInitialized,
   logout,
+  setMfaSetupRequired,
   updateUser,
 } =
   authSlice.actions;

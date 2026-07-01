@@ -4,6 +4,7 @@ const multer = require('multer');
 const validate = require('../../middleware/validate.middleware');
 const { authMiddleware } = require('../../middleware/auth.middleware');
 const { rbac, rbacAny, restrictTo } = require('../../middleware/rbac.middleware');
+const { uploadLimiter } = require('../../middleware/rateLimit.middleware');
 const { BadRequestError } = require('../../shared/errors');
 const {
     uuidParam,
@@ -24,6 +25,8 @@ const {
     coachAccessQuerySchema,
     coachAccessBranchParam,
     coachAccessSchema,
+    coachMfaSetupSchema,
+    coachMfaVerifySchema,
     assignmentQuerySchema,
     playerAssignmentQuerySchema,
     playerAssignmentSubmissionParam,
@@ -101,13 +104,13 @@ function coachesRoutes(controller) {
     router.get('/me/daily-ai-inputs', restrictTo('coach'), controller.getMeDailyAiInputs);
 
     router.get('/assignments', rbac('manage_coaches'), validate({ query: assignmentQuerySchema }), controller.listAssignments);
-    router.post('/assignments/upload', rbacAny('manage_coaches', 'access_coach_dashboard'), assignmentUpload, controller.uploadAssignmentFile);
+    router.post('/assignments/upload', uploadLimiter, rbacAny('manage_coaches', 'access_coach_dashboard'), assignmentUpload, controller.uploadAssignmentFile);
     router.post('/assignments', rbac('manage_coaches'), validate({ body: createCoachAssignmentSchema }), controller.createAssignment);
     router.get('/assignments/:assignmentId', rbac('manage_coaches'), validate({ params: assignmentParam }), controller.getAssignment);
     router.get('/access-roles', rbac('manage_coaches'), controller.listAccessRoles);
 
     router.get('/', rbac('coaches:read'), controller.list);
-    router.post('/images', rbac('manage_coaches'), handleCoachImageUpload, controller.uploadCoachImage);
+    router.post('/images', uploadLimiter, rbac('manage_coaches'), handleCoachImageUpload, controller.uploadCoachImage);
     router.post('/', rbac('manage_coaches'), validate({ body: createCoachSchema }), controller.create);
     router.get('/:id', rbac('coaches:read'), validate({ params: uuidParam }), controller.getById);
     router.put('/:id', rbac('manage_coaches'), validate({ params: uuidParam, body: updateCoachSchema }), controller.update);
@@ -118,6 +121,9 @@ function coachesRoutes(controller) {
     router.get('/:id/access', rbac('manage_coaches'), validate({ params: uuidParam, query: coachAccessQuerySchema }), controller.getAccess);
     router.put('/:id/access', rbac('manage_coaches'), validate({ params: uuidParam, body: coachAccessSchema }), controller.upsertAccess);
     router.delete('/:id/access/branches/:branchId', rbac('manage_coaches'), validate({ params: coachAccessBranchParam }), controller.removeAccess);
+    router.post('/:id/mfa/setup', rbac('manage_coaches'), validate({ params: uuidParam, body: coachMfaSetupSchema }), controller.setupCoachMfa);
+    router.post('/:id/mfa/verify', rbac('manage_coaches'), validate({ params: uuidParam, body: coachMfaVerifySchema }), controller.verifyCoachMfa);
+    router.post('/:id/mfa/backup-codes/regenerate', rbac('manage_coaches'), validate({ params: uuidParam }), controller.regenerateCoachMfaBackupCodes);
     router.get('/:id/performance', rbac('coaches:read'), validate({ params: uuidParam }), controller.getPerformance);
 
     return router;

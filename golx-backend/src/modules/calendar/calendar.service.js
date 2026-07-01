@@ -23,9 +23,28 @@ const {
   normalizeAssignmentRole,
   permissionColumnsForRole,
 } = require("../coaches/coach-assignment-roles");
+const {
+  addOptionValue,
+  addValue,
+  avg,
+  avgOptionValues,
+  avgScore,
+  buildContinuousWeekKeys,
+  clampScore,
+  gradeForScore,
+  modelPosition,
+  normalizeKey,
+  optionMidpoint,
+  ratingToScore,
+  roleFamily,
+  scoreOrZero,
+  weekEndKey,
+  weightedWeeklyScore,
+} = require("./ranking-inputs.helpers");
 const storage = require("../../shared/storage");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const { canParentAccessChild } = require("../../shared/access-policy");
+const { normalizePagination } = require("../../shared/pagination");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -5168,230 +5187,10 @@ class CalendarService {
   }
 
   async _rankingSystemInputsForScope(academyId, filters, scope = {}) {
-    const page = Number(filters.page || 1);
-    const limit = Number(filters.limit || 100);
-    const offset = (page - 1) * limit;
-    const numberOrNull = (value) => {
-      const numeric = Number(value);
-      return Number.isFinite(numeric) ? numeric : null;
-    };
-    const addValue = (target, value) => {
-      const numeric = numberOrNull(value);
-      if (numeric !== null) target.push(numeric);
-    };
-    const avg = (values) =>
-      values.length
-        ? Number(
-            (
-              values.reduce((sum, value) => sum + value, 0) / values.length
-            ).toFixed(2),
-          )
-        : null;
-    const clampScore = (value) => {
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric)) return null;
-      return Math.max(0, Math.min(100, Number(numeric.toFixed(2))));
-    };
-    const scoreOrZero = (value) => {
-      const score = clampScore(value);
-      return score === null ? 0 : score;
-    };
-    const parseDateKey = (value) => {
-      const [year, month, day] = String(value || "").split("-").map(Number);
-      if (!year || !month || !day) return null;
-      return new Date(Date.UTC(year, month - 1, day));
-    };
-    const dateKey = (value) => value.toISOString().slice(0, 10);
-    const addDaysKey = (value, days) => {
-      const date = parseDateKey(value);
-      if (!date) return null;
-      date.setUTCDate(date.getUTCDate() + days);
-      return dateKey(date);
-    };
-    const weekEndKey = (weekStart) => addDaysKey(weekStart, 6);
-    const buildContinuousWeekKeys = (keys, latestWeekKey) => {
-      const sortedKeys = [...new Set(keys.filter(Boolean).map(String))].sort();
-      if (latestWeekKey && !sortedKeys.includes(latestWeekKey)) {
-        sortedKeys.push(latestWeekKey);
-        sortedKeys.sort();
-      }
-      const firstKey = sortedKeys[0];
-      const lastKey = sortedKeys[sortedKeys.length - 1];
-      const firstDate = parseDateKey(firstKey);
-      const lastDate = parseDateKey(lastKey);
-      if (!firstDate || !lastDate) return sortedKeys;
-
-      const output = [];
-      for (
-        const cursor = new Date(firstDate);
-        cursor.getTime() <= lastDate.getTime();
-        cursor.setUTCDate(cursor.getUTCDate() + 7)
-      ) {
-        output.push(dateKey(cursor));
-      }
-      return output;
-    };
-    const ratingToScore = (value) => {
-      const numeric = numberOrNull(value);
-      if (numeric === null) return null;
-      return clampScore(numeric <= 10 ? numeric * 10 : numeric);
-    };
-    const avgScore = (values) => avg(values.map(ratingToScore).filter((value) => value !== null));
-    const gradeForScore = (score) => {
-      const numeric = scoreOrZero(score);
-      if (numeric >= 90) return "A";
-      if (numeric >= 80) return "B";
-      if (numeric >= 70) return "C";
-      if (numeric >= 60) return "D";
-      return "F";
-    };
-    const weightedWeeklyScore = ({
-      matchScore,
-      coachScore,
-      attendanceScore,
-      weeklyAiScore,
-    }) =>
-      clampScore(
-        scoreOrZero(matchScore) * 0.5 +
-          scoreOrZero(coachScore) * 0.25 +
-          scoreOrZero(attendanceScore) * 0.15 +
-          scoreOrZero(weeklyAiScore) * 0.1,
-      );
-    const optionRanges = {
-      rating10: [
-        { min: 0, max: 3.9, midpoint: 1.95 },
-        { min: 4, max: 6.4, midpoint: 5.2 },
-        { min: 6.5, max: 8.4, midpoint: 7.45 },
-        { min: 8.5, max: 10, midpoint: 9.25 },
-      ],
-      percentage: [
-        { min: 0, max: 49, midpoint: 24.5 },
-        { min: 50, max: 69, midpoint: 59.5 },
-        { min: 70, max: 84, midpoint: 77 },
-        { min: 85, max: 100, midpoint: 92.5 },
-      ],
-      chance: [
-        { min: 0, max: 0, midpoint: 0 },
-        { min: 1, max: 1, midpoint: 1 },
-        { min: 2, max: 2, midpoint: 2 },
-        { min: 3, max: Number.POSITIVE_INFINITY, midpoint: 4 },
-      ],
-      defensiveCount: [
-        { min: 0, max: 1, midpoint: 0.5 },
-        { min: 2, max: 3, midpoint: 2.5 },
-        { min: 4, max: 5, midpoint: 4.5 },
-        { min: 6, max: Number.POSITIVE_INFINITY, midpoint: 7 },
-      ],
-      duels: [
-        { min: 0, max: 39, midpoint: 19.5 },
-        { min: 40, max: 59, midpoint: 49.5 },
-        { min: 60, max: 79, midpoint: 69.5 },
-        { min: 80, max: 100, midpoint: 90 },
-      ],
-      possessionLoss: [
-        { min: 0, max: 3, midpoint: 1.5 },
-        { min: 4, max: 6, midpoint: 5 },
-        { min: 7, max: 10, midpoint: 8.5 },
-        { min: 11, max: Number.POSITIVE_INFINITY, midpoint: 12 },
-      ],
-    };
-    const optionMidpoint = (value, optionType, { zeroMeansMissing = false } = {}) => {
-      const numeric = numberOrNull(value);
-      if (numeric === null) return null;
-      if (zeroMeansMissing && numeric === 0) return null;
-      const ranges = optionRanges[optionType] || [];
-      const range = ranges.find(
-        (item) => numeric >= item.min && numeric <= item.max,
-      );
-      return range ? range.midpoint : Number(numeric.toFixed(2));
-    };
-    const addOptionValue = (target, value, optionType, options) => {
-      const numeric = optionMidpoint(value, optionType, options);
-      if (numeric !== null) target.push(numeric);
-    };
-    const avgOptionValues = (values, optionType, options) =>
-      avg(
-        values
-          .map((value) => optionMidpoint(value, optionType, options))
-          .filter((value) => value !== null),
-      );
-    const normalizePosition = (value) =>
-      String(value || "")
-        .trim()
-        .toUpperCase()
-        .replace(/[-_]+/g, " ")
-        .replace(/\s+/g, " ");
-    const normalizeKey = (value) =>
-      String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
-    const roleFamily = (position) => {
-      const normalized = normalizePosition(position);
-      if (["GK", "GOALKEEPER", "GOAL KEEPER"].includes(normalized)) {
-        return "goalkeeper";
-      }
-      if (
-        [
-          "ST",
-          "CF",
-          "LW",
-          "RW",
-          "LF",
-          "RF",
-          "FORWARD",
-          "STRIKER",
-          "WINGER",
-          "LEFT WING",
-          "RIGHT WING",
-          "LEFT WINGER",
-          "RIGHT WINGER",
-        ].includes(normalized)
-      ) {
-        return "attack";
-      }
-      if (
-        [
-          "CM",
-          "CAM",
-          "CDM",
-          "LM",
-          "RM",
-          "MIDFIELDER",
-          "MIDFIELD",
-          "ATTACKING MIDFIELDER",
-          "DEFENSIVE MIDFIELDER",
-          "CENTRAL MIDFIELDER",
-        ].includes(normalized)
-      ) {
-        return "midfield";
-      }
-      if (
-        [
-          "CB",
-          "LB",
-          "RB",
-          "LWB",
-          "RWB",
-          "DEFENDER",
-          "DEFENSE",
-          "CENTRE BACK",
-          "CENTER BACK",
-          "LEFT BACK",
-          "RIGHT BACK",
-        ].includes(normalized)
-      ) {
-        return "defense";
-      }
-      return "unknown";
-    };
-    const modelPosition = (family) =>
-      ({
-        attack: "ATTACK",
-        midfield: "MIDFIELD",
-        defense: "DEFENSE",
-        goalkeeper: "GOALKEEPER",
-      })[family] || "UNKNOWN";
+    const { page, limit, offset } = normalizePagination({
+      page: filters.page,
+      limit: filters.limit || 100,
+    });
     const matchScoreForRow = (row) => {
       const baseScore = ratingToScore(row.match_base_rating);
       const fallback = () => {
@@ -6042,9 +5841,16 @@ class CalendarService {
       });
     });
 
-    let modelResults = [];
-    let modelError = null;
-    const modelInputs = rankedRows.map((row) => ({
+    const sortedRankedRows = rankedRows
+      .slice()
+      .sort((a, b) => {
+        const weekSort = String(b.week_start).localeCompare(String(a.week_start));
+        if (weekSort) return weekSort;
+        return Number(a.rank || 0) - Number(b.rank || 0);
+      });
+    const total = sortedRankedRows.length;
+    const pageRows = sortedRankedRows.slice(offset, offset + limit);
+    const toModelInput = (row) => ({
       id: row.id,
       player_id: row.player_id,
       player_name: row.player_name,
@@ -6055,50 +5861,49 @@ class CalendarService {
       position: modelPosition(row.role_family),
       trend: row.trend,
       rank: row.rank,
-    }));
+    });
+
+    let modelResults = [];
+    let modelError = null;
+    const modelInputs = pageRows.map(toModelInput);
     try {
       modelResults = await runRankingPredictions(modelInputs);
     } catch (error) {
       modelError = error.message;
     }
     const modelResultById = new Map(modelResults.map((result) => [result.id, result]));
+    const modelInputById = new Map(modelInputs.map((input) => [input.id, input]));
 
-    const rows = rankedRows
-      .map((row) => {
-        const modelResult = modelResultById.get(row.id);
-        const weeklyScore = row.carry_forward
-          ? row.weekly_score
-          : clampScore(modelResult?.weekly_score) ?? row.weekly_score;
-        const grade = row.carry_forward ? row.grade : modelResult?.grade || row.grade;
-        const predictedNextScore = clampScore(modelResult?.predicted_next_score);
-        const error = modelResult?.error || modelError || null;
-        return {
-          ...row,
+    const data = pageRows.map((row) => {
+      const modelResult = modelResultById.get(row.id);
+      const weeklyScore = row.carry_forward
+        ? row.weekly_score
+        : clampScore(modelResult?.weekly_score) ?? row.weekly_score;
+      const grade = row.carry_forward ? row.grade : modelResult?.grade || row.grade;
+      const predictedNextScore = clampScore(modelResult?.predicted_next_score);
+      const error = modelResult?.error || modelError || null;
+      return {
+        ...row,
+        weekly_score: weeklyScore,
+        grade,
+        predicted_next_score: predictedNextScore,
+        prediction_status: predictedNextScore === null ? "unavailable" : "ready",
+        model_error: error,
+        model_input: modelInputById.get(row.id) || null,
+        final_api_response: {
           weekly_score: weeklyScore,
           grade,
+          trend: row.trend,
+          rank: row.rank,
           predicted_next_score: predictedNextScore,
-          prediction_status: predictedNextScore === null ? "unavailable" : "ready",
-          model_error: error,
-          model_input: modelInputs.find((input) => input.id === row.id) || null,
-          final_api_response: {
-            weekly_score: weeklyScore,
-            grade,
-            trend: row.trend,
-            rank: row.rank,
-            predicted_next_score: predictedNextScore,
-            carry_forward: Boolean(row.carry_forward),
-            carried_from_week_start: row.carried_from_week_start || null,
-          },
-        };
-      })
-      .sort((a, b) => {
-        const weekSort = String(b.week_start).localeCompare(String(a.week_start));
-        if (weekSort) return weekSort;
-        return Number(a.rank || 0) - Number(b.rank || 0);
-      });
+          carry_forward: Boolean(row.carry_forward),
+          carried_from_week_start: row.carried_from_week_start || null,
+        },
+      };
+    });
 
     const latestGradeByPlayer = new Map();
-    rows.forEach((row) => {
+    data.forEach((row) => {
       if (
         !latestGradeByPlayer.has(row.player_id) &&
         ["A", "B", "C", "D", "F"].includes(row.grade)
@@ -6119,11 +5924,8 @@ class CalendarService {
     );
 
     if (notifyCoach && coach) {
-      await this._notifyCoachWeeklyRankingReady(coach, rows);
+      await this._notifyCoachWeeklyRankingReady(coach, sortedRankedRows);
     }
-
-    const total = rows.length;
-    const data = rows.slice(offset, offset + limit);
 
     return {
       data,
@@ -8097,8 +7899,10 @@ class CalendarService {
   }
 
   async _combinedPlayerAttendanceHistory(playerId, academyId, filters = {}) {
-    const page = Number(filters.page || 1);
-    const limit = Number(filters.limit || 50);
+    const { page, limit } = normalizePagination({
+      page: filters.page,
+      limit: filters.limit || 50,
+    });
     const db = this.repo.db;
     const player = await db("player_profiles")
       .where({ id: playerId, academy_id: academyId })
@@ -8631,6 +8435,9 @@ class CalendarService {
       extension: typeInfo.extension,
       buffer,
       contentType: normalizedMimeType,
+      uploaderId: user.userId,
+      entityType: "player_assignment_file",
+      isSensitive: true,
     });
 
     return {
@@ -8644,9 +8451,10 @@ class CalendarService {
 
   async playerListAssignments(userId, academyId, filters = {}) {
     const player = await this._getPlayer(userId, academyId);
-    const page = Number(filters.page || 1);
-    const limit = Number(filters.limit || 50);
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = normalizePagination({
+      page: filters.page,
+      limit: filters.limit || 50,
+    });
     const db = this.repo.db;
     const [{ today }] = await db.raw("SELECT current_date::text AS today").then((result) => result.rows);
     const [groupRows, birthYearRows] = await Promise.all([
@@ -8884,6 +8692,13 @@ class CalendarService {
         .where({ submission_id: row.id })
         .orderBy("created_at", "asc");
       return { ...row, files: savedFiles };
+    });
+    await storage.attachMediaToEntity(files.map((file) => file.fileUrl), {
+      academyId,
+      scope: "player-assignments",
+      entityType: "player_assignment_submission",
+      entityId: submission.id,
+      isSensitive: true,
     });
 
     return this._shapePlayerAssignmentSubmission(submission);

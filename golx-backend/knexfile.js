@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const pool = {
     min: Number(process.env.DB_POOL_MIN || 2),
-    max: Number(process.env.DB_POOL_MAX || 40),
+    max: Number(process.env.DB_POOL_MAX || 10),
 };
 
 module.exports = {

@@ -107,7 +107,7 @@ function createApplicationServices({
         authController: new AuthController(services.authService, services.totpService),
         academyController: new AcademyController(services.academyService),
         playersController: new PlayersController(services.playersService),
-        coachesController: new CoachesController(services.coachesService),
+        coachesController: new CoachesController(services.coachesService, services.totpService),
         attendanceController: new AttendanceController(services.attendanceService),
         rankingsController: new RankingsController(services.rankingsService),
         paymentsController: new PaymentsController(services.paymentsService),

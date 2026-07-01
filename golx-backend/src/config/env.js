@@ -15,7 +15,11 @@ const envSchema = z.object({
     // Database
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     DB_POOL_MIN: z.coerce.number().int().min(0).default(2),
-    DB_POOL_MAX: z.coerce.number().int().min(1).default(40),
+    DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+    DB_APPLICATION_NAME: z.string().min(1).default('goalix-api'),
+    DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(30000),
+    DB_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS: z.coerce.number().int().min(0).default(10000),
+    DB_LOCK_TIMEOUT_MS: z.coerce.number().int().min(0).default(5000),
 
     // Redis
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
@@ -28,6 +32,7 @@ const envSchema = z.object({
     NOTIFICATION_UNREAD_COUNT_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(30),
     NOTIFICATION_RETENTION_MONTHS: z.coerce.number().int().min(1).default(4),
     NOTIFICATION_CLEANUP_INTERVAL_HOURS: z.coerce.number().int().min(1).default(24),
+    NOTIFICATION_CLEANUP_ENABLED: optionalBoolean,
     CHAT_CONVERSATIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(15),
 
     // JWT
@@ -56,6 +61,10 @@ const envSchema = z.object({
     MAX_PAGE_LIMIT: z.coerce.number().default(100),
     API_RATE_LIMIT_MAX: z.coerce.number().default(1000),
     API_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    CHAT_WRITE_RATE_LIMIT_MAX: z.coerce.number().default(120),
+    CHAT_WRITE_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    UPLOAD_RATE_LIMIT_MAX: z.coerce.number().default(60),
+    UPLOAD_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
 
     // Account Lockout
     MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(5),
@@ -118,6 +127,9 @@ function isValidAes256Key(value) {
 let env;
 try {
     env = envSchema.parse(process.env);
+    if (env.DB_POOL_MIN > env.DB_POOL_MAX) {
+        throw configIssue('DB_POOL_MIN', 'DB_POOL_MIN must be less than or equal to DB_POOL_MAX');
+    }
     if (env.NODE_ENV === 'production' && env.COOKIE_SECRET === DEFAULT_COOKIE_SECRET) {
         throw configIssue('COOKIE_SECRET', 'COOKIE_SECRET must be set to a unique production secret');
     }

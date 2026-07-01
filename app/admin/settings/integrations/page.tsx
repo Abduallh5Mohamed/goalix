@@ -1,339 +1,95 @@
-"use client";
-
-import { useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  useGetAcademyQuery,
-  useUpdateAcademyMutation,
-} from "@/lib/store/api/adminApi";
-import {
-  CheckCircle,
-  CreditCard,
-  Loader2,
-  MessageSquare,
-  Save,
-  Smartphone,
-} from "lucide-react";
+import { CreditCard, Lock, MessageSquare, Smartphone } from "lucide-react";
 
-type IntegrationKey = "whatsapp" | "sms" | "payments";
-type IntegrationConfig = Record<string, string | boolean>;
-type IntegrationDraft = Partial<Record<IntegrationKey, IntegrationConfig>>;
-
-const getRecord = (value: unknown) =>
-  typeof value === "object" && value ? (value as Record<string, unknown>) : {};
-
-const getIntegration = (
-  draft: IntegrationDraft,
-  stored: Record<string, unknown>,
-  key: IntegrationKey,
-) => ({
-  ...getRecord(stored[key]),
-  ...(draft[key] ?? {}),
-}) as IntegrationConfig;
-
-const stringValue = (config: IntegrationConfig, key: string, fallback = "") =>
-  typeof config[key] === "string" ? String(config[key]) : fallback;
-
-const booleanValue = (config: IntegrationConfig, key: string, fallback = false) =>
-  typeof config[key] === "boolean" ? Boolean(config[key]) : fallback;
+const previewCards = [
+  {
+    title: "WhatsApp Business",
+    icon: MessageSquare,
+    tone: "text-emerald-300 bg-emerald-400/10",
+    fields: ["Provider", "Business Phone ID", "Access Token"],
+  },
+  {
+    title: "SMS Gateway",
+    icon: Smartphone,
+    tone: "text-sky-300 bg-sky-400/10",
+    fields: ["Provider", "Sender ID", "API Key"],
+  },
+  {
+    title: "Payment Gateway",
+    icon: CreditCard,
+    tone: "text-amber-300 bg-amber-400/10",
+    fields: ["Provider", "Mode", "Webhook Secret"],
+  },
+];
 
 export default function IntegrationsPage() {
-  const { data: academy, isLoading } = useGetAcademyQuery();
-  const [updateAcademy, { isLoading: saving }] = useUpdateAcademyMutation();
-  const [draft, setDraft] = useState<IntegrationDraft>({});
-  const [saved, setSaved] = useState(false);
-
-  const settings = (academy?.settings ?? {}) as Record<string, unknown>;
-  const storedIntegrations = getRecord(settings.integrations);
-  const whatsapp = getIntegration(draft, storedIntegrations, "whatsapp");
-  const sms = getIntegration(draft, storedIntegrations, "sms");
-  const payments = getIntegration(draft, storedIntegrations, "payments");
-
-  const setIntegrationValue = (
-    key: IntegrationKey,
-    field: string,
-    value: string | boolean,
-  ) => {
-    setDraft((current) => ({
-      ...current,
-      [key]: {
-        ...(current[key] ?? {}),
-        [field]: value,
-      },
-    }));
-  };
-
-  const saveIntegrations = async () => {
-    await updateAcademy({
-      settings: {
-        ...settings,
-        integrations: {
-          ...storedIntegrations,
-          whatsapp,
-          sms,
-          payments,
-        },
-      },
-    }).unwrap();
-    setDraft({});
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
-  };
-
-  if (isLoading) return <LoadingSkeleton />;
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Integrations"
-        description="Manage third-party connections for notifications and payments."
-        breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Settings" },
-          { label: "Integrations" },
-        ]}
-        actions={
-          <Button onClick={saveIntegrations} disabled={saving} className="gap-1.5">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Integrations
-          </Button>
-        }
-      />
+    <div className="relative min-h-[calc(100vh-120px)] animate-fade-in overflow-hidden rounded-xl">
+      <div className="pointer-events-none select-none blur-[14px] opacity-45">
+        <div className="space-y-6">
+          <PageHeader
+            title="Integrations"
+            description="Manage third-party connections for notifications and payments."
+            breadcrumbs={[
+              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Settings" },
+              { label: "Integrations" },
+            ]}
+          />
 
-      {saved && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
-          <CheckCircle className="h-4 w-4" />
-          Integrations saved.
+          <section className="min-h-[calc(100vh-220px)] overflow-hidden rounded-xl border border-border/60 bg-card/60">
+            <div className="grid gap-4 p-6 xl:grid-cols-3">
+              {previewCards.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Card key={item.title} className="border-border/50 bg-card">
+                    <CardHeader className="flex flex-row items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-lg p-3 ${item.tone}`}>
+                          <Icon className="h-6 w-6" />
+                        </span>
+                        <CardTitle className="text-base">{item.title}</CardTitle>
+                      </div>
+                      <Badge variant="secondary">Off</Badge>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="h-12 rounded-lg border border-border/50 bg-muted/30" />
+                      {item.fields.map((field) => (
+                        <div key={field} className="space-y-2">
+                          <div className="h-3 w-28 rounded bg-muted/60" />
+                          <div className="h-10 rounded-lg border border-border/50 bg-background/60" />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            <div className="grid gap-4 px-6 pb-6 md:grid-cols-2">
+              <div className="h-44 rounded-xl border border-border/50 bg-muted/20" />
+              <div className="h-44 rounded-xl border border-border/50 bg-muted/20" />
+            </div>
+          </section>
         </div>
-      )}
+      </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="rounded-lg bg-emerald-500/10 p-3 text-emerald-400">
-                <MessageSquare className="h-6 w-6" />
-              </span>
-              <div>
-                <CardTitle className="text-base">WhatsApp Business</CardTitle>
-              </div>
-            </div>
-            <Badge variant={booleanValue(whatsapp, "enabled") ? "success" : "secondary"}>
-              {booleanValue(whatsapp, "enabled") ? "Connected" : "Off"}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-              <span>Enabled</span>
-              <input
-                type="checkbox"
-                checked={booleanValue(whatsapp, "enabled")}
-                onChange={(event) =>
-                  setIntegrationValue("whatsapp", "enabled", event.target.checked)
-                }
-              />
-            </label>
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select
-                value={stringValue(whatsapp, "provider", "meta")}
-                onValueChange={(value) =>
-                  setIntegrationValue("whatsapp", "provider", value)
-                }
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="meta">Meta Cloud API</SelectItem>
-                  <SelectItem value="twilio">Twilio</SelectItem>
-                  <SelectItem value="360dialog">360dialog</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Business Phone ID</Label>
-              <Input
-                value={stringValue(whatsapp, "businessPhoneId")}
-                onChange={(event) =>
-                  setIntegrationValue("whatsapp", "businessPhoneId", event.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Access Token</Label>
-              <Input
-                type="password"
-                value={stringValue(whatsapp, "accessToken")}
-                onChange={(event) =>
-                  setIntegrationValue("whatsapp", "accessToken", event.target.value)
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="absolute inset-0 bg-background/35 backdrop-blur-[8px]" />
 
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="rounded-lg bg-blue-500/10 p-3 text-blue-400">
-                <Smartphone className="h-6 w-6" />
-              </span>
-              <div>
-                <CardTitle className="text-base">SMS Gateway</CardTitle>
-              </div>
-            </div>
-            <Badge variant={booleanValue(sms, "enabled") ? "success" : "secondary"}>
-              {booleanValue(sms, "enabled") ? "Connected" : "Off"}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-              <span>Enabled</span>
-              <input
-                type="checkbox"
-                checked={booleanValue(sms, "enabled")}
-                onChange={(event) =>
-                  setIntegrationValue("sms", "enabled", event.target.checked)
-                }
-              />
-            </label>
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select
-                value={stringValue(sms, "provider", "twilio")}
-                onValueChange={(value) => setIntegrationValue("sms", "provider", value)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="twilio">Twilio</SelectItem>
-                  <SelectItem value="victorylink">VictoryLink</SelectItem>
-                  <SelectItem value="custom">Custom HTTP</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Sender ID</Label>
-              <Input
-                value={stringValue(sms, "senderId")}
-                onChange={(event) =>
-                  setIntegrationValue("sms", "senderId", event.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={stringValue(sms, "apiKey")}
-                onChange={(event) =>
-                  setIntegrationValue("sms", "apiKey", event.target.value)
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 bg-card">
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="rounded-lg bg-amber-500/10 p-3 text-amber-400">
-                <CreditCard className="h-6 w-6" />
-              </span>
-              <div>
-                <CardTitle className="text-base">Payment Gateway</CardTitle>
-              </div>
-            </div>
-            <Badge variant={booleanValue(payments, "enabled") ? "success" : "secondary"}>
-              {booleanValue(payments, "enabled") ? "Connected" : "Off"}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-              <span>Enabled</span>
-              <input
-                type="checkbox"
-                checked={booleanValue(payments, "enabled")}
-                onChange={(event) =>
-                  setIntegrationValue("payments", "enabled", event.target.checked)
-                }
-              />
-            </label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Provider</Label>
-                <Select
-                  value={stringValue(payments, "provider", "paymob")}
-                  onValueChange={(value) =>
-                    setIntegrationValue("payments", "provider", value)
-                  }
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="paymob">Paymob</SelectItem>
-                    <SelectItem value="stripe">Stripe</SelectItem>
-                    <SelectItem value="fawry">Fawry</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Mode</Label>
-                <Select
-                  value={stringValue(payments, "mode", "test")}
-                  onValueChange={(value) =>
-                    setIntegrationValue("payments", "mode", value)
-                  }
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="test">Test</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Public Key</Label>
-              <Input
-                value={stringValue(payments, "publicKey")}
-                onChange={(event) =>
-                  setIntegrationValue("payments", "publicKey", event.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Secret Key</Label>
-              <Input
-                type="password"
-                value={stringValue(payments, "secretKey")}
-                onChange={(event) =>
-                  setIntegrationValue("payments", "secretKey", event.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Webhook Secret</Label>
-              <Input
-                type="password"
-                value={stringValue(payments, "webhookSecret")}
-                onChange={(event) =>
-                  setIntegrationValue("payments", "webhookSecret", event.target.value)
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="absolute inset-0 z-10 flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-xl border border-lime-300/30 bg-card/90 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-lime-300/40 bg-lime-300/10 text-lime-300">
+            <Lock className="h-7 w-7" />
+          </div>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.24em] text-lime-300">
+            Integrations
+          </p>
+          <h2 className="mt-2 text-4xl font-black text-foreground">Coming Soon</h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            External providers for WhatsApp, SMS, and payments are being prepared for production setup.
+          </p>
+        </div>
       </div>
     </div>
   );

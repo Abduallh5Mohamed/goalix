@@ -23,7 +23,21 @@ class PlayersRepository extends BaseRepository {
             .first();
     }
 
-    async findPlayers({ academyId, branchId, groupId, level, isActive, search, coachId, playerUserId, linkedPlayerId, page = 1, limit = 20 }) {
+    async findPlayers({
+        academyId,
+        branchId,
+        groupId,
+        level,
+        isActive,
+        search,
+        coachId,
+        playerUserId,
+        linkedPlayerId,
+        linkedPlayerIds,
+        page = 1,
+        limit = 20,
+    }) {
+        const scopedLinkedPlayerIds = [...new Set((linkedPlayerIds || []).filter(Boolean))];
         const query = this.db('player_profiles')
             .whereNull('player_profiles.deleted_at')
             .modify((q) => {
@@ -31,6 +45,8 @@ class PlayersRepository extends BaseRepository {
                 if (branchId) q.where('player_profiles.branch_id', branchId);
                 if (playerUserId) q.where('player_profiles.user_id', playerUserId);
                 if (linkedPlayerId) q.where('player_profiles.id', linkedPlayerId);
+                if (scopedLinkedPlayerIds.length) q.whereIn('player_profiles.id', scopedLinkedPlayerIds);
+                if (Array.isArray(linkedPlayerIds) && scopedLinkedPlayerIds.length === 0) q.whereRaw('1 = 0');
                 if (coachId) {
                     q.whereIn('player_profiles.id',
                         this.db('player_group_assignments as pga')

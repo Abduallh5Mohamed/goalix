@@ -1,11 +1,12 @@
 const {
     canAccessConversation,
     canAccessPlayerRecord,
+    canAccessUploadMetadata,
     canParentAccessChild,
 } = require('../src/shared/access-policy');
 
 describe('access policy characterization', () => {
-    test('parent can read only the linked player record', () => {
+    test('parent can read linked or policy-approved child player records', () => {
         const parent = {
             role: 'parent',
             userId: 'parent-user',
@@ -22,6 +23,11 @@ describe('access policy characterization', () => {
             id: 'player-2',
             academy_id: 'academy-1',
         })).toBe(false);
+
+        expect(canAccessPlayerRecord(parent, {
+            id: 'player-2',
+            academy_id: 'academy-1',
+        }, { parentCanAccess: true })).toBe(true);
 
         expect(canAccessPlayerRecord(parent, {
             id: 'player-1',
@@ -66,5 +72,49 @@ describe('access policy characterization', () => {
             academy_id: 'academy-1',
             coach_user_id: 'another-coach',
         })).toBe(false);
+    });
+
+    test('upload metadata access is same-academy and deny-by-default for sensitive files', () => {
+        const admin = { role: 'admin', userId: 'admin-user', academyId: 'academy-1' };
+        const coach = { role: 'coach', userId: 'coach-user', academyId: 'academy-1' };
+        const player = { role: 'player', userId: 'player-user', academyId: 'academy-1' };
+
+        expect(canAccessUploadMetadata(admin, {
+            academy_id: 'academy-1',
+            scope: 'player-assignments',
+            is_sensitive: true,
+        })).toBe(true);
+
+        expect(canAccessUploadMetadata(coach, {
+            academy_id: 'academy-1',
+            scope: 'player-assignments',
+            is_sensitive: true,
+        })).toBe(false);
+
+        expect(canAccessUploadMetadata(player, {
+            academy_id: 'academy-1',
+            scope: 'player-assignments',
+            uploader_id: 'player-user',
+            is_sensitive: true,
+        })).toBe(true);
+
+        expect(canAccessUploadMetadata(player, {
+            academy_id: 'academy-1',
+            scope: 'player-assignments',
+            uploader_id: 'another-player',
+            is_sensitive: true,
+        })).toBe(false);
+
+        expect(canAccessUploadMetadata(admin, {
+            academy_id: 'academy-2',
+            scope: 'player-assignments',
+            is_sensitive: true,
+        })).toBe(false);
+
+        expect(canAccessUploadMetadata(player, {
+            academy_id: 'academy-1',
+            scope: 'coaches',
+            is_sensitive: false,
+        })).toBe(true);
     });
 });

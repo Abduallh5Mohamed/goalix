@@ -193,7 +193,7 @@ export default function ParentChildRankingPage() {
     { skip: !childId || !canViewProgress },
   );
   const rankingSystemQuery = useGetParentRankingSystemInputsQuery(
-    childId ? { childId, limit: 200 } : undefined,
+    childId ? { childId, limit: 100 } : undefined,
     { skip: !childId || !canViewProgress },
   );
 

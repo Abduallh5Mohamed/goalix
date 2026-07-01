@@ -3,6 +3,9 @@ const path = require('node:path');
 const { Readable } = require('node:stream');
 const { randomUUID } = require('node:crypto');
 const env = require('../config/env');
+const db = require('../infrastructure/database');
+const logger = require('./logger');
+const { AppError } = require('./errors');
 
 const uploadsRoot = path.resolve(__dirname, '../../uploads');
 
@@ -16,6 +19,10 @@ function uploadKey(scope, academyId, storedName) {
 
 function publicUploadUrl(key) {
     return `/uploads/${key}`;
+}
+
+function storageKeyFromUrl(url) {
+    return String(url || '').replace(/\\/g, '/').replace(/^\/uploads\/+/, '').replace(/^\/+/, '');
 }
 
 async function s3Client() {
@@ -33,9 +40,98 @@ async function s3Client() {
     });
 }
 
-async function putUpload({ scope, academyId, extension, buffer, contentType }) {
+async function deleteS3Object(key) {
+    try {
+        const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+        const client = await s3Client();
+        await client.send(new DeleteObjectCommand({
+            Bucket: env.S3_BUCKET,
+            Key: key,
+        }));
+    } catch (err) {
+        logger.warn({ err, key }, 'Failed to clean up S3 upload after metadata failure');
+    }
+}
+
+async function assertSensitiveUploadMetadata({ media, key, localPath, isSensitive }) {
+    if (media || isSensitive === false) return;
+
+    if (env.STORAGE_PROVIDER === 's3') {
+        await deleteS3Object(key);
+    } else if (localPath) {
+        await fs.unlink(localPath).catch((err) => {
+            logger.warn({ err, key, localPath }, 'Failed to clean up local upload after metadata failure');
+        });
+    }
+
+    throw new AppError(
+        'Upload metadata could not be recorded. Please try again.',
+        503,
+        'UPLOAD_METADATA_UNAVAILABLE',
+    );
+}
+
+async function recordMediaFile({
+    academyId,
+    scope,
+    uploaderId,
+    entityType,
+    entityId,
+    url,
+    key,
+    sizeBytes,
+    contentType,
+    isSensitive,
+}) {
+    try {
+        const [row] = await db('media_files')
+            .insert({
+                academy_id: academyId || null,
+                scope: scope || null,
+                uploader_id: uploaderId || null,
+                entity_type: entityType || scope || null,
+                entity_id: entityId || null,
+                url,
+                storage_key: key,
+                size_bytes: sizeBytes || null,
+                mime_type: contentType || null,
+                is_sensitive: isSensitive !== false,
+            })
+            .onConflict('storage_key')
+            .merge({
+                academy_id: academyId || null,
+                scope: scope || null,
+                uploader_id: uploaderId || null,
+                entity_type: entityType || scope || null,
+                entity_id: entityId || null,
+                url,
+                size_bytes: sizeBytes || null,
+                mime_type: contentType || null,
+                is_sensitive: isSensitive !== false,
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row;
+    } catch (err) {
+        logger.warn({ err, scope, academyId, key }, 'Failed to record upload metadata');
+        return null;
+    }
+}
+
+async function putUpload({
+    scope,
+    academyId,
+    extension,
+    buffer,
+    contentType,
+    uploaderId,
+    entityType,
+    entityId,
+    isSensitive = true,
+}) {
     const storedName = `${Date.now()}-${randomUUID()}${extension}`;
     const key = uploadKey(scope, academyId, storedName);
+    const url = publicUploadUrl(key);
 
     if (env.STORAGE_PROVIDER === 's3') {
         const { PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -47,13 +143,83 @@ async function putUpload({ scope, academyId, extension, buffer, contentType }) {
             ContentType: contentType || 'application/octet-stream',
             ServerSideEncryption: 'AES256',
         }));
-        return { key, url: publicUploadUrl(key) };
+        const media = await recordMediaFile({
+            academyId,
+            scope,
+            uploaderId,
+            entityType,
+            entityId,
+            url,
+            key,
+            sizeBytes: buffer?.length,
+            contentType,
+            isSensitive,
+        });
+        await assertSensitiveUploadMetadata({ media, key, isSensitive });
+        return { key, url, media };
     }
 
     const localPath = path.join(uploadsRoot, key);
     await fs.mkdir(path.dirname(localPath), { recursive: true });
     await fs.writeFile(localPath, buffer);
-    return { key, path: localPath, url: publicUploadUrl(key) };
+    const media = await recordMediaFile({
+        academyId,
+        scope,
+        uploaderId,
+        entityType,
+        entityId,
+        url,
+        key,
+        sizeBytes: buffer?.length,
+        contentType,
+        isSensitive,
+    });
+    await assertSensitiveUploadMetadata({ media, key, localPath, isSensitive });
+    return { key, path: localPath, url, media };
+}
+
+async function findUploadMetadata(relativePath) {
+    const normalized = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    try {
+        return await db('media_files')
+            .where({ storage_key: normalized })
+            .first();
+    } catch (err) {
+        logger.warn({ err, relativePath: normalized }, 'Failed to read upload metadata');
+        return null;
+    }
+}
+
+async function attachMediaToEntity(fileUrls = [], {
+    academyId,
+    scope,
+    entityType,
+    entityId,
+    isSensitive,
+} = {}) {
+    const urls = [...new Set((fileUrls || []).filter(Boolean))];
+    const keys = [...new Set(urls.map(storageKeyFromUrl).filter(Boolean))];
+    if (!urls.length && !keys.length) return 0;
+
+    try {
+        const count = await db('media_files')
+            .where((q) => {
+                if (urls.length) q.whereIn('url', urls);
+                if (keys.length) q.orWhereIn('storage_key', keys);
+            })
+            .update({
+                academy_id: academyId || null,
+                scope: scope || null,
+                entity_type: entityType || scope || null,
+                entity_id: entityId || null,
+                ...(isSensitive === undefined ? {} : { is_sensitive: Boolean(isSensitive) }),
+                updated_at: new Date(),
+            });
+        return Number(count || 0);
+    } catch (err) {
+        logger.warn({ err, scope, academyId, entityType, entityId }, 'Failed to attach upload metadata to entity');
+        return 0;
+    }
 }
 
 async function getUpload(relativePath) {
@@ -84,7 +250,10 @@ async function getUpload(relativePath) {
 }
 
 module.exports = {
+    attachMediaToEntity,
+    findUploadMetadata,
     getUpload,
     putUpload,
+    storageKeyFromUrl,
     uploadsRoot,
 };

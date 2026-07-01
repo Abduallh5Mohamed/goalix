@@ -4,8 +4,15 @@ const env = require('../config/env');
  * Parse and normalize pagination params from query string.
  */
 function parsePagination(query = {}) {
-    let page = parseInt(query.page, 10) || 1;
-    let limit = parseInt(query.limit, 10) || env.DEFAULT_PAGE_LIMIT;
+    return normalizePagination({
+        page: query.page,
+        limit: query.limit,
+    });
+}
+
+function normalizePagination({ page: rawPage, limit: rawLimit } = {}) {
+    let page = parseInt(rawPage, 10) || 1;
+    let limit = parseInt(rawLimit, 10) || env.DEFAULT_PAGE_LIMIT;
 
     if (page < 1) page = 1;
     if (limit < 1) limit = 1;
@@ -28,4 +35,4 @@ function buildPaginationMeta(total, page, limit) {
     };
 }
 
-module.exports = { parsePagination, buildPaginationMeta };
+module.exports = { parsePagination, normalizePagination, buildPaginationMeta };

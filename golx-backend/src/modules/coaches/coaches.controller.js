@@ -2,8 +2,9 @@ const ApiResponse = require('../../shared/api-response.js');
 const { parsePagination, buildPaginationMeta } = require('../../shared/pagination.js');
 
 class CoachesController {
-    constructor(coachesService) {
+    constructor(coachesService, totpService) {
         this.service = coachesService;
+        this.totpService = totpService;
     }
 
     list = async (req, res, next) => {
@@ -339,6 +340,58 @@ class CoachesController {
             const data = await this.service.removeCoachAccess(req.params.id, req.user.academyId, req.params.branchId);
             res.json(ApiResponse.success(data));
         } catch (err) { next(err); }
+    };
+
+    setupCoachMfa = async (req, res, next) => {
+        try {
+            const coach = await this.service.getCoach(req.params.id, req.user.academyId);
+            if (!coach.user_id) {
+                return res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Coach has no linked login account'));
+            }
+            const data = await this.totpService.setupManagedDevice(coach.user_id, {
+                deviceName: req.body.deviceName || `${coach.full_name || 'Coach'} phone`,
+                resetExisting: Boolean(req.body.resetExisting),
+            });
+            return res.json(ApiResponse.success({
+                ...data,
+                coachId: coach.id,
+                coachName: coach.full_name,
+            }));
+        } catch (err) { return next(err); }
+    };
+
+    verifyCoachMfa = async (req, res, next) => {
+        try {
+            const coach = await this.service.getCoach(req.params.id, req.user.academyId);
+            if (!coach.user_id) {
+                return res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Coach has no linked login account'));
+            }
+            const data = await this.totpService.verifyManagedDevice(
+                coach.user_id,
+                req.body.deviceId,
+                req.body.token,
+            );
+            return res.json(ApiResponse.success({
+                ...data,
+                coachId: coach.id,
+                coachName: coach.full_name,
+            }));
+        } catch (err) { return next(err); }
+    };
+
+    regenerateCoachMfaBackupCodes = async (req, res, next) => {
+        try {
+            const coach = await this.service.getCoach(req.params.id, req.user.academyId);
+            if (!coach.user_id) {
+                return res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Coach has no linked login account'));
+            }
+            const data = await this.totpService.regenerateManagedBackupCodes(coach.user_id);
+            return res.json(ApiResponse.success({
+                ...data,
+                coachId: coach.id,
+                coachName: coach.full_name,
+            }));
+        } catch (err) { return next(err); }
     };
 
     getPerformance = async (req, res, next) => {

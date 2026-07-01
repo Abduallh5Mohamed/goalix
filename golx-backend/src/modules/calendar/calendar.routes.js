@@ -3,6 +3,7 @@ const { Router } = require("express");
 const validate = require("../../middleware/validate.middleware");
 const { authMiddleware } = require("../../middleware/auth.middleware");
 const { rbac, restrictTo } = require("../../middleware/rbac.middleware");
+const { uploadLimiter } = require("../../middleware/rateLimit.middleware");
 const schema = require("./calendar.schema");
 
 function adminCalendarRoutes(controller) {
@@ -735,6 +736,7 @@ function playerCalendarRoutes(controller) {
   );
   router.post(
     "/assignments/upload",
+    uploadLimiter,
     assignmentUpload,
     controller.playerUploadAssignmentFile,
   );

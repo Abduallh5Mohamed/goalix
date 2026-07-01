@@ -37,6 +37,7 @@ import { useCurrentUser } from "@/lib/auth/auth-context";
 import { hasAuthSessionMarker } from "@/lib/auth/session";
 import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { getApiBaseUrl, getSocketBaseUrl } from "@/lib/api/baseUrl";
+import { applyCsrfHeader, ensureCsrfToken, isMutatingMethod, refreshCsrfToken } from "@/lib/api/csrf";
 import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { loginSuccess, logout } from "@/lib/store/slices/authSlice";
@@ -248,7 +249,7 @@ type ContactsResponse = {
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
-  error?: { message?: string };
+  error?: { code?: string; message?: string };
 };
 
 function mapApiUser(apiUser: Record<string, unknown>) {
@@ -277,6 +278,10 @@ async function apiJson<T>(path: string, init?: RequestInit, retry = true): Promi
   if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  if (isMutatingMethod(init?.method)) {
+    await ensureCsrfToken();
+  }
+  applyCsrfHeader(headers);
 
   const res = await fetch(`${API_BASE}/api/v1/chat${path}`, {
     credentials: "include",
@@ -290,6 +295,14 @@ async function apiJson<T>(path: string, init?: RequestInit, retry = true): Promi
   }
 
   const payload = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
+  if (
+    res.status === 403 &&
+    payload?.error?.code === "CSRF_TOKEN_REJECTED" &&
+    retry
+  ) {
+    await refreshCsrfToken();
+    return apiJson<T>(path, init, false);
+  }
   if (!res.ok || !payload?.success) {
     throw new Error(payload?.error?.message || "Chat request failed");
   }

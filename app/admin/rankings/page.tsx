@@ -331,7 +331,7 @@ function MonthlyDetailedHistory({
 
 export default function AdminRankingsOverviewPage() {
   const [selectedGroup, setSelectedGroup] = useState("all");
-  const [rankingLimit, setRankingLimit] = useState(200);
+  const [rankingLimit, setRankingLimit] = useState(100);
   const queryArgs =
     selectedGroup !== "all"
       ? { groupId: selectedGroup, limit: rankingLimit }
@@ -383,7 +383,7 @@ export default function AdminRankingsOverviewPage() {
     Boolean(pagination?.total) && rows.length < Number(pagination?.total ?? 0);
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
-    setRankingLimit(200);
+    setRankingLimit(100);
   };
 
   return (
@@ -610,7 +610,7 @@ export default function AdminRankingsOverviewPage() {
                   variant="outline"
                   onClick={() =>
                     setRankingLimit((value) =>
-                      Math.min(value + 200, pagination?.total ?? value + 200),
+                      Math.min(value + 100, pagination?.total ?? value + 100),
                     )
                   }
                   disabled={isLoading}

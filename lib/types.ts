@@ -29,6 +29,7 @@ export interface User {
   avatarUrl?: string;
   phone?: string;
   linkedPlayerId?: string | null;
+  totpEnabled?: boolean;
   createdAt: string;
 }
 

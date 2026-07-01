@@ -1,6 +1,3 @@
-const path = require('node:path');
-const fs = require('node:fs/promises');
-const { randomUUID } = require('node:crypto');
 const eventBus = require('../../events/eventBus');
 const COACHES_EVENTS = require('./coaches.events');
 const { BadRequestError, ForbiddenError, NotFoundError } = require('../../shared/errors');
@@ -623,6 +620,9 @@ class CoachesService {
             extension: typeInfo.extension,
             buffer,
             contentType: normalizedMimeType,
+            uploaderId: user.userId,
+            entityType: 'coach_assignment_file',
+            isSensitive: true,
         });
 
         return {
@@ -648,15 +648,20 @@ class CoachesService {
         }
 
         const fileName = sanitizeFileName(originalName || 'coach-image');
-        const academySegment = String(user.academyId || 'shared').replace(/[^a-zA-Z0-9-]/g, '');
-        const storedName = `${Date.now()}-${randomUUID()}${typeInfo.extension}`;
-        const uploadDir = path.resolve(__dirname, '../../../uploads/coaches', academySegment);
-        await fs.mkdir(uploadDir, { recursive: true });
-        await fs.writeFile(path.join(uploadDir, storedName), buffer);
+        const upload = await storage.putUpload({
+            scope: 'coaches',
+            academyId: user.academyId,
+            extension: typeInfo.extension,
+            buffer,
+            contentType: normalizedMimeType,
+            uploaderId: user.userId,
+            entityType: 'coach_image',
+            isSensitive: false,
+        });
 
         return {
             fileName,
-            image: `/uploads/coaches/${academySegment}/${storedName}`,
+            image: upload.url,
             mimeType: normalizedMimeType,
             sizeBytes: buffer.length,
         };
@@ -689,6 +694,13 @@ class CoachesService {
             created_by: adminUserId,
             admin_notes: data.adminNotes || null,
         }, this._mapAssignmentFiles(data.attachments, adminUserId));
+        await storage.attachMediaToEntity((data.attachments || []).map((file) => file.fileUrl), {
+            academyId,
+            scope: 'assignments',
+            entityType: 'coach_assignment',
+            entityId: assignment.id,
+            isSensitive: true,
+        });
 
         eventBus.publish(COACHES_EVENTS.UPDATED, { coachId: coach.id, assignmentId: assignment.id });
         return this.getAssignment(academyId, assignment.id);
@@ -714,6 +726,13 @@ class CoachesService {
             data.coachNotes,
             this._mapAssignmentFiles(data.files, userId),
         );
+        await storage.attachMediaToEntity((data.files || []).map((file) => file.fileUrl), {
+            academyId,
+            scope: 'assignments',
+            entityType: 'coach_assignment',
+            entityId: assignmentId,
+            isSensitive: true,
+        });
 
         eventBus.publish(COACHES_EVENTS.UPDATED, { coachId: coach.id, assignmentId });
         return this._shapeAssignment({

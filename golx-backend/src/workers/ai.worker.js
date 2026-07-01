@@ -2,6 +2,17 @@ const { Worker } = require('bullmq');
 const env = require('../config/env');
 const logger = require('../shared/logger');
 
+function providerNotConfigured(job, feature, metadata = {}) {
+    const result = {
+        skipped: true,
+        reason: 'provider_not_configured',
+        feature,
+        ...metadata,
+    };
+    logger.warn({ jobId: job.id, name: job.name, result }, 'AI worker skipped job because no provider is configured');
+    return result;
+}
+
 /**
  * AI Worker
  * Jobs: calculate-performance, assess-injury-risk, generate-nutrition-plan, ai-chat
@@ -15,33 +26,24 @@ function createAiWorker(redisConnection) {
             switch (job.name) {
                 case 'calculate-performance': {
                     const { playerId } = job.data;
-                    // TODO: gather player data, call AI model / algorithm, return score + breakdown
-                    logger.debug({ playerId }, 'Calculating AI performance score');
-                    break;
+                    return providerNotConfigured(job, 'calculate-performance', { playerId });
                 }
                 case 'assess-injury-risk': {
                     const { playerId } = job.data;
-                    // TODO: gather injury history, training load, call model
-                    logger.debug({ playerId }, 'Assessing injury risk');
-                    break;
+                    return providerNotConfigured(job, 'assess-injury-risk', { playerId });
                 }
                 case 'generate-nutrition-plan': {
                     const { playerId } = job.data;
-                    // TODO: call AI model with player profile + goals + restrictions
-                    logger.debug({ playerId }, 'Generating nutrition plan');
-                    break;
+                    return providerNotConfigured(job, 'generate-nutrition-plan', { playerId });
                 }
                 case 'ai-chat': {
                     const { userId } = job.data;
-                    // TODO: call LLM API with prompt + context
-                    logger.debug({ userId }, 'Processing AI chat');
-                    break;
+                    return providerNotConfigured(job, 'ai-chat', { userId });
                 }
                 default:
                     logger.warn({ name: job.name }, 'Unknown AI job');
+                    return { skipped: true, reason: 'unknown_job', name: job.name };
             }
-
-            logger.debug({ jobId: job.id }, 'AI worker: completed');
         },
         { connection: redisConnection, concurrency: 2 }
     );

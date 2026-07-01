@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { DashboardFrame } from "@/components/layout/DashboardFrame";
 import { DashboardAccessState } from "@/components/auth/DashboardAccessState";
 import { useCurrentUser } from "@/lib/auth/auth-context";
@@ -11,7 +12,8 @@ export default function CoachLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isInitialized, role } = useCurrentUser();
+  const { isAuthenticated, isInitialized, role, mfaSetupRequired } = useCurrentUser();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -22,10 +24,12 @@ export default function CoachLayout({
         ? role
           ? ROLE_ROUTES[role]
           : "/admin-login"
+        : mfaSetupRequired && pathname !== "/coach/settings"
+          ? "/coach/settings"
         : null;
 
     if (destination) window.location.replace(destination);
-  }, [isAuthenticated, isInitialized, role]);
+  }, [isAuthenticated, isInitialized, mfaSetupRequired, pathname, role]);
 
   if (!isInitialized || !isAuthenticated || role !== "coach") {
     return (

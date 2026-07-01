@@ -139,6 +139,10 @@ async function getIamPermissionCodes(user, db) {
     const rows = await query;
     const grants = new Set();
     const denies = new Set();
+    if (user.role === 'admin') {
+        grants.add('access_admin_dashboard');
+        grants.add('admin.dashboard.access');
+    }
     for (const row of rows) {
         if (row.denied) denies.add(row.code);
         else grants.add(row.code);

@@ -46,6 +46,7 @@ async function main() {
         logger.info({ signal }, 'Shutting down gracefully...');
         server.close(async () => {
             io.close();
+            app.locals.backgroundAutomations?.stop?.();
             await stopWorkers(workers);
             logger.info('Server closed');
             process.exit(0);
