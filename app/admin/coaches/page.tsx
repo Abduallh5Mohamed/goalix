@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable, Column } from "@/components/shared/DataTable";
@@ -19,14 +20,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getInitials } from "@/lib/utils";
-import { AlertTriangle, Loader2, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserX } from "lucide-react";
+import { AlertTriangle, KeyRound, Loader2, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import {
   useCreateCoachMutation,
   useGetCoachesQuery,
   useGetBranchesQuery,
   useHardDeleteCoachMutation,
+  useRegenerateCoachMfaBackupCodesMutation,
   useRegisterUserMutation,
+  useSetupCoachMfaMutation,
   useUpdateCoachMutation,
+  useVerifyCoachMfaMutation,
+  type Setup2FAResponse,
   type CoachRole,
   type CoachRow,
 } from "@/lib/store/api/adminApi";
@@ -169,12 +174,23 @@ export default function CoachesPage() {
   const [deleteCoachRow, setDeleteCoachRow] = useState<CoachRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [mfaCoach, setMfaCoach] = useState<CoachRow | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<Setup2FAResponse | null>(null);
+  const [mfaDeviceName, setMfaDeviceName] = useState("Coach phone");
+  const [mfaToken, setMfaToken] = useState("");
+  const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([]);
+  const [mfaError, setMfaError] = useState("");
+  const [mfaMessage, setMfaMessage] = useState("");
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
   const [registerUser, { isLoading: isRegistering }] = useRegisterUserMutation();
   const [createCoach, { isLoading: isCreatingCoach }] = useCreateCoachMutation();
   const [updateCoach, { isLoading: isUpdatingCoach }] = useUpdateCoachMutation();
   const [hardDeleteCoach, { isLoading: isDeletingCoach }] = useHardDeleteCoachMutation();
+  const [setupCoachMfa, { isLoading: isSettingUpMfa }] = useSetupCoachMfaMutation();
+  const [verifyCoachMfa, { isLoading: isVerifyingMfa }] = useVerifyCoachMfaMutation();
+  const [regenerateCoachMfaBackupCodes, { isLoading: isRegeneratingCoachBackupCodes }] =
+    useRegenerateCoachMfaBackupCodesMutation();
   const { data, isLoading, isError, refetch } = useGetCoachesQuery({ limit: 50 });
   const { data: branches } = useGetBranchesQuery();
   const isSaving = isRegistering || isCreatingCoach;
@@ -254,6 +270,70 @@ export default function CoachesPage() {
       }).unwrap();
     } catch (err) {
       setActionError(getApiErrorMessage(err, "Could not update coach status."));
+    }
+  };
+
+  const openCoachMfa = (coach: CoachRow) => {
+    setMfaCoach(coach);
+    setMfaSetup(null);
+    setMfaToken("");
+    setMfaBackupCodes([]);
+    setMfaError("");
+    setMfaMessage("");
+    setMfaDeviceName(`${coach.full_name} phone`);
+  };
+
+  const handleSetupCoachMfa = async (resetExisting = false) => {
+    if (!mfaCoach) return;
+    setMfaError("");
+    setMfaMessage("");
+    setMfaBackupCodes([]);
+    try {
+      const result = await setupCoachMfa({
+        coachId: mfaCoach.id,
+        deviceName: mfaDeviceName.trim() || `${mfaCoach.full_name} phone`,
+        resetExisting,
+      }).unwrap();
+      setMfaSetup(result);
+      setMfaMessage(resetExisting ? "Coach MFA was reset. Scan the new QR code." : "Scan this QR code with the coach authenticator app.");
+    } catch (err) {
+      setMfaError(getApiErrorMessage(err, "Could not start coach MFA setup."));
+    }
+  };
+
+  const handleVerifyCoachMfa = async () => {
+    if (!mfaCoach || !mfaSetup?.deviceId) return;
+    setMfaError("");
+    setMfaMessage("");
+    if (!/^\d{6}$/.test(mfaToken.trim())) {
+      setMfaError("Enter the 6-digit code from the coach phone.");
+      return;
+    }
+    try {
+      const result = await verifyCoachMfa({
+        coachId: mfaCoach.id,
+        deviceId: mfaSetup.deviceId,
+        token: mfaToken.trim(),
+      }).unwrap();
+      setMfaBackupCodes(result.backupCodes || []);
+      setMfaMessage("Coach MFA is active now.");
+      setMfaToken("");
+      void refetch();
+    } catch (err) {
+      setMfaError(getApiErrorMessage(err, "Invalid MFA code."));
+    }
+  };
+
+  const handleRegenerateCoachBackupCodes = async () => {
+    if (!mfaCoach) return;
+    setMfaError("");
+    setMfaMessage("");
+    try {
+      const result = await regenerateCoachMfaBackupCodes({ coachId: mfaCoach.id }).unwrap();
+      setMfaBackupCodes(result.backupCodes || []);
+      setMfaMessage("New coach backup codes generated. Old coach backup codes are no longer valid.");
+    } catch (err) {
+      setMfaError(getApiErrorMessage(err, "Could not generate coach backup codes."));
     }
   };
 
@@ -348,6 +428,16 @@ export default function CoachesPage() {
               <UserX className="h-3.5 w-3.5" />
             )}
             {row.is_active === false ? "Activate" : "Deactivate"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => openCoachMfa(row)}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {row.totp_enabled ? "2FA On" : "Setup MFA"}
           </Button>
           <Button
             type="button"
@@ -643,6 +733,154 @@ export default function CoachesPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(mfaCoach)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setMfaCoach(null);
+            setMfaSetup(null);
+            setMfaToken("");
+            setMfaBackupCodes([]);
+            setMfaError("");
+            setMfaMessage("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Coach MFA</DialogTitle>
+            <DialogDescription>
+              Add an authenticator device for {mfaCoach?.full_name ?? "this coach"}. The code must come from the coach device, not the admin device.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="rounded-lg border border-border/70 bg-card/50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="coach-mfa-device-name">Device name</Label>
+                  <Input
+                    id="coach-mfa-device-name"
+                    value={mfaDeviceName}
+                    onChange={(event) => setMfaDeviceName(event.target.value)}
+                    placeholder="Coach phone"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="gap-2"
+                  disabled={isSettingUpMfa}
+                  onClick={() => handleSetupCoachMfa(false)}
+                >
+                  {isSettingUpMfa ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  {mfaCoach?.totp_enabled ? "Add Device" : "Start Setup"}
+                </Button>
+                {mfaCoach?.totp_enabled && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isSettingUpMfa}
+                    onClick={() => handleSetupCoachMfa(true)}
+                  >
+                    Reset MFA
+                  </Button>
+                )}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                The authenticator entry will show as Goalix Academy Coach on the coach phone.
+              </p>
+            </div>
+
+            {mfaSetup && (
+              <div className="grid gap-5 rounded-lg border border-border/70 bg-card/40 p-4 sm:grid-cols-[220px_1fr]">
+                <div className="flex justify-center rounded-lg bg-white p-3">
+                  <Image
+                    src={mfaSetup.qrCode}
+                    alt="Coach MFA QR code"
+                    width={192}
+                    height={192}
+                    unoptimized
+                  />
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Issuer</Label>
+                    <Input value={mfaSetup.issuer ?? "Goalix Academy Coach"} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Manual secret</Label>
+                    <Input value={mfaSetup.secret} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="coach-mfa-token">6-digit coach code</Label>
+                    <Input
+                      id="coach-mfa-token"
+                      value={mfaToken}
+                      onChange={(event) => setMfaToken(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="123456"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    className="gap-2"
+                    disabled={isVerifyingMfa || mfaToken.length !== 6}
+                    onClick={handleVerifyCoachMfa}
+                  >
+                    {isVerifyingMfa && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Verify Coach Device
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {mfaCoach?.totp_enabled && (
+              <div className="rounded-lg border border-border/70 bg-card/40 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Coach backup codes</p>
+                    <p className="text-sm text-muted-foreground">
+                      Generate replacement backup codes for this coach. Old coach codes will stop working.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={isRegeneratingCoachBackupCodes}
+                    onClick={handleRegenerateCoachBackupCodes}
+                  >
+                    {isRegeneratingCoachBackupCodes ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <KeyRound className="h-4 w-4" />
+                    )}
+                    Generate Codes
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {mfaBackupCodes.length > 0 && (
+              <div className="rounded-lg border border-lime-400/30 bg-lime-400/10 p-4">
+                <p className="font-medium text-lime-200">Backup codes</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {mfaBackupCodes.map((code) => (
+                    <code key={code} className="rounded-md bg-background/70 px-3 py-2 text-sm text-foreground">
+                      {code}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mfaMessage && <p className="text-sm text-lime-300">{mfaMessage}</p>}
+            {mfaError && <p className="text-sm text-red-400">{mfaError}</p>}
+          </div>
         </DialogContent>
       </Dialog>
 

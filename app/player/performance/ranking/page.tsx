@@ -74,7 +74,7 @@ function EmptyState({ text }: { text: string }) {
 export default function PlayerRankingPage() {
   const profileQuery = useGetPlayerProfileQuery();
   const profile = profileQuery.data;
-  const rankingsQuery = useGetPlayerRankingSystemInputsQuery({ limit: 200 });
+  const rankingsQuery = useGetPlayerRankingSystemInputsQuery({ limit: 100 });
   const rows = rankingsQuery.data?.data ?? [];
   const completedRows = rows.filter((row) => isActualCompletedRankingRow(row));
   const latestWeek = latestCompletedRankingWeekKey(rows);

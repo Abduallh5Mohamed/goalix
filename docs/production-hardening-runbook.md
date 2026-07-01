@@ -22,6 +22,22 @@ Required production environment:
 - `CSRF_SECRET`
 - `MFA_ENFORCED_ROLES=admin,coach`
 
+Recommended database/runtime guards:
+
+- Put PgBouncer or managed connection pooling between API instances and PostgreSQL before scaling beyond one API instance.
+- Keep `DB_POOL_MAX` small per API process, usually `8-12`, and scale API instances horizontally through the load balancer.
+- `DB_APPLICATION_NAME=goalix-api`
+- `DB_STATEMENT_TIMEOUT_MS=30000`
+- `DB_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS=10000`
+- `DB_LOCK_TIMEOUT_MS=5000`
+
+Background automations:
+
+- In production, keep `BULLMQ_WORKERS_ENABLED=false` in API containers.
+- Prefer enabling `BACKGROUND_AUTOMATIONS_ENABLED=true` and `INJURY_RISK_AUTOMATION_ENABLED=true` on worker containers only.
+- Automations use Redis locks, so duplicate worker/API instances should not run the same scheduled task at the same time.
+- `NOTIFICATION_CLEANUP_ENABLED=true` keeps old notification data pruned according to `NOTIFICATION_RETENTION_MONTHS`.
+
 For S3-compatible upload storage:
 
 - `STORAGE_PROVIDER=s3`

@@ -14,6 +14,22 @@ const db = knex({
         acquireTimeoutMillis: 10000,
         idleTimeoutMillis: 30000,
         reapIntervalMillis: 1000,
+        afterCreate(connection, done) {
+            const statements = [
+                `SET application_name TO '${String(env.DB_APPLICATION_NAME).replace(/'/g, "''")}'`,
+                env.DB_STATEMENT_TIMEOUT_MS > 0
+                    ? `SET statement_timeout TO ${env.DB_STATEMENT_TIMEOUT_MS}`
+                    : null,
+                env.DB_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS > 0
+                    ? `SET idle_in_transaction_session_timeout TO ${env.DB_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS}`
+                    : null,
+                env.DB_LOCK_TIMEOUT_MS > 0
+                    ? `SET lock_timeout TO ${env.DB_LOCK_TIMEOUT_MS}`
+                    : null,
+            ].filter(Boolean).join('; ');
+
+            connection.query(statements, (err) => done(err, connection));
+        },
     },
     acquireConnectionTimeout: 10000,
 });

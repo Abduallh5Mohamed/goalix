@@ -919,7 +919,7 @@ function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
 
 export default function CoachRankingsPage() {
   const { data, isLoading, isError, refetch } =
-    useGetCoachRankingSystemInputsQuery({ limit: 200 });
+    useGetCoachRankingSystemInputsQuery({ limit: 100 });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const completedRows = useMemo(

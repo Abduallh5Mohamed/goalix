@@ -3,6 +3,7 @@ const multer = require("multer");
 const validate = require("../../middleware/validate.middleware");
 const { authMiddleware } = require("../../middleware/auth.middleware");
 const { restrictTo } = require("../../middleware/rbac.middleware");
+const { chatWriteLimiter, uploadLimiter } = require("../../middleware/rateLimit.middleware");
 const { BadRequestError } = require("../../shared/errors");
 const schema = require("./chat.schema");
 
@@ -55,11 +56,14 @@ function chatRoutes(controller) {
   );
   router.patch(
     "/conversations/:id/read",
+    chatWriteLimiter,
     validate({ params: schema.idParam }),
     controller.markConversationRead,
   );
   router.post(
     "/conversations/:id/messages",
+    chatWriteLimiter,
+    uploadLimiter,
     handleImageUpload,
     validate({ params: schema.idParam, body: schema.messageBodySchema }),
     controller.sendMessage,

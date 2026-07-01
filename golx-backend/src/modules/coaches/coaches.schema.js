@@ -105,6 +105,16 @@ const coachAccessSchema = z
     }
   });
 
+const coachMfaSetupSchema = z.object({
+  deviceName: z.string().trim().min(2).max(120).optional(),
+  resetExisting: z.boolean().optional(),
+});
+
+const coachMfaVerifySchema = z.object({
+  deviceId: z.string().uuid(),
+  token: z.string().length(6, "TOTP code must be 6 digits").regex(/^\d{6}$/, "TOTP code must be 6 digits"),
+});
+
 const createCoachGroupSchema = z
   .object({
     branchId: z.string().uuid(),
@@ -351,6 +361,8 @@ module.exports = {
   coachAccessQuerySchema,
   coachAccessBranchParam,
   coachAccessSchema,
+  coachMfaSetupSchema,
+  coachMfaVerifySchema,
     createCoachGroupSchema,
     updateCoachGroupSchema,
   coachSessionsQuery,

@@ -23,7 +23,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isInitialized, role } = useCurrentUser();
+  const { isAuthenticated, isInitialized, role, mfaSetupRequired } = useCurrentUser();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -35,10 +35,12 @@ export default function AdminLayout({
         ? role
           ? destinationForRole(role, pathname)
           : "/admin-login"
+        : mfaSetupRequired && pathname !== "/admin/settings"
+          ? "/admin/settings"
         : null;
 
     if (destination) window.location.replace(destination);
-  }, [isAuthenticated, isInitialized, pathname, role]);
+  }, [isAuthenticated, isInitialized, mfaSetupRequired, pathname, role]);
 
   if (!isInitialized || !isAuthenticated || role !== "admin") {
     return (

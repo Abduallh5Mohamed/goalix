@@ -35,6 +35,8 @@ type ApiUser = {
   role: UserRole;
   avatar_url?: string | null;
   phone?: string | null;
+  totpEnabled?: boolean;
+  totp_enabled?: boolean;
   created_at?: string | null;
 };
 
@@ -57,6 +59,7 @@ function mapApiUser(apiUser: ApiUser, fallbackName: string) {
     role: apiUser.role,
     avatarUrl: apiUser.avatar_url ?? "",
     phone: apiUser.phone ?? "",
+    totpEnabled: Boolean(apiUser.totpEnabled ?? apiUser.totp_enabled),
     createdAt: apiUser.created_at ?? new Date().toISOString(),
   };
 }
@@ -79,7 +82,7 @@ export default function AdminLoginPage() {
     const user = mapApiUser(apiUser, identifier.trim());
     rememberAuthSession();
     resetApiState(dispatch);
-    dispatch(loginSuccess({ user, role: user.role }));
+    dispatch(loginSuccess({ user, role: user.role, mfaSetupRequired }));
     if (mfaSetupRequired && (user.role === "admin" || user.role === "coach")) {
       router.push(user.role === "admin" ? "/admin/settings" : "/coach/settings");
       return;

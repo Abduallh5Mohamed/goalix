@@ -63,7 +63,7 @@ export default function WeeklyRankingsPage() {
   const [selectedGroup, setSelectedGroup] = useState("all");
 
   const { data, isLoading, isError, refetch } = useGetAdminRankingSystemInputsQuery(
-    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 200 } : { limit: 200 }
+    selectedGroup !== "all" ? { groupId: selectedGroup, limit: 100 } : { limit: 100 }
   );
   const { data: groups } = useGetGroupsQuery({});
 

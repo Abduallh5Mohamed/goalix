@@ -1247,6 +1247,7 @@ const adminNavPermissions: Record<string, string[]> = {
   "/admin/coaches/assign": ["manage_coaches", "coach.update"],
   "/admin/coaches/assignments": ["manage_coaches", "coach.update"],
   "/admin/players": ["manage_players", "player.read.academy", "player.read.branch"],
+  "/admin/parents": ["manage_users", "admin.user.read", "admin.user.update"],
   "/admin/calendar": ["manage_schedules", "calendar.manage.academy"],
   "/admin/matches": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
   "/admin/matches/archive": ["manage_schedules", "calendar.manage.academy", "ranking.read.academy"],
@@ -1530,6 +1531,7 @@ export function DashboardFrame({
   const router = useRouter();
   const authState = useCurrentUser();
   const { user } = authState;
+  const mfaSetupRequired = Boolean(authState.mfaSetupRequired);
   const { logout } = useAuth();
   const contentRef = useRef<HTMLDivElement>(null);
   const messageMenuRef = useRef<HTMLDivElement>(null);
@@ -1538,14 +1540,14 @@ export function DashboardFrame({
     isLoading: coachPermissionsLoading,
     isFetching: coachPermissionsFetching,
   } = useCoachPermissions({
-    skip: role !== "coach" || !authState.isAuthenticated,
+    skip: role !== "coach" || !authState.isAuthenticated || mfaSetupRequired,
   });
   const {
     data: currentPermissions,
     isLoading: adminPermissionsLoading,
     isFetching: adminPermissionsFetching,
   } = useGetCurrentPermissionsQuery(user?.id, {
-    skip: role !== "admin" || !authState.isAuthenticated,
+    skip: role !== "admin" || !authState.isAuthenticated || mfaSetupRequired,
   });
   const adminPermissionSet = useMemo(
     () => new Set(currentPermissions?.permissions ?? []),
@@ -1553,10 +1555,21 @@ export function DashboardFrame({
   );
   const nav = useMemo(() => {
     const items = NAV_ITEMS[role] as NavItem[];
+    if (mfaSetupRequired) {
+      const settingsHref = settingsRoutes[role];
+      return settingsHref
+        ? items
+            .map((item) => {
+              const children = item.children?.filter((child) => child.href === settingsHref);
+              return children ? { ...item, children } : item;
+            })
+            .filter((item) => item.href === settingsHref || Boolean(item.children?.length))
+        : items;
+    }
     if (role === "admin") return filterAdminNav(items, adminPermissionSet);
     if (role !== "coach") return items;
     return filterCoachNav(items, coachCan);
-  }, [adminPermissionSet, coachCan, role]);
+  }, [adminPermissionSet, coachCan, mfaSetupRequired, role]);
   const hasSettingsInMainNav = useMemo(
     () =>
       nav.some((item) =>
@@ -1578,12 +1591,13 @@ export function DashboardFrame({
     (Boolean(adminPagePermissions) &&
       (adminPermissionsLoading || adminPermissionsFetching));
   const pagePermissionDenied =
-    (Boolean(pagePermission) &&
+    !mfaSetupRequired &&
+    ((Boolean(pagePermission) &&
     !pagePermissionLoading &&
       !coachCan(pagePermission as CoachPermission)) ||
     (Boolean(adminPagePermissions) &&
       !pagePermissionLoading &&
-      !hasAnyPermission(adminPermissionSet, adminPagePermissions || undefined));
+      !hasAnyPermission(adminPermissionSet, adminPagePermissions || undefined)));
 
   useEffect(() => {
     if (

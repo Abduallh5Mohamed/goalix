@@ -147,8 +147,10 @@ class PlayersService {
     if (user.role === "parent")
       return {
         academyId: user.academyId,
-        linkedPlayerId: user.linkedPlayerId,
         ...filters,
+        linkedPlayerIds: (await this.repo.findChildrenByParent(user.userId)).map(
+          (child) => child.id,
+        ),
       };
     throw new ForbiddenError("Unsupported role");
   }
@@ -157,6 +159,14 @@ class PlayersService {
     if (user.academyId && player.academy_id !== user.academyId)
       throw new NotFoundError("Player", player.id);
     if (canAccessPlayerRecord(user, player, { write })) return;
+    if (user.role === "parent" && !write) {
+      const parentCanAccess = await this.repo.isParentOfPlayer(
+        user.userId,
+        player.id,
+      );
+      if (canAccessPlayerRecord(user, player, { write, parentCanAccess }))
+        return;
+    }
     if (user.role === "coach") {
       const coach = await this.repo.findCoachProfileByUserId(user.userId);
       const coachCanAccess = coach

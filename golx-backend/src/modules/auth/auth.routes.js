@@ -32,10 +32,10 @@ function authRoutes(controller) {
         next();
     };
     const allow2FASelfService = (req, res, next) => {
-        if (['admin', 'coach'].includes(req.user?.role)) return next();
+        if (req.user?.role === 'admin') return next();
         return res.status(403).json({
             success: false,
-            error: { code: 'FORBIDDEN', message: '2FA self-service is not available for this role' },
+            error: { code: 'FORBIDDEN', message: '2FA management is available to administrators only' },
         });
     };
     const adminLoginLimiter = process.env.NODE_ENV === 'development'

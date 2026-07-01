@@ -17,127 +17,20 @@ const errorHandler = require('./middleware/errorHandler.middleware');
 const { authMiddleware } = require('./middleware/auth.middleware');
 const { apiLimiter } = require('./middleware/rateLimit.middleware');
 const { requireCsrfToken, setCsrfCookie } = require('./middleware/csrf.middleware');
+const ApiResponse = require('./shared/api-response');
 const storage = require('./shared/storage');
+const { canAccessMediaFile } = require('./shared/upload-access');
+const { auditAccessDenied } = require('./shared/access-audit');
 const { createApplicationServices } = require('./bootstrap/service-factory');
 const { mountApplicationRoutes } = require('./bootstrap/route-registry');
+const { startBackgroundAutomations } = require('./bootstrap/background-automations');
 
 const { controllers, services } = createApplicationServices();
-const { calendarService, chatService, notificationsService } = services;
+const { chatService } = services;
 
 const app = express();
 app.locals.services = { chatService };
-
-const backgroundAutomationsEnabled =
-    env.BACKGROUND_AUTOMATIONS_ENABLED ?? false;
-const injuryRiskAutomationEnabled =
-    env.INJURY_RISK_AUTOMATION_ENABLED ?? false;
-
-if (env.NODE_ENV !== 'test' && backgroundAutomationsEnabled) {
-    let reminderScanRunning = false;
-    const runReminderScans = async () => {
-        if (reminderScanRunning) {
-            logger.debug('Reminder scan skipped because the previous run is still active');
-            return;
-        }
-
-        reminderScanRunning = true;
-        try {
-            const scans = [
-                ['Match day', calendarService.notifyDueMatchDays()],
-                ['Attendance QR', calendarService.notifyDueAttendanceQrReminders()],
-                ['Monthly measurement', calendarService.notifyDueMonthlyMeasurementReminders()],
-            ];
-            const results = await Promise.allSettled(scans.map(([, task]) => task));
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    logger.error(
-                        { err: result.reason },
-                        `${scans[index][0]} notification scan failed`,
-                    );
-                }
-            });
-        } finally {
-            reminderScanRunning = false;
-        }
-    };
-
-    const matchDayInterval = setInterval(runReminderScans, 60 * 1000);
-    matchDayInterval.unref?.();
-}
-
-if (env.NODE_ENV !== 'test' && injuryRiskAutomationEnabled) {
-    let injuryRiskRunActive = false;
-    const runWeeklyInjuryRisk = () => {
-        if (injuryRiskRunActive) {
-            logger.debug('Weekly injury risk automation skipped because the previous run is still active');
-            return;
-        }
-
-        injuryRiskRunActive = true;
-        calendarService
-            .runWeeklyInjuryRiskAutomation()
-            .then((summary) => {
-                if (summary.skipped) {
-                    logger.debug({ summary }, 'Weekly injury risk automation skipped');
-                    return;
-                }
-                logger.info({ summary }, 'Weekly injury risk automation completed');
-            })
-            .catch((err) => logger.error({ err }, 'Weekly injury risk automation failed'))
-            .finally(() => {
-                injuryRiskRunActive = false;
-            });
-    };
-    const injuryRiskInitialDelay = Number(
-        process.env.INJURY_RISK_WEEKLY_INITIAL_DELAY_MS || 30 * 1000,
-    );
-    const injuryRiskInterval = Number(
-        process.env.INJURY_RISK_WEEKLY_SCAN_INTERVAL_MS || 60 * 60 * 1000,
-    );
-    const injuryRiskTimeout = setTimeout(runWeeklyInjuryRisk, injuryRiskInitialDelay);
-    const injuryRiskWeeklyInterval = setInterval(runWeeklyInjuryRisk, injuryRiskInterval);
-    injuryRiskTimeout.unref?.();
-    injuryRiskWeeklyInterval.unref?.();
-}
-
-if (env.NODE_ENV !== 'test') {
-    let notificationCleanupRunning = false;
-    const runNotificationCleanup = async () => {
-        if (notificationCleanupRunning) {
-            logger.debug('Notification retention cleanup skipped because the previous run is still active');
-            return;
-        }
-
-        notificationCleanupRunning = true;
-        try {
-            const result = await notificationsService.cleanupExpiredNotifications();
-            if (result.deletedNotifications || result.deletedLogs) {
-                logger.info({ result }, 'Expired notifications cleaned up');
-            } else {
-                logger.debug({ result }, 'Expired notification cleanup completed with no deletions');
-            }
-        } catch (err) {
-            logger.error({ err }, 'Expired notification cleanup failed');
-        } finally {
-            notificationCleanupRunning = false;
-        }
-    };
-
-    const notificationCleanupInitialDelay = Number(
-        process.env.NOTIFICATION_CLEANUP_INITIAL_DELAY_MS || 10 * 1000,
-    );
-    const notificationCleanupInterval = env.NOTIFICATION_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
-    const notificationCleanupTimeout = setTimeout(
-        runNotificationCleanup,
-        notificationCleanupInitialDelay,
-    );
-    const notificationCleanupTimer = setInterval(
-        runNotificationCleanup,
-        notificationCleanupInterval,
-    );
-    notificationCleanupTimeout.unref?.();
-    notificationCleanupTimer.unref?.();
-}
+app.locals.backgroundAutomations = startBackgroundAutomations({ services });
 
 app.set('trust proxy', 1);
 
@@ -269,9 +162,15 @@ app.get('/ready', async (_req, res) => {
     });
 });
 
+app.get('/api/v1/csrf-token', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(ApiResponse.success({ csrfToken: res.locals.csrfToken }));
+});
+
 app.get('/uploads/*', authMiddleware, async (req, res, next) => {
     try {
         const relativePath = req.params[0] || '';
+        const normalizedPath = relativePath.replace(/\\/g, '/').replace(/^\/+/, '');
         const upload = await storage.getUpload(relativePath);
         if (!upload) {
             return res.status(400).json({
@@ -280,10 +179,40 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
             });
         }
 
-        if (relativePath.replace(/\\/g, '/').startsWith('chat/')) {
-            const attachmentUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+        if (normalizedPath.startsWith('chat/')) {
+            const attachmentUrl = `/uploads/${normalizedPath}`;
             const allowed = await chatService.canUserAccessAttachment(req.user, attachmentUrl);
             if (!allowed) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: 'File not found' },
+                });
+            }
+        } else {
+            const mediaFile = await storage.findUploadMetadata(normalizedPath);
+            const allowedByMetadata = mediaFile && await canAccessMediaFile(req.user, mediaFile, db);
+            const pathParts = normalizedPath.split('/');
+            const legacyScope = pathParts[0];
+            const legacyAcademyId = pathParts[1];
+            const sensitiveLegacyScopes = new Set(['assignments', 'player-assignments']);
+            const publicLegacyScopes = new Set(['coaches']);
+            const allowedLegacySameAcademy = !mediaFile
+                && legacyAcademyId
+                && legacyAcademyId === req.user.academyId
+                && (
+                    publicLegacyScopes.has(legacyScope)
+                    || (sensitiveLegacyScopes.has(legacyScope) && ['admin', 'coach'].includes(req.user.role))
+                );
+
+            if (!allowedByMetadata && !allowedLegacySameAcademy) {
+                if (mediaFile?.is_sensitive !== false) {
+                    await auditAccessDenied(db, req.user, {
+                        action: 'upload_access_denied',
+                        entityType: 'media_files',
+                        entityId: mediaFile?.id || null,
+                        reason: mediaFile ? 'policy_denied' : 'metadata_missing',
+                    });
+                }
                 return res.status(404).json({
                     success: false,
                     error: { code: 'NOT_FOUND', message: 'File not found' },

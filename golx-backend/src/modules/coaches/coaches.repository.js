@@ -6,6 +6,25 @@ class CoachesRepository extends BaseRepository {
         super('coach_profiles', db);
     }
 
+    async findById(id, trx) {
+        return (trx || this.db)('coach_profiles')
+            .leftJoin('auth_users', 'coach_profiles.user_id', 'auth_users.id')
+            .leftJoin('academy_branches as branch', 'coach_profiles.branch_id', 'branch.id')
+            .where('coach_profiles.id', id)
+            .whereNull('coach_profiles.deleted_at')
+            .select(
+                'coach_profiles.*',
+                'auth_users.username',
+                'auth_users.email as auth_email',
+                'auth_users.phone as auth_phone',
+                'auth_users.is_active',
+                'auth_users.totp_enabled',
+                'auth_users.totp_verified_at',
+                'branch.name as branch_name',
+            )
+            .first();
+    }
+
     async findCoaches(academyId, { page = 1, limit = 20 } = {}) {
         const query = this.db('coach_profiles')
             .whereNull('coach_profiles.deleted_at')
@@ -23,6 +42,8 @@ class CoachesRepository extends BaseRepository {
                 'auth_users.email as auth_email',
                 'auth_users.phone as auth_phone',
                 'auth_users.is_active',
+                'auth_users.totp_enabled',
+                'auth_users.totp_verified_at',
                 'branch.name as branch_name',
                 this.db.raw(`COALESCE((
                     SELECT json_agg(jsonb_build_object(

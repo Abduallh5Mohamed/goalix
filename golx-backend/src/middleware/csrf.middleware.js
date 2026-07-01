@@ -35,8 +35,11 @@ function isValidToken(token) {
 
 function setCsrfCookie(req, res, next) {
     const existing = req.cookies?.[COOKIE_NAME];
-    if (!isValidToken(existing)) {
-        res.cookie(COOKIE_NAME, createToken(), {
+    const token = isValidToken(existing) ? existing : createToken();
+    res.locals.csrfToken = token;
+
+    if (token !== existing) {
+        res.cookie(COOKIE_NAME, token, {
             httpOnly: false,
             secure: env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -64,6 +67,7 @@ function requireCsrfToken(req, res, next) {
 }
 
 module.exports = {
+    createToken,
     setCsrfCookie,
     requireCsrfToken,
 };

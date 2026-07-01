@@ -159,6 +159,46 @@ class TotpService {
         };
     }
 
+    async setupManagedDevice(userId, { deviceName, resetExisting = false } = {}) {
+        const user = await this.repo.findById(userId);
+        if (!user) throw new UnauthorizedError('User not found');
+        if (!['admin', 'coach'].includes(user.role)) {
+            throw new BadRequestError('Managed MFA setup is only available for admin and coach accounts');
+        }
+
+        if (resetExisting) {
+            await this.disableWithoutPassword(userId);
+        }
+
+        const currentUser = resetExisting ? await this.repo.findById(userId) : user;
+        if (!currentUser.totp_enabled) {
+            const result = await this.setup(userId);
+            if (deviceName) {
+                await this.repo.db('auth_totp_devices')
+                    .where({ id: result.deviceId, user_id: userId, status: 'pending' })
+                    .update({ device_name: deviceName, updated_at: new Date() });
+                result.deviceName = deviceName;
+            }
+            return result;
+        }
+
+        return this.setupDevice(userId, { deviceName });
+    }
+
+    async verifyManagedDevice(userId, deviceId, token) {
+        const user = await this.repo.findById(userId);
+        if (!user) throw new UnauthorizedError('User not found');
+        if (!user.totp_enabled) {
+            const pendingDevice = await this.repo.findTotpDeviceById(userId, deviceId);
+            if (!pendingDevice || pendingDevice.status !== 'pending') {
+                throw new BadRequestError('MFA device setup not found');
+            }
+            return this.verifyAndEnable(userId, token);
+        }
+        const device = await this.verifyDevice(userId, deviceId, token);
+        return { device, backupCodes: [] };
+    }
+
     async verifyDevice(userId, deviceId, token) {
         const device = await this.repo.findTotpDeviceById(userId, deviceId);
         if (!device || device.status !== 'pending') {
@@ -218,6 +258,21 @@ class TotpService {
         return { backupCodes };
     }
 
+    async regenerateManagedBackupCodes(userId) {
+        const user = await this.repo.findById(userId);
+        if (!user) throw new UnauthorizedError('User not found');
+        if (!user.totp_enabled) throw new UnauthorizedError('2FA is not enabled');
+        if (!['admin', 'coach'].includes(user.role)) {
+            throw new BadRequestError('Managed backup codes are only available for admin and coach accounts');
+        }
+
+        const { backupCodes, codeHashes } = generateBackupCodes();
+        await this.repo.deleteBackupCodes(userId);
+        await this.repo.createBackupCodes(userId, codeHashes);
+
+        return { backupCodes };
+    }
+
     async disable(userId, password) {
         const bcrypt = require('bcrypt');
         const user = await this.repo.findById(userId);
@@ -225,6 +280,24 @@ class TotpService {
 
         const isValid = await bcrypt.compare(password, user.password_hash);
         if (!isValid) throw new UnauthorizedError('Invalid password');
+
+        await this.repo.disableTotp(userId);
+        await this.repo.db('auth_totp_devices')
+            .where({ user_id: userId })
+            .whereNull('revoked_at')
+            .update({
+                status: 'revoked',
+                revoked_at: new Date(),
+                updated_at: new Date(),
+            });
+        await this.repo.deleteBackupCodes(userId);
+
+        return { message: '2FA disabled successfully' };
+    }
+
+    async disableWithoutPassword(userId) {
+        const user = await this.repo.findById(userId);
+        if (!user) throw new UnauthorizedError('User not found');
 
         await this.repo.disableTotp(userId);
         await this.repo.db('auth_totp_devices')

@@ -207,6 +207,8 @@ export interface CoachRow {
   rating: number | null;
   image?: string | null;
   photo_url: string | null;
+  totp_enabled?: boolean | null;
+  totp_verified_at?: string | null;
   created_at: string;
 }
 
@@ -220,9 +222,16 @@ export interface CoachDetail {
   email?: string;
   phone?: string;
   role?: CoachRole;
+  username?: string | null;
+  auth_email?: string | null;
+  auth_phone?: string | null;
+  is_active?: boolean | null;
+  branch_name?: string | null;
   specialization: string | null;
   bio: string | null;
   photo_url: string | null;
+  totp_enabled?: boolean | null;
+  totp_verified_at?: string | null;
   created_at: string;
 }
 
@@ -352,10 +361,14 @@ export interface Setup2FAResponse {
   issuer?: string;
   secret: string;
   qrCode: string;
+  coachId?: string;
+  coachName?: string;
 }
 
 export interface Verify2FASetupResponse {
   backupCodes: string[];
+  coachId?: string;
+  coachName?: string;
 }
 
 export interface MfaDevice {
@@ -986,6 +999,44 @@ export const adminApi = createApi({
     }),
 
     // ── Payments overview ────────────────────────────────────────────────
+    setupCoachMfa: builder.mutation<
+      Setup2FAResponse,
+      { coachId: string; deviceName?: string; resetExisting?: boolean }
+    >({
+      query: ({ coachId, deviceName, resetExisting }) => ({
+        url: `/coaches/${coachId}/mfa/setup`,
+        method: "POST",
+        body: { deviceName, resetExisting },
+      }),
+      transformResponse: (res: { data: Setup2FAResponse }) => res.data,
+      invalidatesTags: ["Coaches"],
+    }),
+
+    verifyCoachMfa: builder.mutation<
+      Verify2FASetupResponse,
+      { coachId: string; deviceId: string; token: string }
+    >({
+      query: ({ coachId, deviceId, token }) => ({
+        url: `/coaches/${coachId}/mfa/verify`,
+        method: "POST",
+        body: { deviceId, token },
+      }),
+      transformResponse: (res: { data: Verify2FASetupResponse }) => res.data,
+      invalidatesTags: ["Coaches"],
+    }),
+
+    regenerateCoachMfaBackupCodes: builder.mutation<
+      Verify2FASetupResponse,
+      { coachId: string }
+    >({
+      query: ({ coachId }) => ({
+        url: `/coaches/${coachId}/mfa/backup-codes/regenerate`,
+        method: "POST",
+      }),
+      transformResponse: (res: { data: Verify2FASetupResponse }) => res.data,
+      invalidatesTags: ["Coaches"],
+    }),
+
     getPaymentOverview: builder.query<PaymentOverviewItem[], void>({
       query: () => "/payments/overview",
       transformResponse: (res: { data: PaymentOverviewItem[] }) => res.data,
@@ -1565,6 +1616,9 @@ export const {
   useDeleteCoachMutation,
   useHardDeleteCoachMutation,
   useUploadCoachImageMutation,
+  useSetupCoachMfaMutation,
+  useVerifyCoachMfaMutation,
+  useRegenerateCoachMfaBackupCodesMutation,
   useGetPaymentOverviewQuery,
   useGetSubscriptionsQuery,
   useGetInvoicesQuery,

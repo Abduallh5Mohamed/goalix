@@ -30,6 +30,8 @@ import {
   useVerifyMfaDeviceMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
+import { useAppDispatch } from "@/lib/store/hooks";
+import { setMfaSetupRequired, updateUser } from "@/lib/store/slices/authSlice";
 import { CheckCircle, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 
 type AcademyDraft = {
@@ -96,6 +98,7 @@ function getApiErrorMessage(err: unknown, fallback: string) {
 }
 
 export default function AcademyProfilePage() {
+  const dispatch = useAppDispatch();
   const { data: academy, isLoading } = useGetAcademyQuery();
   const { data: currentUser, isLoading: loadingUser } = useGetCurrentUserQuery();
   const [updateAcademy, { isLoading: saving }] = useUpdateAcademyMutation();
@@ -256,6 +259,8 @@ export default function AcademyProfilePage() {
       setBackupCodes(result.backupCodes);
       setSetupData(null);
       setSetupCode("");
+      dispatch(updateUser({ totpEnabled: true }));
+      dispatch(setMfaSetupRequired(false));
       setSecurityMessage("2FA enabled.");
     } catch (err) {
       setSecurityError(getApiErrorMessage(err, "Invalid verification code."));
@@ -272,7 +277,9 @@ export default function AcademyProfilePage() {
       setDisablePassword("");
       setBackupCodes([]);
       setSetupData(null);
-      setSecurityMessage("2FA disabled.");
+      dispatch(updateUser({ totpEnabled: false }));
+      dispatch(setMfaSetupRequired(true));
+      setSecurityMessage("2FA disabled. Set it up again before using the admin dashboard.");
     } catch (err) {
       setSecurityError(getApiErrorMessage(err, "Could not disable 2FA."));
     }

@@ -5,27 +5,28 @@ import type { UserRole } from "@/lib/types";
 import { hasAuthSessionMarker } from "@/lib/auth/session";
 import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import {
+  applyCsrfHeader,
+  ensureCsrfToken,
+  isCsrfRejectedError,
+  isMutatingMethod,
+  refreshCsrfToken,
+} from "@/lib/api/csrf";
 
 const API_BASE = getApiBaseUrl();
-
-function readCookie(name: string) {
-  if (typeof document === "undefined") return "";
-  return document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`))
-    ?.slice(name.length + 1) ?? "";
-}
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: `${API_BASE}/api/v1`,
   credentials: "include",
   prepareHeaders: (headers) => {
-    const csrfToken = readCookie("csrfToken");
-    if (csrfToken) headers.set("X-CSRF-Token", decodeURIComponent(csrfToken));
-    return headers;
+    return applyCsrfHeader(headers);
   },
 });
+
+function getRequestMethod(args: string | FetchArgs) {
+  if (typeof args === "string") return "GET";
+  return args.method || "GET";
+}
 
 function describeQueryArgs(args: string | FetchArgs) {
   if (typeof args === "string") return args;
@@ -105,7 +106,17 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     process.env.NODE_ENV !== "production" && typeof performance !== "undefined"
       ? performance.now()
       : 0;
+
+  if (isMutatingMethod(getRequestMethod(args))) {
+    await ensureCsrfToken();
+  }
+
   let result = await rawBaseQuery(args, api, extraOptions);
+
+  if (isCsrfRejectedError(result.error)) {
+    await refreshCsrfToken();
+    result = await rawBaseQuery(args, api, extraOptions);
+  }
 
   if (result.error?.status === 401) {
     if (!hasAuthSessionMarker()) {
