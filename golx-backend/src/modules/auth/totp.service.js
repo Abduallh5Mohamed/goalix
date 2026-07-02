@@ -16,6 +16,19 @@ function issuerForRole(role) {
     return env.TOTP_ISSUER;
 }
 
+function labelForUser(user) {
+    return user.email || user.username || user.phone || user.id;
+}
+
+function verifyTotpToken(verifySync, token, encryptedSecret) {
+    const result = verifySync({
+        token,
+        secret: decryptText(encryptedSecret),
+        epochTolerance: 30,
+    });
+    return Boolean(result.valid);
+}
+
 function publicDevice(row) {
     return {
         id: row.id,
@@ -63,7 +76,7 @@ class TotpService {
         });
 
         const otpauth = generateURI({
-            accountName: user.email || user.username || user.phone || user.id,
+            label: labelForUser(user),
             issuer: issuerForRole(user.role),
             secret,
         });
@@ -78,8 +91,9 @@ class TotpService {
         if (user.totp_enabled) throw new BadRequestError('2FA is already enabled');
 
         const { verifySync } = loadTotpDependencies().otplib;
-        const result = verifySync({ token, secret: decryptText(user.totp_secret) });
-        if (!result.valid) throw new UnauthorizedError('Invalid TOTP code');
+        if (!verifyTotpToken(verifySync, token, user.totp_secret)) {
+            throw new UnauthorizedError('Invalid TOTP code');
+        }
 
         const pendingDevices = await this.repo.db('auth_totp_devices')
             .where({ user_id: userId, status: 'pending' })
@@ -107,17 +121,15 @@ class TotpService {
         const { verifySync } = loadTotpDependencies().otplib;
         const devices = await this.repo.findActiveTotpDevices(userId);
         for (const device of devices) {
-            const result = verifySync({ token, secret: decryptText(device.secret) });
-            if (result.valid) {
+            if (verifyTotpToken(verifySync, token, device.secret)) {
                 await this.repo.touchTotpDevice(device.id);
                 return true;
             }
         }
 
-        if (devices.length > 0) throw new UnauthorizedError('Invalid TOTP code');
-
-        const legacyResult = verifySync({ token, secret: decryptText(user.totp_secret) });
-        if (!legacyResult.valid) throw new UnauthorizedError('Invalid TOTP code');
+        if (!verifyTotpToken(verifySync, token, user.totp_secret)) {
+            throw new UnauthorizedError('Invalid TOTP code');
+        }
 
         return true;
     }
@@ -144,7 +156,7 @@ class TotpService {
         });
 
         const otpauth = generateURI({
-            accountName: user.email || user.username || user.phone || user.id,
+            label: labelForUser(user),
             issuer: issuerForRole(user.role),
             secret,
         });
@@ -206,8 +218,9 @@ class TotpService {
         }
 
         const { verifySync } = loadTotpDependencies().otplib;
-        const result = verifySync({ token, secret: decryptText(device.secret) });
-        if (!result.valid) throw new UnauthorizedError('Invalid TOTP code');
+        if (!verifyTotpToken(verifySync, token, device.secret)) {
+            throw new UnauthorizedError('Invalid TOTP code');
+        }
 
         const activated = await this.repo.activateTotpDevice(userId, deviceId);
         return publicDevice(activated);
@@ -218,19 +231,20 @@ class TotpService {
         if (!user) throw new UnauthorizedError('User not found');
         const devices = await this.repo.findActiveTotpDevices(userId);
         const targetDevice = devices.find((device) => device.id === deviceId);
-        if (targetDevice?.is_primary) {
-            throw new BadRequestError('Primary MFA device cannot be removed');
-        }
-        if (
-            devices.length <= 1 &&
-            targetDevice &&
-            !user.totp_secret
-        ) {
+        if (!targetDevice) throw new BadRequestError('MFA device not found');
+
+        const remainingDevices = devices.filter((device) => device.id !== deviceId);
+        if (remainingDevices.length === 0) {
             throw new BadRequestError('At least one active MFA device is required');
         }
 
         const revoked = await this.repo.revokeTotpDevice(userId, deviceId);
         if (!revoked) throw new BadRequestError('MFA device not found');
+
+        if (targetDevice.is_primary) {
+            await this.repo.setPrimaryTotpDevice(userId, remainingDevices[0].id);
+        }
+
         return publicDevice(revoked);
     }
 

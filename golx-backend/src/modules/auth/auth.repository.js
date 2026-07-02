@@ -264,11 +264,29 @@ class AuthRepository extends BaseRepository {
             .whereNull('revoked_at')
             .update({
                 status: 'revoked',
+                is_primary: false,
                 revoked_at: new Date(),
                 updated_at: new Date(),
             })
             .returning('*');
         return row;
+    }
+
+    async setPrimaryTotpDevice(userId, deviceId) {
+        return this.db.transaction(async (trx) => {
+            await trx('auth_totp_devices')
+                .where({ user_id: userId })
+                .whereNull('revoked_at')
+                .update({ is_primary: false, updated_at: new Date() });
+
+            const [row] = await trx('auth_totp_devices')
+                .where({ id: deviceId, user_id: userId, status: 'active' })
+                .whereNull('revoked_at')
+                .update({ is_primary: true, updated_at: new Date() })
+                .returning('*');
+
+            return row;
+        });
     }
 
     async deletePendingTotpDevices(userId) {
