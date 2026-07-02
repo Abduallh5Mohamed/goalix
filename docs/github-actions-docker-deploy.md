@@ -1,60 +1,58 @@
-# GOALIX GitHub Actions Docker Deploy
+# GOALIX GitHub Actions Docker Publish
 
-This workflow deploys the production Docker stack automatically after a push to `main`.
+This workflow builds and pushes the GOALIX Docker images to Docker Hub after a push to `master` or `main`.
 
-## Server Prerequisites
+## Docker Hub Repositories
 
-On the VPS, install:
+Create these repositories on Docker Hub under your Docker Hub username:
 
-- Git
-- Docker Engine
-- Docker Compose plugin
+- `goalix-backend`
+- `goalix-frontend`
 
-Clone the repository once:
+The workflow pushes both tags:
 
-```bash
-git clone <your-repo-url> /opt/goalix
-cd /opt/goalix
-```
+- `latest`
+- the full Git commit SHA
 
-Create the production `.env` on the server only. Do not commit it:
+Example:
 
-```bash
-POSTGRES_PASSWORD=change-me
-JWT_SECRET=change-me-32-characters-minimum
-JWT_REFRESH_SECRET=change-me-32-characters-minimum
-COOKIE_SECRET=change-me-32-characters-minimum
-TOTP_ENCRYPTION_KEY=base64-32-byte-key
-CORS_ORIGINS=https://your-domain.com
-MFA_ENFORCED_ROLES=admin,coach
-HTTP_PORT=80
-```
-
-Run the first deploy manually once:
-
-```bash
-bash scripts/deploy-production.sh
+```text
+DOCKERHUB_USERNAME/goalix-backend:latest
+DOCKERHUB_USERNAME/goalix-backend:<commit-sha>
+DOCKERHUB_USERNAME/goalix-frontend:latest
+DOCKERHUB_USERNAME/goalix-frontend:<commit-sha>
 ```
 
 ## GitHub Secrets
 
-Add these secrets in GitHub:
+Add these secrets in GitHub repository settings:
 
-- `VPS_HOST`: server IP or hostname
-- `VPS_USER`: SSH user
-- `VPS_SSH_KEY`: private SSH key allowed to connect to the VPS
-- `VPS_APP_PATH`: project path on the VPS, for example `/opt/goalix`
-- `VPS_PORT`: SSH port, optional; defaults to `22`
+- `DOCKERHUB_USERNAME`: your Docker Hub username
+- `DOCKERHUB_TOKEN`: a Docker Hub access token
+
+Create the token from Docker Hub:
+
+`Docker Hub` -> `Account settings` -> `Personal access tokens`
 
 ## Workflow
 
-On every push to `main`:
+On every push to `master` or `main`:
 
 1. GitHub validates `docker-compose.prod.yml`.
-2. GitHub builds the production API and frontend images.
-3. If the build passes, GitHub connects to the VPS over SSH.
-4. The VPS pulls the latest `main`.
-5. The VPS runs `scripts/deploy-production.sh`.
-6. The script rebuilds Docker images, runs migrations through Compose, starts the stack, checks Postgres, Redis, API readiness, and Nginx health.
+2. GitHub logs in to Docker Hub.
+3. GitHub builds the backend image from `golx-backend/Dockerfile`.
+4. GitHub builds the frontend image from `Dockerfile`.
+5. GitHub pushes both images to Docker Hub.
 
-Production secrets stay on the VPS in `.env`.
+This workflow only publishes Docker images. It does not SSH into a VPS and does not start production containers.
+
+## Pulling The Images
+
+On any server that should run GOALIX:
+
+```bash
+docker pull DOCKERHUB_USERNAME/goalix-backend:latest
+docker pull DOCKERHUB_USERNAME/goalix-frontend:latest
+```
+
+To run them with `docker-compose.prod.yml`, either keep local builds enabled or update the Compose image names to use your Docker Hub namespace.
