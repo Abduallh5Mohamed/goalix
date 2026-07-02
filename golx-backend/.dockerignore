@@ -4,3 +4,7 @@ npm-debug.log*
 .env.local
 .git
 .gitignore
+uploads
+coverage
+load-tests/*.local.json
+*.log

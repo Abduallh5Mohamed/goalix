@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+const databaseSsl = process.env.DATABASE_SSL === undefined
+    ? process.env.NODE_ENV === 'production'
+    : process.env.DATABASE_SSL === 'true';
 const pool = {
     min: Number(process.env.DB_POOL_MIN || 2),
     max: Number(process.env.DB_POOL_MAX || 10),
@@ -36,7 +39,7 @@ module.exports = {
         client: 'pg',
         connection: {
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: true },
+            ssl: databaseSsl ? { rejectUnauthorized: true } : false,
         },
         migrations: {
             directory: './migrations',
