@@ -75,6 +75,8 @@ export async function proxy(request: NextRequest) {
   const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", headers["Content-Security-Policy"]);
 
   const isBackendRequest =
     pathname.startsWith("/uploads/");

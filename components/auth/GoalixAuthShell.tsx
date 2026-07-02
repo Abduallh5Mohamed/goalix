@@ -85,7 +85,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         </div>
         <div className="goalix-login-top-actions" style={{ display: "flex", gap: 16 }}>
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/admin-login")}
             style={{ background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)", border: "none", borderRadius: 12, padding: "7px 22px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-inter),sans-serif" }}
           >
             Log in
@@ -95,7 +95,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
 
         {/* Mobile menu action buttons */}
         <div className="goalix-login-mobile-actions">
-          <Link href="/login" className="goalix-login-mobile-login-link">
+          <Link href="/admin-login" className="goalix-login-mobile-login-link">
             Log in
           </Link>
           <button
