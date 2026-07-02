@@ -4,6 +4,10 @@ const optionalBoolean = z
     .enum(['true', 'false'])
     .transform((value) => value === 'true')
     .optional();
+const databaseSsl = z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional();
 const DEFAULT_COOKIE_SECRET = 'change-this-to-a-random-32-char-secret-in-production';
 
 const envSchema = z.object({
@@ -14,6 +18,7 @@ const envSchema = z.object({
 
     // Database
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    DATABASE_SSL: databaseSsl,
     DB_POOL_MIN: z.coerce.number().int().min(0).default(2),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
     DB_APPLICATION_NAME: z.string().min(1).default('goalix-api'),

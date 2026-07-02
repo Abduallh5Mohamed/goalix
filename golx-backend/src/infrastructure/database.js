@@ -6,7 +6,9 @@ const db = knex({
     client: 'pg',
     connection: {
         connectionString: env.DATABASE_URL,
-        ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
+        ssl: (env.DATABASE_SSL ?? env.NODE_ENV === 'production')
+            ? { rejectUnauthorized: true }
+            : false,
     },
     pool: {
         min: env.DB_POOL_MIN,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Eye,
@@ -16,6 +17,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [role, setRole] = useState<"player" | "parent">("player");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +30,11 @@ export default function LoginPage() {
     e.preventDefault();
     if (!username.trim() || !password) {
       setError("Please enter your username and password.");
+      return;
+    }
+    if (username.includes("@")) {
+      setError("Staff accounts use the staff login page.");
+      router.push("/admin-login");
       return;
     }
     setError("");
@@ -150,6 +157,13 @@ export default function LoginPage() {
               </>
             )}
           </button>
+
+          <p className="goalix-login-alt-link">
+            Staff or coach?{" "}
+            <Link href="/admin-login">
+              Use staff login
+            </Link>
+          </p>
 
           {/* Social login divider */}
           <div className="goalix-login-divider">

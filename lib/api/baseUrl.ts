@@ -2,11 +2,13 @@ export function getApiBaseUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL;
   if (configuredUrl) return configuredUrl.replace(/\/$/, "");
 
-  if (typeof window !== "undefined") {
-    return "";
+  if (typeof window === "undefined") {
+    const internalUrl = process.env.GOALIX_INTERNAL_API_URL;
+    if (internalUrl) return internalUrl.replace(/\/$/, "");
+    return "http://127.0.0.1:3000";
   }
 
-  return "http://127.0.0.1:3000";
+  return "";
 }
 
 export function getSocketBaseUrl() {
