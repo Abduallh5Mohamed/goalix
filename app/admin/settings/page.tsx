@@ -32,7 +32,7 @@ import {
 } from "@/lib/store/api/adminApi";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { setMfaSetupRequired, updateUser } from "@/lib/store/slices/authSlice";
-import { CheckCircle, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import { CheckCircle, Copy, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 
 type AcademyDraft = {
   name?: string;
@@ -97,6 +97,16 @@ function getApiErrorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
+function getMfaVerificationErrorMessage(err: unknown, fallback: string) {
+  const message = getApiErrorMessage(err, fallback);
+
+  if (/invalid totp code/i.test(message)) {
+    return "This code does not match the active authenticator device. Check that you scanned the newest QR code and that your phone time is set automatically.";
+  }
+
+  return message;
+}
+
 export default function AcademyProfilePage() {
   const dispatch = useAppDispatch();
   const { data: academy, isLoading } = useGetAcademyQuery();
@@ -125,6 +135,7 @@ export default function AcademyProfilePage() {
   const [disablePassword, setDisablePassword] = useState("");
   const [backupCodesPassword, setBackupCodesPassword] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [securityMessage, setSecurityMessage] = useState("");
   const [securityError, setSecurityError] = useState("");
 
@@ -186,6 +197,9 @@ export default function AcademyProfilePage() {
     true,
   );
   const totpEnabled = Boolean(currentUser?.totpEnabled);
+  const mfaAccountLabel = currentUser?.email || currentUser?.username || currentUser?.phone || "admin";
+
+  const getAuthenticatorLabel = (issuer?: string) => `${issuer ?? "Goalix Academy Admin"}:${mfaAccountLabel}`;
 
   const updateDraft = (field: keyof AcademyDraft, value: string) => {
     setAcademyDraft((current) => ({ ...current, [field]: value }));
@@ -239,6 +253,7 @@ export default function AcademyProfilePage() {
     setSecurityError("");
     setSecurityMessage("");
     setBackupCodes([]);
+    setBackupCodesCopied(false);
 
     try {
       const result = await setup2FA().unwrap();
@@ -257,13 +272,14 @@ export default function AcademyProfilePage() {
     try {
       const result = await verifySetup2FA(setupCode.trim()).unwrap();
       setBackupCodes(result.backupCodes);
+      setBackupCodesCopied(false);
       setSetupData(null);
       setSetupCode("");
       dispatch(updateUser({ totpEnabled: true }));
       dispatch(setMfaSetupRequired(false));
       setSecurityMessage("2FA enabled.");
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Invalid verification code."));
+      setSecurityError(getMfaVerificationErrorMessage(err, "Invalid verification code."));
     }
   };
 
@@ -313,7 +329,7 @@ export default function AcademyProfilePage() {
       setNewDeviceCode("");
       setSecurityMessage("MFA device added.");
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Invalid device verification code."));
+      setSecurityError(getMfaVerificationErrorMessage(err, "Invalid device verification code."));
     }
   };
 
@@ -337,10 +353,23 @@ export default function AcademyProfilePage() {
     try {
       const result = await regenerateBackupCodes(backupCodesPassword).unwrap();
       setBackupCodes(result.backupCodes);
+      setBackupCodesCopied(false);
       setBackupCodesPassword("");
       setSecurityMessage("New backup codes generated. Save them now.");
     } catch (err) {
       setSecurityError(getApiErrorMessage(err, "Could not generate backup codes."));
+    }
+  };
+
+  const handleCopyBackupCodes = async () => {
+    if (!backupCodes.length) return;
+
+    try {
+      await navigator.clipboard.writeText(backupCodes.join("\n"));
+      setBackupCodesCopied(true);
+      setSecurityMessage("Backup codes copied. Keep them somewhere private.");
+    } catch {
+      setSecurityError("Could not copy backup codes. Select and copy them manually.");
     }
   };
 
@@ -613,8 +642,9 @@ export default function AcademyProfilePage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleRevokeDevice(device.id)}
-                            disabled={revokingDevice || device.isPrimary}
+                            disabled={revokingDevice || mfaDevices.length <= 1}
                             className="gap-1.5"
+                            title={mfaDevices.length <= 1 ? "Add and verify another device before removing this one." : undefined}
                           >
                             <Trash2 className="h-4 w-4" />
                             Remove
@@ -656,7 +686,7 @@ export default function AcademyProfilePage() {
                           <div className="space-y-3">
                             <div className="space-y-2">
                               <Label>Authenticator label</Label>
-                              <Input value={newDeviceSetup.issuer ?? "Goalix Academy Admin"} readOnly />
+                              <Input value={getAuthenticatorLabel(newDeviceSetup.issuer)} readOnly />
                             </div>
                             <div className="space-y-2">
                               <Label>Secret</Label>
@@ -695,7 +725,7 @@ export default function AcademyProfilePage() {
                     <div>
                       <p className="text-sm font-semibold">MFA backup codes</p>
                       <p className="text-xs text-muted-foreground">
-                        Existing codes cannot be viewed again. Generate new codes to replace the old ones.
+                        Existing codes cannot be viewed again. Generate and save a fresh set before signing out.
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -765,7 +795,7 @@ export default function AcademyProfilePage() {
                         <div className="space-y-3">
                           <div className="space-y-2">
                             <Label>Authenticator label</Label>
-                            <Input value={setupData.issuer ?? "Goalix Academy Admin"} readOnly />
+                            <Input value={getAuthenticatorLabel(setupData.issuer)} readOnly />
                           </div>
                           <div className="space-y-2">
                             <Label>Secret</Label>
@@ -800,7 +830,24 @@ export default function AcademyProfilePage() {
 
               {backupCodes.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-3">
-                  <p className="text-sm font-medium">Backup codes</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Backup codes</p>
+                      <p className="text-xs text-muted-foreground">
+                        Each code works once. Save them before leaving this page.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyBackupCodes}
+                      className="gap-1.5"
+                    >
+                      <Copy className="h-4 w-4" />
+                      {backupCodesCopied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {backupCodes.map((code) => (
                       <code key={code} className="rounded bg-background px-2 py-1 text-sm">
