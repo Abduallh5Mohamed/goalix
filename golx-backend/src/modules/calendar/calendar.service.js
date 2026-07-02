@@ -7563,9 +7563,11 @@ class CalendarService {
         if (filters.groupId) q.where("ceg.group_id", filters.groupId);
         if (filters.eventType) q.where("ce.event_type", filters.eventType);
         if (filters.dateFrom)
-          q.whereRaw("ce.start_datetime::date >= ?", [filters.dateFrom]);
+          q.whereRaw("ce.start_datetime >= ?::date", [filters.dateFrom]);
         if (filters.dateTo)
-          q.whereRaw("ce.start_datetime::date <= ?", [filters.dateTo]);
+          q.whereRaw("ce.start_datetime < (?::date + interval '1 day')", [
+            filters.dateTo,
+          ]);
       })
       .groupBy("ag.id", "ag.name")
       .select(

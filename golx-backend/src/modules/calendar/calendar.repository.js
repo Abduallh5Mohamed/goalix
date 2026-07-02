@@ -50,11 +50,6 @@ class CalendarRepository {
   async parentUsersForPlayers(playerIds, trx = this.db) {
     if (!playerIds.length) return [];
 
-    const activeParentRows = await trx("parent_player_links")
-      .whereNull("deleted_at")
-      .distinct("parent_user_id");
-    const activeParentIds = activeParentRows.map((row) => row.parent_user_id);
-
     const linkedParents = await trx("parent_player_links as ppl")
       .join("auth_users as au", "au.id", "ppl.parent_user_id")
       .whereIn("ppl.player_id", playerIds)
@@ -69,11 +64,13 @@ class CalendarRepository {
       .where("au.role", "parent")
       .where("au.is_active", true)
       .whereNull("au.deleted_at")
+      .whereNotExists(function activeParentLink() {
+        this.select(trx.raw("1"))
+          .from("parent_player_links as active_ppl")
+          .whereRaw("active_ppl.parent_user_id = au.id")
+          .whereNull("active_ppl.deleted_at");
+      })
       .select("au.id as user_id", "au.linked_player_id as player_id");
-
-    if (activeParentIds.length) {
-      legacyQuery.whereNotIn("au.id", activeParentIds);
-    }
 
     const legacyParents = await legacyQuery;
     return [...linkedParents, ...legacyParents].filter(
@@ -1128,9 +1125,11 @@ class CalendarRepository {
         if (filters.eventType) q.where("ce.event_type", filters.eventType);
         if (filters.status) q.where("ce.status", filters.status);
         if (filters.dateFrom)
-          q.whereRaw("ce.start_datetime::date >= ?", [filters.dateFrom]);
+          q.whereRaw("ce.start_datetime >= ?::date", [filters.dateFrom]);
         if (filters.dateTo)
-          q.whereRaw("ce.start_datetime::date <= ?", [filters.dateTo]);
+          q.whereRaw("ce.start_datetime < (?::date + interval '1 day')", [
+            filters.dateTo,
+          ]);
       })
       .groupBy("ce.id")
       .select(

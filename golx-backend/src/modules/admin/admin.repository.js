@@ -59,7 +59,8 @@ class AdminRepository extends BaseRepository {
                     .join('payment_subscriptions as ps', 'pi.subscription_id', 'ps.id')
                     .join('player_profiles as pp', 'ps.player_id', 'pp.id')
                     .where('pi.status', 'paid')
-                    .whereRaw("date_trunc('month', pi.paid_at) = date_trunc('month', now())");
+                    .whereRaw("pi.paid_at >= date_trunc('month', now())")
+                    .whereRaw("pi.paid_at < date_trunc('month', now()) + interval '1 month'");
                 return (academyId ? q.where('pp.academy_id', academyId) : q)
                     .sum('pi.amount as total').first();
             })(),
@@ -114,7 +115,8 @@ class AdminRepository extends BaseRepository {
                     COUNT(ea.id) FILTER (WHERE ea.status IN ('present','late')) AS attended
                 FROM week_ranges wr
                 LEFT JOIN calendar_events ce
-                    ON ce.start_datetime::date BETWEEN wr.week_start::date AND wr.week_end::date
+                    ON ce.start_datetime >= wr.week_start
+                   AND ce.start_datetime < (wr.week_end + interval '1 day')
                    AND ce.event_type = 'training'
                    AND ce.deleted_at IS NULL
                    AND (:academyId::uuid IS NULL OR ce.academy_id = :academyId)
@@ -159,7 +161,8 @@ class AdminRepository extends BaseRepository {
                 ), 0) AS value
             FROM month_ranges mr
             LEFT JOIN payment_invoices pi
-                ON date_trunc('month', pi.paid_at) = mr.month_start
+                ON pi.paid_at >= mr.month_start
+                AND pi.paid_at < (mr.month_start + interval '1 month')
                 AND pi.status = 'paid'
             LEFT JOIN payment_subscriptions ps ON pi.subscription_id = ps.id
             LEFT JOIN player_profiles pp ON ps.player_id = pp.id
@@ -239,7 +242,7 @@ class AdminRepository extends BaseRepository {
                 .where('ce.event_type', 'training')
                 .whereNull('ce.deleted_at')
                 .whereNull('attendance_player.deleted_at')
-                .whereRaw('ce.start_datetime::date BETWEEN ?::date AND ?::date', [
+                .whereRaw("ce.start_datetime >= ?::date AND ce.start_datetime < (?::date + interval '1 day')", [
                     dateFrom,
                     dateTo,
                 ]);
@@ -252,7 +255,7 @@ class AdminRepository extends BaseRepository {
                 .where('ce.academy_id', academyId)
                 .where('ce.event_type', 'training')
                 .whereNull('ce.deleted_at')
-                .whereRaw('ce.start_datetime::date BETWEEN ?::date AND ?::date', [
+                .whereRaw("ce.start_datetime >= ?::date AND ce.start_datetime < (?::date + interval '1 day')", [
                     dateFrom,
                     dateTo,
                 ]);
@@ -310,7 +313,7 @@ class AdminRepository extends BaseRepository {
                         this.db.raw('COUNT(*)::int as total'),
                         this.db.raw('COUNT(*) FILTER (WHERE pp.is_active IS TRUE)::int as active'),
                         this.db.raw(
-                            "COUNT(*) FILTER (WHERE pp.created_at::date BETWEEN ?::date AND ?::date)::int as \"newPlayers\"",
+                            "COUNT(*) FILTER (WHERE pp.created_at >= ?::date AND pp.created_at < (?::date + interval '1 day'))::int as \"newPlayers\"",
                             [dateFrom, dateTo],
                         ),
                     ),
@@ -399,7 +402,8 @@ class AdminRepository extends BaseRepository {
                               AND ce.academy_id = ?
                               AND ce.event_type = 'training'
                               AND ce.deleted_at IS NULL
-                              AND ce.start_datetime::date BETWEEN ?::date AND ?::date
+                              AND ce.start_datetime >= ?::date
+                              AND ce.start_datetime < (?::date + interval '1 day')
                         ) as sessions`, [academyId, dateFrom, dateTo]),
                         this.db.raw(
                             `COALESCE((
@@ -413,7 +417,8 @@ class AdminRepository extends BaseRepository {
                                 WHERE ce.academy_id = ?
                                   AND ce.event_type = 'training'
                                   AND ce.deleted_at IS NULL
-                                  AND ce.start_datetime::date BETWEEN ?::date AND ?::date
+                                  AND ce.start_datetime >= ?::date
+                                  AND ce.start_datetime < (?::date + interval '1 day')
                                   AND EXISTS (
                                       SELECT 1
                                       FROM player_group_assignments attendance_pga
@@ -440,7 +445,7 @@ class AdminRepository extends BaseRepository {
                             .andOnNull('ce.deleted_at')
                             .andOn(
                                 this.db.raw(
-                                    'ce.start_datetime::date BETWEEN ?::date AND ?::date',
+                                    "ce.start_datetime >= ?::date AND ce.start_datetime < (?::date + interval '1 day')",
                                     [dateFrom, dateTo],
                                 ),
                             );
@@ -539,7 +544,8 @@ class AdminRepository extends BaseRepository {
                       AND ce.academy_id = :academyId
                       AND ce.event_type = 'training'
                       AND ce.deleted_at IS NULL
-                      AND ce.start_datetime::date BETWEEN :dateFrom::date AND :dateTo::date
+                      AND ce.start_datetime >= :dateFrom::date
+                      AND ce.start_datetime < (:dateTo::date + interval '1 day')
                 ) attendance ON true
                 LEFT JOIN LATERAL (
                     SELECT COALESCE(

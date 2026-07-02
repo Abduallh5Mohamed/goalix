@@ -26,6 +26,7 @@ function buildRepo(overrides = {}) {
             archivedUserDeletions: 1,
             deletedUserDeletions: 1,
         })),
+        deleteRowsByIds: jest.fn(async ({ ids }) => ids.length),
         tableExists: jest.fn(async () => true),
         estimatedRows: jest.fn(async () => 0),
         columnExists: jest.fn(async () => true),
@@ -126,5 +127,25 @@ describe('data lifecycle service', () => {
             archiveBatchId: 'run-1',
         });
         expect(result.archivedUserDeletions).toBe(1);
+    });
+
+    test('expired authentication artifacts are purged without being archived', async () => {
+        const repo = buildRepo({
+            selectIdsOlderThan: jest.fn(async ({ sourceTable }) => (
+                sourceTable === 'auth_refresh_tokens' ? ['token-1'] : []
+            )),
+        });
+        const service = new DataLifecycleService(repo);
+
+        const result = await service.runLifecycle({
+            now: new Date('2026-07-01T00:00:00.000Z'),
+            batchSize: 1000,
+        });
+
+        expect(repo.deleteRowsByIds).toHaveBeenCalledWith({
+            tableName: 'auth_refresh_tokens',
+            ids: ['token-1'],
+        });
+        expect(result.removedHotCounts.auth_refresh_tokens).toBe(1);
     });
 });

@@ -49,14 +49,22 @@ Current archive tables:
 - AI analyses: 18 months, while preserving the latest AI output per player and model type in hot storage.
 - Chat messages: 24 months.
 - Realtime outbox: 30 days.
+- Expired refresh tokens and password-reset records: permanently deleted after
+  `AUTH_EPHEMERAL_RETENTION_DAYS`, default 30 days. Authentication artifacts are
+  not copied to archive tables.
 
 Normal reads keep using hot tables. Archive reads are additive through `includeArchive=true` where supported, and chat scrolls can include archived rows when requesting older messages.
 
 ## Partitioning Decision
 
-Partitioning stays as a separate migration per table. Activate it when either condition is true after normal indexes are in place:
+Partitioning stays as a separate migration per table. The row threshold is an
+operational review alert, not an automatic partition command. Activate it only
+after normal query and index work when multiple signals justify the extra
+complexity:
 
-- A time-series table exceeds `5M` rows.
+- A time-series table exceeds the `5M`-row review threshold and keeps growing.
+- The table or its indexes reach tens of GB.
+- Retention deletes, vacuum, or WAL generation become operationally expensive.
 - p95 read latency stays above `800ms` for date-filtered reads.
 
 Candidates:
@@ -70,6 +78,12 @@ Candidates:
 - `ranking_snapshots` by monthly period.
 
 Queries against partitioned tables must include date or period filters so PostgreSQL can prune partitions.
+
+Archive tables remain inside the primary database, so they reduce hot-query
+cost but do not cap backup size. Before archives become large, export immutable
+periods to encrypted object storage with row counts, checksums, schema version,
+and a tested restore procedure. Final deletion periods require product/legal
+approval.
 
 ## Storage Lifecycle
 
