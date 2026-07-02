@@ -1,5 +1,5 @@
 x-backend-env: &backend-env
-  NODE_ENV: production
+  NODE_ENV: ${BACKEND_NODE_ENV:-production}
   HOST: 0.0.0.0
   PORT: 3000
   DATABASE_URL: postgresql://golx:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/golx_main
@@ -9,6 +9,7 @@ x-backend-env: &backend-env
   JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
   COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
   TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?TOTP_ENCRYPTION_KEY is required}
+  MFA_ENFORCED_ROLES: ${MFA_ENFORCED_ROLES-admin,coach}
   CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
   STORAGE_PROVIDER: local
   PYTHON_BIN: /opt/goalix-python/bin/python
