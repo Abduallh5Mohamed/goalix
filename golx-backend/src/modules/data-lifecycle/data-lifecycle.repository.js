@@ -149,6 +149,12 @@ class DataLifecycleRepository {
     });
   }
 
+  async deleteRowsByIds({ tableName, ids }) {
+    const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+    if (!uniqueIds.length || !(await this.tableExists(tableName))) return 0;
+    return this.db(tableName).whereIn("id", uniqueIds).del();
+  }
+
   async archiveChatMessages({ messageIds, archiveBatchId }) {
     const ids = [...new Set((messageIds || []).filter(Boolean))];
     if (!ids.length) {

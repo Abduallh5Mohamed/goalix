@@ -46,6 +46,21 @@ const archivePolicies = [
   },
 ];
 
+const purgePolicies = [
+  {
+    key: "auth_refresh_tokens",
+    sourceTable: "auth_refresh_tokens",
+    dateColumn: "expires_at",
+    retentionDays: env.AUTH_EPHEMERAL_RETENTION_DAYS,
+  },
+  {
+    key: "auth_password_resets",
+    sourceTable: "auth_password_resets",
+    dateColumn: "expires_at",
+    retentionDays: env.AUTH_EPHEMERAL_RETENTION_DAYS,
+  },
+];
+
 const partitionCandidates = [
   { table: "chat_messages", dateColumn: "created_at", strategy: "monthly" },
   { table: "notification_inbox", dateColumn: "created_at", strategy: "monthly" },
@@ -119,6 +134,38 @@ class DataLifecycleService {
       ...moveResult,
       metadata,
     };
+  }
+
+  async _runPurgePolicy(policy, {
+    now,
+    batchSize,
+    dryRun,
+  }) {
+    const cutoffDate = this._policyCutoff(policy, now);
+    const ids = await this.repo.selectIdsOlderThan({
+      sourceTable: policy.sourceTable,
+      dateColumn: policy.dateColumn,
+      cutoffDate,
+      batchSize,
+    });
+
+    const metadata = {
+      cutoffDate: cutoffDate.toISOString(),
+      selected: ids.length,
+      dryRun,
+      retentionDays: policy.retentionDays,
+      disposition: "delete",
+    };
+
+    if (dryRun || !ids.length) {
+      return { deleted: 0, metadata };
+    }
+
+    const deleted = await this.repo.deleteRowsByIds({
+      tableName: policy.sourceTable,
+      ids,
+    });
+    return { deleted, metadata };
   }
 
   async archiveNotifications({
@@ -257,6 +304,16 @@ class DataLifecycleService {
         policyMetadata[policy.key] = result.metadata;
       }
 
+      for (const policy of purgePolicies) {
+        const result = await this._runPurgePolicy(policy, {
+          now,
+          batchSize,
+          dryRun,
+        });
+        deletedCounts[policy.key] = result.deleted;
+        policyMetadata[policy.key] = result.metadata;
+      }
+
       const finished = await this.repo.finishRun(run.id, {
         status: dryRun ? "dry_run_completed" : "completed",
         archivedCounts,
@@ -336,5 +393,6 @@ class DataLifecycleService {
 
 module.exports = DataLifecycleService;
 module.exports.partitionCandidates = partitionCandidates;
+module.exports.purgePolicies = purgePolicies;
 module.exports.PARTITION_ROW_THRESHOLD = PARTITION_ROW_THRESHOLD;
 module.exports.PARTITION_P95_THRESHOLD_MS = PARTITION_P95_THRESHOLD_MS;

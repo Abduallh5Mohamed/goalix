@@ -39,6 +39,7 @@ const envSchema = z.object({
     NOTIFICATION_CLEANUP_INTERVAL_HOURS: z.coerce.number().int().min(1).default(24),
     NOTIFICATION_CLEANUP_ENABLED: optionalBoolean,
     CHAT_CONVERSATIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(15),
+    AUTH_EPHEMERAL_RETENTION_DAYS: z.coerce.number().int().min(7).max(365).default(30),
 
     // JWT
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),

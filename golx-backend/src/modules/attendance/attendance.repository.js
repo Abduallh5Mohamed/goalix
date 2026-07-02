@@ -5,8 +5,8 @@ class AttendanceRepository {
 
     async getAttendanceOverview({ groupId, branchId, dateFrom, dateTo, academyId }) {
         const applyDateFilters = (query) => query.modify((q) => {
-            if (dateFrom) q.whereRaw('ce.start_datetime::date >= ?::date', [dateFrom]);
-            if (dateTo) q.whereRaw('ce.start_datetime::date <= ?::date', [dateTo]);
+            if (dateFrom) q.whereRaw('ce.start_datetime >= ?::date', [dateFrom]);
+            if (dateTo) q.whereRaw("ce.start_datetime < (?::date + interval '1 day')", [dateTo]);
         });
 
         const applyTrainingTargetFilters = (query) => query.modify((q) => {

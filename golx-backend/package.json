@@ -27,6 +27,8 @@
         "data:lifecycle:run": "node scripts/run-data-lifecycle.js",
         "data:lifecycle:dry-run": "node scripts/run-data-lifecycle.js --dry-run",
         "data:lifecycle:report": "node scripts/report-data-lifecycle.js",
+        "db:audit": "node scripts/audit-database-architecture.js",
+        "db:audit:strict": "node scripts/audit-database-architecture.js --strict",
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
         "dump:sanitize": "node scripts/sanitize-sql-dump.js"
