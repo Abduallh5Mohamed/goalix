@@ -1,52 +1,176 @@
+x-backend-env: &backend-env
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 3000
+  DATABASE_URL: postgresql://golx:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/golx_main
+  DATABASE_SSL: "false"
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+  TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?TOTP_ENCRYPTION_KEY is required}
+  CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+  STORAGE_PROVIDER: local
+  PYTHON_BIN: /opt/goalix-python/bin/python
+  RANKING_PYTHON_BIN: /opt/goalix-python/bin/python
+  INJURY_RISK_PYTHON_BIN: /opt/goalix-python/bin/python
+  RANKING_MODEL_DIR: /app/Models/Ranking Model
+  INJURY_RISK_MODEL_DIR: /app/Models
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: golx_main
+      POSTGRES_USER: golx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - goalix-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U golx -d golx_main"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - goalix-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  migrate:
+    image: goalix-backend:${GOALIX_IMAGE_TAG:-prod}
+    build:
+      context: .
+      dockerfile: golx-backend/Dockerfile
+    restart: "no"
+    environment:
+      <<: *backend-env
+      BULLMQ_ENABLED: "false"
+      BULLMQ_WORKERS_ENABLED: "false"
+      BACKGROUND_AUTOMATIONS_ENABLED: "false"
+      INJURY_RISK_AUTOMATION_ENABLED: "false"
+      NOTIFICATION_CLEANUP_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "migrate"]
+
+  api:
+    image: goalix-backend:${GOALIX_IMAGE_TAG:-prod}
+    build:
+      context: .
+      dockerfile: golx-backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      BULLMQ_ENABLED: "true"
+      BULLMQ_WORKERS_ENABLED: "false"
+      BACKGROUND_AUTOMATIONS_ENABLED: "false"
+      INJURY_RISK_AUTOMATION_ENABLED: "false"
+      NOTIFICATION_CLEANUP_ENABLED: "false"
+    expose:
+      - "3000"
+    volumes:
+      - goalix-uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  worker:
+    image: goalix-backend:${GOALIX_IMAGE_TAG:-prod}
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      BULLMQ_ENABLED: "true"
+      BULLMQ_WORKERS_ENABLED: "true"
+      BACKGROUND_AUTOMATIONS_ENABLED: ${BACKGROUND_AUTOMATIONS_ENABLED:-true}
+      INJURY_RISK_AUTOMATION_ENABLED: ${INJURY_RISK_AUTOMATION_ENABLED:-true}
+      NOTIFICATION_CLEANUP_ENABLED: ${NOTIFICATION_CLEANUP_ENABLED:-true}
+    volumes:
+      - goalix-uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "src/workers/run.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    image: goalix-frontend:${GOALIX_IMAGE_TAG:-prod}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_SOCKET_URL: ""
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+      GOALIX_INTERNAL_API_URL: http://api:3000
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_SOCKET_URL: ""
+    expose:
+      - "3001"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
-      api-1:
+      frontend:
         condition: service_healthy
-      api-2:
+      api:
         condition: service_healthy
     ports:
       - "${HTTP_PORT:-80}:80"
     volumes:
       - ./ops/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-
-  api-1: &api
-    build:
-      context: ./golx-backend
-    restart: unless-stopped
-    env_file:
-      - ./golx-backend/.env
-    environment:
-      NODE_ENV: production
-      HOST: 0.0.0.0
-      PORT: 3000
-      BULLMQ_WORKERS_ENABLED: "false"
-      BACKGROUND_AUTOMATIONS_ENABLED: "false"
-      INJURY_RISK_AUTOMATION_ENABLED: "false"
-    expose:
-      - "3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
       interval: 15s
       timeout: 5s
-      retries: 6
-      start_period: 30s
+      retries: 5
+      start_period: 10s
 
-  api-2:
-    <<: *api
-
-  worker-1: &worker
-    build:
-      context: ./golx-backend
-    restart: unless-stopped
-    env_file:
-      - ./golx-backend/.env
-    environment:
-      NODE_ENV: production
-      BULLMQ_ENABLED: "true"
-    command: ["node", "src/workers/run.js"]
-
-  worker-2:
-    <<: *worker
+volumes:
+  goalix-postgres-data:
+  goalix-redis-data:
+  goalix-uploads:
