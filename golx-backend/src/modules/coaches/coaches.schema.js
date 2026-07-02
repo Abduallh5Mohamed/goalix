@@ -20,6 +20,12 @@ const coachRoleSchema = z.enum(COACH_ASSIGNMENT_ROLE_VALUES);
 const assignableCoachAccessRoleSchema = z.enum(
   ASSIGNABLE_COACH_ACCESS_ROLE_VALUES,
 );
+const coachPasswordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128)
+  .refine((p) => /[A-Z]/.test(p), { message: "Password must contain at least one uppercase letter" })
+  .refine((p) => /[0-9]/.test(p), { message: "Password must contain at least one digit" })
+  .refine((p) => /[^A-Za-z0-9]/.test(p), { message: "Password must contain at least one special character" });
 
 const createCoachSchema = z.object({
   userId: z.string().uuid(),
@@ -63,6 +69,7 @@ const updateCoachSchema = z.object({
     })
     .optional(),
   fullName: z.string().min(2).max(100).optional(),
+  password: coachPasswordSchema.optional(),
 });
 
 const groupAssignmentRoleSchema = assignableCoachAccessRoleSchema;

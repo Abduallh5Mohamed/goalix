@@ -415,7 +415,7 @@ export interface AdminCoachMatchRequest {
 
 export interface PlayerOption {
   id: string;
-  field_key: "position" | "secondary_position" | "playing_style";
+  field_key: "position";
   label: string;
   value: string;
   created_by_role: "admin" | "coach";
@@ -735,12 +735,7 @@ export interface ParentMeasurement {
   weight_kg?: string | number | null;
   bmi?: string | number | null;
   sprint_speed?: string | number | null;
-  acceleration?: string | number | null;
   stamina?: number | null;
-  strength?: number | null;
-  agility?: number | null;
-  balance?: number | null;
-  jump_height_cm?: string | number | null;
   flexibility?: number | null;
   measured_at: string;
   measured_by?: string | null;
@@ -949,6 +944,7 @@ export interface CoachPlayerDetail {
   rankings: Record<string, unknown>[];
   coachRatings: Record<string, unknown>[];
   playerAssignments: PlayerAssignment[];
+  injuryRisk: InjuryRiskPredictionRecord | null;
   attendanceQr?: PlayerAttendanceQr | null;
   payments: {
     subscriptions: Record<string, unknown>[];
@@ -2002,7 +1998,7 @@ export const calendarApi = createApi({
     }),
     getPlayerOptions: builder.query<
       PlayerOption[],
-      { role?: "admin" | "coach"; fieldKey?: string } | void
+      { role?: "admin" | "coach"; fieldKey?: PlayerOption["field_key"] } | void
     >({
       query: (args) => {
         const role = args?.role ?? "admin";

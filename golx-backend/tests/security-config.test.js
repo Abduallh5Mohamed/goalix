@@ -10,6 +10,13 @@ const requiredEnv = {
   JWT_REFRESH_SECRET: "test-refresh-secret-with-at-least-32",
 };
 
+const productionSecurityEnv = {
+  COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+  CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
+  TOTP_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  CORS_ORIGINS: "https://app.goalix.local",
+};
+
 function runNode(script, env = {}) {
   const childEnv = {
     ...process.env,
@@ -41,6 +48,9 @@ describe("security configuration", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",
       COOKIE_SECRET: null,
+      CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
+      TOTP_ENCRYPTION_KEY: productionSecurityEnv.TOTP_ENCRYPTION_KEY,
+      CORS_ORIGINS: "https://app.goalix.local",
     });
 
     expect(result.status).not.toBe(0);
@@ -56,9 +66,7 @@ describe("security configuration", () => {
       ].join(""),
       {
         NODE_ENV: "production",
-        COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
-        TOTP_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        CORS_ORIGINS: "https://app.goalix.local",
+        ...productionSecurityEnv,
       },
     );
 
@@ -69,11 +77,55 @@ describe("security configuration", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",
       COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+      CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
       TOTP_ENCRYPTION_KEY: null,
+      CORS_ORIGINS: "https://app.goalix.local",
     });
 
     expect(result.status).not.toBe(0);
     expect(`${result.stderr}${result.stdout}`).toContain("TOTP_ENCRYPTION_KEY");
+  });
+
+  it("requires an explicit CSRF secret in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CSRF_SECRET: null,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("CSRF_SECRET");
+  });
+
+  it("requires strong bcrypt rounds in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      BCRYPT_ROUNDS: "10",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("BCRYPT_ROUNDS");
+  });
+
+  it("rejects matching JWT access and refresh secrets", () => {
+    const result = runNode("require('./src/config/env')", {
+      JWT_REFRESH_SECRET: requiredEnv.JWT_SECRET,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("JWT_REFRESH_SECRET");
+  });
+
+  it("rejects localhost CORS origins in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CORS_ORIGINS: "http://localhost:3001",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("CORS_ORIGINS");
   });
 
   it("rejects S3 upload storage without required credentials", () => {

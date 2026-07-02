@@ -239,7 +239,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="staff-identifier"
                   type="text"
-                  placeholder="admin@example.com or staff.username"
+                  placeholder="admin/coach email or username"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
                   autoComplete="username"

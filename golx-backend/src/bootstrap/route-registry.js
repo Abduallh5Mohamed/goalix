@@ -10,6 +10,7 @@ const aiRoutes = require('../modules/ai/ai.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 const customDataRoutes = require('../modules/custom-data/custom-data.routes');
 const chatRoutes = require('../modules/chat/chat.routes');
+const dataLifecycleRoutes = require('../modules/data-lifecycle/data-lifecycle.routes');
 const {
     adminCalendarRoutes,
     coachCalendarRoutes,
@@ -32,6 +33,7 @@ function mountApplicationRoutes(app, controllers) {
         calendarController,
         customDataController,
         chatController,
+        dataLifecycleController,
     } = controllers;
 
     app.use('/api/v1/auth', authRoutes(authController));
@@ -45,6 +47,7 @@ function mountApplicationRoutes(app, controllers) {
     app.use('/api/v1/ai', aiRoutes(aiController));
     app.use('/api/v1/chat', chatRoutes(chatController));
     app.use('/api/v1/admin', adminRoutes(adminController));
+    app.use('/api/v1/admin/data-lifecycle', dataLifecycleRoutes(dataLifecycleController));
     app.use('/api/v1/admin', adminCalendarRoutes(calendarController));
     app.use('/api/v1/admin', customDataRoutes(customDataController, 'admin'));
     app.use('/api/v1/coach', coachCalendarRoutes(calendarController));
@@ -53,6 +56,7 @@ function mountApplicationRoutes(app, controllers) {
     app.use('/api/v1/parent', parentCalendarRoutes(calendarController));
 
     app.use('/api/admin', adminRoutes(adminController));
+    app.use('/api/admin/data-lifecycle', dataLifecycleRoutes(dataLifecycleController));
     app.use('/api/admin', adminCalendarRoutes(calendarController));
     app.use('/api/admin', customDataRoutes(customDataController, 'admin'));
     app.use('/api/coach', coachCalendarRoutes(calendarController));

@@ -4,6 +4,7 @@ const { authMiddleware } = require('../../middleware/auth.middleware');
 const { rbac, rbacAny } = require('../../middleware/rbac.middleware');
 const {
     uuidParam,
+    archiveQuery,
     performanceScoreQuery,
     injuryRiskSchema,
     nutritionPlanSchema,
@@ -22,7 +23,7 @@ function aiRoutes(controller) {
     // Injury Risk
     router.post('/injury-risk', rbacAny('manage_players', 'manage_training_sessions'), validate({ body: injuryRiskSchema }), controller.assessInjuryRisk);
     router.get('/injury-risk/:id', rbacAny('manage_players', 'view_assigned_players'), validate({ params: uuidParam }), controller.getInjuryRisk);
-    router.get('/injury-risk/:id/history', rbacAny('manage_players', 'view_assigned_players'), validate({ params: uuidParam }), controller.getInjuryRiskHistory);
+    router.get('/injury-risk/:id/history', rbacAny('manage_players', 'view_assigned_players'), validate({ params: uuidParam, query: archiveQuery }), controller.getInjuryRiskHistory);
 
     // Nutrition Plan
     router.post('/nutrition-plan', rbacAny('manage_players', 'manage_training_sessions'), validate({ body: nutritionPlanSchema }), controller.generateNutritionPlan);

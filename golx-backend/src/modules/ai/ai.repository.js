@@ -25,12 +25,32 @@ class AiRepository extends BaseRepository {
             .first();
     }
 
-    async getAiScores(academyId, { page = 1, limit = 20 } = {}) {
-        const query = this.db('ai_analyses')
+    _aiScoresQuery(academyId, sourceTable = 'ai_analyses') {
+        return this.db(`${sourceTable} as ai_analyses`)
             .join('player_profiles', 'ai_analyses.player_id', 'player_profiles.id')
             .where('player_profiles.academy_id', academyId)
             .where('ai_analyses.type', 'performance')
             .select('ai_analyses.*', 'player_profiles.full_name');
+    }
+
+    async getAiScores(academyId, { page = 1, limit = 20, includeArchive = false } = {}) {
+        const query = this._aiScoresQuery(academyId);
+
+        if (includeArchive && await this.db.schema.hasTable('ai_analyses_archive')) {
+            const archiveQuery = this._aiScoresQuery(academyId, 'ai_analyses_archive');
+            const [{ count: hotCount }] = await query.clone().clearSelect().count('ai_analyses.id as count');
+            const [{ count: archiveCount }] = await archiveQuery.clone().clearSelect().count('ai_analyses.id as count');
+            const readLimit = page * limit;
+            const [hotRows, archiveRows] = await Promise.all([
+                query.clone().orderBy('ai_analyses.created_at', 'desc').limit(readLimit),
+                archiveQuery.clone().orderBy('ai_analyses.created_at', 'desc').limit(readLimit),
+            ]);
+            const data = [...hotRows, ...archiveRows]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice((page - 1) * limit, page * limit);
+            const total = Number(hotCount || 0) + Number(archiveCount || 0);
+            return { data, total, page, totalPages: Math.ceil(total / limit) || 1 };
+        }
 
         const [{ count }] = await query.clone().count('ai_analyses.id as count');
         const data = await query.orderBy('ai_analyses.created_at', 'desc').limit(limit).offset((page - 1) * limit);
@@ -48,11 +68,20 @@ class AiRepository extends BaseRepository {
         return row;
     }
 
-    async getInjuryRisks(playerId) {
-        return this.db('ai_analyses')
+    async getInjuryRisks(playerId, { includeArchive = false } = {}) {
+        const hotRows = await this.db('ai_analyses')
             .where({ player_id: playerId, type: 'injury_risk' })
             .orderBy('created_at', 'desc')
             .limit(10);
+        if (!includeArchive || hotRows.length >= 10) return hotRows;
+        if (!(await this.db.schema.hasTable('ai_analyses_archive'))) return hotRows;
+        const archiveRows = await this.db('ai_analyses_archive')
+            .where({ player_id: playerId, type: 'injury_risk' })
+            .orderBy('created_at', 'desc')
+            .limit(10);
+        return [...hotRows, ...archiveRows]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 10);
     }
 
     async getLatestInjuryRisk(playerId) {

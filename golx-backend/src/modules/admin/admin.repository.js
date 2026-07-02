@@ -1315,6 +1315,7 @@ class AdminRepository extends BaseRepository {
             .join('auth_users as au', 'apr.user_id', 'au.id')
             .leftJoin('iam_users as iu', 'au.id', 'iu.id')
             .leftJoin('player_profiles as pp', 'pp.user_id', 'au.id')
+            .leftJoin('coach_profiles as cp', 'cp.user_id', 'au.id')
             .where('au.academy_id', academyId)
             .whereNull('au.deleted_at')
             .select(
@@ -1330,7 +1331,9 @@ class AdminRepository extends BaseRepository {
                 'au.phone',
                 'pp.id as playerId',
                 'pp.full_name as playerName',
-                this.db.raw("COALESCE(pp.full_name, iu.full_name, au.username, au.email, au.phone, 'User') as \"displayName\""),
+                'cp.id as coachId',
+                'cp.full_name as coachName',
+                this.db.raw("COALESCE(pp.full_name, cp.full_name, iu.full_name, au.username, au.email, au.phone, 'User') as \"displayName\""),
                 this.db.raw(`
                     CASE
                         WHEN apr.is_used = true THEN 'resolved'

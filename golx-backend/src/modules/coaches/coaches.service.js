@@ -1,5 +1,7 @@
 const eventBus = require('../../events/eventBus');
+const bcrypt = require('bcrypt');
 const COACHES_EVENTS = require('./coaches.events');
+const env = require('../../config/env');
 const { BadRequestError, ForbiddenError, NotFoundError } = require('../../shared/errors');
 const {
     getAssignmentRole,
@@ -8,6 +10,7 @@ const {
     publicRoleCatalog,
 } = require('./coach-assignment-roles');
 const storage = require('../../shared/storage');
+const { assertUploadSignature } = require('../../shared/upload-validation');
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
@@ -612,6 +615,7 @@ class CoachesService {
         if (buffer.length > 25 * 1024 * 1024) {
             throw new BadRequestError('Assignment files must be 25MB or smaller.');
         }
+        assertUploadSignature(normalizedMimeType, buffer);
 
         const fileName = sanitizeFileName(originalName);
         const upload = await storage.putUpload({
@@ -646,6 +650,7 @@ class CoachesService {
         if (buffer.length > 5 * 1024 * 1024) {
             throw new BadRequestError('Coach image must be 5MB or smaller.');
         }
+        assertUploadSignature(normalizedMimeType, buffer);
 
         const fileName = sanitizeFileName(originalName || 'coach-image');
         const upload = await storage.putUpload({
@@ -1101,6 +1106,13 @@ class CoachesService {
             identityUpdate.is_active = data.isActive;
             iamIdentityUpdate.is_active = data.isActive;
         }
+        if (data.password !== undefined) {
+            if (!coach.user_id) {
+                throw new BadRequestError('This coach does not have a login account to reset.');
+            }
+            identityUpdate.password_hash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
+            iamIdentityUpdate.password_hash = identityUpdate.password_hash;
+        }
 
         const hasIdentityChanges = Object.keys(identityUpdate).length > 0 && coach.user_id;
         const hasIamUsers = hasIdentityChanges ? await this.repo.db.schema.hasTable('iam_users') : false;
@@ -1113,6 +1125,14 @@ class CoachesService {
                     await trx('iam_users')
                         .where({ id: coach.user_id })
                         .update({ ...iamIdentityUpdate, updated_at: new Date() });
+                }
+                if (data.password !== undefined) {
+                    await trx('auth_password_resets')
+                        .where({ user_id: coach.user_id, is_used: false })
+                        .update({ is_used: true, updated_at: new Date() });
+                    await trx('auth_refresh_tokens')
+                        .where({ user_id: coach.user_id, is_revoked: false })
+                        .update({ is_revoked: true, revoke_reason: 'password_reset', revoked_at: new Date() });
                 }
             }
             return this.repo.update(id, updateData, trx);

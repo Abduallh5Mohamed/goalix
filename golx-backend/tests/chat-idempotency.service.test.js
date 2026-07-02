@@ -44,4 +44,64 @@ describe('chat idempotency contract', () => {
         expect(service._invalidateConversationCaches).not.toHaveBeenCalled();
         expect(result.idempotent).toBe(true);
     });
+
+    test('read receipts are idempotent and return no realtime event when nothing changes', async () => {
+        const conversation = {
+            id: 'conversation-1',
+            academy_id: 'academy-1',
+            type: 'coach_player',
+            status: 'open',
+            coach_user_id: 'coach-user',
+            player_user_id: 'player-user',
+        };
+        const repo = {
+            db: jest.fn(),
+            findConversationById: jest.fn(async () => conversation),
+            markConversationRead: jest.fn(async () => ({
+                messages: [],
+                event: null,
+            })),
+            conversationUserIds: jest.fn(() => ['coach-user', 'player-user']),
+        };
+        const service = new ChatService(repo);
+
+        const result = await service.markConversationRead(
+            { role: 'player', userId: 'player-user', academyId: 'academy-1' },
+            conversation.id,
+        );
+
+        expect(repo.markConversationRead).toHaveBeenCalledWith(conversation.id, 'player-user');
+        expect(result.messages).toEqual([]);
+        expect(result.event).toBeNull();
+        expect(result.recipientUserIds).toEqual(['coach-user', 'player-user']);
+    });
+
+    test('old message scroll requests archive-aware reads', async () => {
+        const conversation = {
+            id: 'conversation-1',
+            academy_id: 'academy-1',
+            type: 'admin_coach',
+            status: 'open',
+            admin_user_id: 'admin-user',
+            coach_user_id: 'coach-user',
+        };
+        const repo = {
+            db: jest.fn(),
+            findConversationById: jest.fn(async () => conversation),
+            listMessages: jest.fn(async () => []),
+        };
+        const service = new ChatService(repo);
+
+        await service.listMessages(
+            { role: 'admin', userId: 'admin-user', academyId: 'academy-1' },
+            conversation.id,
+            { before: '2026-01-01T00:00:00.000Z', limit: 50 },
+        );
+
+        expect(repo.listMessages).toHaveBeenCalledWith(
+            conversation.id,
+            'admin-user',
+            expect.objectContaining({ includeArchive: true }),
+        );
+    });
 });

@@ -150,15 +150,19 @@ const numberValue = (value: unknown) => {
   return null;
 };
 
-const metricText = (value: unknown) => {
+const metricText = (value: unknown, emptyText = "-") => {
   const numeric = numberValue(value);
-  if (numeric === null) return "-";
+  if (numeric === null) return emptyText;
   return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
 };
 
-const metricTone = (value: unknown) => {
+const metricTone = (value: unknown, mode: "score" | "count" = "score") => {
   const numeric = numberValue(value);
   if (numeric === null) return "text-muted-foreground";
+  if (mode === "count") {
+    if (numeric > 0) return "text-primary";
+    return "text-muted-foreground";
+  }
   if (numeric >= 85) return "text-emerald-400";
   if (numeric >= 70) return "text-cyan-300";
   if (numeric >= 55) return "text-amber-300";
@@ -167,6 +171,9 @@ const metricTone = (value: unknown) => {
 
 const hasBaseInputs = (row: RankingSystemInput) =>
   baseFields.every((field) => numberValue(row[field.key]) !== null);
+
+const hasAnyBaseInput = (row: RankingSystemInput) =>
+  baseFields.some((field) => numberValue(row[field.key]) !== null);
 
 const roleValues = (row: RankingSystemInput): Array<[string, unknown]> => {
   switch (row.role_family) {
@@ -298,9 +305,13 @@ function RoleProfileCard({
 function MetricStack({
   items,
   columns = 1,
+  emptyText = "-",
+  toneMode = "score",
 }: {
   items: Array<[string, unknown]>;
   columns?: 1 | 2;
+  emptyText?: string;
+  toneMode?: "score" | "count";
 }) {
   return (
     <div
@@ -319,11 +330,14 @@ function MetricStack({
           </span>
           <span
             className={cn(
-              "shrink-0 font-mono text-sm font-semibold tabular-nums",
-              metricTone(value),
+              "shrink-0 text-right font-mono text-sm font-semibold tabular-nums",
+              numberValue(value) === null && emptyText !== "-"
+                ? "font-sans text-[11px] font-medium"
+                : "",
+              metricTone(value, toneMode),
             )}
           >
-            {metricText(value)}
+            {metricText(value, emptyText)}
           </span>
         </div>
       ))}
@@ -725,20 +739,31 @@ export default function CoachRankingSystemPage() {
                           </div>
                         </td>
                         <td className="border-b border-border/30 px-3 py-3">
-                          <MetricStack items={sourceItems} />
+                          <MetricStack items={sourceItems} toneMode="count" />
                         </td>
                         <td className="border-b border-border/30 px-3 py-3">
-                          <MetricStack items={baseItems} columns={2} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {roleValues(row).length ? (
+                          {hasAnyBaseInput(row) ? (
                             <MetricStack
-                              items={displayInputValues(roleValues(row))}
+                              items={baseItems}
                               columns={2}
+                              emptyText="No input"
                             />
                           ) : (
                             <span className="block text-xs text-muted-foreground">
-                              No role package
+                              No base input yet
+                            </span>
+                          )}
+                        </td>
+                        <td className="border-b border-border/30 px-3 py-3">
+                          {row.match_evaluation_count > 0 && roleValues(row).length ? (
+                            <MetricStack
+                              items={displayInputValues(roleValues(row))}
+                              columns={2}
+                              emptyText="No input"
+                            />
+                          ) : (
+                            <span className="block text-xs text-muted-foreground">
+                              No match input yet
                             </span>
                           )}
                         </td>
