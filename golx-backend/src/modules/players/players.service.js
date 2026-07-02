@@ -43,12 +43,7 @@ const tacticalSkillMap = {
 const physicalMap = {
   bmi: "bmi",
   sprintSpeed: "sprint_speed",
-  acceleration: "acceleration",
   stamina: "stamina",
-  strength: "strength",
-  agility: "agility",
-  balance: "balance",
-  jumpHeightCm: "jump_height_cm",
   flexibility: "flexibility",
 };
 
@@ -340,13 +335,7 @@ class PlayersService {
           nationality: data.nationality || null,
           level: data.level || null,
           position: data.position || null,
-          secondary_positions: JSON.stringify(data.secondaryPositions || []),
           preferred_foot: data.preferredFoot || null,
-          current_team: data.currentTeam || null,
-          shirt_number: data.shirtNumber || null,
-          playing_style: data.playingStyle || null,
-          years_experience: data.yearsExperience ?? null,
-          previous_club_academy: data.previousClubAcademy || null,
           guardian_name: data.guardianName || null,
           guardian_phone: data.guardianPhone || null,
           guardian_relation: data.guardianRelation || null,
@@ -646,20 +635,8 @@ class PlayersService {
     if (data.branchId) updateData.branch_id = data.branchId;
     if (data.level !== undefined) updateData.level = data.level;
     if (data.position !== undefined) updateData.position = data.position;
-    if (data.secondaryPositions !== undefined)
-      updateData.secondary_positions = JSON.stringify(data.secondaryPositions);
     if (data.preferredFoot !== undefined)
       updateData.preferred_foot = data.preferredFoot;
-    if (data.currentTeam !== undefined)
-      updateData.current_team = data.currentTeam;
-    if (data.shirtNumber !== undefined)
-      updateData.shirt_number = data.shirtNumber;
-    if (data.playingStyle !== undefined)
-      updateData.playing_style = data.playingStyle;
-    if (data.yearsExperience !== undefined)
-      updateData.years_experience = data.yearsExperience;
-    if (data.previousClubAcademy !== undefined)
-      updateData.previous_club_academy = data.previousClubAcademy;
     if (data.isActive !== undefined) updateData.is_active = data.isActive;
     if (data.guardianName !== undefined)
       updateData.guardian_name = data.guardianName;

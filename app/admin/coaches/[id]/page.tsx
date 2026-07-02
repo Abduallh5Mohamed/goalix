@@ -18,6 +18,7 @@ import {
   useGetCoachGroupsQuery,
   useRegenerateCoachMfaBackupCodesMutation,
   useSetupCoachMfaMutation,
+  useUpdateCoachMutation,
   useVerifyCoachMfaMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
@@ -44,14 +45,24 @@ function getApiErrorMessage(err: unknown, fallback: string) {
     : apiError.data?.error?.message ?? fallback;
 }
 
-export default function CoachProfilePage({ params }: { params: Promise<{ id: string }> }) {
+const strongPasswordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
+
+export default function CoachProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ resetPassword?: string | string[] | undefined }>;
+}) {
   const { id } = use(params);
+  const query = use(searchParams);
   const { data: coach, isLoading, error, refetch } = useGetCoachByIdQuery(id);
   const { data: groups } = useGetCoachGroupsQuery(id);
   const [setupCoachMfa, { isLoading: isSettingUpMfa }] = useSetupCoachMfaMutation();
   const [verifyCoachMfa, { isLoading: isVerifyingMfa }] = useVerifyCoachMfaMutation();
   const [regenerateCoachMfaBackupCodes, { isLoading: isRegeneratingCoachBackupCodes }] =
     useRegenerateCoachMfaBackupCodesMutation();
+  const [updateCoach, { isLoading: isResettingPassword }] = useUpdateCoachMutation();
   const [mfaOpen, setMfaOpen] = useState(false);
   const [mfaSetup, setMfaSetup] = useState<Setup2FAResponse | null>(null);
   const [mfaDeviceName, setMfaDeviceName] = useState("Coach phone");
@@ -59,6 +70,14 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
   const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([]);
   const [mfaError, setMfaError] = useState("");
   const [mfaMessage, setMfaMessage] = useState("");
+  const resetPasswordQueryValue = Array.isArray(query.resetPassword)
+    ? query.resetPassword[0]
+    : query.resetPassword;
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(resetPasswordQueryValue === "1");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [resetPasswordMessage, setResetPasswordMessage] = useState("");
 
   const closeMfaDialog = () => {
     setMfaOpen(false);
@@ -78,6 +97,43 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
     setMfaBackupCodes([]);
     setMfaError("");
     setMfaMessage("");
+  };
+
+  const closeResetPasswordDialog = () => {
+    setResetPasswordOpen(false);
+    setResetPassword("");
+    setResetPasswordConfirm("");
+    setResetPasswordError("");
+    setResetPasswordMessage("");
+  };
+
+  const handleResetCoachPassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!coach) return;
+    setResetPasswordError("");
+    setResetPasswordMessage("");
+
+    if (!strongPasswordPattern.test(resetPassword)) {
+      setResetPasswordError("Password must be 8+ characters and include uppercase, number, and special character.");
+      return;
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      setResetPasswordError("Password confirmation does not match.");
+      return;
+    }
+
+    try {
+      await updateCoach({
+        id: coach.id,
+        body: { password: resetPassword },
+      }).unwrap();
+      setResetPassword("");
+      setResetPasswordConfirm("");
+      setResetPasswordMessage("Coach password changed. Any open reset request for this coach is now resolved.");
+      void refetch();
+    } catch (err) {
+      setResetPasswordError(getApiErrorMessage(err, "Could not reset coach password."));
+    }
   };
 
   const handleSetupCoachMfa = async (resetExisting = false) => {
@@ -158,6 +214,10 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
               <Edit className="h-4 w-4" />
               Edit Profile
             </Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => setResetPasswordOpen(true)}>
+              <KeyRound className="h-4 w-4" />
+              Reset Password
+            </Button>
             <Button className="gap-1.5" onClick={openMfaDialog}>
               <ShieldCheck className="h-4 w-4" />
               {coach.totp_enabled ? "Manage Coach MFA" : "Add Coach MFA"}
@@ -218,6 +278,54 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={resetPasswordOpen} onOpenChange={(nextOpen) => (nextOpen ? setResetPasswordOpen(true) : closeResetPasswordDialog())}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Coach Password</DialogTitle>
+            <DialogDescription>
+              Change the coach login password. The username stays locked and will not change.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetCoachPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-username">Username</Label>
+              <Input id="coach-reset-username" value={coach.username ?? "No username"} readOnly />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-password">New password</Label>
+              <Input
+                id="coach-reset-password"
+                type="password"
+                value={resetPassword}
+                onChange={(event) => setResetPassword(event.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-password-confirm">Confirm password</Label>
+              <Input
+                id="coach-reset-password-confirm"
+                type="password"
+                value={resetPasswordConfirm}
+                onChange={(event) => setResetPasswordConfirm(event.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            {resetPasswordError && <p className="text-sm text-red-400">{resetPasswordError}</p>}
+            {resetPasswordMessage && <p className="text-sm text-emerald-400">{resetPasswordMessage}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={closeResetPasswordDialog}>
+                Close
+              </Button>
+              <Button type="submit" disabled={isResettingPassword} className="gap-2">
+                {isResettingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
+                Change Password
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={mfaOpen} onOpenChange={(nextOpen) => (nextOpen ? setMfaOpen(true) : closeMfaDialog())}>
         <DialogContent className="max-w-2xl">

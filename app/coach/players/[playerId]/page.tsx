@@ -80,15 +80,24 @@ const formatValue = (value: unknown): string => {
   return text;
 };
 
-const formatListValue = (value: unknown): string => {
-  if (Array.isArray(value)) return value.length ? value.map((item) => formatValue(item)).join(", ") : "--";
-  if (typeof value !== "string") return formatValue(value);
-  try {
-    const parsed = JSON.parse(value);
-    return formatListValue(parsed);
-  } catch {
-    return formatValue(value);
+const hasMeasurementValue = (value: unknown) =>
+  value !== null && value !== undefined && value !== "";
+
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
+  return null;
+};
+
+const calculateBmi = (heightCm: unknown, weightKg: unknown) => {
+  const height = numberValue(heightCm);
+  const weight = numberValue(weightKg);
+  if (!height || !weight) return null;
+  const heightM = height / 100;
+  return Number((weight / (heightM * heightM)).toFixed(2));
 };
 
 const ageFrom = (date: string | null | undefined) => {
@@ -100,6 +109,20 @@ const ageFrom = (date: string | null | undefined) => {
   const monthDiff = today.getMonth() - birth.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
   return age >= 0 ? `${age}` : "--";
+};
+
+const goalixExperienceFrom = (date: unknown) => {
+  if (!date) return "--";
+  const joined = new Date(String(date));
+  if (Number.isNaN(joined.getTime())) return "--";
+  const today = new Date();
+  let years = today.getFullYear() - joined.getFullYear();
+  const monthDiff = today.getMonth() - joined.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < joined.getDate())) {
+    years -= 1;
+  }
+  if (years <= 0) return "Less than 1 year";
+  return years === 1 ? "1 year" : `${years} years`;
 };
 
 function StatCard({
@@ -189,6 +212,13 @@ const assignmentStatusMeta = (status: unknown) => {
     default:
       return { label: "Not submitted", variant: "warning" as const };
   }
+};
+
+const injuryRiskVariant = (level: unknown) => {
+  if (level === "High") return "destructive" as const;
+  if (level === "Medium") return "warning" as const;
+  if (level === "Low") return "success" as const;
+  return "secondary" as const;
 };
 
 const emptyEditForm = {
@@ -297,8 +327,30 @@ export function ManagedPlayerDetailPage({
     );
   }
 
-  const latestValue = (key: string) => player[key] ?? latestMeasurement?.[key] ?? null;
+  const latestMeasurementValue = (key: string) => {
+    for (const measurement of data.measurements) {
+      const value = measurement[key];
+      if (hasMeasurementValue(value)) return value;
+    }
+    return null;
+  };
+  const baselineHeight = latestMeasurementValue("height_cm");
+  const baselineWeight = latestMeasurementValue("weight_kg");
+  const baselineBmi =
+    latestMeasurementValue("bmi") ?? calculateBmi(baselineHeight, baselineWeight);
   const linkedParent = player.linked_parent ?? null;
+  const matchInjuries = (data.incidents as unknown as AnyRecord[]).filter(
+    (incident) => incident.incident_type === "injury",
+  );
+  const injuryRisk = data.injuryRisk;
+  const injuryPrediction = injuryRisk?.prediction ?? null;
+  const injuryInput = injuryRisk?.input ?? null;
+  const currentInjuryStatus =
+    String(data.healthProfile?.current_injury_status ?? "none") || "none";
+  const hasInjuryHistory =
+    currentInjuryStatus === "injured" ||
+    data.injuries.length > 0 ||
+    matchInjuries.length > 0;
   const handleSaveEdit = async () => {
     setEditError("");
     if (!editForm.fullName.trim()) {
@@ -473,7 +525,6 @@ export function ManagedPlayerDetailPage({
           <TabsTrigger value="matches">Matches</TabsTrigger>
           <TabsTrigger value="training">Training</TabsTrigger>
           <TabsTrigger value="medical">Medical</TabsTrigger>
-          <TabsTrigger value="development">Development</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
         </TabsList>
 
@@ -505,13 +556,8 @@ export function ManagedPlayerDetailPage({
               <DetailGrid
                 rows={[
                   ["Main position", player.position],
-                  ["Secondary positions", formatListValue(player.secondary_positions)],
                   ["Preferred foot", player.preferred_foot],
-                  ["Current team", player.current_team],
-                  ["Shirt number", player.shirt_number],
-                  ["Playing style", player.playing_style],
-                  ["Years experience", player.years_experience],
-                  ["Previous club / academy", player.previous_club_academy],
+                  ["Goalix experience", goalixExperienceFrom(player.date_joined)],
                 ]}
               />
             </CardContent>
@@ -561,17 +607,12 @@ export function ManagedPlayerDetailPage({
             <CardContent>
               <DetailGrid
                 rows={[
-                  ["Height", latestValue("height_cm")],
-                  ["Weight", latestValue("weight_kg")],
-                  ["BMI", latestValue("bmi")],
-                  ["Sprint speed", latestValue("sprint_speed")],
-                  ["Acceleration", latestValue("acceleration")],
-                  ["Stamina", latestValue("stamina")],
-                  ["Strength", latestValue("strength")],
-                  ["Agility", latestValue("agility")],
-                  ["Balance", latestValue("balance")],
-                  ["Jump height", latestValue("jump_height_cm")],
-                  ["Flexibility", latestValue("flexibility")],
+                  ["Height (cm)", baselineHeight],
+                  ["Weight (kg)", baselineWeight],
+                  ["BMI", baselineBmi],
+                  ["Sprint (s)", latestMeasurementValue("sprint_speed")],
+                  ["Endurance (/10)", latestMeasurementValue("stamina")],
+                  ["Flexibility (/10)", latestMeasurementValue("flexibility")],
                 ]}
               />
             </CardContent>
@@ -776,83 +817,90 @@ export function ManagedPlayerDetailPage({
 
         <TabsContent value="medical" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><HeartPulse className="h-4 w-4" /> Health Profile</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><HeartPulse className="h-4 w-4" /> Medical Summary</CardTitle></CardHeader>
             <CardContent>
-              <DetailGrid rows={Object.entries(data.healthProfile ?? {})} />
+              <DetailGrid
+                rows={[
+                  ["Has injury record", hasInjuryHistory ? "Yes" : "No"],
+                  ["Current injury status", currentInjuryStatus],
+                  ["Injury records", data.injuries.length],
+                  ["Match injuries", matchInjuries.length],
+                  ["Medical notes", data.healthProfile?.medical_notes],
+                  ["Fitness status", data.healthProfile?.fitness_status],
+                  ["Allergies", data.healthProfile?.allergies],
+                  ["Chronic problems", data.healthProfile?.chronic_problems],
+                ]}
+              />
             </CardContent>
           </Card>
+
           <RecordsTable
-            rows={data.measurements}
-            empty="No measurements yet."
+            rows={matchInjuries}
+            empty="No match injuries recorded for this player."
             columns={[
-              { key: "measured_at", label: "Date" },
-              { key: "height_cm", label: "Height" },
-              { key: "weight_kg", label: "Weight" },
-              { key: "bmi", label: "BMI" },
-              { key: "sprint_speed", label: "Sprint" },
+              { key: "match_date", label: "Match date" },
+              { key: "opponent_name", label: "Match" },
+              { key: "minute", label: "Minute" },
+              { key: "body_part", label: "Injury" },
               { key: "notes", label: "Notes" },
             ]}
           />
+
           <RecordsTable
             rows={data.injuries}
             empty="No injury history."
             columns={[
               { key: "injury_date", label: "Injury date" },
               { key: "injury_type", label: "Type" },
+              { key: "body_part", label: "Body part" },
+              { key: "severity", label: "Severity" },
               { key: "recovery_date", label: "Recovery" },
               { key: "notes", label: "Notes" },
             ]}
           />
-        </TabsContent>
 
-        <TabsContent value="development" className="space-y-4">
-          <RecordsTable
-            rows={data.skillAssessments}
-            empty="No skill assessments yet."
-            columns={[
-              { key: "assessed_at", label: "Date" },
-              { key: "group_name", label: "Group" },
-              { key: "ball_control", label: "Ball control" },
-              { key: "first_touch", label: "First touch" },
-              { key: "passing", label: "Passing" },
-              { key: "shooting", label: "Shooting" },
-              { key: "dribbling", label: "Dribbling" },
-              { key: "crossing", label: "Crossing" },
-              { key: "heading", label: "Heading" },
-              { key: "tackling", label: "Tackling" },
-              { key: "positioning", label: "Positioning" },
-              { key: "decision_making", label: "Decision making" },
-              { key: "teamwork", label: "Teamwork" },
-              { key: "game_reading", label: "Game reading" },
-            ]}
-          />
-          <RecordsTable
-            rows={data.rankings}
-            empty="No ranking history yet."
-            columns={[
-              { key: "period", label: "Period" },
-              { key: "group_name", label: "Group" },
-              { key: "rank", label: "Rank" },
-              { key: "total_score", label: "Score" },
-              { key: "trend", label: "Trend" },
-            ]}
-          />
-          <RecordsTable
-            rows={data.coachRatings}
-            empty="No coach ratings yet."
-            columns={[
-              { key: "eval_date", label: "Date" },
-              { key: "coach_name", label: "Coach" },
-              { key: "group_name", label: "Group" },
-              { key: "score", label: "Score" },
-              { key: "potential_rating", label: "Potential" },
-              { key: "recommended_position", label: "Recommended position" },
-              { key: "strengths", label: "Strengths" },
-              { key: "weaknesses", label: "Weaknesses" },
-              { key: "development_plan", label: "Development plan" },
-              { key: "notes", label: "Notes" },
-            ]}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldAlert className="h-4 w-4" />
+                Injury Risk AI
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {injuryRisk ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={injuryRiskVariant(injuryPrediction?.risk_level)}>
+                      {injuryPrediction?.risk_level || "No level"}
+                    </Badge>
+                    <span className="text-sm font-medium">
+                      Risk {injuryPrediction?.risk_percentage ?? "--"}%
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatValue(injuryRisk.created_at)}
+                    </span>
+                  </div>
+                  <DetailGrid
+                    rows={[
+                      ["Recommendation", injuryPrediction?.recommendation],
+                      ["Alert flag", injuryPrediction?.alert_flag],
+                      ["Model version", injuryRisk.model_version],
+                      ["Attendance rate", injuryInput?.attendance_rate],
+                      ["Training sessions/week", injuryInput?.training_sessions_per_week],
+                      ["Match minutes last week", injuryInput?.match_minutes_last_week],
+                      ["Fatigue rating", injuryInput?.fatigue_rating],
+                      ["Previous injury input", injuryInput?.previous_injury],
+                      ["Pain/discomfort input", injuryInput?.pain_or_discomfort],
+                    ]}
+                  />
+                </>
+              ) : (
+                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
+                  No injury risk model output yet for this player.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4">

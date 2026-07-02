@@ -13,6 +13,22 @@
 - Player and parent login remain through `/login` on the frontend and `/api/v1/auth/login` on the backend.
 - Existing RBAC helpers remain the source of permission enforcement: `authMiddleware`, `rbac`, `rbacAny`, and `restrictTo`.
 
+## Role Panel Boundaries
+
+- `/admin-login` is the shared staff login surface for admin and coach accounts only. Keeping coaches here is intentional.
+- `/admin/*` is the admin panel. It must render only for authenticated `admin` users and redirects other roles to their own home route.
+- `/coach/*` is the coach portal. It must render only for authenticated `coach` users and redirects unauthenticated users to `/admin-login`.
+- `/player/*` and `/parent/*` are public-account portals. They must render only for their matching roles and redirect unauthenticated users to `/login`.
+- `ROLE_ROUTES` is the frontend source of truth for post-login role redirects:
+  - `admin -> /admin/dashboard`
+  - `coach -> /coach/home`
+  - `player -> /player/home`
+  - `parent -> /parent/home`
+- Backend auth boundaries are enforced by `allowedRoles`:
+  - `/api/v1/auth/admin/login` allows only `admin` and `coach`.
+  - `/api/v1/auth/login` allows only `player` and `parent`.
+- Legacy backend aliases `/api/admin`, `/api/coach`, `/api/player`, and `/api/parent` exist for compatibility only. New frontend/backend work should prefer `/api/v1/*` routes unless a compatibility task explicitly requires an alias.
+
 ## Backend Module Map
 
 - `auth`: registration, split login, refresh/logout, MFA, password reset.

@@ -1,5 +1,6 @@
 const {
     canAccessConversation,
+    canAccessAiInsight,
     canAccessPlayerRecord,
     canAccessUploadMetadata,
     canParentAccessChild,
@@ -72,6 +73,51 @@ describe('access policy characterization', () => {
             academy_id: 'academy-1',
             coach_user_id: 'another-coach',
         })).toBe(false);
+
+        expect(canAccessConversation({
+            role: 'parent',
+            userId: 'parent-user',
+            academyId: 'academy-1',
+        }, {
+            type: 'chat_group',
+            academy_id: 'academy-1',
+            group_member_user_ids: ['coach-user', 'parent-user'],
+        })).toBe(true);
+
+        expect(canAccessConversation({
+            role: 'parent',
+            userId: 'parent-user',
+            academyId: 'academy-1',
+        }, {
+            type: 'chat_group',
+            academy_id: 'academy-1',
+            group_member_user_ids: ['coach-user', 'another-parent'],
+        })).toBe(false);
+    });
+
+    test('AI insight access mirrors player visibility and stays deny-by-default', () => {
+        const parent = { role: 'parent', userId: 'parent-user', academyId: 'academy-1', linkedPlayerId: 'player-1' };
+        const coach = { role: 'coach', userId: 'coach-user', academyId: 'academy-1' };
+
+        expect(canAccessAiInsight(parent, {
+            id: 'player-1',
+            academy_id: 'academy-1',
+        })).toBe(true);
+
+        expect(canAccessAiInsight(parent, {
+            id: 'player-2',
+            academy_id: 'academy-1',
+        })).toBe(false);
+
+        expect(canAccessAiInsight(coach, {
+            id: 'player-1',
+            academy_id: 'academy-1',
+        })).toBe(false);
+
+        expect(canAccessAiInsight(coach, {
+            id: 'player-1',
+            academy_id: 'academy-1',
+        }, { coachCanAccess: true })).toBe(true);
     });
 
     test('upload metadata access is same-academy and deny-by-default for sensitive files', () => {

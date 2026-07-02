@@ -24,6 +24,10 @@ const notificationsQuery = z.object({
     type: z.enum(['info', 'warning', 'success', 'error', 'alert']).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    includeArchive: z
+        .enum(['true', 'false'])
+        .optional()
+        .transform((value) => value === 'true'),
 });
 
 const logsQuerySchema = z.object({
@@ -31,6 +35,10 @@ const logsQuerySchema = z.object({
     status: z.enum(['sent', 'delivered', 'failed']).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    includeArchive: z
+        .enum(['true', 'false'])
+        .optional()
+        .transform((value) => value === 'true'),
 });
 
 module.exports = {

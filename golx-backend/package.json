@@ -24,6 +24,9 @@
         "load:soak": "node load-tests/mixed-load-test.js --profile=30min-soak",
         "load:analyze": "node load-tests/analyze-report.js",
         "load:cleanup": "node load-tests/cleanup.js",
+        "data:lifecycle:run": "node scripts/run-data-lifecycle.js",
+        "data:lifecycle:dry-run": "node scripts/run-data-lifecycle.js --dry-run",
+        "data:lifecycle:report": "node scripts/report-data-lifecycle.js",
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
         "dump:sanitize": "node scripts/sanitize-sql-dump.js"
