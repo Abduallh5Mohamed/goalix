@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Inter, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store/provider";
@@ -24,11 +25,13 @@ export const metadata: Metadata = {
   description: "Elite sports academy management platform — manage players, coaches, attendance, rankings, and payments.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+
   return (
     <html
       lang="en"
