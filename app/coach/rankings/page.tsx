@@ -152,6 +152,7 @@ const roleTopCards: Array<{
   { role: "defense", title: "Top Defenders", icon: Shield },
   { role: "goalkeeper", title: "Top Goalkeepers", icon: User },
 ];
+const visibleRankingPeriodOptions = { includeCurrentWeek: true };
 
 const numberValue = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -288,7 +289,11 @@ const buildMonthlyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
   return [...byMonth.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([key, monthRows]) => {
-      const rankedRows = buildMonthlyRankingRows(monthRows, key).map((row) => ({
+      const rankedRows = buildMonthlyRankingRows(
+        monthRows,
+        key,
+        visibleRankingPeriodOptions,
+      ).map((row) => ({
         id: row.id,
         playerId: row.playerId,
         playerName: row.playerName,
@@ -923,7 +928,10 @@ export default function CoachRankingsPage() {
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const completedRows = useMemo(
-    () => rows.filter((row) => isActualCompletedRankingRow(row)),
+    () =>
+      rows.filter((row) =>
+        isActualCompletedRankingRow(row, visibleRankingPeriodOptions),
+      ),
     [rows],
   );
   const weeklyHistory = useMemo(() => buildWeeklyHistory(completedRows), [completedRows]);

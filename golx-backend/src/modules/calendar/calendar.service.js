@@ -120,7 +120,7 @@ const combineDateTime = (date, time, timeZone = DEFAULT_TIME_ZONE) => {
   return secondPass.toISOString();
 };
 const matchKickoffAt = (match) =>
-  new Date(`${datePart(match.match_date)}T${timePart(match.match_time)}:00`);
+  new Date(combineDateTime(match.match_date, match.match_time));
 const MATCH_AUTO_FINISH_HOURS = 3;
 const MATCH_EVALUATION_REOPEN_HOURS = 24;
 const matchAutoFinishAt = (match) => {
@@ -1379,6 +1379,28 @@ class CalendarService {
     if (!["first_half", "second_half"].includes(match.match_status)) {
       throw new BadRequestError("Start the match before recording match events");
     }
+  }
+
+  _matchIsLive(match) {
+    return ["first_half", "second_half"].includes(match.match_status);
+  }
+
+  _ensureMatchAttendanceEditable(match) {
+    if (match.match_status !== "scheduled") {
+      throw new BadRequestError(
+        "Match attendance can only be marked before the match starts",
+      );
+    }
+  }
+
+  _isPreKickoffAbsenceSubstitution(match, outPlayer, inPlayer, attendanceByPlayer) {
+    const outAttendance = attendanceByPlayer.get(outPlayer?.player_id);
+    return (
+      match.match_status === "scheduled" &&
+      outPlayer?.squad_role === "starter" &&
+      inPlayer?.squad_role !== "starter" &&
+      outAttendance?.status === "absent"
+    );
   }
 
   _currentPlayingPlayerIds(match) {
@@ -6377,6 +6399,22 @@ class CalendarService {
       throw new BadRequestError("Both players must be in the match squad");
     }
 
+    const attendanceByPlayer = new Map(
+      (match.attendance || []).map((record) => [record.player_id, record]),
+    );
+    const matchLive = this._matchIsLive(match);
+    const preKickoffAbsenceSubstitution = this._isPreKickoffAbsenceSubstitution(
+      match,
+      outPlayer,
+      inPlayer,
+      attendanceByPlayer,
+    );
+    if (!matchLive && !preKickoffAbsenceSubstitution) {
+      throw new BadRequestError(
+        "Substitutions before match start are only allowed for absent starting players",
+      );
+    }
+
     const currentPlaying = this._currentPlayingPlayerIds(match);
     const outPlayerWasInjured = (match.incidents || []).some(
       (incident) =>
@@ -6396,9 +6434,6 @@ class CalendarService {
       throw new BadRequestError("The substitute is already playing");
     }
 
-    const attendanceByPlayer = new Map(
-      (match.attendance || []).map((record) => [record.player_id, record]),
-    );
     const replacementAttendance = attendanceByPlayer.get(data.inPlayerId);
     if (
       !replacementAttendance ||
@@ -6409,7 +6444,9 @@ class CalendarService {
       );
     }
 
-    const minute = data.minute ?? this._matchElapsedMinute(match);
+    const minute = preKickoffAbsenceSubstitution
+      ? 0
+      : data.minute ?? this._matchElapsedMinute(match);
     await this.repo.db("match_substitutions").insert({
       match_id: matchId,
       out_player_id: data.outPlayerId,
@@ -6553,6 +6590,7 @@ class CalendarService {
         "can_take_attendance",
       );
     this._ensureMatchDayReady(match);
+    this._ensureMatchAttendanceEditable(match);
     await this._ensurePlayersInMatchTargets(
       records.map((record) => record.playerId),
       groupIds,
@@ -6596,6 +6634,7 @@ class CalendarService {
         "can_take_attendance",
       );
     this._ensureMatchDayReady(match);
+    this._ensureMatchAttendanceEditable(match);
 
     const player = await this._resolveAttendanceQrPlayer(academyId, data);
     const squadPlayer = await this.repo
