@@ -47,6 +47,7 @@ next-env.d.ts
 
 # local Goalix backend restore artifacts
 /.dev-logs/
+/.deploy/
 /db-dumps/
 /golx_main_data_*.sql
 /golx_main_data_*.zip
