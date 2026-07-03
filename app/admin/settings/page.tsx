@@ -10,13 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   useDisable2FAMutation,
   useGetAcademyQuery,
   useGetCurrentUserQuery,
@@ -39,7 +32,6 @@ type AcademyDraft = {
   email?: string;
   phone?: string;
   address?: string;
-  timezone?: string;
   communityWhatsappUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -152,6 +144,8 @@ export default function AcademyProfilePage() {
     typeof settings.socialLinks === "object" && settings.socialLinks
       ? (settings.socialLinks as Record<string, unknown>)
       : {};
+  const settingsWithoutTimezone = { ...settings };
+  delete settingsWithoutTimezone.timezone;
   const facebookUrl =
     academyDraft.facebookUrl ??
     (typeof socialLinks.facebook === "string" ? socialLinks.facebook : "");
@@ -164,9 +158,6 @@ export default function AcademyProfilePage() {
   const linkedinUrl =
     academyDraft.linkedinUrl ??
     (typeof socialLinks.linkedin === "string" ? socialLinks.linkedin : "");
-  const timezone =
-    academyDraft.timezone ??
-    (typeof settings.timezone === "string" ? settings.timezone : "Africa/Cairo");
   const communityWhatsappUrl =
     academyDraft.communityWhatsappUrl ??
     (typeof settings.communityWhatsappUrl === "string" ? settings.communityWhatsappUrl : "");
@@ -220,8 +211,7 @@ export default function AcademyProfilePage() {
         phone: academyPhone.trim() || null,
         address: academyAddress.trim() || null,
         settings: {
-          ...settings,
-          timezone,
+          ...settingsWithoutTimezone,
           weekStartsOn: SYSTEM_WEEK_STARTS_ON,
           communityWhatsappUrl: normalizeOptionalUrl(communityWhatsappUrl),
           socialLinks: {
@@ -493,23 +483,6 @@ export default function AcademyProfilePage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Timezone</Label>
-                  <Select
-                    value={timezone}
-                    onValueChange={(value) => updateDraft("timezone", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Africa/Cairo">Africa/Cairo</SelectItem>
-                      <SelectItem value="Asia/Riyadh">Asia/Riyadh</SelectItem>
-                      <SelectItem value="Europe/London">Europe/London</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="match-day-open-minutes">
                     Match Day opens before kick-off
                   </Label>
@@ -527,6 +500,9 @@ export default function AcademyProfilePage() {
                       )
                     }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Minutes before kick-off when coaches can open Match Day (0-240).
+                  </p>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="community-whatsapp-url">WhatsApp Community Link</Label>
@@ -578,6 +554,27 @@ export default function AcademyProfilePage() {
                   }
                 />
               </label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  className="gap-1.5"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {saving ? "Saving..." : "Save System Defaults"}
+                </Button>
+                {saved && (
+                  <span className="flex items-center gap-1 text-sm text-emerald-400">
+                    <CheckCircle className="h-4 w-4" /> Saved
+                  </span>
+                )}
+              </div>
+              {saveError && <p className="text-sm text-red-400">{saveError}</p>}
             </CardContent>
           </Card>
 

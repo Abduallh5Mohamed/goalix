@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 import { CalendarDays, Loader2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,8 @@ const getTrainingClockSnapshot = () => trainingClockSnapshot;
 const getServerTrainingClockSnapshot = () => 0;
 
 export default function CoachTrainingListPage() {
-  const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
+  const { data, isLoading, isError, isFetching, refetch } =
+    useGetCoachCalendarEventsQuery();
   const nowMs = useSyncExternalStore(
     subscribeTrainingClock,
     getTrainingClockSnapshot,
@@ -52,9 +54,7 @@ export default function CoachTrainingListPage() {
 
       <div className="flex justify-end">
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => refetch()}>
-            Refresh
-          </Button>
+          <RefreshButton onRefresh={refetch} isRefreshing={isFetching} />
           <Button asChild className="gap-2">
             <Link href="/coach/training/create">
               <Plus className="h-4 w-4" />

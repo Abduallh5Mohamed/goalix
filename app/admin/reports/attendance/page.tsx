@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Clock3, Download, HeartPulse, RefreshCw, UserCheck, UserX } from "lucide-react";
+import { Clock3, Download, HeartPulse, UserCheck, UserX } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart } from "@/components/charts/BarChart";
@@ -81,15 +82,12 @@ export default function AttendanceReportPage() {
         description="Attendance status, weekly trend and group comparison."
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
+            <RefreshButton
               size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onRefresh={refetch}
+              isRefreshing={isFetching}
               title="Refresh report"
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            </Button>
+            />
             <Button onClick={exportCsv} disabled={!data}>
               <Download className="h-4 w-4" />
               Export CSV

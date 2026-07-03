@@ -9,11 +9,11 @@ import {
   CircleGauge,
   ClipboardList,
   Loader2,
-  RefreshCw,
   Save,
   ShieldAlert,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -609,19 +609,15 @@ export default function CoachInjuryRiskAIPage() {
                 {copy.saved}
               </Badge>
             )}
-            <Button
-              type="button"
-              variant="outline"
+            <RefreshButton
               size="sm"
-              onClick={() => void refetch()}
+              onRefresh={refetch}
+              isRefreshing={fetchingPainRows}
+              label={copy.refresh}
+              refreshingLabel={copy.refreshingResults}
               disabled={fetchingPainRows || savingPainRows}
               className="border-[#253f5a] text-slate-100 hover:bg-white/10"
-            >
-              <RefreshCw
-                className={cn("h-4 w-4", fetchingPainRows && "animate-spin")}
-              />
-              {copy.refresh}
-            </Button>
+            />
             <Button
               type="button"
               size="sm"

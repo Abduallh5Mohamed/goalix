@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { Activity, BrainCircuit, Database, Loader2, RefreshCw, Trophy, Users } from "lucide-react";
+import { Activity, BrainCircuit, Database, Loader2, Trophy, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -408,10 +409,7 @@ export default function CoachRankingSystemPage() {
           { label: "Ranking System" },
         ]}
         actions={
-          <Button variant="outline" className="gap-2" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <RefreshButton onRefresh={refetch} />
         }
       />
 

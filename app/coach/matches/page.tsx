@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,9 +94,14 @@ export default function CoachMatchesPage() {
     data: matchesRes,
     isLoading,
     isError: matchesError,
+    isFetching: isFetchingMatches,
     refetch: refetchMatches,
   } = useGetCoachMatchesQuery();
-  const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
+  const {
+    data: adminRequestsRes,
+    isFetching: isFetchingAdminRequests,
+    refetch: refetchAdminRequests,
+  } = useGetCoachAdminMatchRequestsQuery();
   const nowMs = useSyncExternalStore(
     subscribeMatchClock,
     getMatchClockSnapshot,
@@ -177,9 +183,21 @@ export default function CoachMatchesPage() {
   const activeId = activeMatches.some((item) => item.id === selectedId)
     ? selectedId
     : activeMatches[0]?.id || "";
-  const { data: match } = useGetCoachMatchQuery(activeId, { skip: !activeId });
-  const { data: groups = [] } = useGetCoachGroupsScopedQuery();
-  const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
+  const {
+    data: match,
+    isFetching: isFetchingMatch,
+    refetch: refetchMatch,
+  } = useGetCoachMatchQuery(activeId, { skip: !activeId });
+  const {
+    data: groups = [],
+    isFetching: isFetchingGroups,
+    refetch: refetchGroups,
+  } = useGetCoachGroupsScopedQuery();
+  const {
+    data: birthdays = [],
+    isFetching: isFetchingBirthdays,
+    refetch: refetchBirthdays,
+  } = useGetCoachBirthdaysQuery();
   const [adminRequestTargets, setAdminRequestTargets] = useState<
     Record<string, { mode: "group" | "birthday"; value: string }>
   >({});
@@ -230,6 +248,23 @@ export default function CoachMatchesPage() {
     setSelectedId(id);
   };
 
+  const isRefreshing =
+    isFetchingMatches ||
+    isFetchingAdminRequests ||
+    isFetchingMatch ||
+    isFetchingGroups ||
+    isFetchingBirthdays;
+
+  const refreshPageData = async () => {
+    await Promise.all([
+      refetchMatches(),
+      refetchAdminRequests(),
+      refetchGroups(),
+      refetchBirthdays(),
+      ...(activeId ? [refetchMatch()] : []),
+    ]);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -240,9 +275,10 @@ export default function CoachMatchesPage() {
           { label: "Matches" },
         ]}
         actions={
-          <Button variant="outline" onClick={() => refetchMatches()}>
-            Refresh
-          </Button>
+          <RefreshButton
+            onRefresh={refreshPageData}
+            isRefreshing={isRefreshing}
+          />
         }
       />
 

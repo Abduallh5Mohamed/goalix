@@ -52,6 +52,17 @@ type SlotState = Record<string, { playerId: string; instruction: string }>;
 const closedMatchStatuses = new Set(["cancelled", "finished", "completed"]);
 const MATCH_AUTO_FINISH_HOURS = 3;
 const CAM_ALLOWED_MAIN_POSITIONS = new Set(["CAM", "ST", "CM", "LW", "RW"]);
+const CM_COMPATIBLE_SLOT_POSITIONS = new Set([
+  "CM",
+  "LCM",
+  "RCM",
+  "CAM",
+  "LAM",
+  "RAM",
+  "CDM",
+  "LDM",
+  "RDM",
+]);
 const POSITION_ALIASES: Record<string, string> = {
   GOALKEEPER: "GK",
   "GOAL KEEPER": "GK",
@@ -139,6 +150,12 @@ const slotAllowsPlayer = (slotLabel: string, player: CoachPlayer) => {
   const slotPosition = normalizePosition(slotLabel);
   const mainPosition = normalizePosition(playerMainPosition(player));
   if (!mainPosition) return false;
+  if (
+    mainPosition === "CM" &&
+    CM_COMPATIBLE_SLOT_POSITIONS.has(slotPosition)
+  ) {
+    return true;
+  }
   if (slotPosition === "CAM") return CAM_ALLOWED_MAIN_POSITIONS.has(mainPosition);
   return mainPosition === slotPosition;
 };
@@ -341,9 +358,9 @@ export default function CoachMatchConfigurationPage() {
       }
 
       const rosterPlayer = players.find((item) => item.id === player.player_id);
-      const savedPosition = rosterPlayer
-        ? playerMainPosition(rosterPlayer) || player.position
-        : player.position;
+      const savedPosition =
+        player.position ||
+        (rosterPlayer ? playerMainPosition(rosterPlayer) : "");
       const slot =
         nextSlots.find(
           (item) => item.label === savedPosition && !usedSlotIds.has(item.id),

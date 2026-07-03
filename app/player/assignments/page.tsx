@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { ClipboardCheck, FileUp, Loader2, RefreshCw } from "lucide-react";
+import { ClipboardCheck, FileUp, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,10 +129,10 @@ export default function PlayerAssignmentsPage() {
           { label: "Assignments" },
         ]}
         actions={
-          <Button variant="outline" className="gap-2" onClick={() => assignmentsQuery.refetch()}>
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <RefreshButton
+            onRefresh={assignmentsQuery.refetch}
+            isRefreshing={assignmentsQuery.isFetching}
+          />
         }
       />
 

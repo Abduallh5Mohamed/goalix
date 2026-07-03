@@ -104,4 +104,52 @@ describe('chat idempotency contract', () => {
             expect.objectContaining({ includeArchive: true }),
         );
     });
+
+    test('editMessage updates the original message without changing its identity', async () => {
+        const conversation = {
+            id: 'conversation-1',
+            academy_id: 'academy-1',
+            type: 'admin_coach',
+            status: 'open',
+            admin_user_id: 'admin-user',
+            coach_user_id: 'coach-user',
+        };
+        const originalMessage = {
+            id: 'message-1',
+            conversation_id: conversation.id,
+            sender_user_id: 'admin-user',
+            body: 'Hello',
+            created_at: '2026-07-03T10:00:00.000Z',
+        };
+        const editedMessage = {
+            ...originalMessage,
+            body: 'Updated hello',
+            edited_at: '2026-07-03T10:05:00.000Z',
+        };
+        const repo = {
+            db: jest.fn(),
+            findConversationById: jest.fn(async () => conversation),
+            findMessageForMutation: jest.fn(async () => originalMessage),
+            updateMessageBody: jest.fn(async () => editedMessage),
+            conversationUserIds: jest.fn(() => ['admin-user', 'coach-user']),
+        };
+        const service = new ChatService(repo);
+        service._invalidateConversationCaches = jest.fn();
+
+        const result = await service.editMessage(
+            { role: 'admin', userId: 'admin-user', academyId: 'academy-1' },
+            conversation.id,
+            originalMessage.id,
+            'Updated hello',
+        );
+
+        expect(repo.updateMessageBody).toHaveBeenCalledWith(
+            originalMessage.id,
+            'Updated hello',
+        );
+        expect(result.message).toEqual(editedMessage);
+        expect(result.message.id).toBe(originalMessage.id);
+        expect(result.message.sender_user_id).toBe(originalMessage.sender_user_id);
+        expect(result.message.created_at).toBe(originalMessage.created_at);
+    });
 });
