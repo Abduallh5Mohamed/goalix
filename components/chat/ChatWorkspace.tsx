@@ -493,6 +493,26 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     });
   }, []);
 
+  const replaceMessage = useCallback((message: Message) => {
+    if (message.conversation_id !== selectedRef.current) return;
+    setMessages((prev) =>
+      prev.map((current) =>
+        current.id === message.id
+          ? {
+              ...current,
+              ...message,
+              id: current.id,
+              conversation_id: current.conversation_id,
+              sender_user_id: current.sender_user_id,
+              sender_name: current.sender_name,
+              sender_role: current.sender_role,
+              created_at: current.created_at,
+            }
+          : current,
+      ),
+    );
+  }, []);
+
   const upsertMessages = useCallback((updatedMessages: Message[]) => {
     setMessages((prev) => {
       let changed = false;
@@ -608,7 +628,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setConnectionWarning("");
     });
     socket.on("chat:message", upsertMessage);
-    socket.on("chat:message_updated", upsertMessage);
+    socket.on("chat:message_updated", replaceMessage);
     socket.on("chat:message_deleted", handleMessageDeleted);
     socket.on("chat:messages_read", upsertMessages);
     socket.on("chat:conversation", () => {
@@ -631,6 +651,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     isInitialized,
     loadConversations,
     realtimeReady,
+    replaceMessage,
     upsertMessage,
     upsertMessages,
   ]);
@@ -865,16 +886,32 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     setError("");
     try {
       if (editingMessage) {
-        const message = await apiJson<Message>(
-          `/conversations/${selected.id}/messages/${editingMessage.id}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ body: body.trim() }),
-          },
-        );
-        upsertMessage(message);
+        const originalMessage = editingMessage;
+        const updatedBody = body.trim();
+        replaceMessage({
+          ...originalMessage,
+          body: updatedBody,
+          edited_at: new Date().toISOString(),
+        });
         setEditingMessage(null);
         setBody("");
+        try {
+          const message = await apiJson<Message>(
+            `/conversations/${selected.id}/messages/${originalMessage.id}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ body: updatedBody }),
+            },
+          );
+          replaceMessage(message);
+        } catch (error) {
+          replaceMessage(originalMessage);
+          if (selectedRef.current === originalMessage.conversation_id) {
+            setEditingMessage(originalMessage);
+            setBody(updatedBody);
+          }
+          throw error;
+        }
         return;
       }
 

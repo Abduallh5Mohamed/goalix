@@ -160,6 +160,28 @@ class NotificationsRepository extends BaseRepository {
         return created;
     }
 
+    async createBulkWithLogs(rows, channel) {
+        if (!rows.length) return [];
+
+        const created = await this.db.transaction(async (trx) => {
+            const notifications = await trx('notification_inbox')
+                .insert(rows)
+                .returning('*');
+            await trx('notification_logs').insert(
+                notifications.map((notification) => ({
+                    notification_id: notification.id,
+                    user_id: notification.user_id,
+                    channel,
+                    status: 'sent',
+                })),
+            );
+            return notifications;
+        });
+
+        emitNotifications(created);
+        return created;
+    }
+
     async targetUsers(academyId, targetRole) {
         return this.db('auth_users')
             .where({ academy_id: academyId, is_active: true })

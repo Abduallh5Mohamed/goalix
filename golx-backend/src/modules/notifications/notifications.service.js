@@ -46,14 +46,17 @@ class NotificationsService {
             : await this.repo.targetUsers(academyId, data.targetRole);
 
         const notifications = recipients.length
-            ? await this.repo.createBulk(recipients.map((recipient) => ({
-                user_id: recipient.user_id,
-                type: data.type,
-                title: data.title,
-                body: data.body,
-                data: data.data || {},
-                is_read: false,
-            })))
+            ? await this.repo.createBulkWithLogs(
+                recipients.map((recipient) => ({
+                    user_id: recipient.user_id,
+                    type: data.type,
+                    title: data.title,
+                    body: data.body,
+                    data: data.data || {},
+                    is_read: false,
+                })),
+                data.channel,
+            )
             : [];
         await this._invalidateUnreadCounts(recipients.map((recipient) => recipient.user_id));
 
@@ -64,16 +67,6 @@ class NotificationsService {
                 channel: data.channel,
                 academyId,
                 targetRole: data.targetRole,
-            });
-        }
-
-        // Log
-        for (const notification of notifications) {
-            await this.repo.logNotification({
-                notification_id: notification.id,
-                user_id: notification.user_id,
-                channel: data.channel,
-                status: 'sent',
             });
         }
 

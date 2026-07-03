@@ -164,7 +164,9 @@ export default function CoachMatchDayPage() {
   const configured = Boolean(match?.tactics && match.squad?.length);
   const startMs = matchStartTimestamp(match);
   const matchDayOpenMinutes = Number(
-    match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ?? 5,
+    match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ??
+      match?.academy_settings?.match_day_open_minutes_before_kickoff ??
+      5,
   );
   const safeMatchDayOpenMinutes = Number.isFinite(matchDayOpenMinutes)
     ? Math.max(0, Math.min(240, Math.round(matchDayOpenMinutes)))

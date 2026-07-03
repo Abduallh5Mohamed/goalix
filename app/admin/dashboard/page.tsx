@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import {
   type ChartPoint,
@@ -324,10 +325,7 @@ export default function AdminDashboardPage() {
             Live academy overview from your database.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => refetch()}>
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <RefreshButton onRefresh={refetch} isRefreshing={isFetching} />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">

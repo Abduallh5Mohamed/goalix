@@ -9,10 +9,6 @@ const { createHmac, timingSafeEqual } = require("node:crypto");
 const QRCode = require("qrcode");
 const env = require("../../config/env");
 const {
-  MODEL_VERSION: INJURY_RISK_MODEL_VERSION,
-  runInjuryRiskPredictions,
-} = require("../ai/injury-risk-model");
-const {
   MODEL_VERSION: RANKING_MODEL_VERSION,
   runRankingPredictions,
 } = require("../ai/ranking-model");
@@ -41,11 +37,11 @@ const {
   weekEndKey,
   weightedWeeklyScore,
 } = require("./ranking-inputs.helpers");
-const storage = require("../../shared/storage");
-const { assertUploadSignature } = require("../../shared/upload-validation");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const { canParentAccessChild } = require("../../shared/access-policy");
 const { normalizePagination } = require("../../shared/pagination");
+const PlayerAssignmentsService = require("./services/player-assignments.service");
+const InjuryRiskService = require("./services/injury-risk.service");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -78,21 +74,6 @@ const timePartInTimeZone = (value = new Date(), timeZone = DEFAULT_TIME_ZONE) =>
   } catch {
     return timePart(value);
   }
-};
-const sanitizeFileName = (value = "assignment-file") => {
-  let decoded = String(value || "assignment-file");
-  try {
-    decoded = decodeURIComponent(decoded);
-  } catch {
-    // Keep the original header value if it is not URI encoded.
-  }
-  return (
-    decoded
-      .replace(/[/\\?%*:|"<>]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 160) || "assignment-file"
-  );
 };
 const timeZoneOffsetMs = (date, timeZone = DEFAULT_TIME_ZONE) => {
   try {
@@ -142,18 +123,6 @@ const matchKickoffAt = (match) =>
   new Date(`${datePart(match.match_date)}T${timePart(match.match_time)}:00`);
 const MATCH_AUTO_FINISH_HOURS = 3;
 const MATCH_EVALUATION_REOPEN_HOURS = 24;
-const PLAYER_ASSIGNMENT_UPLOAD_MIME = {
-  "application/pdf": { fileType: "pdf", extension: ".pdf" },
-  "application/msword": { fileType: "word", extension: ".doc" },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    fileType: "word",
-    extension: ".docx",
-  },
-  "image/png": { fileType: "image", extension: ".png" },
-  "image/jpeg": { fileType: "image", extension: ".jpg" },
-  "image/jpg": { fileType: "image", extension: ".jpg" },
-  "image/webp": { fileType: "image", extension: ".webp" },
-};
 const matchAutoFinishAt = (match) => {
   const finishAt = matchKickoffAt(match);
   finishAt.setHours(finishAt.getHours() + MATCH_AUTO_FINISH_HOURS);
@@ -288,6 +257,18 @@ class CalendarService {
     this.playersService = playersService;
     this.customDataService = customDataService;
     this.redis = redis;
+    this.playerAssignments = new PlayerAssignmentsService(calendarRepository, {
+      getPlayer: (...args) => this._getPlayer(...args),
+    });
+    this.injuryRisk = new InjuryRiskService(calendarRepository, {
+      getCoach: (...args) => this._getCoach(...args),
+      ensureCoachHasPermission: (...args) =>
+        this._ensureCoachHasPermission(...args),
+      ensureCoachCanAccessPlayers: (...args) =>
+        this._ensureCoachCanAccessPlayers(...args),
+      playerCustomProfilesByPlayer: (...args) =>
+        this._playerCustomProfilesByPlayer(...args),
+    });
   }
 
   async _invalidateAttendanceCache(academyId) {
@@ -306,28 +287,33 @@ class CalendarService {
     if (typeof row.value_text === "string" && optionLabels.has(row.value_text)) {
       return optionLabels.get(row.value_text);
     }
-  if (typeof row.value_json === "string" && optionLabels.has(row.value_json)) {
-    return optionLabels.get(row.value_json);
-  }
-  if (typeof row.value_json === "string") {
-    try {
-      const parsed = JSON.parse(row.value_json);
-      if (Array.isArray(parsed)) {
-        const labels = parsed
-          .map((value) => optionLabels.get(value) || value)
-          .filter(Boolean);
-        return labels.length ? labels.join(", ") : null;
-      }
-      if (typeof parsed === "string" && optionLabels.has(parsed)) {
-        return optionLabels.get(parsed);
-      }
-    } catch {
-      // Fall through to the raw value below.
+
+    if (
+      typeof row.value_json === "string" &&
+      optionLabels.has(row.value_json)
+    ) {
+      return optionLabels.get(row.value_json);
     }
-  }
-  if (Array.isArray(row.value_json)) {
-    const labels = row.value_json
-      .map((value) => optionLabels.get(value) || value)
+    if (typeof row.value_json === "string") {
+      try {
+        const parsed = JSON.parse(row.value_json);
+        if (Array.isArray(parsed)) {
+          const labels = parsed
+            .map((value) => optionLabels.get(value) || value)
+            .filter(Boolean);
+          return labels.length ? labels.join(", ") : null;
+        }
+        if (typeof parsed === "string" && optionLabels.has(parsed)) {
+          return optionLabels.get(parsed);
+        }
+      } catch {
+        // Fall through to the raw value below.
+      }
+    }
+
+    if (Array.isArray(row.value_json)) {
+      const labels = row.value_json
+        .map((value) => optionLabels.get(value) || value)
         .filter(Boolean);
       return labels.length ? labels.join(", ") : null;
     }
@@ -3039,459 +3025,31 @@ class CalendarService {
   }
 
   async coachListInjuryRiskPainDiscomfort(userId, academyId) {
-    const coach = await this._getCoach(userId, academyId);
-    const scopedPlayers = await this.repo.findCoachScopedPlayers(
-      coach.id,
-      academyId,
-      { permission: "can_view_injury_risk" },
-    );
-    await this._ensureCoachHasPermission(
-      coach,
-      academyId,
-      "can_view_injury_risk",
-    );
-    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
-    const { rows } = await this.repo.db.raw(`
-      SELECT
-        date_trunc('week', current_date)::date::text AS week_start,
-        (date_trunc('week', current_date)::date + 6)::text AS week_end
-    `);
-    const week = rows[0];
-    if (!players.length) return [];
-
-    const painRows = await this.repo
-      .db("injury_risk_weekly_pain_discomfort")
-      .where({ academy_id: academyId, week_start: week.week_start })
-      .whereIn(
-        "player_id",
-        players.map((player) => player.id),
-      )
-      .select(
-        "id",
-        "player_id",
-        "pain_or_discomfort",
-        "week_start",
-        "week_end",
-        "recorded_by_coach_id",
-        "updated_at",
-      );
-    const byPlayer = new Map(
-      painRows.map((row) => [row.player_id, row]),
-    );
-
-    return players.map((player) => {
-      const pain = byPlayer.get(player.id);
-      return {
-        id: pain?.id || null,
-        player_id: player.id,
-        player_name: player.full_name,
-        position: player.injury_risk_position,
-        group_id: player.group_id || null,
-        week_start: pain?.week_start || week.week_start,
-        week_end: pain?.week_end || week.week_end,
-        pain_or_discomfort:
-          pain?.pain_or_discomfort === 0 || pain?.pain_or_discomfort === 1
-            ? Number(pain.pain_or_discomfort)
-            : null,
-        recorded_by_coach_id: pain?.recorded_by_coach_id || null,
-        updated_at: pain?.updated_at || null,
-      };
-    });
+    return this.injuryRisk.listPainDiscomfort(userId, academyId);
   }
 
   async coachUpsertInjuryRiskPainDiscomfort(userId, academyId, records) {
-    const coach = await this._getCoach(userId, academyId);
-    const uniqueRecords = Array.from(
-      new Map(records.map((record) => [record.playerId, record])).values(),
-    );
-    const playerIds = uniqueRecords.map((record) => record.playerId);
-    await this._ensureCoachCanAccessPlayers(coach, academyId, playerIds, {
-      permission: "can_manage_injury_risk",
-    });
-
-    const { rows } = await this.repo.db.raw(`
-      SELECT
-        date_trunc('week', current_date)::date::text AS week_start,
-        (date_trunc('week', current_date)::date + 6)::text AS week_end
-    `);
-    const week = rows[0];
-    const now = new Date();
-    const payload = uniqueRecords.map((record) => ({
-      academy_id: academyId,
-      player_id: record.playerId,
-      week_start: week.week_start,
-      week_end: week.week_end,
-      pain_or_discomfort: Number(record.painOrDiscomfort),
-      recorded_by_coach_id: coach.id,
-      updated_at: now,
-    }));
-
-    await this.repo
-      .db("injury_risk_weekly_pain_discomfort")
-      .insert(payload)
-      .onConflict(["player_id", "week_start"])
-      .merge({
-        academy_id: this.repo.db.raw("excluded.academy_id"),
-        week_end: this.repo.db.raw("excluded.week_end"),
-        pain_or_discomfort: this.repo.db.raw(
-          "excluded.pain_or_discomfort",
-        ),
-        recorded_by_coach_id: this.repo.db.raw(
-          "excluded.recorded_by_coach_id",
-        ),
-        updated_at: now,
-      });
-
-    return this.coachListInjuryRiskPainDiscomfort(userId, academyId);
-  }
-
-  _numberOrZero(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number : 0;
-  }
-
-  _ageInYears(dateValue) {
-    if (!dateValue) return null;
-    const birthDate = new Date(dateValue);
-    if (Number.isNaN(birthDate.getTime())) return null;
-
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const birthdayPassed =
-      today.getMonth() > birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() &&
-        today.getDate() >= birthDate.getDate());
-    if (!birthdayPassed) age -= 1;
-    return age;
-  }
-
-  _toInjuryRiskModelInput(player, inputRow = {}) {
-    const attendanceRate = this._numberOrZero(inputRow.attendance_rate);
-    return {
-      player_id: player.id,
-      player_name: player.full_name,
-      age: this._ageInYears(player.date_of_birth),
-      position:
-        inputRow.position_category ||
-        inputRow.main_position ||
-        player.main_position ||
-        player.position ||
-        "Midfielder",
-      attendance_rate: attendanceRate > 1 ? attendanceRate / 100 : attendanceRate,
-      training_sessions_per_week: this._numberOrZero(
-        inputRow.training_sessions_week,
-      ),
-      match_minutes_last_week: this._numberOrZero(
-        inputRow.match_minutes_last_week,
-      ),
-      fatigue_rating: this._numberOrZero(inputRow.fatigue_rating),
-      previous_injury: this._numberOrZero(
-        inputRow.previous_injury_count_3_months,
-      ),
-      pain_or_discomfort: this._numberOrZero(inputRow.pain_or_discomfort),
-    };
-  }
-
-  async _coachScopedInjuryRiskPlayers(
-    coach,
-    academyId,
-    permission = "can_view_injury_risk",
-  ) {
-    await this._ensureCoachHasPermission(
-      coach,
+    return this.injuryRisk.upsertPainDiscomfort(
+      userId,
       academyId,
-      permission,
+      records,
     );
-    return this.repo.findCoachScopedPlayers(coach.id, academyId, {
-      permission,
-    });
-  }
-
-  async _injuryRiskPlayersWithMainPosition(players) {
-    const customByPlayer = await this._playerCustomProfilesByPlayer(
-      players.map((player) => player.id),
-    );
-    const normalizeKey = (value) =>
-      String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
-    const mainPositionFor = (playerId) => {
-      const profile = customByPlayer.get(playerId) || [];
-      const field = profile.find(
-        (item) =>
-          normalizeKey(item.key) === "main_position" ||
-          normalizeKey(item.label) === "main_position",
-      );
-      if (field?.value === null || field?.value === undefined) return null;
-      if (Array.isArray(field.value)) {
-        return field.value.filter(Boolean).join(", ") || null;
-      }
-      return String(field.value).trim() || null;
-    };
-
-    return players.map((player) => {
-      const mainPosition = mainPositionFor(player.id);
-      return {
-        ...player,
-        main_position: mainPosition,
-        injury_risk_position: mainPosition || player.position || null,
-      };
-    });
-  }
-
-  async _injuryRiskInputRows(academyId, playerIds) {
-    if (!playerIds.length) return [];
-    return this.repo
-      .db("injury_risk_player_inputs")
-      .where({ academy_id: academyId })
-      .whereIn("player_id", playerIds);
   }
 
   async coachListInjuryRiskPredictions(userId, academyId) {
-    const coach = await this._getCoach(userId, academyId);
-    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(coach, academyId);
-    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
-    const playerIds = players.map((player) => player.id);
-    if (!playerIds.length) return [];
-
-    const analyses = await this.repo
-      .db("ai_analyses as aia")
-      .whereIn("aia.player_id", playerIds)
-      .where("aia.type", "injury_risk")
-      .distinctOn("aia.player_id")
-      .select("aia.*")
-      .orderBy("aia.player_id", "asc")
-      .orderBy("aia.created_at", "desc");
-    const analysesByPlayer = new Map(
-      analyses.map((analysis) => [analysis.player_id, analysis]),
-    );
-
-    return players.map((player) => {
-      const analysis = analysesByPlayer.get(player.id);
-      return {
-        player_id: player.id,
-        player_name: player.full_name,
-        position: player.injury_risk_position,
-        group_id: player.group_id || null,
-        analysis_id: analysis?.id || null,
-        input: analysis?.input_data || null,
-        prediction: analysis?.result || null,
-        model_version: analysis?.model_version || null,
-        created_at: analysis?.created_at || null,
-      };
-    });
+    return this.injuryRisk.listPredictions(userId, academyId);
   }
 
   async coachRunInjuryRiskModel(userId, academyId) {
-    const coach = await this._getCoach(userId, academyId);
-    const scopedPlayers = await this._coachScopedInjuryRiskPlayers(
-      coach,
-      academyId,
-      "can_run_injury_risk",
-    );
-    const players = await this._injuryRiskPlayersWithMainPosition(scopedPlayers);
-    const playerIds = players.map((player) => player.id);
-    if (!playerIds.length) return [];
-
-    const inputRows = await this._injuryRiskInputRows(academyId, playerIds);
-    const inputRowsByPlayer = new Map(
-      inputRows.map((row) => [row.player_id, row]),
-    );
-    const modelInputs = players.map((player) =>
-      this._toInjuryRiskModelInput(
-        player,
-        inputRowsByPlayer.get(player.id) || {},
-      ),
-    );
-    const modelInputsByPlayer = new Map(
-      modelInputs.map((input) => [input.player_id, input]),
-    );
-    const modelResults = await runInjuryRiskPredictions(modelInputs);
-    const modelResultsByPlayer = new Map(
-      modelResults.map((result) => [result.player_id, result]),
-    );
-    const successfulResults = modelResults.filter((result) => !result.error);
-
-    const savedAnalyses = successfulResults.length
-      ? await this.repo
-          .db("ai_analyses")
-          .insert(
-            successfulResults.map((result) => ({
-              player_id: result.player_id,
-              type: "injury_risk",
-              input_data: modelInputsByPlayer.get(result.player_id) || {},
-              result: {
-                risk_percentage: result.risk_percentage,
-                risk_level: result.risk_level,
-                alert_flag: result.alert_flag,
-                recommendation: result.recommendation,
-              },
-              model_version: INJURY_RISK_MODEL_VERSION,
-            })),
-          )
-          .returning("*")
-      : [];
-    const analysesByPlayer = new Map(
-      savedAnalyses.map((analysis) => [analysis.player_id, analysis]),
-    );
-
-    return players.map((player) => {
-      const prediction = modelResultsByPlayer.get(player.id) || null;
-      const analysis = analysesByPlayer.get(player.id);
-      return {
-        player_id: player.id,
-        player_name: player.full_name,
-        position: player.injury_risk_position,
-        group_id: player.group_id || null,
-        analysis_id: analysis?.id || null,
-        input: modelInputsByPlayer.get(player.id) || null,
-        prediction: prediction?.error
-          ? null
-          : {
-              risk_percentage: prediction?.risk_percentage,
-              risk_level: prediction?.risk_level,
-              alert_flag: prediction?.alert_flag,
-              recommendation: prediction?.recommendation,
-            },
-        model_version: analysis?.model_version || INJURY_RISK_MODEL_VERSION,
-        created_at: analysis?.created_at || null,
-        error: prediction?.error || null,
-      };
-    });
+    return this.injuryRisk.runModel(userId, academyId);
   }
 
   async runWeeklyInjuryRiskAutomation({ force = false } = {}) {
-    return this.repo.db.transaction(async (trx) => {
-      const { rows } = await trx.raw(
-        "SELECT pg_try_advisory_xact_lock(hashtext(?)) AS locked",
-        ["injury_risk_weekly_auto"],
-      );
-      if (!rows[0]?.locked) {
-        return {
-          skipped: true,
-          reason: "already_running",
-          academies: 0,
-          players: 0,
-          saved: 0,
-          errors: [],
-        };
-      }
-
-      return this._runWeeklyInjuryRiskAutomationLocked(trx, { force });
-    });
+    return this.injuryRisk.runWeeklyAutomation({ force });
   }
 
   async _runWeeklyInjuryRiskAutomationLocked(db, { force = false } = {}) {
-    const { rows: weekRows } = await db.raw(
-      "SELECT date_trunc('week', now())::date::text AS week_start",
-    );
-    const weekStart = weekRows[0].week_start;
-    const academies = await db("academy_academies")
-      .whereNull("deleted_at")
-      .select("id", "name")
-      .orderBy("name", "asc");
-    const summary = {
-      skipped: false,
-      weekStart,
-      academies: academies.length,
-      players: 0,
-      saved: 0,
-      skippedAcademies: 0,
-      errors: [],
-    };
-
-    for (const academy of academies) {
-      try {
-        if (!force) {
-          const existing = await db("ai_analyses as aia")
-            .join("player_profiles as pp", "aia.player_id", "pp.id")
-            .where("pp.academy_id", academy.id)
-            .where("aia.type", "injury_risk")
-            .whereRaw("aia.input_data->>'run_source' = ?", ["weekly_auto"])
-            .whereRaw("aia.input_data->>'week_start' = ?", [weekStart])
-            .count({ count: "*" })
-            .first();
-          if (Number(existing?.count || 0) > 0) {
-            summary.skippedAcademies += 1;
-            continue;
-          }
-        }
-
-        const [players, inputRows] = await Promise.all([
-          db("player_profiles as pp")
-            .leftJoin("player_group_assignments as pga", function joinCurrentGroup() {
-              this.on("pga.player_id", "=", "pp.id").andOnNull("pga.left_at");
-            })
-            .where("pp.academy_id", academy.id)
-            .whereNull("pp.deleted_at")
-            .select(
-              "pp.id",
-              "pp.full_name",
-              "pp.date_of_birth",
-              "pp.position",
-              "pga.group_id",
-            ),
-          db("injury_risk_player_inputs")
-            .where({ academy_id: academy.id })
-            .select("*"),
-        ]);
-        if (!players.length) continue;
-
-        const inputRowsByPlayer = new Map(
-          inputRows.map((row) => [row.player_id, row]),
-        );
-        const modelInputs = players.map((player) =>
-          this._toInjuryRiskModelInput(
-            player,
-            inputRowsByPlayer.get(player.id) || {},
-          ),
-        );
-        const modelInputsByPlayer = new Map(
-          modelInputs.map((input) => [input.player_id, input]),
-        );
-        const modelResults = await runInjuryRiskPredictions(modelInputs);
-        const successfulResults = modelResults.filter((result) => !result.error);
-        summary.players += modelInputs.length;
-
-        if (!successfulResults.length) continue;
-
-        const saved = await db("ai_analyses")
-          .insert(
-            successfulResults.map((result) => {
-              const rawInput = inputRowsByPlayer.get(result.player_id) || {};
-              return {
-                player_id: result.player_id,
-                type: "injury_risk",
-                input_data: {
-                  ...(modelInputsByPlayer.get(result.player_id) || {}),
-                  run_source: "weekly_auto",
-                  week_start: weekStart,
-                  fatigue_source: rawInput.fatigue_source || null,
-                  fatigue_recorded_at: rawInput.fatigue_recorded_at || null,
-                },
-                result: {
-                  risk_percentage: result.risk_percentage,
-                  risk_level: result.risk_level,
-                  alert_flag: result.alert_flag,
-                  recommendation: result.recommendation,
-                },
-                model_version: INJURY_RISK_MODEL_VERSION,
-              };
-            }),
-          )
-          .returning("id");
-        summary.saved += saved.length;
-      } catch (error) {
-        summary.errors.push({
-          academyId: academy.id,
-          academyName: academy.name,
-          message: error.message,
-        });
-      }
-    }
-
-    return summary;
+    return this.injuryRisk.runWeeklyAutomationLocked(db, { force });
   }
 
   async coachGetPlayerDetail(userId, academyId, playerId) {
@@ -8383,378 +7941,37 @@ class CalendarService {
     };
   }
 
-  _dailyAiScore({ sleepHours, trainedToday, mealsCount }) {
-    const sleepScore = sleepHours >= 8 ? 40 : sleepHours >= 7 ? 30 : 20;
-    const trainingScore = trainedToday === 1 ? 40 : 0;
-    const mealsScore = mealsCount >= 4 ? 20 : mealsCount === 3 ? 15 : 10;
-    return sleepScore + trainingScore + mealsScore;
-  }
-
-  _shapeDailyAiInput(row) {
-    if (!row) return null;
-    return {
-      id: row.id,
-      playerId: row.player_id,
-      inputDate: row.input_date,
-      sleepHours: Number(row.sleep_hours),
-      trainedToday: Number(row.trained_today),
-      mealsCount: Number(row.meals_count),
-      dailyAiScore: Number(row.daily_ai_score),
-      submittedAt: row.submitted_at,
-    };
-  }
-
-  _shapePlayerAssignmentFile(file) {
-    return {
-      id: file.id,
-      submissionId: file.submission_id,
-      fileType: file.file_type,
-      fileName: file.file_name,
-      fileUrl: file.file_url,
-      mimeType: file.mime_type,
-      sizeBytes: Number(file.size_bytes || 0),
-      uploadedBy: file.uploaded_by,
-      createdAt: file.created_at,
-    };
-  }
-
   _shapePlayerAssignmentSubmission(row) {
-    if (!row) return null;
-    return {
-      id: row.id,
-      assignmentId: row.assignment_id,
-      playerId: row.player_id,
-      notes: row.notes || "",
-      submittedAt: row.submitted_at,
-      reviewStatus: row.review_status || "pending",
-      coachComment: row.coach_comment || "",
-      reviewedAt: row.reviewed_at || null,
-      files: (row.files || []).map((file) => this._shapePlayerAssignmentFile(file)),
-    };
+    return this.playerAssignments.shapeSubmission(row);
   }
 
   async storePlayerAssignmentUpload(user, { originalName, mimeType, buffer }) {
-    const normalizedMimeType = String(mimeType || "").split(";")[0].trim().toLowerCase();
-    const typeInfo = PLAYER_ASSIGNMENT_UPLOAD_MIME[normalizedMimeType];
-    if (!typeInfo) {
-      throw new BadRequestError("Only PDF, Word, PNG, JPG, JPEG, and WEBP assignment files are accepted.");
-    }
-    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-      throw new BadRequestError("Uploaded file is empty.");
-    }
-    if (buffer.length > 25 * 1024 * 1024) {
-      throw new BadRequestError("Assignment files must be 25MB or smaller.");
-    }
-    assertUploadSignature(normalizedMimeType, buffer);
-
-    const fileName = sanitizeFileName(originalName);
-    const upload = await storage.putUpload({
-      scope: "player-assignments",
-      academyId: user.academyId,
-      extension: typeInfo.extension,
+    return this.playerAssignments.storeUpload(user, {
+      originalName,
+      mimeType,
       buffer,
-      contentType: normalizedMimeType,
-      uploaderId: user.userId,
-      entityType: "player_assignment_file",
-      isSensitive: true,
     });
-
-    return {
-      fileType: typeInfo.fileType,
-      fileName,
-      fileUrl: upload.url,
-      mimeType: normalizedMimeType,
-      sizeBytes: buffer.length,
-    };
   }
 
   async playerListAssignments(userId, academyId, filters = {}) {
-    const player = await this._getPlayer(userId, academyId);
-    const { page, limit, offset } = normalizePagination({
-      page: filters.page,
-      limit: filters.limit || 50,
-    });
-    const db = this.repo.db;
-    const [{ today }] = await db.raw("SELECT current_date::text AS today").then((result) => result.rows);
-    const [groupRows, birthYearRows] = await Promise.all([
-      this.repo.findPlayerGroups(player.id),
-      this.repo.findBirthYearsForPlayer(player),
-    ]);
-    const groupIds = groupRows.map((row) => row.group_id);
-    const birthYearIds = birthYearRows.map((row) => row.id);
-
-    const [dailyInput, assignmentRows] = await Promise.all([
-      db("player_daily_ai_inputs")
-        .where({ academy_id: academyId, player_id: player.id, input_date: today })
-        .first(),
-      groupIds.length || birthYearIds.length
-        ? db("player_assignments as pa")
-            .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
-            .join("coach_profiles as cp", "pa.created_by_coach_id", "cp.id")
-            .where("pa.academy_id", academyId)
-            .where((targetScope) => {
-              if (groupIds.length) {
-                targetScope.orWhere((groupScope) => {
-                  groupScope
-                    .where((typeScope) => {
-                      typeScope.whereNull("pa.target_type").orWhere("pa.target_type", "group");
-                    })
-                    .whereIn("pag.group_id", groupIds);
-                });
-              }
-              if (birthYearIds.length) {
-                targetScope.orWhereExists((existsQuery) => {
-                  existsQuery
-                    .select(db.raw("1"))
-                    .from("player_assignment_birth_years as paby")
-                    .whereRaw("paby.assignment_id = pa.id")
-                    .whereIn("paby.birth_year_id", birthYearIds);
-                });
-              }
-            })
-            .whereNull("pa.deleted_at")
-            .where("pa.status", "active")
-            .where((scope) => {
-              scope.whereNull("pa.open_at").orWhere("pa.open_at", "<=", new Date());
-            })
-            .groupBy("pa.id", "cp.full_name")
-            .select("pa.*", "cp.full_name as coach_name")
-            .orderBy("pa.due_at", "asc")
-            .orderBy("pa.created_at", "desc")
-        : [],
-    ]);
-
-    const assignmentIds = assignmentRows.map((assignment) => assignment.id);
-    const [groups, submissions] = await Promise.all([
-      assignmentIds.length
-        ? db("player_assignment_groups as pag")
-            .join("academy_groups as ag", "pag.group_id", "ag.id")
-            .whereIn("pag.assignment_id", assignmentIds)
-            .select("pag.assignment_id", "ag.id", "ag.name")
-        : [],
-      assignmentIds.length
-        ? db("player_assignment_submissions")
-            .whereIn("assignment_id", assignmentIds)
-            .where("player_id", player.id)
-        : [],
-    ]);
-    const submissionIds = submissions.map((submission) => submission.id);
-    const files = submissionIds.length
-      ? await db("player_assignment_files").whereIn("submission_id", submissionIds)
-      : [];
-    const groupsByAssignment = groups.reduce((acc, group) => {
-      if (!acc[group.assignment_id]) acc[group.assignment_id] = [];
-      acc[group.assignment_id].push({ id: group.id, name: group.name });
-      return acc;
-    }, {});
-    const filesBySubmission = files.reduce((acc, file) => {
-      if (!acc[file.submission_id]) acc[file.submission_id] = [];
-      acc[file.submission_id].push(file);
-      return acc;
-    }, {});
-    const submissionByAssignment = new Map(
-      submissions.map((submission) => [
-        submission.assignment_id,
-        {
-          ...submission,
-          files: filesBySubmission[submission.id] || [],
-        },
-      ]),
-    );
-
-    const dailyAssignment = {
-      id: "daily-ai-score",
-      assignmentType: "daily_ai",
-      title: "Daily AI Score Module",
-      description: "Daily model input: sleep_hours, trained_today, meals_count.",
-      openAt: `${today}T00:00:00`,
-      dueAt: `${today}T23:59:59`,
-      status: "active",
-      isSystemDaily: true,
-      acceptedFileTypes: [],
-      groups: [],
-      submission: this._shapeDailyAiInput(dailyInput),
-      scoringRules: {
-        sleep: ["sleep >= 8h = 40", "sleep >= 7h = 30", "otherwise = 20"],
-        training: ["trained_today 1 = 40", "trained_today 0 = 0"],
-        meals: ["4+ meals = 20", "3 meals = 15", "less than 3 meals = 10"],
-        output: "daily_ai_score",
-      },
-    };
-
-    const normalAssignments = assignmentRows.map((assignment) => ({
-      id: assignment.id,
-      assignmentType: "coach_task",
-      title: assignment.title,
-      description: assignment.description || "",
-      coachName: assignment.coach_name || null,
-      openAt: assignment.open_at,
-      dueAt: assignment.due_at,
-      status: assignment.status,
-      isSystemDaily: false,
-      acceptedFileTypes: assignment.accepted_file_types || ["pdf", "word", "image"],
-      groups: groupsByAssignment[assignment.id] || [],
-      submission: this._shapePlayerAssignmentSubmission(submissionByAssignment.get(assignment.id)),
-    }));
-    const rows = page === 1
-      ? [dailyAssignment, ...normalAssignments].slice(offset, offset + limit)
-      : normalAssignments.slice(offset - 1, offset - 1 + limit);
-    const total = normalAssignments.length + 1;
-
-    return {
-      data: rows,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit) || 1,
-    };
-  }
-
-  async _getVisiblePlayerAssignment(player, academyId, assignmentId) {
-    const [groupRows, birthYearRows] = await Promise.all([
-      this.repo.findPlayerGroups(player.id),
-      this.repo.findBirthYearsForPlayer(player),
-    ]);
-    const groupIds = groupRows.map((row) => row.group_id);
-    const birthYearIds = birthYearRows.map((row) => row.id);
-    if (!groupIds.length && !birthYearIds.length) return null;
-    return this.repo
-      .db("player_assignments as pa")
-      .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
-      .where("pa.id", assignmentId)
-      .where("pa.academy_id", academyId)
-      .where((targetScope) => {
-        if (groupIds.length) {
-          targetScope.orWhere((groupScope) => {
-            groupScope
-              .where((typeScope) => {
-                typeScope.whereNull("pa.target_type").orWhere("pa.target_type", "group");
-              })
-              .whereIn("pag.group_id", groupIds);
-          });
-        }
-        if (birthYearIds.length) {
-          targetScope.orWhereExists((existsQuery) => {
-            existsQuery
-              .select(this.repo.db.raw("1"))
-              .from("player_assignment_birth_years as paby")
-              .whereRaw("paby.assignment_id = pa.id")
-              .whereIn("paby.birth_year_id", birthYearIds);
-          });
-        }
-      })
-      .whereNull("pa.deleted_at")
-      .where("pa.status", "active")
-      .select("pa.*")
-      .first();
+    return this.playerAssignments.listForPlayer(userId, academyId, filters);
   }
 
   async playerSubmitAssignment(userId, academyId, assignmentId, data) {
-    const player = await this._getPlayer(userId, academyId);
-    const assignment = await this._getVisiblePlayerAssignment(player, academyId, assignmentId);
-    if (!assignment) throw new NotFoundError("Assignment", assignmentId);
-    if (assignment.open_at && new Date(assignment.open_at) > new Date()) {
-      throw new BadRequestError("Assignment is not open yet.");
-    }
-    const existingSubmission = await this.repo.db("player_assignment_submissions")
-      .where({ assignment_id: assignmentId, player_id: player.id })
-      .first();
-    if (existingSubmission?.review_status === "approved") {
-      throw new BadRequestError("Assignment has already been accepted by the coach.");
-    }
-    const canResubmitRejected = existingSubmission?.review_status === "rejected";
-    if (assignment.due_at && new Date(assignment.due_at) < new Date() && !canResubmitRejected) {
-      throw new BadRequestError("Assignment deadline has passed.");
-    }
-    const files = data.files || [];
-    if (!files.length) throw new BadRequestError("At least one file is required.");
-
-    const submission = await this.repo.db.transaction(async (trx) => {
-      const [row] = await trx("player_assignment_submissions")
-        .insert({
-          assignment_id: assignmentId,
-          player_id: player.id,
-          submitted_by_user_id: userId,
-          notes: data.notes || null,
-          submitted_at: new Date(),
-          review_status: "pending",
-          coach_comment: null,
-          reviewed_by_coach_id: null,
-          reviewed_by_user_id: null,
-          reviewed_at: null,
-        })
-        .onConflict(["assignment_id", "player_id"])
-        .merge({
-          submitted_by_user_id: userId,
-          notes: data.notes || null,
-          submitted_at: new Date(),
-          review_status: "pending",
-          coach_comment: null,
-          reviewed_by_coach_id: null,
-          reviewed_by_user_id: null,
-          reviewed_at: null,
-          updated_at: new Date(),
-        })
-        .returning("*");
-      await trx("player_assignment_files").where({ submission_id: row.id }).del();
-      await trx("player_assignment_files").insert(
-        files.map((file) => ({
-          submission_id: row.id,
-          uploaded_by: userId,
-          file_type: file.fileType,
-          file_name: file.fileName,
-          file_url: file.fileUrl,
-          mime_type: file.mimeType || null,
-          size_bytes: file.sizeBytes || null,
-        })),
-      );
-      const savedFiles = await trx("player_assignment_files")
-        .where({ submission_id: row.id })
-        .orderBy("created_at", "asc");
-      return { ...row, files: savedFiles };
-    });
-    await storage.attachMediaToEntity(files.map((file) => file.fileUrl), {
+    return this.playerAssignments.submit(
+      userId,
       academyId,
-      scope: "player-assignments",
-      entityType: "player_assignment_submission",
-      entityId: submission.id,
-      isSensitive: true,
-    });
-
-    return this._shapePlayerAssignmentSubmission(submission);
+      assignmentId,
+      data,
+    );
   }
 
   async playerSubmitDailyAiInput(userId, academyId, data) {
-    const player = await this._getPlayer(userId, academyId);
-    const [{ today }] = await this.repo.db
-      .raw("SELECT current_date::text AS today")
-      .then((result) => result.rows);
-    const dailyAiScore = this._dailyAiScore(data);
-    const [row] = await this.repo
-      .db("player_daily_ai_inputs")
-      .insert({
-        academy_id: academyId,
-        player_id: player.id,
-        submitted_by_user_id: userId,
-        input_date: today,
-        sleep_hours: data.sleepHours,
-        trained_today: data.trainedToday,
-        meals_count: data.mealsCount,
-        daily_ai_score: dailyAiScore,
-        submitted_at: new Date(),
-      })
-      .onConflict(["player_id", "input_date"])
-      .merge({
-        submitted_by_user_id: userId,
-        sleep_hours: data.sleepHours,
-        trained_today: data.trainedToday,
-        meals_count: data.mealsCount,
-        daily_ai_score: dailyAiScore,
-        submitted_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("*");
-
-    return this._shapeDailyAiInput(row);
+    return this.playerAssignments.submitDailyAiInput(
+      userId,
+      academyId,
+      data,
+    );
   }
 
   async playerListParentNotes(userId, academyId, filters) {

@@ -12,12 +12,12 @@ import {
   Eye,
   Loader2,
   Plus,
-  RefreshCw,
   Trash2,
   Upload,
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
@@ -959,18 +959,20 @@ export default function CoachAssignmentsPage() {
           { label: "Assignments" },
         ]}
         actions={
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              adminAssignments.refetch();
-              playerAssignments.refetch();
-              dailyAiQuery.refetch();
-            }}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <RefreshButton
+            onRefresh={() =>
+              Promise.all([
+                adminAssignments.refetch(),
+                playerAssignments.refetch(),
+                dailyAiQuery.refetch(),
+              ])
+            }
+            isRefreshing={
+              adminAssignments.isFetching ||
+              playerAssignments.isFetching ||
+              dailyAiQuery.isFetching
+            }
+          />
         }
       />
 

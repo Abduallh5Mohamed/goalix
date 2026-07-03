@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Goal,
   Medal,
-  RefreshCw,
   Shield,
   Trophy,
   User,
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import {
   useGetAdminRankingSystemInputsQuery,
   useGetGroupsQuery,
@@ -410,10 +410,7 @@ export default function AdminRankingsOverviewPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" className="gap-2" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
+            <RefreshButton onRefresh={refetch} />
           </div>
         }
       />
