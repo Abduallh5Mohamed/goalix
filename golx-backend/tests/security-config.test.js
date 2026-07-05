@@ -165,6 +165,21 @@ describe("security configuration", () => {
     expect(result.status).toBe(0);
   });
 
+  it("lets production migrations disable database SSL explicitly", () => {
+    const result = runNode(
+      [
+        "const config = require('./knexfile');",
+        "if (config.production.connection.ssl !== false) process.exit(1);",
+      ].join(""),
+      {
+        NODE_ENV: "production",
+        DATABASE_SSL: "false",
+      },
+    );
+
+    expect(result.status).toBe(0);
+  });
+
   it("requires production Redis to fail fast instead of silently degrading", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",

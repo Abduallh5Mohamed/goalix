@@ -1,5 +1,6 @@
 node_modules
-golx-backend/node_modules
+golx-backend
+Models
 .next
 out
 build
@@ -11,6 +12,7 @@ yarn-debug.log*
 yarn-error.log*
 coverage
 test-results
+playwright-report
 .dev-logs
 .codex-*.log
 .codex-logs
@@ -19,11 +21,10 @@ test-results
 .agents
 tmp
 uploads
-golx-backend/uploads
 db-dumps
 DATA FOR PROJECT
 certificates
-Models
+.deploy
 output
 *.pdf
 *.docx

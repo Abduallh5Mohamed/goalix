@@ -14,27 +14,41 @@ class ResilientStore {
         this.memoryStore = new rateLimit.MemoryStore();
         this.redisStore = null;
         this.redisInitialized = false;
+        this.options = null;
+        this.redisEnabled = process.env.REDIS_ENABLED !== 'false';
+    }
 
-        if (process.env.REDIS_ENABLED !== 'false') {
-            this.redisStore = new RedisStore({
-                sendCommand: async (...args) => {
-                    return await redis.call(args[0], ...args.slice(1));
-                },
-                prefix: `goalix:ratelimit:${prefix}:`,
-            });
-        }
+    _createRedisStore() {
+        const store = new RedisStore({
+            sendCommand: async (...args) => {
+                return await redis.call(args[0], ...args.slice(1));
+            },
+            prefix: `goalix:ratelimit:${this.prefix}:`,
+        });
+
+        // rate-limit-redis@4 loads Lua scripts in the constructor. Keep those
+        // promises observed so a Redis race does not surface as an unhandled rejection.
+        store.incrementScriptSha?.catch(() => {});
+        store.getScriptSha?.catch(() => {});
+
+        if (this.options) store.init(this.options);
+        return store;
     }
 
     async init(options) {
+        this.options = options;
         this.memoryStore.init(options);
         // We will try to initialize RedisStore lazily in increment/decrement if not yet initialized
     }
 
     async _ensureRedisInitialized() {
-        if (this.redisStore && isRedisAvailable() && !this.redisInitialized) {
+        if (this.redisEnabled && isRedisAvailable() && !this.redisInitialized) {
             try {
+                if (!this.redisStore) {
+                    this.redisStore = this._createRedisStore();
+                }
                 // Initialize the store with default options
-                await this.redisStore.init({});
+                this.redisStore.init(this.options || {});
                 this.redisInitialized = true;
             } catch {
                 this.redisInitialized = false;

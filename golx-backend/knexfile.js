@@ -5,6 +5,12 @@ const pool = {
     max: Number(process.env.DB_POOL_MAX || 10),
 };
 
+const resolveDatabaseSsl = () => {
+    if (process.env.DATABASE_SSL === 'true') return { rejectUnauthorized: true };
+    if (process.env.DATABASE_SSL === 'false') return false;
+    return process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false;
+};
+
 module.exports = {
     development: {
         client: 'pg',
@@ -36,7 +42,7 @@ module.exports = {
         client: 'pg',
         connection: {
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: true },
+            ssl: resolveDatabaseSsl(),
         },
         migrations: {
             directory: './migrations',

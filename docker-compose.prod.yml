@@ -135,6 +135,9 @@ services:
   worker:
     <<: *node-hardening
     image: goalix-backend:${GOALIX_IMAGE_TAG:-prod}
+    build:
+      context: .
+      dockerfile: golx-backend/Dockerfile
     restart: unless-stopped
     environment:
       <<: *backend-env
