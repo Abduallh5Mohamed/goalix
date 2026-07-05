@@ -29,6 +29,7 @@
 *.pem
 /.tmp/
 /.codex-logs/
+/.codex-*.log
 /.cache/
 
 # debug
@@ -54,6 +55,8 @@ next-env.d.ts
 # local Goalix backend restore artifacts
 /.dev-logs/
 /db-dumps/
+/testadmin-mfa-qr.png
+/.deploy/
 /golx_main_data_*.sql
 /golx_main_data_*.zip
 *.dump

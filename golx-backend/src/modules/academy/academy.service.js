@@ -21,6 +21,29 @@ const deriveLabel = (label, fromYear, toYear) => {
     return `${fromYear}-${toYear}`;
 };
 
+const normalizeAcademySettings = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+
+    const settings = { ...value };
+    delete settings.timezone;
+
+    const matchDayOpenMinutes = settings.matchDayOpenMinutesBeforeKickoff
+        ?? settings.match_day_open_minutes_before_kickoff;
+    if (matchDayOpenMinutes !== undefined) {
+        const parsedMinutes = Number(matchDayOpenMinutes);
+        if (!Number.isFinite(parsedMinutes)) {
+            throw new BadRequestError('Match Day open time must be a valid number of minutes');
+        }
+        settings.matchDayOpenMinutesBeforeKickoff = Math.max(
+            0,
+            Math.min(240, Math.round(parsedMinutes)),
+        );
+        delete settings.match_day_open_minutes_before_kickoff;
+    }
+
+    return settings;
+};
+
 const branchesVersionKey = (academyId) => `goalix:academy:${academyId}:branches:v`;
 const branchesCacheKey = (academyId, version, { page = 1, limit = 20 } = {}) => (
     `goalix:academy:${academyId}:branches:v${version}:p${page}:l${limit}`
@@ -71,7 +94,7 @@ class AcademyService {
         if (data.address !== undefined) updateData.address = data.address;
         if (data.phone !== undefined) updateData.phone = data.phone;
         if (data.email !== undefined) updateData.email = data.email;
-        if (data.settings !== undefined) updateData.settings = data.settings;
+        if (data.settings !== undefined) updateData.settings = normalizeAcademySettings(data.settings);
 
         const academy = await this.repo.update(academyId, updateData);
         if (!academy) throw new NotFoundError('Academy', academyId);

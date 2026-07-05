@@ -8,37 +8,38 @@ type JwtPayload = {
 };
 
 function getApiUrl() {
-  return (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
+  return (
+    process.env.GOALIX_INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:3000"
+  ).replace(/\/$/, "");
+}
+
+function getPublicApiOrigin() {
+  const configured = process.env.NEXT_PUBLIC_API_URL;
+  if (!configured) return "";
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return "";
+  }
 }
 
 function securityHeaders(nonce: string, requestHost?: string) {
   const isDev = process.env.NODE_ENV === "development";
-  const apiUrl = getApiUrl();
-  let apiHttpOrigin = "http://localhost:3000";
-  let apiWsOrigin = "ws://localhost:3000";
-
-  try {
-    const parsedApiUrl = new URL(apiUrl);
-    apiHttpOrigin = parsedApiUrl.origin;
-    apiWsOrigin = `${parsedApiUrl.protocol === "https:" ? "wss:" : "ws:"}//${parsedApiUrl.host}`;
-  } catch {
-    // Keep local defaults when the env var is not a valid URL.
-  }
+  const publicApiOrigin = getPublicApiOrigin();
+  const apiWsOrigin = publicApiOrigin
+    ? publicApiOrigin.replace(/^http:/, "ws:").replace(/^https:/, "wss:")
+    : "";
 
   const httpConnectSources = [
-    apiHttpOrigin,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-  ];
+    publicApiOrigin,
+    ...(isDev ? ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"] : []),
+  ].filter(Boolean);
   const wsConnectSources = [
     apiWsOrigin,
-    "ws://localhost:3000",
-    "ws://127.0.0.1:3000",
-    "ws://localhost:3001",
-    "ws://127.0.0.1:3001",
-  ];
+    ...(isDev ? ["ws://localhost:3000", "ws://127.0.0.1:3000", "ws://localhost:3001", "ws://127.0.0.1:3001"] : []),
+  ].filter(Boolean);
 
   if (isDev && requestHost) {
     httpConnectSources.push(`http://${requestHost}:3000`, `http://${requestHost}:3001`);
@@ -63,6 +64,9 @@ function securityHeaders(nonce: string, requestHost?: string) {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "X-Permitted-Cross-Domain-Policies": "none",
   };
 
   if (!isDev) {
@@ -151,6 +155,8 @@ export async function proxy(request: NextRequest) {
   const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", headers["Content-Security-Policy"]);
 
   // Server-side Route Protection Check
   const token = request.cookies.get("accessToken")?.value;
@@ -168,7 +174,7 @@ export async function proxy(request: NextRequest) {
     admin: "/admin/dashboard",
     coach: "/coach/home",
     player: "/player/home",
-    parent: "/parent/child/ranking",
+    parent: "/parent/home",
   };
 
   if (isAdminPath && pathname !== "/admin-login") {

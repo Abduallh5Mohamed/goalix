@@ -16,6 +16,8 @@
     "dev:https": "node scripts/dev.js --https",
     "dev:frontend:https": "next dev --experimental-https -H 0.0.0.0 -p 3001",
     "dev:backend": "cd golx-backend && npm run dev",
+    "deploy:auto": "powershell -ExecutionPolicy Bypass -File scripts/auto-docker-deploy.ps1",
+    "deploy:auto:once": "powershell -ExecutionPolicy Bypass -File scripts/auto-docker-deploy.ps1 -Once",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

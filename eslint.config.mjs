@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".agents/**",
     ".venv/**",
+    "playwright-report/**",
+    "test-results/**",
     "golx-backend/**",
     "create-pdf.js",
     "find_charts.js",

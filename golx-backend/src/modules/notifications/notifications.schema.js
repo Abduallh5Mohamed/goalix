@@ -8,7 +8,7 @@ const sendNotificationSchema = z.object({
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
-    targetRole: z.string().optional(), // broadcast to role
+    targetRole: z.enum(['admin', 'coach', 'player', 'parent']).optional(),
 });
 
 const bulkNotificationSchema = z.object({
@@ -16,7 +16,7 @@ const bulkNotificationSchema = z.object({
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
-    targetRole: z.string().optional(),
+    targetRole: z.enum(['admin', 'coach', 'player', 'parent']).optional(),
 });
 
 const notificationsQuery = z.object({
@@ -24,6 +24,10 @@ const notificationsQuery = z.object({
     type: z.enum(['info', 'warning', 'success', 'error', 'alert']).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    includeArchive: z
+        .enum(['true', 'false'])
+        .optional()
+        .transform((value) => value === 'true'),
 });
 
 const logsQuerySchema = z.object({
@@ -31,6 +35,10 @@ const logsQuerySchema = z.object({
     status: z.enum(['sent', 'delivered', 'failed']).optional(),
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().max(100).optional(),
+    includeArchive: z
+        .enum(['true', 'false'])
+        .optional()
+        .transform((value) => value === 'true'),
 });
 
 module.exports = {

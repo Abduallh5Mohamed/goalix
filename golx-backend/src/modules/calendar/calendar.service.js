@@ -46,6 +46,8 @@ const { auditAccessDenied } = require("../../shared/access-audit");
 const { canParentAccessChild } = require("../../shared/access-policy");
 const { normalizePagination } = require("../../shared/pagination");
 const { assertMimeSignature } = require("../../shared/file-signature");
+const PlayerAssignmentsService = require("./services/player-assignments.service");
+const InjuryRiskService = require("./services/injury-risk.service");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -299,6 +301,18 @@ class CalendarService {
     this.playersService = playersService;
     this.customDataService = customDataService;
     this.redis = redis;
+    this.playerAssignments = new PlayerAssignmentsService(calendarRepository, {
+      getPlayer: (...args) => this._getPlayer(...args),
+    });
+    this.injuryRisk = new InjuryRiskService(calendarRepository, {
+      getCoach: (...args) => this._getCoach(...args),
+      ensureCoachHasPermission: (...args) =>
+        this._ensureCoachHasPermission(...args),
+      ensureCoachCanAccessPlayers: (...args) =>
+        this._ensureCoachCanAccessPlayers(...args),
+      playerCustomProfilesByPlayer: (...args) =>
+        this._playerCustomProfilesByPlayer(...args),
+    });
   }
 
   async _invalidateAttendanceCache(academyId) {
@@ -3295,6 +3309,10 @@ class CalendarService {
   }
 
   async coachRunInjuryRiskModel(userId, academyId) {
+    if (this.injuryRisk) {
+      return this.injuryRisk.runModel(userId, academyId);
+    }
+
     const coach = await this._getCoach(userId, academyId);
     const scopedPlayers = await this._coachScopedInjuryRiskPlayers(
       coach,
@@ -8463,6 +8481,10 @@ class CalendarService {
   }
 
   async playerListAssignments(userId, academyId, filters = {}) {
+    if (this.playerAssignments) {
+      return this.playerAssignments.listForPlayer(userId, academyId, filters);
+    }
+
     const player = await this._getPlayer(userId, academyId);
     const { page, limit, offset } = normalizePagination({
       page: filters.page,

@@ -45,6 +45,7 @@ exports.up = async function up(knex) {
     `);
 };
 
-exports.down = async function down(knex) {
-    await knex.schema.dropTableIfExists('notification_logs');
+exports.down = async function down() {
+    // Kept as a compatibility no-op. Migration 095 owns notification_logs in
+    // the merged sequence, so rolling this migration back must not drop it.
 };

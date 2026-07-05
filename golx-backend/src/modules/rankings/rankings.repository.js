@@ -286,6 +286,13 @@ class RankingsRepository extends BaseRepository {
                     AND ce.event_type = 'training'
                     AND ce.deleted_at IS NULL
                     AND ce.status <> 'cancelled'
+                    AND (
+                        :monthPeriod::text IS NULL
+                        OR (
+                            ce.start_datetime >= to_date(:monthPeriod::text, 'YYYY-MM')
+                            AND ce.start_datetime < to_date(:monthPeriod::text, 'YYYY-MM') + INTERVAL '1 month'
+                        )
+                    )
                 GROUP BY pee.player_id, date_trunc('week', ce.start_datetime)::date
             ),
             match_weeks AS (
@@ -322,9 +329,17 @@ class RankingsRepository extends BaseRepository {
                 JOIN matches m ON m.id = mps.match_id
                 JOIN scoped_players sp ON sp.player_id = mps.player_id
                 WHERE m.deleted_at IS NULL
+                    AND m.academy_id = :academyId
                     AND m.evaluations_finalized_at IS NOT NULL
                     AND COALESCE(m.status::text, '') <> 'cancelled'
                     AND COALESCE(m.match_status::text, '') <> 'cancelled'
+                    AND (
+                        :monthPeriod::text IS NULL
+                        OR (
+                            m.match_date >= to_date(:monthPeriod::text, 'YYYY-MM')::date
+                            AND m.match_date < (to_date(:monthPeriod::text, 'YYYY-MM') + INTERVAL '1 month')::date
+                        )
+                    )
                 GROUP BY mps.player_id, date_trunc('week', m.match_date::timestamp)::date
             ),
             daily_ai_weeks AS (
@@ -335,6 +350,13 @@ class RankingsRepository extends BaseRepository {
                 FROM player_daily_ai_inputs pdai
                 JOIN scoped_players sp ON sp.player_id = pdai.player_id
                 WHERE pdai.academy_id = :academyId
+                    AND (
+                        :monthPeriod::text IS NULL
+                        OR (
+                            pdai.input_date >= to_date(:monthPeriod::text, 'YYYY-MM')::date
+                            AND pdai.input_date < (to_date(:monthPeriod::text, 'YYYY-MM') + INTERVAL '1 month')::date
+                        )
+                    )
                 GROUP BY pdai.player_id, date_trunc('week', pdai.input_date::timestamp)::date
             ),
             attendance_records AS (
@@ -349,6 +371,13 @@ class RankingsRepository extends BaseRepository {
                     AND ce.event_type = 'training'
                     AND ce.deleted_at IS NULL
                     AND ce.status <> 'cancelled'
+                    AND (
+                        :monthPeriod::text IS NULL
+                        OR (
+                            ce.start_datetime >= to_date(:monthPeriod::text, 'YYYY-MM')
+                            AND ce.start_datetime < to_date(:monthPeriod::text, 'YYYY-MM') + INTERVAL '1 month'
+                        )
+                    )
 
                 UNION ALL
 
@@ -360,8 +389,16 @@ class RankingsRepository extends BaseRepository {
                 JOIN matches m ON m.id = ma.match_id
                 JOIN scoped_players sp ON sp.player_id = ma.player_id
                 WHERE m.deleted_at IS NULL
+                    AND m.academy_id = :academyId
                     AND COALESCE(m.status::text, '') <> 'cancelled'
                     AND COALESCE(m.match_status::text, '') <> 'cancelled'
+                    AND (
+                        :monthPeriod::text IS NULL
+                        OR (
+                            m.match_date >= to_date(:monthPeriod::text, 'YYYY-MM')::date
+                            AND m.match_date < (to_date(:monthPeriod::text, 'YYYY-MM') + INTERVAL '1 month')::date
+                        )
+                    )
             ),
             attendance_weeks AS (
                 SELECT
@@ -411,12 +448,17 @@ class RankingsRepository extends BaseRepository {
             monthly_scores AS (
                 SELECT
                     ws.player_id,
-                    date_trunc('month', ws.week_start)::date AS month_start,
+                    COALESCE(
+                        to_date(:monthPeriod::text, 'YYYY-MM'),
+                        date_trunc('month', ws.week_start)::date
+                    ) AS month_start,
                     ROUND(AVG(ws.weekly_score)::numeric, 2) AS total_score
                 FROM weekly_scores ws
                 WHERE ws.week_start < date_trunc('week', CURRENT_DATE)::date
-                    AND (:monthPeriod::text IS NULL OR to_char(ws.week_start, 'YYYY-MM') = :monthPeriod::text)
-                GROUP BY ws.player_id, date_trunc('month', ws.week_start)::date
+                GROUP BY ws.player_id, COALESCE(
+                    to_date(:monthPeriod::text, 'YYYY-MM'),
+                    date_trunc('month', ws.week_start)::date
+                )
             ),
             latest_month AS (
                 SELECT COALESCE(:monthPeriod::text, MAX(to_char(month_start, 'YYYY-MM'))) AS period

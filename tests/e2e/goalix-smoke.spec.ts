@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { createHmac } from "node:crypto";
 
 type Role = "admin" | "coach" | "player" | "parent";
 
@@ -38,6 +39,34 @@ const users: Record<Role, Record<string, unknown>> = {
 };
 
 const today = new Date().toISOString();
+const accessJwtSecret =
+  process.env.GOALIX_ACCESS_JWT_SECRET ||
+  "playwright-e2e-access-secret-32-chars-minimum";
+
+function base64Url(input: string | Buffer) {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function signAccessCookie(role: Role) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = base64Url(JSON.stringify({
+    userId: users[role].id,
+    role,
+    iat: now,
+    exp: now + 60 * 60,
+  }));
+  const signature = base64Url(
+    createHmac("sha256", accessJwtSecret)
+      .update(`${header}.${payload}`)
+      .digest(),
+  );
+  return `${header}.${payload}.${signature}`;
+}
 
 function adminDashboardData() {
   return {
@@ -219,7 +248,18 @@ test.describe("Goalix authenticated dashboards", () => {
       const origin = new URL(baseURL ?? "http://localhost:3001").origin;
       const context = await browser.newContext({
         storageState: {
-          cookies: [],
+          cookies: [
+            {
+              name: "accessToken",
+              value: signAccessCookie(item.role),
+              domain: new URL(origin).hostname,
+              path: "/",
+              expires: Math.floor(Date.now() / 1000) + 60 * 60,
+              httpOnly: true,
+              secure: origin.startsWith("https://"),
+              sameSite: "Lax",
+            },
+          ],
           origins: [
             {
               origin,

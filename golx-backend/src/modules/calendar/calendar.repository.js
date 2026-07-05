@@ -3,10 +3,11 @@ const { ensureIamForAuthUser } = require("../../shared/iam-sync");
 const {
   PERMISSION_COLUMNS,
 } = require("../coaches/coach-assignment-roles");
+const ParentRepository = require("./repositories/parent.repository");
 
-class CalendarRepository {
+class CalendarRepository extends ParentRepository {
   constructor(db) {
-    this.db = db;
+    super(db);
   }
 
   async paginate(query, { page = 1, limit = 50 } = {}) {

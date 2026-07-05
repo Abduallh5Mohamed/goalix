@@ -1,12 +1,12 @@
-const BaseRepository = require('../../shared/base.repository');
 const { BadRequestError } = require('../../shared/errors');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
+const AdminDashboardRepository = require('./repositories/dashboard.repository');
 
 const PROTECTED_ROLE_CODES = new Set(['super_admin', 'academy_owner', 'player']);
 
-class AdminRepository extends BaseRepository {
+class AdminRepository extends AdminDashboardRepository {
     constructor(db) {
-        super('auth_users', db);
+        super(db);
     }
 
     // ─── KPIs ────────────────────────────────────────────────────────────

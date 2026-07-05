@@ -9,6 +9,7 @@ const {
 } = require('./coach-assignment-roles');
 const storage = require('../../shared/storage');
 const { assertMimeSignature } = require('../../shared/file-signature');
+const CoachPlayerAssignmentsService = require('./services/player-assignments.service');
 
 const ASSIGNMENT_UPLOAD_MIME = {
     'application/pdf': { fileType: 'pdf', extension: '.pdf' },
@@ -66,6 +67,14 @@ class CoachesService {
     constructor(coachesRepository, academyService) {
         this.repo = coachesRepository;
         this.academyService = academyService;
+        this.playerAssignments = new CoachPlayerAssignmentsService(
+            coachesRepository,
+            {
+                getCurrentCoach: (...args) => this._getCurrentCoach(...args),
+                assertCoachPermission: (...args) =>
+                    this._assertCoachPermission(...args),
+            },
+        );
     }
 
     async listCoaches(academyId, pagination) {
@@ -816,12 +825,7 @@ class CoachesService {
     }
 
     async getMyPlayerAssignments(userId, academyId, filters) {
-        const coach = await this._getCurrentCoach(userId, academyId);
-        const result = await this.repo.findCoachPlayerAssignments(coach.id, academyId, filters);
-        return {
-            ...result,
-            data: result.data.map((assignment) => this._shapePlayerAssignment(assignment)),
-        };
+        return this.playerAssignments.list(userId, academyId, filters);
     }
 
     async createMyPlayerAssignment(userId, academyId, data) {

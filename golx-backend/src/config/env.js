@@ -4,6 +4,10 @@ const optionalBoolean = z
     .enum(['true', 'false'])
     .transform((value) => value === 'true')
     .optional();
+const databaseSsl = z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional();
 const DEFAULT_COOKIE_SECRET = 'change-this-to-a-random-32-char-secret-in-production';
 const PLACEHOLDER_SECRET_MARKERS = [
     'replace-with',
@@ -23,6 +27,7 @@ const envSchema = z.object({
 
     // Database
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    DATABASE_SSL: databaseSsl,
     DB_POOL_MIN: z.coerce.number().int().min(0).default(2),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
     DB_APPLICATION_NAME: z.string().min(1).default('goalix-api'),
@@ -44,6 +49,7 @@ const envSchema = z.object({
     NOTIFICATION_CLEANUP_INTERVAL_HOURS: z.coerce.number().int().min(1).default(24),
     NOTIFICATION_CLEANUP_ENABLED: optionalBoolean,
     CHAT_CONVERSATIONS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).default(15),
+    AUTH_EPHEMERAL_RETENTION_DAYS: z.coerce.number().int().min(7).max(365).default(30),
 
     // JWT
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
@@ -60,6 +66,9 @@ const envSchema = z.object({
     QUEUE_REDIS_FAILURE_MODE: z.enum(['skip', 'throw']).default('skip'),
     BACKGROUND_AUTOMATIONS_ENABLED: optionalBoolean,
     INJURY_RISK_AUTOMATION_ENABLED: optionalBoolean,
+    DATA_LIFECYCLE_ENABLED: optionalBoolean,
+    DATA_LIFECYCLE_INTERVAL_HOURS: z.coerce.number().int().min(1).default(24),
+    DATA_LIFECYCLE_BATCH_SIZE: z.coerce.number().int().min(1).max(10000).default(1000),
 
     // CORS
     CORS_ORIGINS: z.string().default('http://localhost:3001'),
@@ -76,6 +85,8 @@ const envSchema = z.object({
     CHAT_WRITE_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
     UPLOAD_RATE_LIMIT_MAX: z.coerce.number().default(60),
     UPLOAD_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    AI_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+    AI_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().min(1).default(15),
 
     // Account Lockout
     MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(5),
@@ -91,6 +102,8 @@ const envSchema = z.object({
     // Admin Login Rate Limit
     ADMIN_AUTH_RATE_LIMIT_MAX: z.coerce.number().default(5),
     ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    AUTH_ACCOUNT_RATE_LIMIT_MAX: z.coerce.number().int().min(3).default(10),
+    AUTH_ACCOUNT_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().min(1).default(15),
 
     // Cookie signing secret
     COOKIE_SECRET: z.string().min(32).default(DEFAULT_COOKIE_SECRET),

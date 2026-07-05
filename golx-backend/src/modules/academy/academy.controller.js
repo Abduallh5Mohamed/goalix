@@ -9,7 +9,9 @@ class AcademyController {
     // ─── Academy ────────────────────────────────────────────────────────
     getAcademy = async (req, res, next) => {
         try {
-            const academy = await this.service.getAcademy(req.user.academyId);
+            const academy = await this.service.getAcademy(req.user.academyId, {
+                includePrivate: await req.user.can('manage_academy_settings'),
+            });
             res.json(ApiResponse.success(academy));
         } catch (err) { next(err); }
     };

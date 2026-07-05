@@ -139,6 +139,28 @@ class NotificationsRepository extends BaseRepository {
         return created;
     }
 
+    async createBulkWithLogs(rows, channel) {
+        if (!rows.length) return [];
+
+        const created = await this.db.transaction(async (trx) => {
+            const notifications = await trx('notification_inbox')
+                .insert(rows)
+                .returning('*');
+            await trx('notification_logs').insert(
+                notifications.map((notification) => ({
+                    notification_id: notification.id,
+                    user_id: notification.user_id,
+                    channel,
+                    status: 'sent',
+                })),
+            );
+            return notifications;
+        });
+
+        emitNotifications(created);
+        return created;
+    }
+
     async targetUsers(academyId, targetRole) {
         return this.db('auth_users')
             .where({ academy_id: academyId, is_active: true })
@@ -185,15 +207,18 @@ class NotificationsRepository extends BaseRepository {
 
     async findLogs({ academyId, channel, status, page = 1, limit = 20 } = {}) {
         const query = this.db('notification_logs')
+            .join('auth_users as notification_user', 'notification_user.id', 'notification_logs.user_id')
+            .whereNull('notification_user.deleted_at')
             .modify((q) => {
-                if (academyId) q.where('academy_id', academyId);
-                if (channel) q.where('channel', channel);
-                if (status) q.where('status', status);
-            });
+                if (academyId) q.where('notification_user.academy_id', academyId);
+                if (channel) q.where('notification_logs.channel', channel);
+                if (status) q.where('notification_logs.status', status);
+            })
+            .select('notification_logs.*');
 
-        const [{ count }] = await query.clone().count('id as count');
+        const [{ count }] = await query.clone().clearSelect().count('notification_logs.id as count');
         const data = await query
-            .orderBy('created_at', 'desc')
+            .orderBy('notification_logs.created_at', 'desc')
             .limit(limit)
             .offset((page - 1) * limit);
 

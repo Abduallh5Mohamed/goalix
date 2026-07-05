@@ -46,16 +46,34 @@ class NotificationsService {
     async sendNotification(data, academyId) {
         const recipients = await this._resolveRecipients(data, academyId);
 
-        const notifications = recipients.length
-            ? await this.repo.createBulk(recipients.map((recipient) => ({
+        const notificationRows = recipients.map((recipient) => ({
                 user_id: recipient.user_id,
                 type: data.type,
                 title: data.title,
                 body: data.body,
                 data: data.data || {},
                 is_read: false,
-            })))
-            : [];
+            }));
+        let notifications = [];
+        if (notificationRows.length) {
+            if (typeof this.repo.createBulkWithLogs === 'function') {
+                notifications = await this.repo.createBulkWithLogs(notificationRows, data.channel);
+            } else {
+                notifications = await this.repo.createBulk(notificationRows);
+                if (typeof this.repo.logNotification === 'function') {
+                    for (const notification of notifications) {
+                        await this.repo.logNotification({
+                            notification_id: notification.id,
+                            academy_id: academyId,
+                            user_id: notification.user_id,
+                            channel: data.channel,
+                            status: 'sent',
+                            sent_at: new Date(),
+                        });
+                    }
+                }
+            }
+        }
         await this._invalidateUnreadCounts(recipients.map((recipient) => recipient.user_id));
 
         // Queue delivery via channel
@@ -65,18 +83,6 @@ class NotificationsService {
                 channel: data.channel,
                 academyId,
                 targetRole: data.targetRole,
-            });
-        }
-
-        // Log
-        for (const notification of notifications) {
-            await this.repo.logNotification({
-                notification_id: notification.id,
-                academy_id: academyId,
-                user_id: notification.user_id,
-                channel: data.channel,
-                status: 'sent',
-                sent_at: new Date(),
             });
         }
 

@@ -2,6 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3001";
 const useExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+const e2eAccessJwtSecret =
+  process.env.GOALIX_ACCESS_JWT_SECRET ||
+  "playwright-e2e-access-secret-32-chars-minimum";
+
+process.env.GOALIX_ACCESS_JWT_SECRET = e2eAccessJwtSecret;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,6 +23,10 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm run dev:frontend",
+        env: {
+          ...process.env,
+          GOALIX_ACCESS_JWT_SECRET: e2eAccessJwtSecret,
+        },
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120_000,
