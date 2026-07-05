@@ -18,6 +18,7 @@ import {
   useGetCoachGroupsScopedQuery,
   useGetCoachPlayersScopedQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { getInitials } from "@/lib/utils";
 import { TREND_CONFIG } from "@/lib/constants";
 import {
@@ -73,15 +74,98 @@ function customProfileValue(
 function scopedPlayerMainPosition(player: {
   customProfile?: Array<{ key?: string; label?: string; value?: unknown }>;
   position?: string | null;
-}) {
+}, fallback: string) {
   return (
     customProfileValue(player, ["main_position", "main position"]) ||
     player.position ||
-    "No main position"
+    fallback
   );
 }
 
+const groupDetailCopy = {
+  en: {
+    noMainPosition: "No main position",
+    errors: {
+      required: "Group name and birth year are required.",
+      update: "Could not update this group.",
+      delete: "Could not delete this group.",
+    },
+    loading: "Loading group...",
+    notFound: "Group not found",
+    home: "Home",
+    myGroups: "My Groups",
+    trainingAttendance: "Training Attendance",
+    evaluate: "Evaluate",
+    editGroup: "Edit Group",
+    deleteGroup: "Delete Group",
+    editDescription: "Update the group details and choose which players should belong to it.",
+    groupName: "Group name",
+    birthYear: "Birth year",
+    selectBirthYear: "Select birth year",
+    maxPlayers: "Max players",
+    players: "Players",
+    selected: "{count} selected",
+    noCompletePlayers: "No complete players available for this birth year.",
+    cancel: "Cancel",
+    saveChanges: "Save Changes",
+    deleteTitle: "Delete Group?",
+    deleteDescription: "This removes the group from your groups and removes its current player assignments.",
+    totalPlayers: "Total Players",
+    avgAttendance: "Avg Attendance",
+    avgPerformance: "Avg Performance",
+    levelAPlayers: "Level A Players",
+    playerRoster: "Player Roster",
+    age: "Age",
+    trends: {
+      improving: "Improving",
+      stable: "Stable",
+      declining: "Declining",
+    },
+  },
+  ar: {
+    noMainPosition: "لا يوجد مركز رئيسي",
+    errors: {
+      required: "اسم المجموعة وسنة الميلاد مطلوبان.",
+      update: "تعذر تحديث هذه المجموعة.",
+      delete: "تعذر حذف هذه المجموعة.",
+    },
+    loading: "جاري تحميل المجموعة...",
+    notFound: "لم يتم العثور على المجموعة",
+    home: "الرئيسية",
+    myGroups: "مجموعاتي",
+    trainingAttendance: "حضور التدريب",
+    evaluate: "تقييم",
+    editGroup: "تعديل المجموعة",
+    deleteGroup: "حذف المجموعة",
+    editDescription: "حدّث تفاصيل المجموعة واختر اللاعبين التابعين لها.",
+    groupName: "اسم المجموعة",
+    birthYear: "سنة الميلاد",
+    selectBirthYear: "اختر سنة الميلاد",
+    maxPlayers: "الحد الأقصى للاعبين",
+    players: "اللاعبون",
+    selected: "{count} محدد",
+    noCompletePlayers: "لا يوجد لاعبون مكتملون لهذه سنة الميلاد.",
+    cancel: "إلغاء",
+    saveChanges: "حفظ التغييرات",
+    deleteTitle: "حذف المجموعة؟",
+    deleteDescription: "هذا يزيل المجموعة من مجموعاتك ويزيل تعيينات اللاعبين الحالية.",
+    totalPlayers: "إجمالي اللاعبين",
+    avgAttendance: "متوسط الحضور",
+    avgPerformance: "متوسط الأداء",
+    levelAPlayers: "لاعبو المستوى A",
+    playerRoster: "قائمة اللاعبين",
+    age: "العمر",
+    trends: {
+      improving: "يتحسن",
+      stable: "مستقر",
+      declining: "يتراجع",
+    },
+  },
+} as const;
+
 export default function CoachGroupDetailPage() {
+  const language = useDashboardLanguage();
+  const t = groupDetailCopy[language];
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId as string;
@@ -167,7 +251,7 @@ export default function CoachGroupDetailPage() {
   const saveGroup = async () => {
     setEditError("");
     if (!editForm.name.trim() || !editForm.birthYearId) {
-      setEditError("Group name and birth year are required.");
+      setEditError(t.errors.required);
       return;
     }
     try {
@@ -182,7 +266,7 @@ export default function CoachGroupDetailPage() {
       }).unwrap();
       setEditOpen(false);
     } catch {
-      setEditError("Could not update this group.");
+      setEditError(t.errors.update);
     }
   };
 
@@ -192,7 +276,7 @@ export default function CoachGroupDetailPage() {
       await deleteGroup(groupId).unwrap();
       router.push("/coach/my-groups");
     } catch {
-      setDeleteError("Could not delete this group.");
+      setDeleteError(t.errors.delete);
     }
   };
 
@@ -200,7 +284,7 @@ export default function CoachGroupDetailPage() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading group...
+        {t.loading}
       </div>
     );
   }
@@ -208,7 +292,7 @@ export default function CoachGroupDetailPage() {
   if (!group || isError) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-muted-foreground">Group not found</p>
+        <p className="text-muted-foreground">{t.notFound}</p>
       </div>
     );
   }
@@ -219,8 +303,8 @@ export default function CoachGroupDetailPage() {
         title={group.name}
         description={group.schedule}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "My Groups", href: "/coach/my-groups" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.myGroups, href: "/coach/my-groups" },
           { label: group.name },
         ]}
         actions={
@@ -229,7 +313,7 @@ export default function CoachGroupDetailPage() {
               <Link href="/coach/training">
                 <Button size="sm">
                   <ClipboardCheck className="mr-1 h-4 w-4" />
-                  Training Attendance
+                  {t.trainingAttendance}
                 </Button>
               </Link>
             )}
@@ -237,7 +321,7 @@ export default function CoachGroupDetailPage() {
               <Link href="/coach/evaluations/new">
                 <Button size="sm" variant="outline">
                   <Star className="mr-1 h-4 w-4" />
-                  Evaluate
+                  {t.evaluate}
                 </Button>
               </Link>
             )}
@@ -245,7 +329,7 @@ export default function CoachGroupDetailPage() {
               <>
                 <Button size="sm" variant="outline" onClick={openEditDialog}>
                   <Pencil className="mr-1 h-4 w-4" />
-                  Edit Group
+                  {t.editGroup}
                 </Button>
                 <Button
                   size="sm"
@@ -253,7 +337,7 @@ export default function CoachGroupDetailPage() {
                   onClick={() => setDeleteOpen(true)}
                 >
                   <Trash2 className="mr-1 h-4 w-4" />
-                  Delete Group
+                  {t.deleteGroup}
                 </Button>
               </>
             )}
@@ -264,15 +348,14 @@ export default function CoachGroupDetailPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Group</DialogTitle>
+            <DialogTitle>{t.editGroup}</DialogTitle>
             <DialogDescription>
-              Update the group details and choose which players should belong
-              to it.
+              {t.editDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Group name</Label>
+              <Label>{t.groupName}</Label>
               <Input
                 value={editForm.name}
                 onChange={(event) =>
@@ -281,7 +364,7 @@ export default function CoachGroupDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Birth year</Label>
+              <Label>{t.birthYear}</Label>
               <Select
                 value={editForm.birthYearId}
                 onValueChange={(value) =>
@@ -289,7 +372,7 @@ export default function CoachGroupDetailPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select birth year" />
+                  <SelectValue placeholder={t.selectBirthYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {birthYearOptions.map((birthday) => (
@@ -301,7 +384,7 @@ export default function CoachGroupDetailPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Max players</Label>
+              <Label>{t.maxPlayers}</Label>
               <Input
                 type="number"
                 min={1}
@@ -317,9 +400,9 @@ export default function CoachGroupDetailPage() {
             </div>
             <div className="space-y-2 sm:col-span-2">
               <div className="flex items-center justify-between">
-                <Label>Players</Label>
+                <Label>{t.players}</Label>
                 <Badge variant="secondary">
-                  {editForm.playerIds.length} selected
+                  {t.selected.replace("{count}", String(editForm.playerIds.length))}
                 </Badge>
               </div>
               <div className="grid max-h-64 gap-2 overflow-auto rounded-md border border-border/60 p-3">
@@ -339,13 +422,13 @@ export default function CoachGroupDetailPage() {
                       <span>{player.full_name}</span>
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {scopedPlayerMainPosition(player)}
+                      {scopedPlayerMainPosition(player, t.noMainPosition)}
                     </span>
                   </label>
                 ))}
                 {!availablePlayers.length && (
                   <p className="text-sm text-muted-foreground">
-                    No complete players available for this birth year.
+                    {t.noCompletePlayers}
                   </p>
                 )}
               </div>
@@ -354,11 +437,11 @@ export default function CoachGroupDetailPage() {
           {editError && <p className="text-sm text-red-400">{editError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button className="gap-2" disabled={updatingGroup} onClick={saveGroup}>
               {updatingGroup && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save Changes
+              {t.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -367,16 +450,15 @@ export default function CoachGroupDetailPage() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Group?</DialogTitle>
+            <DialogTitle>{t.deleteTitle}</DialogTitle>
             <DialogDescription>
-              This removes the group from your groups and removes its current
-              player assignments.
+              {t.deleteDescription}
             </DialogDescription>
           </DialogHeader>
           {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -385,7 +467,7 @@ export default function CoachGroupDetailPage() {
               onClick={confirmDeleteGroup}
             >
               {deletingGroup && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Group
+              {t.deleteGroup}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -396,7 +478,7 @@ export default function CoachGroupDetailPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">{players.length}</p>
-            <p className="text-xs text-muted-foreground">Total Players</p>
+            <p className="text-xs text-muted-foreground">{t.totalPlayers}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card">
@@ -410,7 +492,7 @@ export default function CoachGroupDetailPage() {
                 : 0}
               %
             </p>
-            <p className="text-xs text-muted-foreground">Avg Attendance</p>
+            <p className="text-xs text-muted-foreground">{t.avgAttendance}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card">
@@ -423,7 +505,7 @@ export default function CoachGroupDetailPage() {
                   ).toFixed(1)
                 : 0}
             </p>
-            <p className="text-xs text-muted-foreground">Avg Performance</p>
+            <p className="text-xs text-muted-foreground">{t.avgPerformance}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card">
@@ -431,7 +513,7 @@ export default function CoachGroupDetailPage() {
             <p className="text-2xl font-bold text-amber-400">
               {players.filter((p) => p.level === "A").length}
             </p>
-            <p className="text-xs text-muted-foreground">Level A Players</p>
+            <p className="text-xs text-muted-foreground">{t.levelAPlayers}</p>
           </CardContent>
         </Card>
       </div>
@@ -440,7 +522,7 @@ export default function CoachGroupDetailPage() {
       <Card className="border-border/50 bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
-            Player Roster
+            {t.playerRoster}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -448,7 +530,7 @@ export default function CoachGroupDetailPage() {
             {players.map((player) => {
               const TrendIcon = trendIcons[player.trend] || Minus;
               const trendConfig = TREND_CONFIG[player.trend];
-              const mainPosition = player.mainPosition || player.position;
+              const mainPosition = player.mainPosition || player.position || t.noMainPosition;
 
               return (
                 <div
@@ -469,7 +551,7 @@ export default function CoachGroupDetailPage() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{mainPosition}</span>
                         <span>-</span>
-                        <span>Age {player.age}</span>
+                        <span>{t.age} {player.age}</span>
                       </div>
                     </div>
                   </div>
@@ -499,7 +581,11 @@ export default function CoachGroupDetailPage() {
                         style={{ color: trendConfig?.color }}
                       >
                         <TrendIcon className="h-3 w-3" />
-                        <span>{trendConfig?.label}</span>
+                        <span>
+                          {player.trend in t.trends
+                            ? t.trends[player.trend as keyof typeof t.trends]
+                            : trendConfig?.label}
+                        </span>
                       </div>
                     </div>
                   </div>

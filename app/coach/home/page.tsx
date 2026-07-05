@@ -26,19 +26,189 @@ import {
   useGetCoachMatchesQuery,
   useGetCoachPlayersScopedQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12, getInitials, localDateTimeTimestamp } from "@/lib/utils";
 
 type IconType = React.ComponentType<{ className?: string }>;
 
 const closedStatuses = new Set(["completed", "finished", "cancelled"]);
 
-const titleCase = (value: string | null | undefined) =>
-  (value || "Not set")
+const coachHomeCopy = {
+  en: {
+    notSet: "Not set",
+    noMainPosition: "No main position",
+    noTargetGroups: "No target groups",
+    roles: {
+      training: "Training",
+      attendance: "Attendance",
+      evaluation: "Evaluation",
+    },
+    labels: {
+      completed: "Completed",
+      finished: "Finished",
+      cancelled: "Cancelled",
+      present: "Present",
+      starter: "Starter",
+      scheduled: "Scheduled",
+      substitute: "Substitute",
+      reserve: "Reserve",
+      postponed: "Postponed",
+      late: "Late",
+      absent: "Absent",
+      injured: "Injured",
+      complete: "Complete",
+      incomplete: "Incomplete",
+      friendly: "Friendly",
+      official: "Official",
+      training: "Training",
+    },
+    eyebrow: "Coach performance hub",
+    title: "Welcome back, Coach",
+    subtitle: "Live training, matches, groups, and player data from the backend.",
+    stats: {
+      activePlayers: "Active Players",
+      trainingSessions: "Training Sessions",
+      upcomingMatches: "Upcoming Matches",
+      assignedGroups: "Assigned Groups",
+    },
+    loadError: "Some coach dashboard data could not load. Check backend login/session and API availability.",
+    loading: "Loading coach dashboard from backend...",
+    metricCards: {
+      openTrainings: "Open Trainings",
+      scheduledSessions: "Scheduled sessions",
+      completedTrainings: "Completed Trainings",
+      recordedSessions: "Recorded sessions",
+      completedMatches: "Completed Matches",
+      withMatchHistory: "With match history",
+      squadReady: "Squad Ready",
+      completedProfiles: "Completed profiles",
+      permissions: "Permissions",
+      evaluationGroups: "Evaluation groups",
+    },
+    sections: {
+      upcomingTraining: "Upcoming Training",
+      upcomingMatches: "Upcoming Matches",
+      nextAgenda: "Next Agenda",
+      focusPlayers: "Focus Players",
+      assignedGroups: "Assigned Groups",
+      coachActions: "Coach Actions",
+    },
+    viewAll: "View all",
+    calendar: "Calendar",
+    empty: {
+      trainings: "No backend training sessions are assigned to you yet.",
+      matches: "No backend matches are assigned to you yet.",
+      agenda: "No upcoming training or match agenda from backend yet.",
+      players: "No backend players are assigned to you yet.",
+      groups: "No backend groups are assigned to your coach account yet.",
+    },
+    actions: {
+      attendance: "Training Attendance",
+      attendanceSubtitle: "{count} scheduled sessions",
+      evaluation: "New Evaluation",
+      evaluationSubtitle: "Evaluate assigned players",
+      matchConfig: "Match Configuration",
+      matchConfigSubtitle: "{count} upcoming matches",
+      injuryRisk: "Injury Risk AI",
+      injuryRiskSubtitle: "{count} assigned players",
+    },
+  },
+  ar: {
+    notSet: "غير محدد",
+    noMainPosition: "لا يوجد مركز رئيسي",
+    noTargetGroups: "لا توجد مجموعات مستهدفة",
+    roles: {
+      training: "التدريب",
+      attendance: "الحضور",
+      evaluation: "التقييم",
+    },
+    labels: {
+      completed: "مكتمل",
+      finished: "منتهي",
+      cancelled: "ملغي",
+      present: "حاضر",
+      starter: "أساسي",
+      scheduled: "مجدول",
+      substitute: "بديل",
+      reserve: "احتياطي",
+      postponed: "مؤجل",
+      late: "متأخر",
+      absent: "غائب",
+      injured: "مصاب",
+      complete: "مكتمل",
+      incomplete: "غير مكتمل",
+      friendly: "ودية",
+      official: "رسمية",
+      training: "تدريب",
+    },
+    eyebrow: "مركز أداء المدرب",
+    title: "أهلًا بعودتك، أيها المدرب",
+    subtitle: "بيانات مباشرة للتدريبات والمباريات والمجموعات واللاعبين من الباك.",
+    stats: {
+      activePlayers: "لاعبون نشطون",
+      trainingSessions: "حصص التدريب",
+      upcomingMatches: "المباريات القادمة",
+      assignedGroups: "المجموعات المعينة",
+    },
+    loadError: "تعذر تحميل بعض بيانات لوحة المدرب. تأكد من تسجيل الدخول وتوفر API.",
+    loading: "جاري تحميل لوحة المدرب من الباك...",
+    metricCards: {
+      openTrainings: "تدريبات مفتوحة",
+      scheduledSessions: "حصص مجدولة",
+      completedTrainings: "تدريبات مكتملة",
+      recordedSessions: "حصص مسجلة",
+      completedMatches: "مباريات مكتملة",
+      withMatchHistory: "مع سجل مباريات",
+      squadReady: "الفريق جاهز",
+      completedProfiles: "ملفات مكتملة",
+      permissions: "الصلاحيات",
+      evaluationGroups: "مجموعات التقييم",
+    },
+    sections: {
+      upcomingTraining: "التدريب القادم",
+      upcomingMatches: "المباريات القادمة",
+      nextAgenda: "الأجندة القادمة",
+      focusPlayers: "لاعبون تحت التركيز",
+      assignedGroups: "المجموعات المعينة",
+      coachActions: "إجراءات المدرب",
+    },
+    viewAll: "عرض الكل",
+    calendar: "التقويم",
+    empty: {
+      trainings: "لا توجد حصص تدريب معينة لك حتى الآن.",
+      matches: "لا توجد مباريات معينة لك حتى الآن.",
+      agenda: "لا توجد أجندة تدريب أو مباريات قادمة من الباك حتى الآن.",
+      players: "لا يوجد لاعبون معينون لك حتى الآن.",
+      groups: "لا توجد مجموعات معينة لحساب المدرب الخاص بك حتى الآن.",
+    },
+    actions: {
+      attendance: "حضور التدريب",
+      attendanceSubtitle: "{count} حصص مجدولة",
+      evaluation: "تقييم جديد",
+      evaluationSubtitle: "قيّم اللاعبين المعينين",
+      matchConfig: "إعداد المباراة",
+      matchConfigSubtitle: "{count} مباريات قادمة",
+      injuryRisk: "ذكاء مخاطر الإصابة",
+      injuryRiskSubtitle: "{count} لاعبين معينين",
+    },
+  },
+} as const;
+
+type CoachHomeCopy = (typeof coachHomeCopy)[keyof typeof coachHomeCopy];
+
+const formatLabel = (value: string | null | undefined, t: CoachHomeCopy) => {
+  const rawValue = value || t.notSet;
+  const normalized = normalizeKey(rawValue);
+  if (normalized in t.labels) {
+    return t.labels[normalized as keyof typeof t.labels];
+  }
+  return rawValue
     .replace(/_/g, " ")
     .split(" ")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+};
 
 const eventTimestamp = (event: CalendarEvent) => {
   const timestamp = Date.parse(event.start_datetime ?? "");
@@ -73,14 +243,14 @@ const textValue = (value: unknown): string | null => {
   return null;
 };
 
-const playerMainPosition = (player: CoachPlayer) => {
+const playerMainPosition = (player: CoachPlayer, t: CoachHomeCopy) => {
   const mainPosition = player.customProfile?.find((field) => {
     const key = normalizeKey(field.key || "");
     const label = normalizeKey(field.label || "");
     return key === "main_position" || label === "main_position";
   });
 
-  return textValue(mainPosition?.value) || "No main position";
+  return textValue(mainPosition?.value) || t.noMainPosition;
 };
 
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -130,7 +300,7 @@ function StatCard({
   );
 }
 
-function TrainingRow({ event }: { event: CalendarEvent }) {
+function TrainingRow({ event, t }: { event: CalendarEvent; t: CoachHomeCopy }) {
   return (
     <Link
       href={`/coach/training/${event.id}`}
@@ -143,14 +313,14 @@ function TrainingRow({ event }: { event: CalendarEvent }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-white">{event.title}</p>
-            <Badge variant={statusVariant(event.status)}>{titleCase(event.status)}</Badge>
+            <Badge variant={statusVariant(event.status)}>{formatLabel(event.status, t)}</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-400">
             {formatDate(event.start_datetime)} - {formatTime12(event.start_datetime)}
             {event.location ? ` - ${event.location}` : ""}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            {event.groups?.map((group) => group.name).join(", ") || "No target groups"}
+            {event.groups?.map((group) => group.name).join(", ") || t.noTargetGroups}
           </p>
         </div>
       </div>
@@ -159,7 +329,7 @@ function TrainingRow({ event }: { event: CalendarEvent }) {
   );
 }
 
-function MatchRow({ match }: { match: Match }) {
+function MatchRow({ match, t }: { match: Match; t: CoachHomeCopy }) {
   return (
     <Link
       href={`/coach/matches/match-day/${match.id}`}
@@ -172,15 +342,15 @@ function MatchRow({ match }: { match: Match }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-white">vs {match.opponent_name}</p>
-            <Badge variant={statusVariant(match.status)}>{titleCase(match.status)}</Badge>
-            <Badge variant="outline">{titleCase(match.match_type)}</Badge>
+            <Badge variant={statusVariant(match.status)}>{formatLabel(match.status, t)}</Badge>
+            <Badge variant="outline">{formatLabel(match.match_type, t)}</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-400">
             {formatDate(match.match_date)} - {formatTime12(match.match_time)}
             {match.location ? ` - ${match.location}` : ""}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            {match.groups?.map((group) => group.name).join(", ") || "No target groups"}
+            {match.groups?.map((group) => group.name).join(", ") || t.noTargetGroups}
           </p>
         </div>
       </div>
@@ -189,7 +359,7 @@ function MatchRow({ match }: { match: Match }) {
   );
 }
 
-function PlayerRow({ player }: { player: CoachPlayer }) {
+function PlayerRow({ player, t }: { player: CoachPlayer; t: CoachHomeCopy }) {
   return (
     <Link
       href={`/coach/players/${player.id}`}
@@ -201,17 +371,17 @@ function PlayerRow({ player }: { player: CoachPlayer }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-white">{player.full_name}</p>
         <p className="text-xs text-slate-400">
-          {playerMainPosition(player)} - {titleCase(player.profile_status)}
+          {playerMainPosition(player, t)} - {formatLabel(player.profile_status, t)}
         </p>
       </div>
       <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>
-        {titleCase(player.profile_status)}
+        {formatLabel(player.profile_status, t)}
       </Badge>
     </Link>
   );
 }
 
-function GroupCard({ group }: { group: CoachGroup }) {
+function GroupCard({ group, t }: { group: CoachGroup; t: CoachHomeCopy }) {
   return (
     <Link
       href={`/coach/my-groups/${group.group_id}`}
@@ -225,15 +395,17 @@ function GroupCard({ group }: { group: CoachGroup }) {
       </div>
       <p className="mt-2 text-sm text-slate-400">{group.branch_name}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {group.can_create_training && <Badge variant="outline">Training</Badge>}
-        {group.can_take_attendance && <Badge variant="outline">Attendance</Badge>}
-        {group.can_evaluate_players && <Badge variant="outline">Evaluation</Badge>}
+        {group.can_create_training && <Badge variant="outline">{t.roles.training}</Badge>}
+        {group.can_take_attendance && <Badge variant="outline">{t.roles.attendance}</Badge>}
+        {group.can_evaluate_players && <Badge variant="outline">{t.roles.evaluation}</Badge>}
       </div>
     </Link>
   );
 }
 
 export default function CoachHomePage() {
+  const language = useDashboardLanguage();
+  const t = coachHomeCopy[language];
   const groupsQuery = useGetCoachGroupsScopedQuery();
   const playersQuery = useGetCoachPlayersScopedQuery({ limit: 200 });
   const eventsQuery = useGetCoachCalendarEventsQuery();
@@ -299,111 +471,137 @@ export default function CoachHomePage() {
     playersQuery.isError ||
     eventsQuery.isError ||
     matchesQuery.isError;
+  const coachActions = [
+    {
+      icon: ClipboardCheck,
+      title: t.actions.attendance,
+      subtitle: t.actions.attendanceSubtitle.replace("{count}", String(scheduledTrainings.length)),
+      href: "/coach/training",
+    },
+    {
+      icon: Star,
+      title: t.actions.evaluation,
+      subtitle: t.actions.evaluationSubtitle,
+      href: "/coach/evaluations/new",
+    },
+    {
+      icon: Target,
+      title: t.actions.matchConfig,
+      subtitle: t.actions.matchConfigSubtitle.replace("{count}", String(upcomingMatches.length)),
+      href: "/coach/matches/configuration",
+    },
+    {
+      icon: ShieldCheck,
+      title: t.actions.injuryRisk,
+      subtitle: t.actions.injuryRiskSubtitle.replace("{count}", String(players.length)),
+      href: "/coach/injury-risk-ai",
+    },
+  ];
 
   return (
     <div className="space-y-5">
       <section className="grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">
-            Coach performance hub
+            {t.eyebrow}
           </p>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal md:text-6xl">
-            Welcome back, Coach
+            {t.title}
           </h1>
           <p className="mt-2 text-lg text-slate-300">
-            Live training, matches, groups, and player data from the backend.
+            {t.subtitle}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatCard icon={Users} value={players.length} label="Active Players" tone="cyan" />
-          <StatCard icon={Dumbbell} value={upcomingTrainings.length} label="Training Sessions" tone="lime" />
-          <StatCard icon={Trophy} value={upcomingMatches.length} label="Upcoming Matches" tone="amber" />
-          <StatCard icon={UserCheck} value={groups.length} label="Assigned Groups" tone="teal" />
+          <StatCard icon={Users} value={players.length} label={t.stats.activePlayers} tone="cyan" />
+          <StatCard icon={Dumbbell} value={upcomingTrainings.length} label={t.stats.trainingSessions} tone="lime" />
+          <StatCard icon={Trophy} value={upcomingMatches.length} label={t.stats.upcomingMatches} tone="amber" />
+          <StatCard icon={UserCheck} value={groups.length} label={t.stats.assignedGroups} tone="teal" />
         </div>
       </section>
 
       {hasError && (
         <Panel className="border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-          Some coach dashboard data could not load. Check backend login/session and API availability.
+          {t.loadError}
         </Panel>
       )}
 
       {isLoading ? (
         <Panel className="flex items-center gap-3 p-5 text-sm text-slate-300">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading coach dashboard from backend...
+          {t.loading}
         </Panel>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Panel className="p-5">
-              <p className="text-sm font-semibold text-white">Open Trainings</p>
+              <p className="text-sm font-semibold text-white">{t.metricCards.openTrainings}</p>
               <p className="mt-3 font-display text-3xl font-bold text-lime-300">
                 {scheduledTrainings.length}
               </p>
-              <p className="mt-1 text-sm text-slate-300">Scheduled sessions</p>
+              <p className="mt-1 text-sm text-slate-300">{t.metricCards.scheduledSessions}</p>
             </Panel>
             <Panel className="p-5">
-              <p className="text-sm font-semibold text-white">Completed Trainings</p>
+              <p className="text-sm font-semibold text-white">{t.metricCards.completedTrainings}</p>
               <p className="mt-3 font-display text-3xl font-bold text-cyan-300">
                 {completedTrainings.length}
               </p>
-              <p className="mt-1 text-sm text-slate-300">Recorded sessions</p>
+              <p className="mt-1 text-sm text-slate-300">{t.metricCards.recordedSessions}</p>
             </Panel>
             <Panel className="p-5">
-              <p className="text-sm font-semibold text-white">Completed Matches</p>
+              <p className="text-sm font-semibold text-white">{t.metricCards.completedMatches}</p>
               <p className="mt-3 font-display text-3xl font-bold text-lime-300">
                 {completedMatches.length}
               </p>
-              <p className="mt-1 text-sm text-slate-300">With match history</p>
+              <p className="mt-1 text-sm text-slate-300">{t.metricCards.withMatchHistory}</p>
             </Panel>
             <Panel className="p-5">
-              <p className="text-sm font-semibold text-white">Squad Ready</p>
+              <p className="text-sm font-semibold text-white">{t.metricCards.squadReady}</p>
               <p className="mt-3 font-display text-3xl font-bold text-white">
                 {players.filter((player) => player.profile_status === "complete").length}
               </p>
-              <p className="mt-1 text-sm text-slate-300">Completed profiles</p>
+              <p className="mt-1 text-sm text-slate-300">{t.metricCards.completedProfiles}</p>
             </Panel>
             <Panel className="p-5">
-              <p className="text-sm font-semibold text-white">Permissions</p>
+              <p className="text-sm font-semibold text-white">{t.metricCards.permissions}</p>
               <p className="mt-3 font-display text-3xl font-bold text-teal-300">
                 {groups.filter((group) => group.can_evaluate_players).length}
               </p>
-              <p className="mt-1 text-sm text-slate-300">Evaluation groups</p>
+              <p className="mt-1 text-sm text-slate-300">{t.metricCards.evaluationGroups}</p>
             </Panel>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
             <Panel className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Upcoming Training</h2>
+                <h2 className="text-xl font-semibold">{t.sections.upcomingTraining}</h2>
                 <Link href="/coach/training" className="text-sm text-cyan-300">
-                  View all
+                  {t.viewAll}
                 </Link>
               </div>
               <div className="space-y-3">
                 {upcomingTrainings.slice(0, 5).map((event) => (
-                  <TrainingRow key={event.id} event={event} />
+                  <TrainingRow key={event.id} event={event} t={t} />
                 ))}
                 {!upcomingTrainings.length && (
-                  <EmptyState text="No backend training sessions are assigned to you yet." />
+                  <EmptyState text={t.empty.trainings} />
                 )}
               </div>
             </Panel>
 
             <Panel className="p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Upcoming Matches</h2>
+                <h2 className="text-xl font-semibold">{t.sections.upcomingMatches}</h2>
                 <Link href="/coach/matches" className="text-sm text-cyan-300">
-                  View all
+                  {t.viewAll}
                 </Link>
               </div>
               <div className="space-y-3">
                 {upcomingMatches.slice(0, 5).map((match) => (
-                  <MatchRow key={match.id} match={match} />
+                  <MatchRow key={match.id} match={match} t={t} />
                 ))}
                 {!upcomingMatches.length && (
-                  <EmptyState text="No backend matches are assigned to you yet." />
+                  <EmptyState text={t.empty.matches} />
                 )}
               </div>
             </Panel>
@@ -412,9 +610,9 @@ export default function CoachHomePage() {
           <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
             <Panel className="p-5">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Next Agenda</h2>
+                <h2 className="text-xl font-semibold">{t.sections.nextAgenda}</h2>
                 <Link href="/coach/calendar" className="text-sm text-cyan-300">
-                  Calendar
+                  {t.calendar}
                 </Link>
               </div>
               <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
@@ -438,20 +636,20 @@ export default function CoachHomePage() {
                 ))}
                 {!agenda.length && (
                   <div className="md:col-span-3 xl:col-span-6">
-                    <EmptyState text="No upcoming training or match agenda from backend yet." />
+                    <EmptyState text={t.empty.agenda} />
                   </div>
                 )}
               </div>
             </Panel>
 
             <Panel className="p-5">
-              <h2 className="mb-5 text-xl font-semibold">Focus Players</h2>
+              <h2 className="mb-5 text-xl font-semibold">{t.sections.focusPlayers}</h2>
               <div className="space-y-3">
                 {focusPlayers.map((player) => (
-                  <PlayerRow key={player.id} player={player} />
+                  <PlayerRow key={player.id} player={player} t={t} />
                 ))}
                 {!focusPlayers.length && (
-                  <EmptyState text="No backend players are assigned to you yet." />
+                  <EmptyState text={t.empty.players} />
                 )}
               </div>
             </Panel>
@@ -459,28 +657,23 @@ export default function CoachHomePage() {
 
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
             <Panel className="p-5 xl:col-span-2">
-              <h2 className="mb-4 text-xl font-semibold">Assigned Groups</h2>
+              <h2 className="mb-4 text-xl font-semibold">{t.sections.assignedGroups}</h2>
               <div className="grid gap-3 md:grid-cols-2">
                 {groups.map((group) => (
-                  <GroupCard key={group.group_id} group={group} />
+                  <GroupCard key={group.group_id} group={group} t={t} />
                 ))}
                 {!groups.length && (
                   <div className="md:col-span-2">
-                    <EmptyState text="No backend groups are assigned to your coach account yet." />
+                    <EmptyState text={t.empty.groups} />
                   </div>
                 )}
               </div>
             </Panel>
 
             <Panel className="p-5">
-              <h2 className="mb-4 text-xl font-semibold">Coach Actions</h2>
+              <h2 className="mb-4 text-xl font-semibold">{t.sections.coachActions}</h2>
               <div className="space-y-1">
-                {[
-                  { icon: ClipboardCheck, title: "Training Attendance", subtitle: `${scheduledTrainings.length} scheduled sessions`, href: "/coach/training" },
-                  { icon: Star, title: "New Evaluation", subtitle: "Evaluate assigned players", href: "/coach/evaluations/new" },
-                  { icon: Target, title: "Match Configuration", subtitle: `${upcomingMatches.length} upcoming matches`, href: "/coach/matches/configuration" },
-                  { icon: ShieldCheck, title: "Injury Risk AI", subtitle: `${players.length} assigned players`, href: "/coach/injury-risk-ai" },
-                ].map((action) => (
+                {coachActions.map((action) => (
                   <Link
                     key={action.title}
                     href={action.href}

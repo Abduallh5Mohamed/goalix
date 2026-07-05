@@ -10,7 +10,6 @@ const excludedPrefixes = [
     '/api/v1/auth/admin/login',
     '/api/v1/auth/signup',
     '/api/v1/auth/refresh',
-    '/api/v1/auth/logout',
     '/api/v1/auth/2fa/verify',
     '/api/v1/auth/2fa/backup-verify',
 ];

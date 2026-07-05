@@ -298,6 +298,22 @@ class AuthRepository extends BaseRepository {
             .update({ is_used: true, used_at: new Date() });
     }
 
+    async consumeUnusedBackupCode(userId, codeHashes) {
+        const hashes = [...new Set((codeHashes || []).filter(Boolean))];
+        if (!hashes.length) return null;
+
+        const [row] = await this.db('auth_totp_backup_codes')
+            .where({ user_id: userId, is_used: false })
+            .whereIn('code_hash', hashes)
+            .update({
+                is_used: true,
+                used_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row || null;
+    }
+
     async deleteBackupCodes(userId) {
         return this.db('auth_totp_backup_codes')
             .where({ user_id: userId })

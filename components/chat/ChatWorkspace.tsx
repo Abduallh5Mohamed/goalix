@@ -1,23 +1,17 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import "@/app/chat.css";
+
+import { FormEvent, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import {
   Check,
-  CheckCheck,
   Edit3,
   ImagePlus,
   Loader2,
   Lock,
-  MessageSquare,
-  Plus,
-  Search,
   Send,
-  Shield,
   Trash2,
-  UserPlus,
-  UserRound,
-  Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,403 +22,43 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn, getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/auth/auth-context";
 import { hasAuthSessionMarker } from "@/lib/auth/session";
 import { refreshAuthSession } from "@/lib/auth/refreshSession";
-import { getApiBaseUrl, getSocketBaseUrl } from "@/lib/api/baseUrl";
-import { applyCsrfHeader, ensureCsrfToken, isMutatingMethod, refreshCsrfToken } from "@/lib/api/csrf";
+import { getSocketBaseUrl } from "@/lib/api/baseUrl";
 import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { loginSuccess, logout } from "@/lib/store/slices/authSlice";
-import type { UserRole } from "@/lib/types";
+import { mapApiUser } from "@/lib/auth/mapApiUser";
+import { chatCopy } from "@/lib/chatTranslations";
+import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
+import { ChatConversationsPanel } from "@/components/chat/ChatConversationsPanel";
+import { ChatGroupDetails } from "@/components/chat/ChatGroupDetails";
+import { ChatThreadHeader } from "@/components/chat/ChatThreadHeader";
+import { MessageReceipt } from "@/components/chat/MessageReceipt";
+import {
+  absoluteUploadUrl,
+  allowedImageTypes,
+  apiJson,
+  maxChatImageBytes,
+} from "@/components/chat/chatApi";
+import {
+  chatErrorMessage,
+  contactRoleLabel,
+  conversationLabel,
+  normalizeSearch,
+} from "@/components/chat/chatFormatters";
+import type {
+  ChatRole,
+  Contact,
+  ContactsResponse,
+  Conversation,
+  Message,
+} from "@/components/chat/chatTypes";
 
-const API_BASE = getApiBaseUrl();
-
-const copy = {
-  en: {
-    chats: "Chats",
-    contacts: "Contacts",
-    search: "Search",
-    noChatsSearch: "No chats match your search.",
-    noChats: "No chats yet.",
-    noContacts: "No contacts.",
-    selectChat: "Select a chat",
-    noMessages: "No messages yet.",
-    noChatSelected: "No chat selected.",
-    sessionClosed: "Session closed.",
-    closeSession: "Close session",
-    editingMessage: "Editing message",
-    message: "Message",
-    send: "Send",
-    save: "Save",
-    you: "You",
-    user: "User",
-    edited: "edited",
-    image: "Image",
-    signInAgain: "Sign in again to use chat.",
-    adminSession: "Admin session",
-    admin: "Admin",
-    familyChat: "Family chat",
-    coach: "Coach",
-    player: "Player",
-    parent: "Parent",
-    headCoach: "Head coach",
-    assistantCoach: "Assistant coach",
-    goalkeeperCoach: "Goalkeeper coach",
-    fitnessCoach: "Fitness coach",
-    about: "About",
-    open: "Open",
-    closed: "Closed",
-    deleteForMe: "Delete for me",
-    deleteForEveryone: "Delete for everyone",
-    attachImage: "Attach image",
-    editMessage: "Edit message",
-    deleteMessage: "Delete message",
-    coaches: "Coaches",
-    admins: "Admins",
-    players: "Players",
-    parents: "Parents",
-    groupSearch: "Search people to add...",
-    imageTooLarge: "Chat image must be 8MB or smaller.",
-    deleteFailed: "Unable to delete message",
-    read: "Read",
-    delivered: "Delivered",
-    invalidImage: "Chat image must be PNG, JPG, JPEG, or WEBP.",
-    openFailed: "Unable to open chat.",
-    closeFailed: "Unable to close session.",
-    sendFailed: "Unable to send message.",
-    requestFailed: "Chat request failed.",
-    messagingDisabled: "Coach messaging is not enabled for this player.",
-  },
-  ar: {
-    chats: "المحادثات",
-    contacts: "جهات الاتصال",
-    search: "بحث",
-    noChatsSearch: "لا توجد محادثات مطابقة للبحث.",
-    noChats: "لا توجد محادثات بعد.",
-    noContacts: "لا توجد جهات اتصال.",
-    selectChat: "اختر محادثة",
-    noMessages: "لا توجد رسائل بعد.",
-    noChatSelected: "لم يتم اختيار محادثة.",
-    sessionClosed: "تم إغلاق الجلسة.",
-    closeSession: "إغلاق الجلسة",
-    editingMessage: "تعديل الرسالة",
-    message: "رسالة",
-    send: "إرسال",
-    save: "حفظ",
-    you: "أنت",
-    user: "مستخدم",
-    edited: "تم التعديل",
-    image: "صورة",
-    signInAgain: "سجل الدخول مرة أخرى لاستخدام الشات.",
-    adminSession: "جلسة الإدارة",
-    admin: "الإدارة",
-    familyChat: "محادثة الأسرة",
-    coach: "المدرب",
-    player: "اللاعب",
-    parent: "ولي الأمر",
-    headCoach: "المدرب الرئيسي",
-    assistantCoach: "المدرب المساعد",
-    goalkeeperCoach: "مدرب الحراس",
-    fitnessCoach: "مدرب اللياقة",
-    about: "بخصوص",
-    open: "مفتوحة",
-    closed: "مغلقة",
-    deleteForMe: "حذف لدي فقط",
-    deleteForEveryone: "حذف للجميع",
-    attachImage: "إرفاق صورة",
-    editMessage: "تعديل الرسالة",
-    deleteMessage: "حذف الرسالة",
-    coaches: "المدربون",
-    admins: "الإدارة",
-    players: "اللاعبون",
-    parents: "أولياء الأمور",
-    groupSearch: "ابحث عن الأشخاص لإضافتهم...",
-    imageTooLarge: "يجب ألا تتجاوز صورة الشات 8 ميجابايت.",
-    deleteFailed: "تعذر حذف الرسالة",
-    read: "تمت القراءة",
-    delivered: "تم التسليم",
-    invalidImage: "يجب أن تكون صورة الشات بصيغة PNG أو JPG أو JPEG أو WEBP.",
-    openFailed: "تعذر فتح المحادثة.",
-    closeFailed: "تعذر إغلاق الجلسة.",
-    sendFailed: "تعذر إرسال الرسالة.",
-    requestFailed: "تعذر تنفيذ طلب المحادثة.",
-    messagingDisabled: "التواصل مع المدرب غير مفعّل لهذا اللاعب.",
-  },
-} as const;
-
-type ChatCopy = Record<keyof typeof copy.en, string>;
-
-type ChatRole = "admin" | "coach" | "player" | "parent";
-type ContactType = "admin" | "coach" | "player" | "parent";
-
-type ConversationType =
-  | "admin_coach"
-  | "coach_player"
-  | "admin_player_session"
-  | "parent_coach"
-  | "chat_group";
-
-type Contact = {
-  type: ContactType;
-  id: string;
-  user_id: string;
-  player_id?: string | null;
-  player_name?: string | null;
-  name: string;
-  subtitle?: string | null;
-};
-
-type GroupMember = {
-  userId: string;
-  name: string;
-  role: ChatRole;
-  membershipRole: "owner" | "member";
-};
-
-type Conversation = {
-  id: string;
-  type: ConversationType;
-  status: "open" | "closed";
-  admin_user_id?: string | null;
-  coach_user_id?: string | null;
-  player_user_id?: string | null;
-  parent_user_id?: string | null;
-  coach_id?: string | null;
-  player_id?: string | null;
-  target: {
-    type: "admin" | "coach" | "player" | "parent" | "group";
-    id?: string | null;
-    userId?: string | null;
-    name: string;
-    memberCount?: number | null;
-  };
-  context?: {
-    playerId: string;
-    playerName: string;
-  } | null;
-  group_member_count?: number | null;
-  group_members?: GroupMember[];
-  canSend: boolean;
-  canClose: boolean;
-  last_message_at?: string | null;
-  last_message_body?: string | null;
-  last_attachment_url?: string | null;
-  created_at: string;
-};
-
-type Message = {
-  id: string;
-  conversation_id: string;
-  sender_user_id: string | null;
-  sender_name?: string | null;
-  sender_role?: string | null;
-  body?: string | null;
-  attachment_url?: string | null;
-  attachment_original_name?: string | null;
-  attachment_mime_type?: string | null;
-  attachment_size?: number | null;
-  created_at: string;
-  delivered_at?: string | null;
-  edited_at?: string | null;
-  read_at?: string | null;
-  deleted_at?: string | null;
-  deleted_by_user_id?: string | null;
-  visibility?: "self" | "everyone";
-};
-
-type ContactsResponse = {
-  admins?: Contact[];
-  coaches?: Contact[];
-  players?: Contact[];
-  parents?: Contact[];
-  children?: Contact[];
-};
-
-type ApiEnvelope<T> = {
-  success: boolean;
-  data: T;
-  error?: { code?: string; message?: string };
-};
-
-function mapApiUser(apiUser: Record<string, unknown>) {
-  return {
-    id: apiUser.id as string,
-    email: (apiUser.email as string) ?? "",
-    username: (apiUser.username as string) ?? undefined,
-    fullName:
-      (apiUser.full_name as string) ??
-      (apiUser.fullName as string) ??
-      (apiUser.username as string) ??
-      (apiUser.email as string),
-    role: apiUser.role as UserRole,
-    avatarUrl: (apiUser.avatar_url as string) ?? "",
-    phone: (apiUser.phone as string) ?? "",
-    linkedPlayerId:
-      (apiUser.linkedPlayerId as string | null) ??
-      (apiUser.linked_player_id as string | null) ??
-      null,
-    createdAt: (apiUser.created_at as string) ?? new Date().toISOString(),
-  };
-}
-
-async function apiJson<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
-  const headers = new Headers(init?.headers);
-  if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (isMutatingMethod(init?.method)) {
-    await ensureCsrfToken();
-  }
-  applyCsrfHeader(headers);
-
-  const res = await fetch(`${API_BASE}/api/v1/chat${path}`, {
-    credentials: "include",
-    ...init,
-    headers,
-  });
-
-  if (res.status === 401 && retry && hasAuthSessionMarker()) {
-    const refresh = await refreshAuthSession();
-    if (refresh.ok) return apiJson<T>(path, init, false);
-  }
-
-  const payload = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
-  if (
-    res.status === 403 &&
-    payload?.error?.code === "CSRF_TOKEN_REJECTED" &&
-    retry
-  ) {
-    await refreshCsrfToken();
-    return apiJson<T>(path, init, false);
-  }
-  if (!res.ok || !payload?.success) {
-    throw new Error(payload?.error?.message || "Chat request failed");
-  }
-  return payload.data;
-}
-
-function absoluteUploadUrl(path?: string | null) {
-  if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${API_BASE}${path}`;
-}
-
-function normalizeSearch(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
-function conversationLabel(conversation: Conversation, t: ChatCopy) {
-  if (conversation.type === "chat_group") {
-    return groupMembersPreview(conversation);
-  }
-  if (conversation.type === "admin_player_session") return t.adminSession;
-  if (conversation.target.type === "admin") return t.admin;
-  if (conversation.target.type === "coach") return t.coach;
-  if (conversation.target.type === "player") return t.player;
-  if (conversation.target.type === "parent") return t.parent;
-  if (conversation.type === "parent_coach") {
-    return conversation.context?.playerName
-      ? `${t.familyChat} - ${conversation.context.playerName}`
-      : t.familyChat;
-  }
-  return t.coach;
-}
-
-function groupMemberNames(conversation: Conversation) {
-  return (conversation.group_members || [])
-    .map((member) => member.name)
-    .filter(Boolean);
-}
-
-function groupMembersPreview(conversation: Conversation) {
-  const names = groupMemberNames(conversation);
-  if (!names.length) {
-    const memberCount =
-      conversation.target.memberCount ?? conversation.group_member_count ?? null;
-    return memberCount ? `${memberCount} members` : "Group chat";
-  }
-
-  return `${names.slice(0, 6).join(", ")}${names.length > 6 ? ", ..." : ""}`;
-}
-
-function formatContactSubtitle(subtitle: string | null | undefined, t: ChatCopy) {
-  if (!subtitle) return "";
-
-  const [rolePart, ...contextParts] = subtitle.split(" - ");
-  const normalized = subtitle.trim().toLowerCase();
-  const normalizedRole = rolePart.trim().toLowerCase();
-  const labels: Record<string, string> = {
-    admin: t.admin,
-    coach: t.coach,
-    player: t.player,
-    parent: t.parent,
-    head_coach: t.headCoach,
-    assistant_coach: t.assistantCoach,
-    goalkeeper_coach: t.goalkeeperCoach,
-    fitness_coach: t.fitnessCoach,
-  };
-
-  if (contextParts.length && labels[normalizedRole]) {
-    return `${labels[normalizedRole]} - ${contextParts.join(" - ")}`;
-  }
-
-  return labels[normalized] || subtitle.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function contactRoleLabel(type: ContactType, t: ChatCopy) {
-  if (type === "admin") return t.admin;
-  if (type === "coach") return t.coach;
-  if (type === "player") return t.player;
-  return t.parent;
-}
-
-function chatErrorMessage(error: unknown, t: ChatCopy, fallback: string) {
-  const message = error instanceof Error ? error.message : "";
-  if (/cannot contact coaches|can only chat about linked children/i.test(message)) {
-    return t.messagingDisabled;
-  }
-  if (/chat request failed/i.test(message)) return t.requestFailed;
-  if (t === copy.en && message) return message;
-  return message && !/^[\x00-\x7F]+$/.test(message) ? message : fallback;
-}
-
-function MessageReceipt({ message, t }: { message: Message; t: ChatCopy }) {
-  if (message.read_at) {
-    return (
-      <span title={t.read} className="inline-flex text-cyan-300">
-        <CheckCheck className="h-3.5 w-3.5" />
-      </span>
-    );
-  }
-
-  if (message.delivered_at) {
-    return (
-      <span title={t.delivered} className="inline-flex text-slate-400">
-        <Check className="h-3.5 w-3.5" />
-      </span>
-    );
-  }
-
-  return null;
-}
-
-const allowedImageTypes = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "image/webp",
-]);
-const maxChatImageBytes = 8 * 1024 * 1024;
+const copy = chatCopy;
 
 export function ChatWorkspace({ role }: { role: ChatRole }) {
   const language = useDashboardLanguage();
@@ -556,31 +190,36 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setConversations(conversationsData);
       setSelectedId((current) => current || conversationsData[0]?.id || null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load chat");
+      setError(chatErrorMessage(err, t, t.loadChatFailed));
     } finally {
       setLoading(false);
     }
-  }, [ensureFreshSession]);
+  }, [ensureFreshSession, t]);
 
   useEffect(() => {
     if (!isInitialized) return;
     if (!isAuthenticated) {
-      setLoading(false);
-      setContacts({});
-      setConversations([]);
-      setMessages([]);
-      setSelectedId(null);
-      setConnectionWarning("");
-      setRealtimeReady(false);
+      startTransition(() => {
+        setLoading(false);
+        setContacts({});
+        setConversations([]);
+        setMessages([]);
+        setSelectedId(null);
+        setConnectionWarning("");
+        setRealtimeReady(false);
+      });
       return;
     }
-    void load();
+    const loadTimer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(loadTimer);
   }, [isAuthenticated, isInitialized, load]);
 
   useEffect(() => {
     if (!isInitialized || !isAuthenticated) return;
     let cancelled = false;
-    setRealtimeReady(false);
+    startTransition(() => setRealtimeReady(false));
 
     const refreshBeforeRealtime = async () => {
       const canContinue = await ensureFreshSession();
@@ -618,7 +257,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       void loadConversations();
     });
     socket.on("connect_error", () => {
-      setConnectionWarning("Live chat connection failed");
+      setConnectionWarning(t.liveConnectionFailed);
     });
 
     return () => {
@@ -631,6 +270,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     isInitialized,
     loadConversations,
     realtimeReady,
+    t,
     upsertMessage,
     upsertMessages,
   ]);
@@ -646,16 +286,18 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
 
   useEffect(() => {
     if (!isInitialized || !isAuthenticated || !selectedId) {
-      setMessages([]);
+      startTransition(() => setMessages([]));
       return;
     }
-    setMessagesLoading(true);
-    setError("");
+    startTransition(() => {
+      setMessagesLoading(true);
+      setError("");
+    });
     apiJson<Message[]>(`/conversations/${selectedId}/messages`)
       .then(setMessages)
-      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load messages"))
+      .catch((err) => setError(chatErrorMessage(err, t, t.loadMessagesFailed)))
       .finally(() => setMessagesLoading(false));
-  }, [isAuthenticated, isInitialized, selectedId]);
+  }, [isAuthenticated, isInitialized, selectedId, t]);
 
   useEffect(() => {
     if (!isInitialized || !isAuthenticated || !selectedId || !user?.id) return;
@@ -750,11 +392,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     event.preventDefault();
     if (role !== "coach" || creatingGroup) return;
     if (!groupName.trim()) {
-      setError("Group name is required");
+      setError(t.groupNameRequired);
       return;
     }
     if (!groupMemberUserIds.length) {
-      setError("Choose at least one group member");
+      setError(t.chooseGroupMember);
       return;
     }
 
@@ -777,7 +419,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       setImage(null);
       resetGroupComposer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create group");
+      setError(chatErrorMessage(err, t, t.createGroupFailed));
     } finally {
       setCreatingGroup(false);
     }
@@ -963,164 +605,35 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
 
   return (
     <div className="goalix-chat-shell" dir={language === "ar" ? "rtl" : "ltr"}>
-      <aside className="goalix-chat-panel goalix-chat-conversations">
-        <div className="goalix-chat-panel-head">
-          <MessageSquare className="goalix-chat-head-icon" />
-          <h1>{t.chats}</h1>
-          {loading && <Loader2 className="goalix-chat-loading" />}
-        </div>
-        <div className="goalix-chat-scroll">
-          {filteredConversations.map((conversation) => (
-            <button
-              key={conversation.id}
-              onClick={() => {
-                setSelectedId(conversation.id);
-                setGroupDetailsOpen(false);
-              }}
-              className={cn(
-                "goalix-chat-list-card",
-                selectedId === conversation.id && "is-active",
-                conversation.status === "closed" && "is-locked",
-              )}
-            >
-              <Avatar className="goalix-chat-avatar">
-                <AvatarFallback>
-                  {getInitials(conversation.target.name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="goalix-chat-list-copy">
-                <span className="goalix-chat-list-title">
-                  {conversation.target.name}
-                </span>
-                <span className="goalix-chat-list-subtitle">
-                  {conversation.last_message_body ||
-                    (conversation.last_attachment_url ? t.image : conversationLabel(conversation, t))}
-                </span>
-              </span>
-              {conversation.status === "closed" && <Lock className="goalix-chat-lock" />}
-            </button>
-          ))}
-          {!loading && filteredConversations.length === 0 && (
-            <div className="goalix-chat-empty-state">
-              {query.trim() ? t.noChatsSearch : t.noChats}
-            </div>
-          )}
-        </div>
-      </aside>
+      <ChatConversationsPanel
+        t={t}
+        loading={loading}
+        filteredConversations={filteredConversations}
+        selectedId={selectedId}
+        query={query}
+        onSelectConversation={(conversationId) => {
+          setSelectedId(conversationId);
+          setGroupDetailsOpen(false);
+        }}
+      />
 
       <main className="goalix-chat-panel goalix-chat-thread">
-        <div className="goalix-chat-thread-head">
-          {selected ? (
-            <>
-              <button
-                type="button"
-                className={cn(
-                  "goalix-chat-thread-profile",
-                  selectedIsGroup && "is-clickable",
-                )}
-                onClick={() => {
-                  if (selectedIsGroup) {
-                    setGroupDetailsOpen((current) => !current);
-                  }
-                }}
-                disabled={!selectedIsGroup}
-                aria-expanded={selectedIsGroup ? groupDetailsOpen : undefined}
-              >
-                <Avatar className="goalix-chat-avatar is-thread">
-                  <AvatarFallback>
-                    {getInitials(selected.target.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="goalix-chat-thread-title">
-                  <h2>{selected.target.name}</h2>
-                  <div>
-                    <Badge
-                      variant={selected.status === "open" ? "success" : "secondary"}
-                  className="goalix-chat-status-badge"
-                >
-                      {selected.status === "open" ? t.open : t.closed}
-                    </Badge>
-                    <span>{conversationLabel(selected, t)}</span>
-                    {selected.context?.playerName && (
-                      <span className="goalix-chat-context-pill">
-                        {t.about} {selected.context.playerName}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-              {selectedIsGroup && (
-                <button
-                  type="button"
-                  className="goalix-chat-members-toggle"
-                  onClick={() => setGroupDetailsOpen((current) => !current)}
-                  aria-label="Show group members"
-                  aria-expanded={groupDetailsOpen}
-                  title="Show group members"
-                >
-                  <Users className="h-4 w-4" />
-                </button>
-              )}
-              {selected.canClose && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="goalix-chat-close-session"
-                  onClick={closeSession}
-                >
-                  {t.closeSession}
-                </Button>
-              )}
-            </>
-          ) : (
-            <span className="goalix-chat-muted">{t.selectChat}</span>
-          )}
-        </div>
+        <ChatThreadHeader
+          selected={selected}
+          selectedIsGroup={selectedIsGroup}
+          groupDetailsOpen={groupDetailsOpen}
+          t={t}
+          onToggleGroupDetails={() => setGroupDetailsOpen((current) => !current)}
+          closeSession={closeSession}
+        />
 
-        {selectedIsGroup && groupDetailsOpen && (
-          <div className="goalix-chat-group-details">
-            <div className="goalix-chat-group-details-head">
-              <div>
-                <strong>Group members</strong>
-                <span>{selectedGroupMembers.length} members</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setGroupDetailsOpen(false)}
-                title="Close members"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="goalix-chat-group-details-list">
-              {selectedGroupMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className="goalix-chat-group-details-member"
-                >
-                  <Avatar className="goalix-chat-avatar is-contact">
-                    <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                  </Avatar>
-                  <span className="goalix-chat-list-copy">
-                    <span className="goalix-chat-list-title">
-                      {member.name}
-                    </span>
-                    <span className="goalix-chat-list-subtitle">
-                      {formatContactSubtitle(member.role, t)}
-                      {member.membershipRole === "owner" ? " | Owner" : ""}
-                    </span>
-                  </span>
-                </div>
-              ))}
-              {selectedGroupMembers.length === 0 && (
-                <div className="goalix-chat-empty-state is-compact">
-                  No members found.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <ChatGroupDetails
+          selectedIsGroup={selectedIsGroup}
+          groupDetailsOpen={groupDetailsOpen}
+          selectedGroupMembers={selectedGroupMembers}
+          t={t}
+          onClose={() => setGroupDetailsOpen(false)}
+        />
 
         <div className="goalix-chat-messages">
           {messagesLoading && (
@@ -1326,263 +839,27 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         </form>
       </main>
 
-      <aside className="goalix-chat-panel goalix-chat-contacts">
-        <div className="goalix-chat-panel-head">
-          {role === "admin" ? <Shield className="goalix-chat-head-icon" /> : role === "coach" ? <Users className="goalix-chat-head-icon" /> : <UserRound className="goalix-chat-head-icon" />}
-          <h2>{t.contacts}</h2>
-        </div>
-        <div className="goalix-chat-search-wrap">
-          <div className="goalix-chat-search">
-            <Search />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="goalix-chat-search-input"
-              placeholder={t.search}
-            />
-          </div>
-        </div>
-        {role === "coach" && (
-          <div className="goalix-chat-group-maker">
-            {!groupComposerOpen ? (
-              <Button
-                type="button"
-                size="sm"
-                className="goalix-chat-new-group-button"
-                onClick={() => setGroupComposerOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                New group
-              </Button>
-            ) : (
-              <form onSubmit={createChatGroup} className="goalix-chat-group-form">
-                <div className="goalix-chat-group-form-head">
-                  <div>
-                    <strong>New chat group</strong>
-                    <span>{groupMemberUserIds.length} selected</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={resetGroupComposer}
-                    title="Close group creator"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <Input
-                  value={groupName}
-                  onChange={(event) => setGroupName(event.target.value)}
-                  maxLength={120}
-                  placeholder="Group name"
-                  className="goalix-chat-group-input"
-                />
-                <div className="goalix-chat-search is-group">
-                  <Search />
-                  <Input
-                    value={groupSearch}
-                    onChange={(event) => setGroupSearch(event.target.value)}
-                    className="goalix-chat-search-input"
-                    placeholder={t.groupSearch}
-                  />
-                </div>
-                <div className="goalix-chat-group-member-list">
-                  {filteredGroupCandidateContacts.map((contact) => {
-                    const selectedMember = groupMemberUserIds.includes(
-                      contact.user_id,
-                    );
-                    return (
-                      <label
-                        key={`${contact.type}-${contact.user_id}`}
-                        className={cn(
-                          "goalix-chat-group-member",
-                          selectedMember && "is-selected",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedMember}
-                          onChange={() => toggleGroupMember(contact.user_id)}
-                        />
-                        <Avatar className="goalix-chat-avatar is-contact">
-                          <AvatarFallback>
-                            {getInitials(contact.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="goalix-chat-list-copy">
-                          <span className="goalix-chat-list-title">
-                            {contact.name}
-                            <Badge variant="outline" className="goalix-chat-role-badge">
-                              {contactRoleLabel(contact.type, t)}
-                            </Badge>
-                          </span>
-                          {contact.subtitle && (
-                            <span className="goalix-chat-list-subtitle">
-                              {formatContactSubtitle(contact.subtitle, t)}
-                            </span>
-                          )}
-                        </span>
-                        <span className="goalix-chat-group-check">
-                          {selectedMember && <Check className="h-3.5 w-3.5" />}
-                        </span>
-                      </label>
-                    );
-                  })}
-                  {filteredGroupCandidateContacts.length === 0 && (
-                    <div className="goalix-chat-empty-state is-compact">
-                      {groupCandidateContacts.length === 0 ? "No people available." : t.noContacts}
-                    </div>
-                  )}
-                </div>
-                <div className="goalix-chat-group-actions">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={resetGroupComposer}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={
-                      creatingGroup ||
-                      !groupName.trim() ||
-                      groupMemberUserIds.length === 0
-                    }
-                  >
-                    {creatingGroup ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserPlus className="h-4 w-4" />
-                    )}
-                    Create
-                  </Button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
-        <div className="goalix-chat-scroll">
-          {role === "admin" && (
-            <ContactSection
-              title={t.coaches}
-              contacts={filteredContacts.coaches || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "coach" && (
-            <ContactSection
-              title={t.admins}
-              contacts={filteredContacts.admins || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "coach" && (
-            <ContactSection
-              title={t.coaches}
-              contacts={filteredContacts.coaches || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "coach" && (
-            <ContactSection
-              title={t.players}
-              contacts={filteredContacts.players || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "coach" && (
-            <ContactSection
-              title={t.parents}
-              contacts={filteredContacts.parents || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "player" && (
-            <ContactSection
-              title={t.coaches}
-              contacts={filteredContacts.coaches || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "parent" && (
-            <ContactSection
-              title={t.coaches}
-              contacts={filteredContacts.coaches || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-          {role === "admin" && (
-            <ContactSection
-              title={t.players}
-              contacts={filteredContacts.players || []}
-              onOpen={openConversation}
-              t={t}
-            />
-          )}
-        </div>
-      </aside>
+      <ChatContactsPanel
+        role={role}
+        t={t}
+        query={query}
+        setQuery={setQuery}
+        groupComposerOpen={groupComposerOpen}
+        setGroupComposerOpen={setGroupComposerOpen}
+        createChatGroup={createChatGroup}
+        resetGroupComposer={resetGroupComposer}
+        groupName={groupName}
+        setGroupName={setGroupName}
+        groupSearch={groupSearch}
+        setGroupSearch={setGroupSearch}
+        groupMemberUserIds={groupMemberUserIds}
+        filteredGroupCandidateContacts={filteredGroupCandidateContacts}
+        groupCandidateContacts={groupCandidateContacts}
+        toggleGroupMember={toggleGroupMember}
+        creatingGroup={creatingGroup}
+        filteredContacts={filteredContacts}
+        openConversation={openConversation}
+      />
     </div>
-  );
-}
-
-function ContactSection({
-  title,
-  contacts,
-  onOpen,
-  t,
-}: {
-  title: string;
-  contacts: Contact[];
-  onOpen: (contact: Contact) => void;
-  t: ChatCopy;
-}) {
-  return (
-    <section className="goalix-chat-contact-section">
-      <h3>
-        {title}
-      </h3>
-      <div className="goalix-chat-contact-list">
-        {contacts.map((contact) => (
-          <button
-            key={`${contact.type}-${contact.id}-${contact.player_id || "direct"}`}
-            onClick={() => onOpen(contact)}
-            className="goalix-chat-contact-card"
-          >
-            <Avatar className="goalix-chat-avatar is-contact">
-              <AvatarFallback>
-                {getInitials(contact.name)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="goalix-chat-list-copy">
-              <span className="goalix-chat-list-title">
-                {contact.name}
-                <Badge variant="outline" className="goalix-chat-role-badge">
-                  {contactRoleLabel(contact.type, t)}
-                </Badge>
-              </span>
-              {contact.subtitle && (
-                <span className="goalix-chat-list-subtitle">
-                  {formatContactSubtitle(contact.subtitle, t)}
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
-        {contacts.length === 0 && (
-          <div className="goalix-chat-empty-state">
-            {t.noContacts}
-          </div>
-        )}
-      </div>
-    </section>
   );
 }

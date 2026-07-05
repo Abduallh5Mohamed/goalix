@@ -1,5 +1,10 @@
 const crypto = require('node:crypto');
 const ApiResponse = require('../../shared/api-response');
+const env = require('../../config/env');
+const { durationToMilliseconds } = require('../../shared/duration');
+
+const DEFAULT_ACCESS_COOKIE_MS = 15 * 60 * 1000;
+const DEFAULT_REFRESH_COOKIE_MS = 7 * 24 * 60 * 60 * 1000;
 
 class AuthController {
     constructor(authService, totpService) {
@@ -52,7 +57,8 @@ class AuthController {
                 }));
             }
 
-            this._setAuthCookies(res, result.accessToken, result.refreshToken);
+            const rememberMe = req.body.rememberMe !== false;
+            this._setAuthCookies(res, result.accessToken, result.refreshToken, rememberMe);
 
             res.json(ApiResponse.success({
                 user: result.user,
@@ -319,9 +325,22 @@ class AuthController {
         return options;
     }
 
-    _setAuthCookies(res, accessToken, refreshToken) {
-        res.cookie('accessToken', accessToken, this._cookieOptions(15 * 60 * 1000));
-        res.cookie('refreshToken', refreshToken, this._cookieOptions(7 * 24 * 60 * 60 * 1000, '/api/v1/auth'));
+    _setAuthCookies(res, accessToken, refreshToken, rememberMe = true) {
+        res.cookie(
+            'accessToken',
+            accessToken,
+            this._cookieOptions(durationToMilliseconds(env.JWT_ACCESS_EXPIRY, DEFAULT_ACCESS_COOKIE_MS)),
+        );
+        res.cookie(
+            'refreshToken',
+            refreshToken,
+            this._cookieOptions(
+                rememberMe
+                    ? durationToMilliseconds(env.JWT_REFRESH_EXPIRY, DEFAULT_REFRESH_COOKIE_MS)
+                    : undefined,
+                '/api/v1/auth',
+            ),
+        );
     }
 
     _clearAuthCookies(res) {

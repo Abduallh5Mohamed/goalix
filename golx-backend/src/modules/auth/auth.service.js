@@ -31,6 +31,10 @@ const {
     getJsonCache,
     setJsonCache,
 } = require('../../shared/redis-json-cache');
+const {
+    durationToMilliseconds,
+    durationToSeconds,
+} = require('../../shared/duration');
 
 const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 const authPermissionsCacheKey = (user) =>
@@ -41,6 +45,16 @@ const mfaEnforcedRoles = new Set(
         .map((role) => role.trim())
         .filter(Boolean),
 );
+const DEFAULT_REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_REFRESH_TTL_SECONDS = DEFAULT_REFRESH_TTL_MS / 1000;
+
+function refreshTokenTtlMs() {
+    return durationToMilliseconds(env.JWT_REFRESH_EXPIRY, DEFAULT_REFRESH_TTL_MS);
+}
+
+function refreshTokenTtlSeconds() {
+    return durationToSeconds(env.JWT_REFRESH_EXPIRY, DEFAULT_REFRESH_TTL_SECONDS);
+}
 
 class AuthService {
     constructor(authRepository, redis) {
@@ -153,8 +167,6 @@ class AuthService {
             role: user.role,
             academyId: user.academy_id,
             email: user.email,
-            username: user.username,
-            role: user.role,
             username: user.username,
         });
 
@@ -570,7 +582,7 @@ class AuthService {
         const session = await this.repo.createRefreshToken({
             user_id: user.id,
             token_hash: tokenHash,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            expires_at: new Date(Date.now() + refreshTokenTtlMs()),
             access_jti: accessJti,
             ip_address: ip || null,
             user_agent: userAgent || null,
@@ -586,7 +598,7 @@ class AuthService {
                     `goalix:auth:refresh:${user.id}`,
                     tokenHash,
                     'EX',
-                    7 * 24 * 60 * 60,
+                    refreshTokenTtlSeconds(),
                 ),
                 cacheActiveSession(this.redis, decodedAccessToken, session),
                 setJsonCache(

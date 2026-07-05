@@ -1,0 +1,22 @@
+node_modules
+.next
+.git
+.env*
+npm-debug.log*
+coverage
+test-results
+.dev-logs
+.codex-logs
+tmp
+uploads
+db-dumps
+DATA FOR PROJECT
+golx-backend
+Models
+output
+*.sql
+*.dump
+*.backup
+*.zip
+*.log
+*.tsbuildinfo

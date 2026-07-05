@@ -315,7 +315,7 @@ export function FinishedMatchDetails({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Minute {substitution.minute}
-                  {substitution.reason ? ` Â· ${substitution.reason}` : ""}
+                  {substitution.reason ? ` · ${substitution.reason}` : ""}
                 </p>
               </div>
               <Badge variant="outline">substitution</Badge>

@@ -1,6 +1,9 @@
+"use client";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { CreditCard, Lock, MessageSquare, Smartphone } from "lucide-react";
 
 const previewCards = [
@@ -24,24 +27,55 @@ const previewCards = [
   },
 ];
 
+const integrationsCopy = {
+  en: {
+    title: "Integrations",
+    description: "Manage third-party connections for notifications and payments.",
+    dashboard: "Dashboard",
+    settings: "Settings",
+    off: "Off",
+    comingSoon: "Coming Soon",
+    comingSoonBody: "External providers for WhatsApp, SMS, and payments are being prepared for production setup.",
+    whatsappBusiness: "WhatsApp Business",
+    smsGateway: "SMS Gateway",
+    paymentGateway: "Payment Gateway",
+  },
+  ar: {
+    title: "التكاملات",
+    description: "إدارة ربط مزودي الإشعارات والخدمات الخارجية.",
+    dashboard: "لوحة التحكم",
+    settings: "الإعدادات",
+    off: "متوقف",
+    comingSoon: "قريبًا",
+    comingSoonBody: "يتم تجهيز مزودي واتساب والرسائل والخدمات الخارجية لإعداد الإنتاج.",
+    whatsappBusiness: "واتساب للأعمال",
+    smsGateway: "بوابة الرسائل",
+    paymentGateway: "بوابة الدفع",
+  },
+} as const;
+
 export default function IntegrationsPage() {
+  const language = useDashboardLanguage();
+  const t = integrationsCopy[language];
+  const cardTitles = [t.whatsappBusiness, t.smsGateway, t.paymentGateway];
+
   return (
     <div className="relative min-h-[calc(100vh-120px)] animate-fade-in overflow-hidden rounded-xl">
       <div className="pointer-events-none select-none blur-[14px] opacity-45">
         <div className="space-y-6">
           <PageHeader
-            title="Integrations"
-            description="Manage third-party connections for notifications and payments."
+            title={t.title}
+            description={t.description}
             breadcrumbs={[
-              { label: "Dashboard", href: "/admin/dashboard" },
-              { label: "Settings" },
-              { label: "Integrations" },
+              { label: t.dashboard, href: "/admin/dashboard" },
+              { label: t.settings },
+              { label: t.title },
             ]}
           />
 
           <section className="min-h-[calc(100vh-220px)] overflow-hidden rounded-xl border border-border/60 bg-card/60">
             <div className="grid gap-4 p-6 xl:grid-cols-3">
-              {previewCards.map((item) => {
+              {previewCards.map((item, index) => {
                 const Icon = item.icon;
                 return (
                   <Card key={item.title} className="border-border/50 bg-card">
@@ -50,9 +84,9 @@ export default function IntegrationsPage() {
                         <span className={`rounded-lg p-3 ${item.tone}`}>
                           <Icon className="h-6 w-6" />
                         </span>
-                        <CardTitle className="text-base">{item.title}</CardTitle>
+                        <CardTitle className="text-base">{cardTitles[index]}</CardTitle>
                       </div>
-                      <Badge variant="secondary">Off</Badge>
+                      <Badge variant="secondary">{t.off}</Badge>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="h-12 rounded-lg border border-border/50 bg-muted/30" />
@@ -83,11 +117,11 @@ export default function IntegrationsPage() {
             <Lock className="h-7 w-7" />
           </div>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.24em] text-lime-300">
-            Integrations
+            {t.title}
           </p>
-          <h2 className="mt-2 text-4xl font-black text-foreground">Coming Soon</h2>
+          <h2 className="mt-2 text-4xl font-black text-foreground">{t.comingSoon}</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            External providers for WhatsApp, SMS, and payments are being prepared for production setup.
+            {t.comingSoonBody}
           </p>
         </div>
       </div>

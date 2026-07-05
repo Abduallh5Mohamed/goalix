@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart } from "@/components/charts/LineChart";
 import { BarChart } from "@/components/charts/BarChart";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   useGetPlayerMatchesQuery,
   useGetPlayerProgressQuery,
@@ -31,9 +32,9 @@ const chartItem = (label: string, value: unknown) => {
   return numeric === null ? null : { label, value: ratingPercent(numeric) };
 };
 
-const formatRating = (value: unknown) => {
+const formatRating = (value: unknown, fallback = "N/A") => {
   const rating = numberValue(value);
-  if (rating === null) return "N/A";
+  if (rating === null) return fallback;
   return Number.isInteger(rating) ? String(rating) : rating.toFixed(1);
 };
 
@@ -43,11 +44,11 @@ const matchTimestamp = (match: Match) => {
   return Date.parse(`${match.match_date}T00:00:00`) || 0;
 };
 
-const formatMonth = (value: string) => {
+const formatMonth = (value: string, locale?: string, fallback = "Unknown month") => {
   const key = value.slice(0, 7);
   const [year, month] = key.split("-").map(Number);
-  if (!year || !month) return value || "Unknown month";
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
+  if (!year || !month) return value || fallback;
+  return new Date(year, month - 1, 1).toLocaleDateString(locale, {
     month: "short",
     year: "numeric",
   });
@@ -70,11 +71,15 @@ const addMonthlyRating = (
   return byMonth;
 };
 
-const mapToPoints = (byMonth: Map<string, { total: number; count: number }>) =>
+const mapToPoints = (
+  byMonth: Map<string, { total: number; count: number }>,
+  locale?: string,
+  fallback?: string,
+) =>
   Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, point]) => ({
-      label: formatMonth(month),
+      label: formatMonth(month, locale, fallback),
       value: ratingPercent(point.total / point.count),
     }));
 
@@ -88,26 +93,104 @@ const monthlyMatchRatingMap = (
     new Map<string, { total: number; count: number }>(),
   );
 
-const matchNotes = (stats: MatchPlayerStats) =>
-  [
-    { label: "Strengths", value: stats.strengths },
-    { label: "Weaknesses", value: stats.weaknesses },
-    { label: "Improvement Plan", value: stats.improvement_plan },
-    { label: "Coach Notes", value: stats.coach_notes },
-  ].filter(
+const progressCopy = {
+  en: {
+    title: "Progress Chart",
+    description: "Track your published match evaluations by month.",
+    home: "Home",
+    performance: "Performance",
+    loading: "Loading progress...",
+    loadError: "Could not load progress data. Please refresh after the backend is restarted.",
+    latestOverall: "Latest Match Overall",
+    monthlyAttendance: "Monthly Match Attendance",
+    monthlyAverage: "Monthly Avg Match",
+    goalsAssists: "Monthly Goals / Assists",
+    overallTrend: "Monthly Overall Score Trend",
+    matchOverall: "Match Overall",
+    latestBreakdown: "Latest Match Skill Breakdown",
+    score: "Score",
+    noBreakdown: "This published evaluation has an overall score, but no skill breakdown fields yet.",
+    technical: "Technical",
+    tactical: "Tactical",
+    physical: "Physical",
+    mentality: "Mentality",
+    decision: "Decision",
+    workRate: "Work Rate",
+    positioning: "Positioning",
+    coachFeedback: "Coach Feedback",
+    match: "Match",
+    versus: "vs",
+    matchEvaluation: "Match evaluation",
+    strengths: "Strengths",
+    weaknesses: "Weaknesses",
+    improvementPlan: "Improvement Plan",
+    coachNotes: "Coach Notes",
+    noEvaluations: "No published match evaluations are available yet.",
+    noValue: "N/A",
+    unknownMonth: "Unknown month",
+  },
+  ar: {
+    title: "مخطط التقدم",
+    description: "تابع تقييمات المباريات المنشورة شهريًا.",
+    home: "الرئيسية",
+    performance: "الأداء",
+    loading: "جاري تحميل التقدم...",
+    loadError: "تعذر تحميل بيانات التقدم. حدّث الصفحة بعد إعادة تشغيل الخادم.",
+    latestOverall: "آخر تقييم عام للمباراة",
+    monthlyAttendance: "حضور المباريات شهريًا",
+    monthlyAverage: "متوسط تقييم المباريات شهريًا",
+    goalsAssists: "الأهداف / التمريرات الحاسمة شهريًا",
+    overallTrend: "اتجاه التقييم العام الشهري",
+    matchOverall: "التقييم العام للمباراة",
+    latestBreakdown: "تفصيل مهارات آخر مباراة",
+    score: "النقاط",
+    noBreakdown: "هذا التقييم المنشور يحتوي على تقييم عام فقط ولا يحتوي على تفاصيل المهارات بعد.",
+    technical: "فني",
+    tactical: "تكتيكي",
+    physical: "بدني",
+    mentality: "ذهني",
+    decision: "اتخاذ القرار",
+    workRate: "معدل الجهد",
+    positioning: "التمركز",
+    coachFeedback: "ملاحظات المدرب",
+    match: "مباراة",
+    versus: "ضد",
+    matchEvaluation: "تقييم المباراة",
+    strengths: "نقاط القوة",
+    weaknesses: "نقاط التحسين",
+    improvementPlan: "خطة التطوير",
+    coachNotes: "ملاحظات المدرب",
+    noEvaluations: "لا توجد تقييمات مباريات منشورة حتى الآن.",
+    noValue: "غير متاح",
+    unknownMonth: "شهر غير معروف",
+  },
+} as const;
+
+type ProgressCopy = (typeof progressCopy)[keyof typeof progressCopy];
+
+const matchNotes = (stats: MatchPlayerStats, t: ProgressCopy) => {
+  const items: Array<{ label: string; value: string | null | undefined }> = [
+    { label: t.strengths, value: stats.strengths },
+    { label: t.weaknesses, value: stats.weaknesses },
+    { label: t.improvementPlan, value: stats.improvement_plan },
+    { label: t.coachNotes, value: stats.coach_notes },
+  ];
+
+  return items.filter(
     (item): item is { label: string; value: string } =>
       typeof item.value === "string" && item.value.trim().length > 0,
   );
+};
 
-const matchBreakdown = (stats: MatchPlayerStats) =>
+const matchBreakdown = (stats: MatchPlayerStats, t: ProgressCopy) =>
   [
-    chartItem("Technical", stats.technical_rating),
-    chartItem("Tactical", stats.tactical_rating),
-    chartItem("Physical", stats.physical_rating),
-    chartItem("Mentality", stats.mentality_rating),
-    chartItem("Decision", stats.decision_making_rating),
-    chartItem("Work Rate", stats.work_rate_rating),
-    chartItem("Positioning", stats.positioning_rating),
+    chartItem(t.technical, stats.technical_rating),
+    chartItem(t.tactical, stats.tactical_rating),
+    chartItem(t.physical, stats.physical_rating),
+    chartItem(t.mentality, stats.mentality_rating),
+    chartItem(t.decision, stats.decision_making_rating),
+    chartItem(t.workRate, stats.work_rate_rating),
+    chartItem(t.positioning, stats.positioning_rating),
   ].filter((item): item is { label: string; value: number } => item !== null);
 
 function EmptyState({ text }: { text: string }) {
@@ -119,6 +202,9 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export default function PlayerProgressPage() {
+  const language = useDashboardLanguage();
+  const t = progressCopy[language];
+  const locale = language === "ar" ? "ar-EG" : "en-US";
   const progressQuery = useGetPlayerProgressQuery();
   const matchesQuery = useGetPlayerMatchesQuery();
   const matchEvaluations = (matchesQuery.data?.data ?? [])
@@ -138,44 +224,52 @@ export default function PlayerProgressPage() {
     (stats) => stats.performance_rating,
   );
   const overallMonths = Array.from(matchOverallMap.keys()).sort();
-  const overallData = mapToPoints(matchOverallMap);
+  const overallData = mapToPoints(matchOverallMap, locale, t.unknownMonth);
   const technicalData = mapToPoints(
     monthlyMatchRatingMap(matchEvaluations, (stats) => stats.technical_rating),
+    locale,
+    t.unknownMonth,
   );
   const tacticalData = mapToPoints(
     monthlyMatchRatingMap(matchEvaluations, (stats) => stats.tactical_rating),
+    locale,
+    t.unknownMonth,
   );
   const physicalData = mapToPoints(
     monthlyMatchRatingMap(matchEvaluations, (stats) => stats.physical_rating),
+    locale,
+    t.unknownMonth,
   );
   const mentalData = mapToPoints(
     monthlyMatchRatingMap(matchEvaluations, (stats) => stats.mentality_rating),
+    locale,
+    t.unknownMonth,
   );
-  const breakdownData = latestMatchEval ? matchBreakdown(latestMatchEval.stats) : [];
+  const breakdownData = latestMatchEval ? matchBreakdown(latestMatchEval.stats, t) : [];
   const hasPublishedEvaluations = matchEvaluations.length > 0;
   const feedbackItems = [
     ...matchEvaluations.map((item) => ({
       id: `match-${item.stats.id}`,
-      type: "Match",
+      type: t.match,
       title: item.match.opponent_name
-        ? `vs ${item.match.opponent_name}`
-        : "Match evaluation",
+        ? `${t.versus} ${item.match.opponent_name}`
+        : t.matchEvaluation,
       date: item.match.match_date,
       timestamp: matchTimestamp(item.match),
       overall: item.stats.performance_rating,
-      notes: matchNotes(item.stats),
+      notes: matchNotes(item.stats, t),
     })),
   ].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Progress Chart"
-        description="Track your published match evaluations by month."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Performance" },
-          { label: "Progress Chart" },
+          { label: t.home, href: "/player/home" },
+          { label: t.performance },
+          { label: t.title },
         ]}
       />
 
@@ -183,13 +277,13 @@ export default function PlayerProgressPage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading progress...
+            {t.loading}
           </CardContent>
         </Card>
       ) : progressQuery.isError || matchesQuery.isError ? (
         <Card className="border-red-400/30 bg-red-500/10 shadow-none">
           <CardContent className="p-5 text-sm text-red-100">
-            Could not load progress data. Please refresh after the backend is restarted.
+            {t.loadError}
           </CardContent>
         </Card>
       ) : (
@@ -198,17 +292,17 @@ export default function PlayerProgressPage() {
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Latest Match Overall
+                  {t.latestOverall}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-white">
-                  {formatRating(latestMatchEval?.stats.performance_rating)}
+                  {formatRating(latestMatchEval?.stats.performance_rating, t.noValue)}
                 </p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Monthly Match Attendance
+                  {t.monthlyAttendance}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-lime-100">
                   {Math.round(progressQuery.data?.matchAttendancePercentage ?? 0)}%
@@ -218,17 +312,17 @@ export default function PlayerProgressPage() {
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Monthly Avg Match
+                  {t.monthlyAverage}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-amber-100">
-                  {formatRating(progressQuery.data?.averageMatchRating)}
+                  {formatRating(progressQuery.data?.averageMatchRating, t.noValue)}
                 </p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Monthly Goals / Assists
+                  {t.goalsAssists}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-white">
                   {progressQuery.data?.goals ?? 0}/{progressQuery.data?.assists ?? 0}
@@ -242,15 +336,15 @@ export default function PlayerProgressPage() {
               <Card className="border-white/10 bg-white/[0.045] shadow-none">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    Monthly Overall Score Trend
+                    {t.overallTrend}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <LineChart
-                    labels={overallMonths.map(formatMonth)}
+                    labels={overallMonths.map((month) => formatMonth(month, locale, t.unknownMonth))}
                     datasets={[
                       {
-                        label: "Match Overall",
+                        label: t.matchOverall,
                         data: overallData.map((item) => item.value),
                         color: "#f59e0b",
                       },
@@ -264,7 +358,7 @@ export default function PlayerProgressPage() {
                 <Card className="border-white/10 bg-white/[0.045] shadow-none">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">
-                      Latest Match Skill Breakdown
+                      {t.latestBreakdown}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -273,7 +367,7 @@ export default function PlayerProgressPage() {
                         labels={breakdownData.map((item) => item.label)}
                         datasets={[
                           {
-                            label: "Score",
+                            label: t.score,
                             data: breakdownData.map((item) => item.value),
                             color: "#7bea28",
                           },
@@ -281,7 +375,7 @@ export default function PlayerProgressPage() {
                         height={250}
                       />
                     ) : (
-                      <EmptyState text="This published evaluation has an overall score, but no skill breakdown fields yet." />
+                      <EmptyState text={t.noBreakdown} />
                     )}
                   </CardContent>
                 </Card>
@@ -289,10 +383,10 @@ export default function PlayerProgressPage() {
 
               <div className="grid gap-6 lg:grid-cols-2">
                 {[
-                  ["Technical", technicalData, "#2d9ad5"],
-                  ["Tactical", tacticalData, "#7bea28"],
-                  ["Physical", physicalData, "#b6ff00"],
-                  ["Mentality", mentalData, "#2ee8c9"],
+                  [t.technical, technicalData, "#2d9ad5"],
+                  [t.tactical, tacticalData, "#7bea28"],
+                  [t.physical, physicalData, "#b6ff00"],
+                  [t.mentality, mentalData, "#2ee8c9"],
                 ].map(([label, data, color]) => {
                   const points = data as typeof technicalData;
                   return (
@@ -326,7 +420,7 @@ export default function PlayerProgressPage() {
               <Card className="border-white/10 bg-white/[0.045] shadow-none">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    Coach Feedback
+                    {t.coachFeedback}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -345,7 +439,7 @@ export default function PlayerProgressPage() {
                           </p>
                         </div>
                         <p className="text-xl font-bold text-cyan-200">
-                          {formatRating(item.overall)}
+                            {formatRating(item.overall, t.noValue)}
                         </p>
                       </div>
                       {item.notes.length > 0 && (
@@ -371,7 +465,7 @@ export default function PlayerProgressPage() {
               </Card>
             </>
           ) : (
-            <EmptyState text="No published match evaluations are available yet." />
+            <EmptyState text={t.noEvaluations} />
           )}
         </>
       )}

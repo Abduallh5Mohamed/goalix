@@ -3,8 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 
 type GoalixAuthShellProps = {
   children: React.ReactNode;
@@ -19,7 +17,6 @@ const navLinks = [
 ];
 
 export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
-  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -83,21 +80,8 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
             ))}
           </div>
         </div>
-        <div className="goalix-login-top-actions" style={{ display: "flex", gap: 16 }}>
-          <button
-            onClick={() => router.push("/login")}
-            style={{ background: "linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%)", border: "none", borderRadius: 12, padding: "7px 22px", color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-inter),sans-serif" }}
-          >
-            Log in
-            <ArrowRight size={15} />
-          </button>
-        </div>
-
         {/* Mobile menu action buttons */}
         <div className="goalix-login-mobile-actions">
-          <Link href="/login" className="goalix-login-mobile-login-link">
-            Log in
-          </Link>
           <button
             type="button"
             className="goalix-login-hamburger-btn"
@@ -154,17 +138,6 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
             <p>AI-powered football insights<br />for <em>winning</em> teams.</p>
           </div>
         </div>
-
-        {/* GOALIX G badge + soccer ball */}
-        <div className="goalix-login-brand-cluster" aria-hidden="true">
-          <div className="goalix-login-g-badge">
-            <Image src="/Logo.png" alt="" width={1536} height={1024} style={{ width: "80px", height: "auto", objectFit: "contain" }} />
-          </div>
-          <div className="goalix-login-soccer-ball">
-            <div className="goalix-login-ball-3d" />
-          </div>
-        </div>
-
 
         {/* Live Match Analysis strip */}
         <div className="goalix-login-live-strip">

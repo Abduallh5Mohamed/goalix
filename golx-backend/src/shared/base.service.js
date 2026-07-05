@@ -9,28 +9,28 @@ class BaseService {
         this.repository = repository;
     }
 
-    async getById(id) {
-        const record = await this.repository.findById(id);
+    async getById(id, academyId) {
+        const record = await this.repository.findById(id, null, academyId);
         if (!record) throw new NotFoundError(this.repository.table, id);
         return record;
     }
 
-    async getAll(options) {
-        return this.repository.findAll(options);
+    async getAll(options, academyId) {
+        return this.repository.findAll(options, null, academyId);
     }
 
     async create(data) {
         return this.repository.create(data);
     }
 
-    async update(id, data) {
-        const record = await this.repository.update(id, data);
+    async update(id, data, academyId) {
+        const record = await this.repository.update(id, data, null, academyId);
         if (!record) throw new NotFoundError(this.repository.table, id);
         return record;
     }
 
-    async delete(id) {
-        return this.repository.softDelete(id);
+    async delete(id, academyId) {
+        return this.repository.softDelete(id, null, academyId);
     }
 }
 

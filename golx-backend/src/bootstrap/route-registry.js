@@ -52,13 +52,6 @@ function mountApplicationRoutes(app, controllers) {
     app.use('/api/v1/player', playerCalendarRoutes(calendarController));
     app.use('/api/v1/parent', parentCalendarRoutes(calendarController));
 
-    app.use('/api/admin', adminRoutes(adminController));
-    app.use('/api/admin', adminCalendarRoutes(calendarController));
-    app.use('/api/admin', customDataRoutes(customDataController, 'admin'));
-    app.use('/api/coach', coachCalendarRoutes(calendarController));
-    app.use('/api/coach', customDataRoutes(customDataController, 'coach'));
-    app.use('/api/player', playerCalendarRoutes(calendarController));
-    app.use('/api/parent', parentCalendarRoutes(calendarController));
 }
 
 module.exports = { mountApplicationRoutes };

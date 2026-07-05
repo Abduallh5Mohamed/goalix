@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run quality
+      - run: npm run build
+      - run: npm audit --audit-level=moderate
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: golx_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d golx_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/golx_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-access-secret-4f9872e6b32a41f0b57c
+      JWT_REFRESH_SECRET: ci-refresh-secret-70e2fd22a4c14ef8a9
+      COOKIE_SECRET: ci-cookie-secret-6ec3d4e08f4249f39d7c
+      CSRF_SECRET: ci-csrf-secret-dc9af1a425364c51b931
+      QR_ATTENDANCE_SECRET: ci-qr-secret-4bb949702de64db6a710
+      TOTP_ENCRYPTION_KEY: d5f4a9b113be456098eecb1a99506502d1c89f5a07e6b9434df336f2b2f8c4a1
+    defaults:
+      run:
+        working-directory: golx-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: golx-backend/package-lock.json
+      - run: npm ci
+      - run: npm run migrate
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - run: npm audit --audit-level=moderate

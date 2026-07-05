@@ -60,6 +60,7 @@ import {
   useUpsertMatchAttendanceMutation,
 } from "@/lib/store/api/calendarApi";
 import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
 let clockSnapshot = 0;
@@ -98,7 +99,248 @@ const matchStartTimestamp = (match?: {
 }) =>
   match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0;
 
+const copy = {
+  en: {
+    matchDayOperations: "Match Day Operations",
+    pageDescription: "Handle attendance, substitutions, live status, goals, stoppage time, and incidents.",
+    home: "Home",
+    matches: "Matches",
+    matchDay: "Match Day",
+    loadingMatch: "Loading match...",
+    saveTacticsFirst: "Save tactics first",
+    saveTacticsDescription: "The match-day page opens only after the match has saved tactics and a selected squad.",
+    openConfiguration: "Open Configuration",
+    matchDayLocked: "Match day is locked",
+    matchDayLockedDescriptionPrefix: "Operations open",
+    matchDayLockedDescriptionSuffix: "minutes before kick-off so attendance can be marked before the match starts.",
+    matchData: "Match Data",
+    opponent: "Opponent",
+    kickoff: "Kick-off",
+    coach: "Coach",
+    assignedCoach: "Assigned coach",
+    formation: "Formation",
+    squadAttendance: "Squad Attendance",
+    playing: "playing",
+    subbedOff: "subbed off",
+    subbedIn: "subbed in",
+    sentOff: "sent off",
+    injured: "injured",
+    noInstruction: "No instruction",
+    week: "Week",
+    match: "match",
+    matchesPlural: "matches",
+    notMarked: "not marked",
+    present: "Present",
+    absent: "Absent",
+    player: "Player",
+    sub: "Sub",
+    yellow: "Yellow",
+    red: "Red",
+    injury: "Injury",
+    undoYellow: "Undo yellow",
+    undoRed: "Undo red",
+    undoInjury: "Undo injury",
+    liveMatch: "Live Match",
+    matchStatus: "Match status",
+    minute: "Minute",
+    firstHalfStoppage: "1st half stoppage",
+    secondHalfStoppage: "2nd half stoppage",
+    startMatch: "Start Match",
+    startSecondHalf: "Start 2nd Half",
+    finishMatch: "Finish Match",
+    substitutions: "Substitutions",
+    for: "for",
+    undo: "Undo",
+    scoreGoals: "Score & Goals",
+    goalFor: "Goal for",
+    scorer: "Scorer",
+    selectScorer: "Select scorer",
+    assist: "Assist",
+    noAssist: "No assist",
+    goalNote: "Goal note",
+    optionalNote: "Optional note",
+    addGoal: "Add Goal",
+    startBeforeGoals: "Start the match before recording goals.",
+    goalixGoal: "GOALIX goal",
+    opponentGoal: "goal",
+    noGoals: "No goals recorded yet.",
+    lineupSummary: "Lineup Summary",
+    currentOnField: "Current on field",
+    position: "position",
+    benchSubbedOff: "Bench / subbed off",
+    noSubstitutes: "No substitutes selected.",
+    matchNotFound: "Match not found or not available.",
+    recordSubstitution: "Record Substitution",
+    substitutionDescriptionPrefix: "Choose the available player who will replace",
+    substitutionDescriptionSuffix: "This change is saved and the on-field lineup updates immediately.",
+    playerComingOn: "Player coming on",
+    selectReplacement: "Select replacement",
+    markSubPresent: "Mark a substitute present before using them.",
+    reason: "Reason",
+    substitutionReasonPlaceholder: "Tactical, injury, absent starter replacement...",
+    cancel: "Cancel",
+    saveSubstitution: "Save Substitution",
+    finishQuestion: "Finish match permanently?",
+    finishDescription: "This will lock the match as finished, save the final score, attendance, goals, substitutions, cards, injuries, and stats. You cannot start or postpone it again after this.",
+    keepMatchOpen: "Keep Match Open",
+    recordInjury: "Record Injury",
+    injuryDescriptionPrefix: "Save the injured body part for",
+    injuryDescriptionSuffix: "The injury date is recorded automatically.",
+    bodyPart: "Body part",
+    bodyPartPlaceholder: "Hamstring, ankle, shoulder...",
+    notes: "Notes",
+    medicalNotePlaceholder: "Optional medical note",
+    saveInjury: "Save Injury",
+    attendanceReadyAutoStart: "Match will auto-start at kick-off after the attendance is ready.",
+    markAttendanceBeforeKickoff: "Mark attendance for every squad player before kick-off so the match can auto-start.",
+    replaceUnavailablePlayers: "Replace absent or injured players:",
+    saveAttendanceError: "Could not save attendance.",
+    updateStatusError: "Could not update match status.",
+    autoStartError: "Could not auto-start match.",
+    recordIncidentError: "Could not record incident.",
+    removeIncidentError: "Could not remove incident.",
+    recordGoalError: "Could not record goal.",
+    removeGoalError: "Could not remove goal.",
+    recordSubstitutionError: "Could not record substitution.",
+    removeSubstitutionError: "Could not remove substitution.",
+    live: {
+      waiting: "Waiting",
+      noMatchLoaded: "No match loaded",
+      finished: "Finished",
+      finalWhistle: "Final whistle",
+      ready: "Ready",
+      waitingForStart: "Waiting for start",
+      halfTime: "Half-time",
+      waitingSecondHalf: "Waiting for second half",
+      extraTime: "Extra time",
+      live: "Live",
+      firstHalfRunning: "First half running",
+      secondHalfRunning: "Second half running",
+    },
+  },
+  ar: {
+    matchDayOperations: "عمليات يوم المباراة",
+    pageDescription: "إدارة الحضور، التبديلات، حالة المباراة المباشرة، الأهداف، الوقت بدل الضائع، والحوادث.",
+    home: "الرئيسية",
+    matches: "المباريات",
+    matchDay: "يوم المباراة",
+    loadingMatch: "جاري تحميل المباراة...",
+    saveTacticsFirst: "احفظ الخطة أولًا",
+    saveTacticsDescription: "صفحة يوم المباراة لا تفتح إلا بعد حفظ خطة المباراة واختيار القائمة.",
+    openConfiguration: "فتح الإعدادات",
+    matchDayLocked: "يوم المباراة مغلق",
+    matchDayLockedDescriptionPrefix: "تفتح العمليات قبل",
+    matchDayLockedDescriptionSuffix: "دقيقة من بداية المباراة حتى يمكن تسجيل الحضور قبل الانطلاق.",
+    matchData: "بيانات المباراة",
+    opponent: "المنافس",
+    kickoff: "بداية المباراة",
+    coach: "المدرب",
+    assignedCoach: "المدرب المعين",
+    formation: "الخطة",
+    squadAttendance: "حضور القائمة",
+    playing: "يلعب",
+    subbedOff: "خرج بديلًا",
+    subbedIn: "دخل بديلًا",
+    sentOff: "طُرد",
+    injured: "مصاب",
+    noInstruction: "لا توجد تعليمات",
+    week: "الأسبوع",
+    match: "مباراة",
+    matchesPlural: "مباريات",
+    notMarked: "لم يسجل",
+    present: "حاضر",
+    absent: "غائب",
+    player: "لاعب",
+    sub: "تبديل",
+    yellow: "أصفر",
+    red: "أحمر",
+    injury: "إصابة",
+    undoYellow: "تراجع عن الأصفر",
+    undoRed: "تراجع عن الأحمر",
+    undoInjury: "تراجع عن الإصابة",
+    liveMatch: "المباراة المباشرة",
+    matchStatus: "حالة المباراة",
+    minute: "الدقيقة",
+    firstHalfStoppage: "بدل ضائع الشوط الأول",
+    secondHalfStoppage: "بدل ضائع الشوط الثاني",
+    startMatch: "بدء المباراة",
+    startSecondHalf: "بدء الشوط الثاني",
+    finishMatch: "إنهاء المباراة",
+    substitutions: "التبديلات",
+    for: "بدل",
+    undo: "تراجع",
+    scoreGoals: "النتيجة والأهداف",
+    goalFor: "الهدف لصالح",
+    scorer: "المسجل",
+    selectScorer: "اختر المسجل",
+    assist: "الصناعة",
+    noAssist: "بدون صناعة",
+    goalNote: "ملاحظة الهدف",
+    optionalNote: "ملاحظة اختيارية",
+    addGoal: "إضافة هدف",
+    startBeforeGoals: "ابدأ المباراة قبل تسجيل الأهداف.",
+    goalixGoal: "هدف GOALIX",
+    opponentGoal: "هدف",
+    noGoals: "لا توجد أهداف مسجلة بعد.",
+    lineupSummary: "ملخص التشكيل",
+    currentOnField: "الموجودون في الملعب",
+    position: "المركز",
+    benchSubbedOff: "الدكة / الخارجون",
+    noSubstitutes: "لا توجد بدلاء مختارة.",
+    matchNotFound: "المباراة غير موجودة أو غير متاحة.",
+    recordSubstitution: "تسجيل تبديل",
+    substitutionDescriptionPrefix: "اختر اللاعب المتاح الذي سيحل محل",
+    substitutionDescriptionSuffix: "سيتم حفظ التغيير وتحديث التشكيل داخل الملعب فورًا.",
+    playerComingOn: "اللاعب الداخل",
+    selectReplacement: "اختر البديل",
+    markSubPresent: "سجل حضور البديل قبل استخدامه.",
+    reason: "السبب",
+    substitutionReasonPlaceholder: "تكتيكي، إصابة، استبدال لاعب أساسي غائب...",
+    cancel: "إلغاء",
+    saveSubstitution: "حفظ التبديل",
+    finishQuestion: "إنهاء المباراة نهائيًا؟",
+    finishDescription: "سيتم قفل المباراة كمنتهية وحفظ النتيجة النهائية والحضور والأهداف والتبديلات والبطاقات والإصابات والإحصائيات. لن يمكنك بدءها أو تأجيلها مرة أخرى بعد ذلك.",
+    keepMatchOpen: "إبقاء المباراة مفتوحة",
+    recordInjury: "تسجيل إصابة",
+    injuryDescriptionPrefix: "احفظ موضع الإصابة للاعب",
+    injuryDescriptionSuffix: "يتم تسجيل تاريخ الإصابة تلقائيًا.",
+    bodyPart: "موضع الإصابة",
+    bodyPartPlaceholder: "العضلة الخلفية، الكاحل، الكتف...",
+    notes: "الملاحظات",
+    medicalNotePlaceholder: "ملاحظة طبية اختيارية",
+    saveInjury: "حفظ الإصابة",
+    attendanceReadyAutoStart: "ستبدأ المباراة تلقائيًا عند وقت الانطلاق بعد جاهزية الحضور.",
+    markAttendanceBeforeKickoff: "سجل حضور كل لاعبي القائمة قبل الانطلاق حتى تبدأ المباراة تلقائيًا.",
+    replaceUnavailablePlayers: "استبدل اللاعبين الغائبين أو المصابين:",
+    saveAttendanceError: "تعذر حفظ الحضور.",
+    updateStatusError: "تعذر تحديث حالة المباراة.",
+    autoStartError: "تعذر بدء المباراة تلقائيًا.",
+    recordIncidentError: "تعذر تسجيل الحادثة.",
+    removeIncidentError: "تعذر حذف الحادثة.",
+    recordGoalError: "تعذر تسجيل الهدف.",
+    removeGoalError: "تعذر حذف الهدف.",
+    recordSubstitutionError: "تعذر تسجيل التبديل.",
+    removeSubstitutionError: "تعذر حذف التبديل.",
+    live: {
+      waiting: "انتظار",
+      noMatchLoaded: "لم يتم تحميل مباراة",
+      finished: "انتهت",
+      finalWhistle: "صافرة النهاية",
+      ready: "جاهزة",
+      waitingForStart: "في انتظار البداية",
+      halfTime: "استراحة بين الشوطين",
+      waitingSecondHalf: "في انتظار الشوط الثاني",
+      extraTime: "وقت إضافي",
+      live: "مباشر",
+      firstHalfRunning: "الشوط الأول جارٍ",
+      secondHalfRunning: "الشوط الثاني جارٍ",
+    },
+  },
+} as const;
+
 export default function CoachMatchDayPage() {
+  const language = useDashboardLanguage();
+  const t = copy[language];
   const { can } = useCoachPermissions();
   const canTakeAttendance = can("can_take_attendance");
   const canManageMatches = can("can_manage_matches");
@@ -434,24 +676,24 @@ export default function CoachMatchDayPage() {
   const liveVisual = useMemo(() => {
     if (!match) {
       return {
-        label: "Waiting",
-        detail: "No match loaded",
+        label: t.live.waiting,
+        detail: t.live.noMatchLoaded,
         icon: PauseCircle,
         dotClass: "bg-muted-foreground",
       };
     }
     if (match.match_status === "finished") {
       return {
-        label: "Finished",
-        detail: "Final whistle",
+        label: t.live.finished,
+        detail: t.live.finalWhistle,
         icon: Square,
         dotClass: "bg-emerald-400",
       };
     }
     if (match.match_status === "scheduled") {
       return {
-        label: "Ready",
-        detail: "Waiting for start",
+        label: t.live.ready,
+        detail: t.live.waitingForStart,
         icon: Clock,
         dotClass: "bg-amber-400",
       };
@@ -461,8 +703,8 @@ export default function CoachMatchDayPage() {
       liveMinute >= firstHalfLimit
     ) {
       return {
-        label: "Half-time",
-        detail: "Waiting for second half",
+        label: t.live.halfTime,
+        detail: t.live.waitingSecondHalf,
         icon: PauseCircle,
         dotClass: "bg-amber-400",
       };
@@ -475,13 +717,13 @@ export default function CoachMatchDayPage() {
         liveMinute >= firstHalfLimit + 45 &&
         secondHalfLimit > 45);
     return {
-      label: inStoppage ? "Extra time" : "Live",
+      label: inStoppage ? t.live.extraTime : t.live.live,
       detail:
-        match.match_status === "first_half" ? "First half running" : "Second half running",
+        match.match_status === "first_half" ? t.live.firstHalfRunning : t.live.secondHalfRunning,
       icon: inStoppage ? Clock : Radio,
       dotClass: inStoppage ? "bg-amber-400" : "bg-red-500",
     };
-  }, [firstHalfLimit, liveMinute, match, secondHalfLimit]);
+  }, [firstHalfLimit, liveMinute, match, secondHalfLimit, t]);
   const LiveIcon = liveVisual.icon;
 
   const saveAttendance = async (
@@ -496,7 +738,7 @@ export default function CoachMatchDayPage() {
         records: [{ playerId, status }],
       }).unwrap();
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not save attendance."));
+      setPageError(getApiMessage(error, t.saveAttendanceError));
     }
   };
 
@@ -516,7 +758,7 @@ export default function CoachMatchDayPage() {
       }).unwrap();
       return true;
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not update match status."));
+      setPageError(getApiMessage(error, t.updateStatusError));
       return false;
     }
   };
@@ -536,7 +778,7 @@ export default function CoachMatchDayPage() {
     })
       .unwrap()
       .catch((error) => {
-        setPageError(getApiMessage(error, "Could not auto-start match."));
+        setPageError(getApiMessage(error, t.autoStartError));
       });
   }, [
     activeFirstHalfStoppage,
@@ -546,6 +788,7 @@ export default function CoachMatchDayPage() {
     matchId,
     updateLiveStatus,
     updatingLiveStatus,
+    t,
   ]);
 
   const saveIncident = async (
@@ -561,7 +804,7 @@ export default function CoachMatchDayPage() {
         body: { playerId, incidentType, bodyPart, notes, minute: liveMinute },
       }).unwrap();
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not record incident."));
+      setPageError(getApiMessage(error, t.recordIncidentError));
     }
   };
 
@@ -570,7 +813,7 @@ export default function CoachMatchDayPage() {
     try {
       await deleteIncident({ matchId, incidentId }).unwrap();
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not remove incident."));
+      setPageError(getApiMessage(error, t.removeIncidentError));
     }
   };
 
@@ -599,7 +842,7 @@ export default function CoachMatchDayPage() {
         notes: "",
       });
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not record goal."));
+      setPageError(getApiMessage(error, t.recordGoalError));
     }
   };
 
@@ -608,7 +851,7 @@ export default function CoachMatchDayPage() {
     try {
       await deleteGoal({ matchId, goalId }).unwrap();
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not remove goal."));
+      setPageError(getApiMessage(error, t.removeGoalError));
     }
   };
 
@@ -636,7 +879,7 @@ export default function CoachMatchDayPage() {
       setSubstitutionInPlayerId("");
       setSubstitutionReason("");
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not record substitution."));
+      setPageError(getApiMessage(error, t.recordSubstitutionError));
     }
   };
 
@@ -645,7 +888,7 @@ export default function CoachMatchDayPage() {
     try {
       await deleteSubstitution({ matchId, substitutionId }).unwrap();
     } catch (error) {
-      setPageError(getApiMessage(error, "Could not remove substitution."));
+      setPageError(getApiMessage(error, t.removeSubstitutionError));
     }
   };
 
@@ -673,12 +916,12 @@ export default function CoachMatchDayPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Match Day Operations"
-        description="Handle attendance, substitutions, live status, goals, stoppage time, and incidents."
+        title={t.matchDayOperations}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches", href: "/coach/matches" },
-          { label: "Match Day" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.matches, href: "/coach/matches" },
+          { label: t.matchDay },
         ]}
       />
 
@@ -686,7 +929,7 @@ export default function CoachMatchDayPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading match...
+            {t.loadingMatch}
           </CardContent>
         </Card>
       )}
@@ -695,15 +938,14 @@ export default function CoachMatchDayPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
             <div>
-              <p className="font-medium">Save tactics first</p>
+              <p className="font-medium">{t.saveTacticsFirst}</p>
               <p className="text-sm text-muted-foreground">
-                The match-day page opens only after the match has saved tactics
-                and a selected squad.
+                {t.saveTacticsDescription}
               </p>
             </div>
             <Button asChild>
               <Link href={`/coach/matches/configuration?matchId=${match.id}`}>
-                Open Configuration
+                {t.openConfiguration}
               </Link>
             </Button>
           </CardContent>
@@ -714,10 +956,9 @@ export default function CoachMatchDayPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
             <div>
-              <p className="font-medium">Match day is locked</p>
+              <p className="font-medium">{t.matchDayLocked}</p>
               <p className="text-sm text-muted-foreground">
-                Operations open {safeMatchDayOpenMinutes} minutes before
-                kick-off so attendance can be marked before the match starts.
+                {t.matchDayLockedDescriptionPrefix} {safeMatchDayOpenMinutes} {t.matchDayLockedDescriptionSuffix}
               </p>
             </div>
             <Badge variant="secondary">
@@ -731,28 +972,28 @@ export default function CoachMatchDayPage() {
         <div className="space-y-6">
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Match Data</CardTitle>
+              <CardTitle className="text-base">{t.matchData}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-4">
               <div>
-                <p className="text-xs text-muted-foreground">Opponent</p>
+                <p className="text-xs text-muted-foreground">{t.opponent}</p>
                 <p className="font-medium">{match.opponent_name}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Kick-off</p>
+                <p className="text-xs text-muted-foreground">{t.kickoff}</p>
                 <p className="font-medium">
                   {formatDate(match.match_date)} -{" "}
                   {formatTime12(match.match_time)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Coach</p>
+                <p className="text-xs text-muted-foreground">{t.coach}</p>
                 <p className="font-medium">
-                  {match.tactics?.coach_name || "Assigned coach"}
+                  {match.tactics?.coach_name || t.assignedCoach}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Formation</p>
+                <p className="text-xs text-muted-foreground">{t.formation}</p>
                 <p className="font-medium">{match.tactics?.formation}</p>
               </div>
             </CardContent>
@@ -761,7 +1002,7 @@ export default function CoachMatchDayPage() {
           <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
             <Card className="border-border/50 bg-card">
               <CardHeader>
-                <CardTitle className="text-base">Squad Attendance</CardTitle>
+                <CardTitle className="text-base">{t.squadAttendance}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {[...(match.squad ?? [])].map((player) => {
@@ -802,24 +1043,24 @@ export default function CoachMatchDayPage() {
                             <Badge variant="secondary">{player.position}</Badge>
                           )}
                           {currentPlayingIds.has(player.player_id) && (
-                            <Badge variant="success">playing</Badge>
+                            <Badge variant="success">{t.playing}</Badge>
                           )}
                           {substitutedOutIds.has(player.player_id) && (
-                            <Badge variant="secondary">subbed off</Badge>
+                            <Badge variant="secondary">{t.subbedOff}</Badge>
                           )}
                           {substitutedInIds.has(player.player_id) && (
-                            <Badge variant="outline">subbed in</Badge>
+                            <Badge variant="outline">{t.subbedIn}</Badge>
                           )}
                           {(redCardedPlayerIds.has(player.player_id) ||
                             doubleYellowPlayerIds.has(player.player_id)) && (
-                            <Badge variant="destructive">sent off</Badge>
+                            <Badge variant="destructive">{t.sentOff}</Badge>
                           )}
                           {injuredPlayerIds.has(player.player_id) && (
-                            <Badge variant="warning">injured</Badge>
+                            <Badge variant="warning">{t.injured}</Badge>
                           )}
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
-                          {player.player_instruction || "No instruction"}
+                          {player.player_instruction || t.noInstruction}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Badge variant="outline">
@@ -829,15 +1070,17 @@ export default function CoachMatchDayPage() {
                             min
                           </Badge>
                           <Badge variant="secondary">
-                            Week {stats?.weekly_minutes_played ?? 0} min
+                            {t.week} {stats?.weekly_minutes_played ?? 0} min
                             {stats?.weekly_matches_played
-                              ? ` / ${stats.weekly_matches_played} match${stats.weekly_matches_played === 1 ? "" : "es"}`
+                              ? ` / ${stats.weekly_matches_played} ${
+                                  stats.weekly_matches_played === 1 ? t.match : t.matchesPlural
+                                }`
                               : ""}
                           </Badge>
                         </div>
                       </div>
                       <Badge variant="outline">
-                        {attendance?.status ?? "not marked"}
+                        {attendance?.status ?? t.notMarked}
                       </Badge>
                       <Button
                         type="button"
@@ -858,7 +1101,7 @@ export default function CoachMatchDayPage() {
                         }
                       >
                         <Check className="h-4 w-4" />
-                        Present
+                        {t.present}
                       </Button>
                       <Button
                         type="button"
@@ -879,7 +1122,7 @@ export default function CoachMatchDayPage() {
                         }
                       >
                         <X className="h-4 w-4" />
-                        Absent
+                        {t.absent}
                       </Button>
                       <Button
                         type="button"
@@ -896,12 +1139,12 @@ export default function CoachMatchDayPage() {
                         onClick={() =>
                           openSubstitutionDialog(
                             player.player_id,
-                            player.player_name ?? "Player",
+                            player.player_name ?? t.player,
                           )
                         }
                       >
                         <ArrowLeftRight className="h-4 w-4" />
-                        Sub
+                        {t.sub}
                       </Button>
                       <Button
                         type="button"
@@ -914,7 +1157,7 @@ export default function CoachMatchDayPage() {
                           saveIncident(player.player_id, "yellow_card")
                         }
                       >
-                        Yellow{" "}
+                        {t.yellow}{" "}
                         {stats?.yellow_cards ? `(${stats.yellow_cards})` : ""}
                       </Button>
                       <div className="flex flex-wrap gap-2">
@@ -929,7 +1172,7 @@ export default function CoachMatchDayPage() {
                             saveIncident(player.player_id, "red_card")
                           }
                         >
-                          Red {stats?.red_cards ? `(${stats.red_cards})` : ""}
+                          {t.red} {stats?.red_cards ? `(${stats.red_cards})` : ""}
                         </Button>
                         <Button
                           type="button"
@@ -942,12 +1185,12 @@ export default function CoachMatchDayPage() {
                           onClick={() =>
                             setInjuryDialog({
                               playerId: player.player_id,
-                              playerName: player.player_name ?? "Player",
+                              playerName: player.player_name ?? t.player,
                             })
                           }
                         >
                           <AlertTriangle className="h-4 w-4" />
-                          Injury
+                          {t.injury}
                         </Button>
                       </div>
                       {(lastYellow || lastRed || lastInjury) && (
@@ -965,7 +1208,7 @@ export default function CoachMatchDayPage() {
                               onClick={() => undoIncident(lastYellow.id)}
                             >
                               <RotateCcw className="h-4 w-4" />
-                              Undo yellow
+                              {t.undoYellow}
                             </Button>
                           )}
                           {lastRed && (
@@ -981,7 +1224,7 @@ export default function CoachMatchDayPage() {
                               onClick={() => undoIncident(lastRed.id)}
                             >
                               <RotateCcw className="h-4 w-4" />
-                              Undo red
+                              {t.undoRed}
                             </Button>
                           )}
                           {lastInjury && (
@@ -997,7 +1240,7 @@ export default function CoachMatchDayPage() {
                               onClick={() => undoIncident(lastInjury.id)}
                             >
                               <RotateCcw className="h-4 w-4" />
-                              Undo injury
+                              {t.undoInjury}
                             </Button>
                           )}
                         </div>
@@ -1024,7 +1267,7 @@ export default function CoachMatchDayPage() {
 
               <Card className="border-border/50 bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Live Match</CardTitle>
+                  <CardTitle className="text-base">{t.liveMatch}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-md border border-border/40 bg-muted/10 p-4">
@@ -1040,7 +1283,7 @@ export default function CoachMatchDayPage() {
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">
-                            Match status
+                            {t.matchStatus}
                           </p>
                           <p className="flex items-center gap-2 font-medium">
                             <LiveIcon className="h-4 w-4" />
@@ -1051,7 +1294,7 @@ export default function CoachMatchDayPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary">Minute {liveMinute}</Badge>
+                      <Badge variant="secondary">{t.minute} {liveMinute}</Badge>
                     </div>
                   </div>
                   {match.match_status === "scheduled" &&
@@ -1066,19 +1309,17 @@ export default function CoachMatchDayPage() {
                               unavailableCurrentPlayers.length === 0 &&
                               !kickOffReached && (
                                 <p>
-                                  Match will auto-start at kick-off after the
-                                  attendance is ready.
+                                  {t.attendanceReadyAutoStart}
                                 </p>
                               )}
                             {!attendanceComplete && (
                               <p>
-                                Mark attendance for every squad player before
-                                kick-off so the match can auto-start.
+                                {t.markAttendanceBeforeKickoff}
                               </p>
                             )}
                             {unavailableCurrentPlayers.length > 0 && (
                               <p className="mt-1">
-                                Replace absent or injured players:{" "}
+                                {t.replaceUnavailablePlayers}{" "}
                                 {unavailableCurrentPlayers
                                   .map((player) => player.player_name)
                                   .join(", ")}
@@ -1090,7 +1331,7 @@ export default function CoachMatchDayPage() {
                     )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>1st half stoppage</Label>
+                      <Label>{t.firstHalfStoppage}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -1102,7 +1343,7 @@ export default function CoachMatchDayPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>2nd half stoppage</Label>
+                      <Label>{t.secondHalfStoppage}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -1127,7 +1368,7 @@ export default function CoachMatchDayPage() {
                       onClick={() => changeLiveStatus("first_half")}
                     >
                       <Play className="h-4 w-4" />
-                      Start Match
+                      {t.startMatch}
                     </Button>
                     <Button
                       type="button"
@@ -1141,7 +1382,7 @@ export default function CoachMatchDayPage() {
                       onClick={() => changeLiveStatus("second_half")}
                     >
                       <Clock className="h-4 w-4" />
-                      Start 2nd Half
+                      {t.startSecondHalf}
                     </Button>
                     <Button
                       type="button"
@@ -1157,19 +1398,19 @@ export default function CoachMatchDayPage() {
                       onClick={() => setFinishDialogOpen(true)}
                     >
                       <Square className="h-4 w-4" />
-                      Finish Match
+                      {t.finishMatch}
                     </Button>
                   </div>
                   {substitutions.length > 0 && (
                     <div className="space-y-2 rounded-md border border-border/40 bg-muted/10 p-3">
-                      <p className="text-sm font-medium">Substitutions</p>
+                      <p className="text-sm font-medium">{t.substitutions}</p>
                       {substitutions.map((substitution) => (
                         <div
                           key={substitution.id}
                           className="flex flex-wrap items-center justify-between gap-2 text-sm"
                         >
                           <span>
-                            {substitution.in_player_name} for{" "}
+                            {substitution.in_player_name} {t.for}{" "}
                             {substitution.out_player_name}
                             <span className="text-muted-foreground">
                               {" "}
@@ -1189,7 +1430,7 @@ export default function CoachMatchDayPage() {
                             onClick={() => undoSubstitution(substitution.id)}
                           >
                             <RotateCcw className="h-4 w-4" />
-                            Undo
+                            {t.undo}
                           </Button>
                         </div>
                       ))}
@@ -1205,7 +1446,7 @@ export default function CoachMatchDayPage() {
 
               <Card className="border-border/50 bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Score & Goals</CardTitle>
+                  <CardTitle className="text-base">{t.scoreGoals}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-md border border-border/40 bg-muted/10 p-4 text-center">
@@ -1217,7 +1458,7 @@ export default function CoachMatchDayPage() {
 
                   <div className="grid gap-3">
                     <div className="space-y-2">
-                      <Label>Goal for</Label>
+                      <Label>{t.goalFor}</Label>
                       <Select
                         value={goalForm.team}
                         onValueChange={(value) =>
@@ -1246,7 +1487,7 @@ export default function CoachMatchDayPage() {
                     {goalForm.team === "our" && (
                       <>
                         <div className="space-y-2">
-                          <Label>Scorer</Label>
+                          <Label>{t.scorer}</Label>
                           <Select
                             value={goalForm.scorerPlayerId}
                             onValueChange={(value) =>
@@ -1261,7 +1502,7 @@ export default function CoachMatchDayPage() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select scorer" />
+                              <SelectValue placeholder={t.selectScorer} />
                             </SelectTrigger>
                             <SelectContent>
                               {goalPlayers.map((player) => (
@@ -1277,7 +1518,7 @@ export default function CoachMatchDayPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Assist</Label>
+                          <Label>{t.assist}</Label>
                           <Select
                             value={goalForm.assistPlayerId}
                             onValueChange={(value) =>
@@ -1288,10 +1529,10 @@ export default function CoachMatchDayPage() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="No assist" />
+                              <SelectValue placeholder={t.noAssist} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">No assist</SelectItem>
+                              <SelectItem value="none">{t.noAssist}</SelectItem>
                               {goalPlayers
                                 .filter(
                                   (player) =>
@@ -1312,7 +1553,7 @@ export default function CoachMatchDayPage() {
                     )}
 
                     <div className="space-y-2">
-                      <Label>Goal note</Label>
+                      <Label>{t.goalNote}</Label>
                       <Textarea
                         value={goalForm.notes}
                         onChange={(event) =>
@@ -1321,7 +1562,7 @@ export default function CoachMatchDayPage() {
                             notes: event.target.value,
                           }))
                         }
-                        placeholder="Optional note"
+                        placeholder={t.optionalNote}
                       />
                     </div>
 
@@ -1336,13 +1577,13 @@ export default function CoachMatchDayPage() {
                       ) : (
                         <Plus className="h-4 w-4" />
                       )}
-                      Add Goal
+                      {t.addGoal}
                     </Button>
                     {!["first_half", "second_half"].includes(
                       match.match_status,
                     ) && (
                       <p className="text-xs text-muted-foreground">
-                        Start the match before recording goals.
+                        {t.startBeforeGoals}
                       </p>
                     )}
                   </div>
@@ -1356,13 +1597,13 @@ export default function CoachMatchDayPage() {
                         <div>
                           <p className="font-medium">
                             {goal.team === "our"
-                              ? goal.scorer_player_name || "GOALIX goal"
-                              : `${match.opponent_name} goal`}
+                              ? goal.scorer_player_name || t.goalixGoal
+                              : `${match.opponent_name} ${t.opponentGoal}`}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Minute {goal.minute}
+                            {t.minute} {goal.minute}
                             {goal.assist_player_name
-                              ? ` · assist ${goal.assist_player_name}`
+                              ? ` · ${t.assist} ${goal.assist_player_name}`
                               : ""}
                           </p>
                         </div>
@@ -1379,13 +1620,13 @@ export default function CoachMatchDayPage() {
                           onClick={() => undoGoal(goal.id)}
                         >
                           <RotateCcw className="h-4 w-4" />
-                          Undo
+                          {t.undo}
                         </Button>
                       </div>
                     ))}
                     {!match.goal_events?.length && (
                       <p className="text-sm text-muted-foreground">
-                        No goals recorded yet.
+                        {t.noGoals}
                       </p>
                     )}
                   </div>
@@ -1394,12 +1635,12 @@ export default function CoachMatchDayPage() {
 
               <Card className="border-border/50 bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Lineup Summary</CardTitle>
+                  <CardTitle className="text-base">{t.lineupSummary}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground">
-                      Current on field
+                      {t.currentOnField}
                     </p>
                     <div className="space-y-2">
                       {currentPlayingPlayers.map((player) => (
@@ -1409,7 +1650,7 @@ export default function CoachMatchDayPage() {
                         >
                           <span>{player.player_name}</span>
                           <Badge variant="outline">
-                            {player.position || "position"}
+                            {player.position || t.position}
                           </Badge>
                         </div>
                       ))}
@@ -1417,7 +1658,7 @@ export default function CoachMatchDayPage() {
                   </div>
                   <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground">
-                      Bench / subbed off
+                      {t.benchSubbedOff}
                     </p>
                     <div className="space-y-2">
                       {benchPlayers.length ? (
@@ -1429,14 +1670,14 @@ export default function CoachMatchDayPage() {
                             <span>{player.player_name}</span>
                             <Badge variant="outline">
                               {substitutedOutIds.has(player.player_id)
-                                ? "subbed off"
+                                ? t.subbedOff
                                 : player.squad_role}
                             </Badge>
                           </div>
                         ))
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          No substitutes selected.
+                          {t.noSubstitutes}
                         </p>
                       )}
                     </div>
@@ -1452,7 +1693,7 @@ export default function CoachMatchDayPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <CalendarClock className="h-4 w-4" />
-            Match not found or not available.
+            {t.matchNotFound}
           </CardContent>
         </Card>
       )}
@@ -1469,22 +1710,20 @@ export default function CoachMatchDayPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record Substitution</DialogTitle>
+            <DialogTitle>{t.recordSubstitution}</DialogTitle>
             <DialogDescription>
-              Choose the available player who will replace{" "}
-              {substitutionDialog?.outPlayerName}. This change is saved and the
-              on-field lineup updates immediately.
+              {t.substitutionDescriptionPrefix} {substitutionDialog?.outPlayerName}. {t.substitutionDescriptionSuffix}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>Player coming on</Label>
+              <Label>{t.playerComingOn}</Label>
               <Select
                 value={substitutionInPlayerId}
                 onValueChange={setSubstitutionInPlayerId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select replacement" />
+                  <SelectValue placeholder={t.selectReplacement} />
                 </SelectTrigger>
                 <SelectContent>
                   {substitutionOptions.map((player) => (
@@ -1496,16 +1735,16 @@ export default function CoachMatchDayPage() {
               </Select>
               {!substitutionOptions.length && (
                 <p className="text-xs text-muted-foreground">
-                  Mark a substitute present before using them.
+                  {t.markSubPresent}
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Reason</Label>
+              <Label>{t.reason}</Label>
               <Textarea
                 value={substitutionReason}
                 onChange={(event) => setSubstitutionReason(event.target.value)}
-                placeholder="Tactical, injury, absent starter replacement..."
+                placeholder={t.substitutionReasonPlaceholder}
               />
             </div>
           </div>
@@ -1515,7 +1754,7 @@ export default function CoachMatchDayPage() {
               variant="outline"
               onClick={() => setSubstitutionDialog(null)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -1526,7 +1765,7 @@ export default function CoachMatchDayPage() {
               {recordingSubstitution && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Save Substitution
+              {t.saveSubstitution}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1535,11 +1774,9 @@ export default function CoachMatchDayPage() {
       <Dialog open={finishDialogOpen} onOpenChange={setFinishDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finish match permanently?</DialogTitle>
+            <DialogTitle>{t.finishQuestion}</DialogTitle>
             <DialogDescription>
-              This will lock the match as finished, save the final score,
-              attendance, goals, substitutions, cards, injuries, and stats. You
-              cannot start or postpone it again after this.
+              {t.finishDescription}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1548,7 +1785,7 @@ export default function CoachMatchDayPage() {
               variant="outline"
               onClick={() => setFinishDialogOpen(false)}
             >
-              Keep Match Open
+              {t.keepMatchOpen}
             </Button>
             <Button
               type="button"
@@ -1560,7 +1797,7 @@ export default function CoachMatchDayPage() {
               {updatingLiveStatus && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Finish Match
+              {t.finishMatch}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1578,27 +1815,26 @@ export default function CoachMatchDayPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record Injury</DialogTitle>
+            <DialogTitle>{t.recordInjury}</DialogTitle>
             <DialogDescription>
-              Save the injured body part for {injuryDialog?.playerName}. The
-              injury date is recorded automatically.
+              {t.injuryDescriptionPrefix} {injuryDialog?.playerName}. {t.injuryDescriptionSuffix}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>Body part</Label>
+              <Label>{t.bodyPart}</Label>
               <Input
                 value={injuryBodyPart}
                 onChange={(event) => setInjuryBodyPart(event.target.value)}
-                placeholder="Hamstring, ankle, shoulder..."
+                placeholder={t.bodyPartPlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t.notes}</Label>
               <Textarea
                 value={injuryNotes}
                 onChange={(event) => setInjuryNotes(event.target.value)}
-                placeholder="Optional medical note"
+                placeholder={t.medicalNotePlaceholder}
               />
             </div>
           </div>
@@ -1608,7 +1844,7 @@ export default function CoachMatchDayPage() {
               variant="outline"
               onClick={() => setInjuryDialog(null)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -1618,7 +1854,7 @@ export default function CoachMatchDayPage() {
               {recordingIncident && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Save Injury
+              {t.saveInjury}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -30,6 +30,7 @@ import {
   useVerifyMfaDeviceMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { setMfaSetupRequired, updateUser } from "@/lib/store/slices/authSlice";
 import { CheckCircle, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
@@ -97,8 +98,168 @@ function getApiErrorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
+const settingsCopy = {
+  en: {
+    pageTitle: "Academy Profile",
+    pageDescription: "Manage your academy information and admin security.",
+    dashboard: "Dashboard",
+    settings: "Settings",
+    generalInfo: "General Information",
+    academyName: "Academy Name",
+    email: "Email",
+    phone: "Phone",
+    address: "Address",
+    saving: "Saving...",
+    saveChanges: "Save Changes",
+    saved: "Saved",
+    footerLinks: "Footer & Social Links",
+    footerLinksDescription:
+      "These contact details and social links appear on the public homepage footer.",
+    facebookUrl: "Facebook URL",
+    instagramUrl: "Instagram URL",
+    twitterUrl: "Twitter / X URL",
+    linkedinUrl: "LinkedIn URL",
+    systemDefaults: "System Defaults",
+    timezone: "Timezone",
+    matchDayOpen: "Match Day opens before kick-off",
+    whatsappCommunity: "WhatsApp Community Link",
+    lateGrace: "Late Grace Minutes",
+    autoClose: "Auto Close Minutes",
+    qrAttendance: "QR Attendance",
+    adminSecurity: "Admin Login Security",
+    adminSecurityDescription: "Two-factor authentication for this admin account.",
+    checking: "Checking",
+    twoFaOn: "2FA On",
+    twoFaOff: "2FA Off",
+    twoFaRequired: "Admin login requires a 2FA code.",
+    authenticatorDevices: "Authenticator devices",
+    authenticatorDevicesDescription:
+      "Scan a new QR code to add another phone. It will show as Goalix Academy Admin.",
+    addDevice: "Add device",
+    primary: "Primary",
+    added: "Added",
+    lastUsed: "Last used",
+    remove: "Remove",
+    noDevices:
+      "Your existing MFA device is still active. Add a new device to manage devices here.",
+    newDeviceName: "New device name",
+    defaultDeviceName: "Admin phone",
+    newMfaAlt: "New MFA device QR code",
+    authenticatorLabel: "Authenticator label",
+    issuerFallback: "Goalix Academy Admin",
+    secret: "Secret",
+    verificationCode: "Verification code",
+    verifyDevice: "Verify device",
+    cancel: "Cancel",
+    backupCodesTitle: "MFA backup codes",
+    backupCodesDescription:
+      "Existing codes cannot be viewed again. Generate new codes to replace the old ones.",
+    adminPassword: "Admin password",
+    generateBackupCodes: "Generate new backup codes",
+    disable2FA: "Disable 2FA",
+    twoFaNotRequired: "Admin login currently does not require 2FA.",
+    enable2FA: "Enable 2FA",
+    twoFaQrAlt: "2FA QR code",
+    verifyAndEnable: "Verify & Enable",
+    backupCodes: "Backup codes",
+    saveError: "Could not save academy settings.",
+    start2FAError: "Could not start 2FA setup.",
+    twoFaEnabled: "2FA enabled.",
+    invalidCode: "Invalid verification code.",
+    twoFaDisabled: "2FA disabled. Set it up again before using the admin dashboard.",
+    disable2FAError: "Could not disable 2FA.",
+    addDeviceError: "Could not add MFA device.",
+    deviceAdded: "MFA device added.",
+    invalidDeviceCode: "Invalid device verification code.",
+    deviceRemoved: "MFA device removed.",
+    removeDeviceError: "Could not remove MFA device.",
+    backupCodesGenerated: "New backup codes generated. Save them now.",
+    backupCodesError: "Could not generate backup codes.",
+  },
+  ar: {
+    pageTitle: "ملف الأكاديمية",
+    pageDescription: "إدارة بيانات الأكاديمية وأمان حساب الإدارة.",
+    dashboard: "لوحة التحكم",
+    settings: "الإعدادات",
+    generalInfo: "البيانات العامة",
+    academyName: "اسم الأكاديمية",
+    email: "البريد الإلكتروني",
+    phone: "الهاتف",
+    address: "العنوان",
+    saving: "جاري الحفظ...",
+    saveChanges: "حفظ التغييرات",
+    saved: "تم الحفظ",
+    footerLinks: "الفوتر وروابط التواصل",
+    footerLinksDescription:
+      "تظهر بيانات التواصل وروابط السوشيال في فوتر الصفحة الرئيسية العامة.",
+    facebookUrl: "رابط فيسبوك",
+    instagramUrl: "رابط إنستجرام",
+    twitterUrl: "رابط تويتر / X",
+    linkedinUrl: "رابط لينكدإن",
+    systemDefaults: "إعدادات النظام الافتراضية",
+    timezone: "المنطقة الزمنية",
+    matchDayOpen: "فتح يوم المباراة قبل ضربة البداية",
+    whatsappCommunity: "رابط مجتمع واتساب",
+    lateGrace: "دقائق السماح للتأخير",
+    autoClose: "دقائق الإغلاق التلقائي",
+    qrAttendance: "حضور QR",
+    adminSecurity: "أمان تسجيل دخول الإدارة",
+    adminSecurityDescription: "المصادقة الثنائية لهذا الحساب الإداري.",
+    checking: "جاري الفحص",
+    twoFaOn: "2FA مفعلة",
+    twoFaOff: "2FA غير مفعلة",
+    twoFaRequired: "تسجيل دخول الإدارة يتطلب كود مصادقة ثنائية.",
+    authenticatorDevices: "أجهزة المصادقة",
+    authenticatorDevicesDescription:
+      "امسح كود QR جديد لإضافة هاتف آخر. سيظهر باسم Goalix Academy Admin.",
+    addDevice: "إضافة جهاز",
+    primary: "أساسي",
+    added: "تمت الإضافة",
+    lastUsed: "آخر استخدام",
+    remove: "إزالة",
+    noDevices:
+      "جهاز المصادقة الحالي ما زال نشطًا. أضف جهازًا جديدًا لإدارة الأجهزة من هنا.",
+    newDeviceName: "اسم الجهاز الجديد",
+    defaultDeviceName: "هاتف الإدارة",
+    newMfaAlt: "كود QR لجهاز MFA جديد",
+    authenticatorLabel: "اسم المصادقة",
+    issuerFallback: "Goalix Academy Admin",
+    secret: "المفتاح السري",
+    verificationCode: "كود التحقق",
+    verifyDevice: "تأكيد الجهاز",
+    cancel: "إلغاء",
+    backupCodesTitle: "أكواد MFA الاحتياطية",
+    backupCodesDescription:
+      "لا يمكن عرض الأكواد الحالية مرة أخرى. أنشئ أكوادًا جديدة لاستبدال القديمة.",
+    adminPassword: "كلمة مرور الإدارة",
+    generateBackupCodes: "إنشاء أكواد احتياطية جديدة",
+    disable2FA: "تعطيل 2FA",
+    twoFaNotRequired: "تسجيل دخول الإدارة لا يتطلب 2FA حاليًا.",
+    enable2FA: "تفعيل 2FA",
+    twoFaQrAlt: "كود QR لتفعيل 2FA",
+    verifyAndEnable: "تأكيد وتفعيل",
+    backupCodes: "الأكواد الاحتياطية",
+    saveError: "تعذر حفظ إعدادات الأكاديمية.",
+    start2FAError: "تعذر بدء إعداد 2FA.",
+    twoFaEnabled: "تم تفعيل 2FA.",
+    invalidCode: "كود التحقق غير صحيح.",
+    twoFaDisabled: "تم تعطيل 2FA. فعّله مرة أخرى قبل استخدام لوحة تحكم الإدارة.",
+    disable2FAError: "تعذر تعطيل 2FA.",
+    addDeviceError: "تعذر إضافة جهاز MFA.",
+    deviceAdded: "تمت إضافة جهاز MFA.",
+    invalidDeviceCode: "كود تحقق الجهاز غير صحيح.",
+    deviceRemoved: "تمت إزالة جهاز MFA.",
+    removeDeviceError: "تعذر إزالة جهاز MFA.",
+    backupCodesGenerated: "تم إنشاء أكواد احتياطية جديدة. احفظها الآن.",
+    backupCodesError: "تعذر إنشاء الأكواد الاحتياطية.",
+  },
+} as const;
+
 export default function AcademyProfilePage() {
   const dispatch = useAppDispatch();
+  const language = useDashboardLanguage();
+  const t = settingsCopy[language];
+  const dateLocale = language === "ar" ? "ar-EG" : "en-US";
   const { data: academy, isLoading } = useGetAcademyQuery();
   const { data: currentUser, isLoading: loadingUser } = useGetCurrentUserQuery();
   const [updateAcademy, { isLoading: saving }] = useUpdateAcademyMutation();
@@ -119,7 +280,7 @@ export default function AcademyProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [setupData, setSetupData] = useState<Setup2FAResponse | null>(null);
   const [setupCode, setSetupCode] = useState("");
-  const [newDeviceName, setNewDeviceName] = useState("Admin phone");
+  const [newDeviceName, setNewDeviceName] = useState<string>(t.defaultDeviceName);
   const [newDeviceSetup, setNewDeviceSetup] = useState<Setup2FAResponse | null>(null);
   const [newDeviceCode, setNewDeviceCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
@@ -231,7 +392,7 @@ export default function AcademyProfilePage() {
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setSaveError(getApiErrorMessage(err, "Could not save academy settings."));
+      setSaveError(getApiErrorMessage(err, t.saveError));
     }
   };
 
@@ -245,7 +406,7 @@ export default function AcademyProfilePage() {
       setSetupData(result);
       setSetupCode("");
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Could not start 2FA setup."));
+      setSecurityError(getApiErrorMessage(err, t.start2FAError));
     }
   };
 
@@ -261,9 +422,9 @@ export default function AcademyProfilePage() {
       setSetupCode("");
       dispatch(updateUser({ totpEnabled: true }));
       dispatch(setMfaSetupRequired(false));
-      setSecurityMessage("2FA enabled.");
+      setSecurityMessage(t.twoFaEnabled);
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Invalid verification code."));
+      setSecurityError(getApiErrorMessage(err, t.invalidCode));
     }
   };
 
@@ -279,9 +440,9 @@ export default function AcademyProfilePage() {
       setSetupData(null);
       dispatch(updateUser({ totpEnabled: false }));
       dispatch(setMfaSetupRequired(true));
-      setSecurityMessage("2FA disabled. Set it up again before using the admin dashboard.");
+      setSecurityMessage(t.twoFaDisabled);
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Could not disable 2FA."));
+      setSecurityError(getApiErrorMessage(err, t.disable2FAError));
     }
   };
 
@@ -290,11 +451,11 @@ export default function AcademyProfilePage() {
     setSecurityMessage("");
 
     try {
-      const result = await setupMfaDevice({ deviceName: newDeviceName.trim() || "Admin phone" }).unwrap();
+      const result = await setupMfaDevice({ deviceName: newDeviceName.trim() || t.defaultDeviceName }).unwrap();
       setNewDeviceSetup(result);
       setNewDeviceCode("");
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Could not add MFA device."));
+      setSecurityError(getApiErrorMessage(err, t.addDeviceError));
     }
   };
 
@@ -311,9 +472,9 @@ export default function AcademyProfilePage() {
       }).unwrap();
       setNewDeviceSetup(null);
       setNewDeviceCode("");
-      setSecurityMessage("MFA device added.");
+      setSecurityMessage(t.deviceAdded);
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Invalid device verification code."));
+      setSecurityError(getApiErrorMessage(err, t.invalidDeviceCode));
     }
   };
 
@@ -323,9 +484,9 @@ export default function AcademyProfilePage() {
 
     try {
       await revokeMfaDevice(deviceId).unwrap();
-      setSecurityMessage("MFA device removed.");
+      setSecurityMessage(t.deviceRemoved);
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Could not remove MFA device."));
+      setSecurityError(getApiErrorMessage(err, t.removeDeviceError));
     }
   };
 
@@ -338,9 +499,9 @@ export default function AcademyProfilePage() {
       const result = await regenerateBackupCodes(backupCodesPassword).unwrap();
       setBackupCodes(result.backupCodes);
       setBackupCodesPassword("");
-      setSecurityMessage("New backup codes generated. Save them now.");
+      setSecurityMessage(t.backupCodesGenerated);
     } catch (err) {
-      setSecurityError(getApiErrorMessage(err, "Could not generate backup codes."));
+      setSecurityError(getApiErrorMessage(err, t.backupCodesError));
     }
   };
 
@@ -349,12 +510,12 @@ export default function AcademyProfilePage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Academy Profile"
-        description="Manage your academy information and admin security."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Settings" },
-          { label: "Academy Profile" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.settings },
+          { label: t.pageTitle },
         ]}
       />
 
@@ -362,35 +523,35 @@ export default function AcademyProfilePage() {
         <div className="space-y-6">
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">General Information</CardTitle>
+              <CardTitle className="text-base">{t.generalInfo}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Academy Name</Label>
+                <Label>{t.academyName}</Label>
                 <Input value={academyName} onChange={(event) => updateDraft("name", event.target.value)} />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{t.email}</Label>
                   <Input type="email" value={academyEmail} onChange={(event) => updateDraft("email", event.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>{t.phone}</Label>
                   <Input value={academyPhone} onChange={(event) => updateDraft("phone", event.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Address</Label>
+                <Label>{t.address}</Label>
                 <Input value={academyAddress} onChange={(event) => updateDraft("address", event.target.value)} />
               </div>
               <div className="flex items-center gap-3">
                 <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
                   <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Save Changes"}
+                  {saving ? t.saving : t.saveChanges}
                 </Button>
                 {saved && (
                   <span className="flex items-center gap-1 text-sm text-emerald-400">
-                    <CheckCircle className="h-4 w-4" /> Saved
+                    <CheckCircle className="h-4 w-4" /> {t.saved}
                   </span>
                 )}
               </div>
@@ -400,14 +561,14 @@ export default function AcademyProfilePage() {
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Footer & Social Links</CardTitle>
+              <CardTitle className="text-base">{t.footerLinks}</CardTitle>
               <CardDescription>
-                These contact details and social links appear on the public homepage footer.
+                {t.footerLinksDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Facebook URL</Label>
+                <Label>{t.facebookUrl}</Label>
                 <Input
                   type="url"
                   value={facebookUrl}
@@ -416,7 +577,7 @@ export default function AcademyProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Instagram URL</Label>
+                <Label>{t.instagramUrl}</Label>
                 <Input
                   type="url"
                   value={instagramUrl}
@@ -425,7 +586,7 @@ export default function AcademyProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Twitter / X URL</Label>
+                <Label>{t.twitterUrl}</Label>
                 <Input
                   type="url"
                   value={twitterUrl}
@@ -434,7 +595,7 @@ export default function AcademyProfilePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>LinkedIn URL</Label>
+                <Label>{t.linkedinUrl}</Label>
                 <Input
                   type="url"
                   value={linkedinUrl}
@@ -445,11 +606,11 @@ export default function AcademyProfilePage() {
               <div className="flex items-center gap-3 sm:col-span-2">
                 <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
                   <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Save Changes"}
+                  {saving ? t.saving : t.saveChanges}
                 </Button>
                 {saved && (
                   <span className="flex items-center gap-1 text-sm text-emerald-400">
-                    <CheckCircle className="h-4 w-4" /> Saved
+                    <CheckCircle className="h-4 w-4" /> {t.saved}
                   </span>
                 )}
               </div>
@@ -459,12 +620,12 @@ export default function AcademyProfilePage() {
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">System Defaults</CardTitle>
+              <CardTitle className="text-base">{t.systemDefaults}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Timezone</Label>
+                  <Label>{t.timezone}</Label>
                   <Select
                     value={timezone}
                     onValueChange={(value) => updateDraft("timezone", value)}
@@ -482,7 +643,7 @@ export default function AcademyProfilePage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="match-day-open-minutes">
-                    Match Day opens before kick-off
+                    {t.matchDayOpen}
                   </Label>
                   <Input
                     id="match-day-open-minutes"
@@ -500,7 +661,7 @@ export default function AcademyProfilePage() {
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="community-whatsapp-url">WhatsApp Community Link</Label>
+                  <Label htmlFor="community-whatsapp-url">{t.whatsappCommunity}</Label>
                   <Input
                     id="community-whatsapp-url"
                     type="url"
@@ -512,7 +673,7 @@ export default function AcademyProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Late Grace Minutes</Label>
+                  <Label>{t.lateGrace}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -524,7 +685,7 @@ export default function AcademyProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Auto Close Minutes</Label>
+                  <Label>{t.autoClose}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -537,7 +698,7 @@ export default function AcademyProfilePage() {
                 </div>
               </div>
               <label className="flex items-center justify-between gap-4 rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-                <span>QR Attendance</span>
+                <span>{t.qrAttendance}</span>
                 <input
                   type="checkbox"
                   checked={qrAttendanceEnabled}
@@ -555,11 +716,11 @@ export default function AcademyProfilePage() {
           <Card className="border-border/50 bg-card">
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-base">Admin Login Security</CardTitle>
-                <CardDescription>Two-factor authentication for this admin account.</CardDescription>
+                <CardTitle className="text-base">{t.adminSecurity}</CardTitle>
+                <CardDescription>{t.adminSecurityDescription}</CardDescription>
               </div>
               <Badge variant={totpEnabled ? "success" : "secondary"}>
-                {loadingUser ? "Checking" : totpEnabled ? "2FA On" : "2FA Off"}
+                {loadingUser ? t.checking : totpEnabled ? t.twoFaOn : t.twoFaOff}
               </Badge>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -567,15 +728,15 @@ export default function AcademyProfilePage() {
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
                     <ShieldCheck className="h-4 w-4" />
-                    Admin login requires a 2FA code.
+                    {t.twoFaRequired}
                   </div>
 
                   <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-semibold">Authenticator devices</p>
+                        <p className="text-sm font-semibold">{t.authenticatorDevices}</p>
                         <p className="text-xs text-muted-foreground">
-                          Scan a new QR code to add another phone. It will show as Goalix Academy Admin.
+                          {t.authenticatorDevicesDescription}
                         </p>
                       </div>
                       {!newDeviceSetup && (
@@ -587,7 +748,7 @@ export default function AcademyProfilePage() {
                           className="gap-1.5"
                         >
                           {settingUpDevice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                          Add device
+                          {t.addDevice}
                         </Button>
                       )}
                     </div>
@@ -601,11 +762,13 @@ export default function AcademyProfilePage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-medium">{device.deviceName}</p>
-                              {device.isPrimary && <Badge variant="success">Primary</Badge>}
+                              {device.isPrimary && <Badge variant="success">{t.primary}</Badge>}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              Added {new Date(device.createdAt).toLocaleString()}
-                              {device.lastUsedAt ? ` - Last used ${new Date(device.lastUsedAt).toLocaleString()}` : ""}
+                              {t.added} {new Date(device.createdAt).toLocaleString(dateLocale)}
+                              {device.lastUsedAt
+                                ? ` - ${t.lastUsed} ${new Date(device.lastUsedAt).toLocaleString(dateLocale)}`
+                                : ""}
                             </p>
                           </div>
                           <Button
@@ -617,25 +780,25 @@ export default function AcademyProfilePage() {
                             className="gap-1.5"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Remove
+                            {t.remove}
                           </Button>
                         </div>
                       ))}
                       {!mfaDevices.length && (
                         <p className="rounded-lg border border-dashed border-border/40 p-3 text-sm text-muted-foreground">
-                          Your existing MFA device is still active. Add a new device to manage devices here.
+                          {t.noDevices}
                         </p>
                       )}
                     </div>
 
                     {!newDeviceSetup && (
                       <div className="space-y-2">
-                        <Label htmlFor="new-mfa-device-name">New device name</Label>
+                        <Label htmlFor="new-mfa-device-name">{t.newDeviceName}</Label>
                         <Input
                           id="new-mfa-device-name"
                           value={newDeviceName}
                           onChange={(event) => setNewDeviceName(event.target.value)}
-                          placeholder="Admin phone"
+                          placeholder={t.defaultDeviceName}
                         />
                       </div>
                     )}
@@ -646,7 +809,7 @@ export default function AcademyProfilePage() {
                           <div className="rounded-lg border border-border/50 bg-white p-2">
                             <Image
                               src={newDeviceSetup.qrCode}
-                              alt="New MFA device QR code"
+                              alt={t.newMfaAlt}
                               width={164}
                               height={164}
                               unoptimized
@@ -655,15 +818,15 @@ export default function AcademyProfilePage() {
                           </div>
                           <div className="space-y-3">
                             <div className="space-y-2">
-                              <Label>Authenticator label</Label>
-                              <Input value={newDeviceSetup.issuer ?? "Goalix Academy Admin"} readOnly />
+                              <Label>{t.authenticatorLabel}</Label>
+                              <Input value={newDeviceSetup.issuer ?? t.issuerFallback} readOnly />
                             </div>
                             <div className="space-y-2">
-                              <Label>Secret</Label>
+                              <Label>{t.secret}</Label>
                               <Input value={newDeviceSetup.secret} readOnly className="font-mono text-xs" />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="new-device-code">Verification code</Label>
+                              <Label htmlFor="new-device-code">{t.verificationCode}</Label>
                               <Input
                                 id="new-device-code"
                                 value={newDeviceCode}
@@ -678,10 +841,10 @@ export default function AcademyProfilePage() {
                         <div className="flex gap-2">
                           <Button type="submit" disabled={verifyingDevice || newDeviceCode.length !== 6} className="gap-1.5">
                             {verifyingDevice && <Loader2 className="h-4 w-4 animate-spin" />}
-                            Verify device
+                            {t.verifyDevice}
                           </Button>
                           <Button type="button" variant="outline" onClick={() => setNewDeviceSetup(null)}>
-                            Cancel
+                            {t.cancel}
                           </Button>
                         </div>
                       </form>
@@ -693,13 +856,13 @@ export default function AcademyProfilePage() {
                     className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3"
                   >
                     <div>
-                      <p className="text-sm font-semibold">MFA backup codes</p>
+                      <p className="text-sm font-semibold">{t.backupCodesTitle}</p>
                       <p className="text-xs text-muted-foreground">
-                        Existing codes cannot be viewed again. Generate new codes to replace the old ones.
+                        {t.backupCodesDescription}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="admin-backup-codes-password">Admin password</Label>
+                      <Label htmlFor="admin-backup-codes-password">{t.adminPassword}</Label>
                       <Input
                         id="admin-backup-codes-password"
                         type="password"
@@ -716,13 +879,13 @@ export default function AcademyProfilePage() {
                       className="gap-1.5"
                     >
                       {regeneratingBackupCodes ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                      Generate new backup codes
+                      {t.generateBackupCodes}
                     </Button>
                   </form>
 
                   <form onSubmit={handleDisable2FA} className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="disable-2fa-password">Admin password</Label>
+                      <Label htmlFor="disable-2fa-password">{t.adminPassword}</Label>
                       <Input
                         id="disable-2fa-password"
                         type="password"
@@ -734,7 +897,7 @@ export default function AcademyProfilePage() {
                     </div>
                     <Button type="submit" variant="outline" disabled={disabling2FA} className="gap-1.5">
                       {disabling2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
-                      Disable 2FA
+                      {t.disable2FA}
                     </Button>
                   </form>
                 </div>
@@ -742,12 +905,12 @@ export default function AcademyProfilePage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-300">
                     <ShieldOff className="h-4 w-4" />
-                    Admin login currently does not require 2FA.
+                    {t.twoFaNotRequired}
                   </div>
                   {!setupData ? (
                     <Button onClick={handleStart2FA} disabled={settingUp2FA || loadingUser} className="gap-1.5">
                       {settingUp2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                      Enable 2FA
+                      {t.enable2FA}
                     </Button>
                   ) : (
                     <form onSubmit={handleVerify2FA} className="space-y-4">
@@ -755,7 +918,7 @@ export default function AcademyProfilePage() {
                         <div className="rounded-lg border border-border/50 bg-white p-2">
                           <Image
                             src={setupData.qrCode}
-                            alt="2FA QR code"
+                            alt={t.twoFaQrAlt}
                             width={164}
                             height={164}
                             unoptimized
@@ -764,15 +927,15 @@ export default function AcademyProfilePage() {
                         </div>
                         <div className="space-y-3">
                           <div className="space-y-2">
-                            <Label>Authenticator label</Label>
-                            <Input value={setupData.issuer ?? "Goalix Academy Admin"} readOnly />
+                            <Label>{t.authenticatorLabel}</Label>
+                            <Input value={setupData.issuer ?? t.issuerFallback} readOnly />
                           </div>
                           <div className="space-y-2">
-                            <Label>Secret</Label>
+                            <Label>{t.secret}</Label>
                             <Input value={setupData.secret} readOnly className="font-mono text-xs" />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="setup-2fa-code">Verification code</Label>
+                            <Label htmlFor="setup-2fa-code">{t.verificationCode}</Label>
                             <Input
                               id="setup-2fa-code"
                               value={setupCode}
@@ -787,10 +950,10 @@ export default function AcademyProfilePage() {
                       <div className="flex gap-2">
                         <Button type="submit" disabled={verifying2FA} className="gap-1.5">
                           {verifying2FA && <Loader2 className="h-4 w-4 animate-spin" />}
-                          Verify & Enable
+                          {t.verifyAndEnable}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => setSetupData(null)}>
-                          Cancel
+                          {t.cancel}
                         </Button>
                       </div>
                     </form>
@@ -800,7 +963,7 @@ export default function AcademyProfilePage() {
 
               {backupCodes.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-3">
-                  <p className="text-sm font-medium">Backup codes</p>
+                  <p className="text-sm font-medium">{t.backupCodes}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {backupCodes.map((code) => (
                       <code key={code} className="rounded bg-background px-2 py-1 text-sm">

@@ -13,12 +13,14 @@ import { ROLE_ROUTES } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
 import { forgetAuthSession, rememberAuthSession } from "@/lib/auth/session";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
+import { CSRF_HEADER_NAME, ensureCsrfToken } from "@/lib/api/csrf";
 import { resetApiState } from "@/lib/store/resetApiState";
+import { mapApiUser } from "@/lib/auth/mapApiUser";
 
 const API_BASE = getApiBaseUrl();
 
 interface AuthContextType {
-  login: (username: string, password: string, role: "player" | "parent") => Promise<void>;
+  login: (username: string, password: string, role: "player" | "parent", rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -31,14 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const login = useCallback(
-    async (username: string, password: string, role: "player" | "parent") => {
+    async (username: string, password: string, role: "player" | "parent", rememberMe?: boolean) => {
       dispatch(loginStart());
 
       try {
         const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, role }),
+          body: JSON.stringify({ username, password, role, rememberMe }),
           credentials: "include",
         });
 
@@ -47,17 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const apiUser = json.data?.user;
 
           if (apiUser) {
-            const user = {
-              id: apiUser.id,
-              email: apiUser.email ?? "",
-              username: apiUser.username ?? username,
-              fullName: apiUser.full_name ?? apiUser.fullName ?? apiUser.username ?? username,
-              role: apiUser.role as UserRole,
-              avatarUrl: apiUser.avatar_url ?? "",
-              phone: apiUser.phone ?? "",
-              linkedPlayerId: apiUser.linkedPlayerId ?? apiUser.linked_player_id ?? null,
-              createdAt: apiUser.created_at ?? new Date().toISOString(),
-            };
+            const user = mapApiUser(apiUser);
             rememberAuthSession();
             resetApiState(dispatch);
             dispatch(loginSuccess({ user, role: user.role }));
@@ -79,10 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     const redirectTo = currentRole === "admin" || currentRole === "coach" ? "/admin-login" : "/login";
-    void fetch(`${API_BASE}/api/v1/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => {});
+    void (async () => {
+      const csrfToken = await ensureCsrfToken();
+      const headers = new Headers();
+      if (csrfToken) headers.set(CSRF_HEADER_NAME, csrfToken);
+
+      await fetch(`${API_BASE}/api/v1/auth/logout`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+      });
+    })().catch(() => {});
     forgetAuthSession();
     resetApiState(dispatch);
     dispatch(logoutAction());

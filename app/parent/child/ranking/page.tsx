@@ -62,6 +62,12 @@ const copy = {
     noEvaluations: "No visible evaluations yet.",
     noNotes: "No notes yet.",
     training: "Training",
+    rankingHistory: "Ranking History",
+    rankingHistoryDescription: "Previous weekly and monthly ranks for the selected player.",
+    weekly: "Weekly",
+    monthly: "Monthly",
+    noWeeklyHistory: "No weekly ranking history yet.",
+    noMonthlyHistory: "No monthly ranking history yet.",
   },
   ar: {
     title: "الترتيب والتقييمات",
@@ -98,6 +104,12 @@ const copy = {
     noEvaluations: "لا توجد تقييمات ظاهرة حتى الآن.",
     noNotes: "لا توجد ملاحظات بعد.",
     training: "تدريب",
+    rankingHistory: "سجل الترتيب",
+    rankingHistoryDescription: "الترتيب الأسبوعي والشهري السابق للاعب المختار.",
+    weekly: "أسبوعي",
+    monthly: "شهري",
+    noWeeklyHistory: "لا يوجد سجل ترتيب أسبوعي حتى الآن.",
+    noMonthlyHistory: "لا يوجد سجل ترتيب شهري حتى الآن.",
   },
 } as const;
 
@@ -410,15 +422,15 @@ export default function ParentChildRankingPage() {
 
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ranking History</CardTitle>
+              <CardTitle className="text-base">{t.rankingHistory}</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Previous weekly and monthly ranks for the selected player.
+                {t.rankingHistoryDescription}
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Weekly
+                  {t.weekly}
                 </p>
                 {weeklyHistory.slice(0, 8).map((period) => {
                   const row = period.row;
@@ -440,14 +452,14 @@ export default function ParentChildRankingPage() {
                 })}
                 {!weeklyHistory.length && (
                   <div className="rounded-lg border border-dashed border-border/40 p-5 text-center text-sm text-muted-foreground">
-                    No weekly ranking history yet.
+                    {t.noWeeklyHistory}
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                  Monthly
+                  {t.monthly}
                 </p>
                 {monthlyHistory.slice(0, 8).map((period) => {
                   const row = period.row;
@@ -469,7 +481,7 @@ export default function ParentChildRankingPage() {
                 })}
                 {!monthlyHistory.length && (
                   <div className="rounded-lg border border-dashed border-border/40 p-5 text-center text-sm text-muted-foreground">
-                    No monthly ranking history yet.
+                    {t.noMonthlyHistory}
                   </div>
                 )}
               </div>

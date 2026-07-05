@@ -95,6 +95,7 @@ const rankingsQueue = createQueue('rankings');
 const notificationsQueue = createQueue('notifications');
 const paymentsQueue = createQueue('payments');
 const aiQueue = createQueue('ai');
+const auditQueue = createQueue('audit');
 
 module.exports = {
     createQueue,
@@ -102,4 +103,5 @@ module.exports = {
     notificationsQueue,
     paymentsQueue,
     aiQueue,
+    auditQueue,
 };

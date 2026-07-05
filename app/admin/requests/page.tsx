@@ -25,6 +25,7 @@ import {
   useGetAdminPasswordResetRequestsQuery,
   type PasswordResetRequest,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 const displayStatus = (request: MatchEvaluationEditRequest) => {
@@ -51,7 +52,33 @@ const resetStatusLabel = (status: PasswordResetRequest["status"]) => {
   return "Pending";
 };
 
+const requestsCopy = {
+  en: {
+    title: "Requests",
+    description: "Coach requests that need admin approval.",
+    dashboard: "Dashboard",
+    refresh: "Refresh",
+    retry: "Retry",
+    loadError: "Failed to load requests.",
+    emptyTitle: "No requests right now.",
+    emptyBody:
+      "Evaluation edit requests and player password reset requests will appear here.",
+  },
+  ar: {
+    title: "الطلبات",
+    description: "طلبات المدربين التي تحتاج موافقة الإدارة.",
+    dashboard: "الرئيسية",
+    refresh: "تحديث",
+    retry: "إعادة المحاولة",
+    loadError: "تعذر تحميل الطلبات.",
+    emptyTitle: "لا توجد طلبات الآن.",
+    emptyBody: "طلبات تعديل التقييم وطلبات إعادة تعيين كلمة مرور اللاعبين ستظهر هنا.",
+  },
+} as const;
+
 export default function AdminRequestsPage() {
+  const language = useDashboardLanguage();
+  const t = requestsCopy[language];
   const { data, isLoading, isError, refetch } =
     useGetAdminEvaluationEditRequestsQuery({ limit: 100 });
   const {
@@ -74,11 +101,11 @@ export default function AdminRequestsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Requests"
-        description="Coach requests that need admin approval."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Requests" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.title },
         ]}
         actions={
           <Button
@@ -91,7 +118,7 @@ export default function AdminRequestsPage() {
             className="gap-1.5"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t.refresh}
           </Button>
         }
       />
@@ -107,7 +134,7 @@ export default function AdminRequestsPage() {
       {failed && (
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center justify-between gap-3 p-5">
-            <p className="text-sm text-muted-foreground">Failed to load requests.</p>
+            <p className="text-sm text-muted-foreground">{t.loadError}</p>
             <Button
               variant="outline"
               size="sm"
@@ -118,7 +145,7 @@ export default function AdminRequestsPage() {
               className="gap-1.5"
             >
               <RefreshCw className="h-4 w-4" />
-              Retry
+              {t.retry}
             </Button>
           </CardContent>
         </Card>
@@ -128,9 +155,9 @@ export default function AdminRequestsPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <ShieldCheck className="mb-3 h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No requests right now.</p>
+            <p className="text-sm font-medium">{t.emptyTitle}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Evaluation edit requests and player password reset requests will appear here.
+              {t.emptyBody}
             </p>
           </CardContent>
         </Card>

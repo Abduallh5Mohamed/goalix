@@ -28,6 +28,7 @@ import type {
   MatchPlayerStats,
   PlayerAttendanceQr,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
 const numberValue = (value: unknown) => {
@@ -108,6 +109,21 @@ const statFields: Array<{ key: keyof MatchPlayerStats; label: string }> = [
   { key: "work_rate_rating", label: "Work Rate" },
   { key: "positioning_rating", label: "Positioning" },
 ];
+
+const matchesCopy = {
+  en: {
+    title: "Matches",
+    description: "Your squad role, match plan, instructions, and post-match evaluation.",
+    home: "Home",
+    matchEvaluation: "Match Evaluation",
+  },
+  ar: {
+    title: "المباريات",
+    description: "دورك في التشكيل وخطة المباراة والتعليمات وتقييم ما بعد المباراة.",
+    home: "الرئيسية",
+    matchEvaluation: "تقييم المباراة",
+  },
+} as const;
 
 function EmptyState({ text }: { text: string }) {
   return (
@@ -230,6 +246,8 @@ function MatchCard({
   nowMs: number;
   qr?: PlayerAttendanceQr;
 }) {
+  const language = useDashboardLanguage();
+  const t = matchesCopy[language];
   const mySquad = match.squad?.[0];
   const myStats = match.stats?.[0];
   const myAttendance = match.attendance?.[0];
@@ -366,7 +384,7 @@ function MatchCard({
         <div className="rounded-lg border border-white/10 bg-[#06111f]/70 p-4">
           <div className="mb-4 flex items-center gap-2">
             <Star className="h-4 w-4 text-amber-300" />
-            <h4 className="font-semibold text-white">Match Evaluation</h4>
+            <h4 className="font-semibold text-white">{t.matchEvaluation}</h4>
           </div>
           <MatchEvaluation stats={myStats} position={mySquad?.position} />
         </div>
@@ -376,6 +394,8 @@ function MatchCard({
 }
 
 export default function PlayerMatchesPage() {
+  const language = useDashboardLanguage();
+  const t = matchesCopy[language];
   const nowMs = useSyncExternalStore(
     subscribePlayerMatchesClock,
     getPlayerMatchesClockSnapshot,
@@ -397,11 +417,11 @@ export default function PlayerMatchesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Matches"
-        description="Your squad role, match plan, instructions, and post-match evaluation."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Matches" },
+          { label: t.home, href: "/player/home" },
+          { label: t.title },
         ]}
       />
 

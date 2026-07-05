@@ -45,6 +45,7 @@ const storage = require("../../shared/storage");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const { canParentAccessChild } = require("../../shared/access-policy");
 const { normalizePagination } = require("../../shared/pagination");
+const { assertMimeSignature } = require("../../shared/file-signature");
 
 const uniq = (values) => [...new Set((values || []).filter(Boolean))];
 const addHours = (isoValue, hours) =>
@@ -254,8 +255,13 @@ const uuidPattern =
 const QR_ATTENDANCE_TYPE = "goalix_player_attendance";
 const QR_ATTENDANCE_VERSION = 1;
 const playerCodePattern = /\bPLY-[A-Z0-9-]+\b/i;
-const attendanceQrSignature = ({ academyId, playerId, playerCode }) =>
-  createHmac("sha256", env.JWT_SECRET)
+const attendanceQrSecrets = () =>
+  [
+    env.QR_ATTENDANCE_SECRET,
+    env.JWT_SECRET,
+  ].filter(Boolean);
+const attendanceQrSignatureWithSecret = ({ academyId, playerId, playerCode }, secret) =>
+  createHmac("sha256", secret)
     .update(
       [
         QR_ATTENDANCE_TYPE,
@@ -266,6 +272,8 @@ const attendanceQrSignature = ({ academyId, playerId, playerCode }) =>
       ].join(":"),
     )
     .digest("hex");
+const attendanceQrSignature = (payload) =>
+  attendanceQrSignatureWithSecret(payload, attendanceQrSecrets()[0]);
 const safeSignatureEqual = (actual, expected) => {
   const actualBuffer = Buffer.from(String(actual || ""), "hex");
   const expectedBuffer = Buffer.from(String(expected || ""), "hex");
@@ -275,6 +283,10 @@ const safeSignatureEqual = (actual, expected) => {
     timingSafeEqual(actualBuffer, expectedBuffer)
   );
 };
+const isValidAttendanceQrSignature = (actual, payload) =>
+  attendanceQrSecrets().some((secret) =>
+    safeSignatureEqual(actual, attendanceQrSignatureWithSecret(payload, secret)),
+  );
 
 class CalendarService {
   constructor(
@@ -4727,12 +4739,12 @@ class CalendarService {
     if (!player) throw new NotFoundError("QR player");
 
     if (parsed.signed) {
-      const expected = attendanceQrSignature({
+      const signaturePayload = {
         academyId,
         playerId: player.id,
         playerCode: player.player_code || null,
-      });
-      if (!safeSignatureEqual(parsed.signature, expected)) {
+      };
+      if (!isValidAttendanceQrSignature(parsed.signature, signaturePayload)) {
         throw new BadRequestError("QR signature is invalid");
       }
     }
@@ -8427,6 +8439,7 @@ class CalendarService {
     if (buffer.length > 25 * 1024 * 1024) {
       throw new BadRequestError("Assignment files must be 25MB or smaller.");
     }
+    assertMimeSignature(normalizedMimeType, buffer, "Assignment file");
 
     const fileName = sanitizeFileName(originalName);
     const upload = await storage.putUpload({

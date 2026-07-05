@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const env = require('../../config/env');
 const { UnauthorizedError, BadRequestError } = require('../../shared/errors');
 const { decryptText, encryptText } = require('../../shared/crypto-at-rest');
+const BACKUP_CODE_BYTES = 10;
 
 function loadTotpDependencies() {
     return {
@@ -28,13 +29,39 @@ function publicDevice(row) {
     };
 }
 
+function normalizeBackupCode(code) {
+    return String(code || '').replace(/[\s-]/g, '').toLowerCase();
+}
+
+function formatBackupCode(rawCode) {
+    return rawCode.match(/.{1,4}/g).join('-');
+}
+
+function backupCodeHash(code) {
+    return crypto
+        .createHmac('sha256', env.COOKIE_SECRET)
+        .update(normalizeBackupCode(code))
+        .digest('hex');
+}
+
+function legacyBackupCodeHash(code) {
+    return crypto
+        .createHash('sha256')
+        .update(normalizeBackupCode(code))
+        .digest('hex');
+}
+
+function backupCodeHashesForLookup(code) {
+    return [...new Set([backupCodeHash(code), legacyBackupCodeHash(code)])];
+}
+
 function generateBackupCodes() {
     const backupCodes = [];
     const codeHashes = [];
     for (let i = 0; i < 10; i++) {
-        const code = crypto.randomBytes(4).toString('hex');
+        const code = formatBackupCode(crypto.randomBytes(BACKUP_CODE_BYTES).toString('hex'));
         backupCodes.push(code);
-        codeHashes.push(crypto.createHash('sha256').update(code).digest('hex'));
+        codeHashes.push(backupCodeHash(code));
     }
     return { backupCodes, codeHashes };
 }
@@ -235,11 +262,11 @@ class TotpService {
     }
 
     async verifyBackupCode(userId, code) {
-        const codeHash = crypto.createHash('sha256').update(code).digest('hex');
-        const backupCode = await this.repo.findUnusedBackupCode(userId, codeHash);
+        const backupCode = await this.repo.consumeUnusedBackupCode(
+            userId,
+            backupCodeHashesForLookup(code),
+        );
         if (!backupCode) throw new UnauthorizedError('Invalid or already used backup code');
-
-        await this.repo.markBackupCodeUsed(backupCode.id);
         return true;
     }
 

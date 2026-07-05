@@ -1,6 +1,88 @@
 const rateLimit = require('express-rate-limit');
+const RedisStore = require('rate-limit-redis').default;
+const { redis, isRedisAvailable } = require('../infrastructure/redis');
 const env = require('../config/env');
 const ApiResponse = require('../shared/api-response');
+
+/**
+ * A resilient store wrapper that uses RedisStore if Redis is connected,
+ * and seamlessly falls back to MemoryStore if Redis is offline or disabled.
+ */
+class ResilientStore {
+    constructor(prefix) {
+        this.prefix = prefix;
+        this.memoryStore = new rateLimit.MemoryStore();
+        this.redisStore = null;
+        this.redisInitialized = false;
+
+        if (process.env.REDIS_ENABLED !== 'false') {
+            this.redisStore = new RedisStore({
+                sendCommand: async (...args) => {
+                    return await redis.call(args[0], ...args.slice(1));
+                },
+                prefix: `goalix:ratelimit:${prefix}:`,
+            });
+        }
+    }
+
+    async init(options) {
+        this.memoryStore.init(options);
+        // We will try to initialize RedisStore lazily in increment/decrement if not yet initialized
+    }
+
+    async _ensureRedisInitialized() {
+        if (this.redisStore && isRedisAvailable() && !this.redisInitialized) {
+            try {
+                // Initialize the store with default options
+                await this.redisStore.init({});
+                this.redisInitialized = true;
+            } catch {
+                this.redisInitialized = false;
+            }
+        }
+    }
+
+    async increment(key) {
+        await this._ensureRedisInitialized();
+        if (this.redisStore && isRedisAvailable() && this.redisInitialized) {
+            try {
+                return await this.redisStore.increment(key);
+            } catch {
+                // Fallback to memory store if Redis operation fails
+                return await this.memoryStore.increment(key);
+            }
+        }
+        return await this.memoryStore.increment(key);
+    }
+
+    async decrement(key) {
+        await this._ensureRedisInitialized();
+        if (this.redisStore && isRedisAvailable() && this.redisInitialized) {
+            try {
+                await this.redisStore.decrement(key);
+                return;
+            } catch {
+                // Fallback to memory store
+            }
+        }
+        await this.memoryStore.decrement(key);
+    }
+
+    async resetKey(key) {
+        await this._ensureRedisInitialized();
+        if (this.redisStore && isRedisAvailable() && this.redisInitialized) {
+            try {
+                await this.redisStore.resetKey(key);
+                return;
+            } catch {
+                // Fallback to memory store
+            }
+        }
+        await this.memoryStore.resetKey(key);
+    }
+}
+
+const getStore = (prefix) => new ResilientStore(prefix);
 
 // Use req.ip which is set correctly when app.set('trust proxy', 1) is configured.
 const keyGenerator = (req) => req.ip;
@@ -18,6 +100,7 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator,
+    store: getStore('api'),
     handler: (_req, res) => {
         res.status(429).json(
             ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many requests, please try again later'),
@@ -34,6 +117,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator,
+    store: getStore('auth'),
     handler: (_req, res) => {
         res.status(429).json(
             ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many authentication attempts, please try again later'),
@@ -50,6 +134,7 @@ const adminAuthLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator,
+    store: getStore('admin_auth'),
     handler: (_req, res) => {
         res.status(429).json(
             ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many admin authentication attempts, please try again later'),
@@ -63,6 +148,7 @@ const chatWriteLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: userAwareKeyGenerator,
+    store: getStore('chat'),
     handler: (_req, res) => {
         res.status(429).json(
             ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many chat actions, please try again later'),
@@ -76,6 +162,7 @@ const uploadLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: userAwareKeyGenerator,
+    store: getStore('upload'),
     handler: (_req, res) => {
         res.status(429).json(
             ApiResponse.error('RATE_LIMIT_EXCEEDED', 'Too many uploads, please try again later'),

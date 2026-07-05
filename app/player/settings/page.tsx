@@ -38,6 +38,95 @@ const keys = {
   notifications: "goalix-player-browser-notifications",
 };
 
+const settingsCopy = {
+  en: {
+    player: "Player",
+    title: "Player Settings",
+    description: "Tune the dashboard behavior on this device.",
+    home: "Home",
+    settings: "Settings",
+    savedBrowser: "Preferences are saved for this browser.",
+    language: "Language",
+    english: "English",
+    arabic: "Arabic",
+    englishDescription: "English labels and left-to-right layout.",
+    arabicDescription: "Arabic labels and right-to-left layout.",
+    theme: "Theme",
+    light: "Light",
+    dark: "Dark",
+    lightDescription: "Brighter surfaces for daytime use.",
+    darkDescription: "Darker surfaces for low-light sessions.",
+    density: "Density",
+    comfortable: "Comfortable",
+    compact: "Compact",
+    comfortableDescription: "More breathing room between dashboard elements.",
+    compactDescription: "Tighter spacing for scanning more data at once.",
+    motion: "Motion",
+    fullMotion: "Full motion",
+    reducedMotion: "Reduced motion",
+    fullMotionDescription: "Keep transitions and animated loaders enabled.",
+    reducedMotionDescription: "Minimize transitions across the player dashboard.",
+    focusMode: "Focus Mode",
+    standard: "Standard",
+    focused: "Focused",
+    standardDescription: "Show all dashboard panels and sidebar extras.",
+    focusedDescription: "Hide non-essential sidebar promo content.",
+    browserNotifications: "Browser Notifications",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    permission: "Permission:",
+    notSupported: "not supported",
+    turnOff: "Turn off",
+    turnOn: "Turn on",
+    reset: "Reset",
+    focusSummary: "Focus mode",
+    standardSummary: "Standard mode",
+  },
+  ar: {
+    player: "اللاعب",
+    title: "إعدادات اللاعب",
+    description: "اضبط سلوك لوحة التحكم على هذا الجهاز.",
+    home: "الرئيسية",
+    settings: "الإعدادات",
+    savedBrowser: "يتم حفظ التفضيلات لهذا المتصفح.",
+    language: "اللغة",
+    english: "الإنجليزية",
+    arabic: "العربية",
+    englishDescription: "تسميات إنجليزية واتجاه من اليسار إلى اليمين.",
+    arabicDescription: "تسميات عربية واتجاه من اليمين إلى اليسار.",
+    theme: "الثيم",
+    light: "فاتح",
+    dark: "داكن",
+    lightDescription: "أسطح أكثر وضوحًا للاستخدام نهارًا.",
+    darkDescription: "أسطح داكنة للحصص منخفضة الإضاءة.",
+    density: "كثافة العرض",
+    comfortable: "مريح",
+    compact: "مضغوط",
+    comfortableDescription: "مساحة أكبر بين عناصر لوحة التحكم.",
+    compactDescription: "مسافات أضيق لمراجعة بيانات أكثر بسرعة.",
+    motion: "الحركة",
+    fullMotion: "حركة كاملة",
+    reducedMotion: "حركة أقل",
+    fullMotionDescription: "إبقاء الانتقالات ومؤشرات التحميل المتحركة مفعلة.",
+    reducedMotionDescription: "تقليل الانتقالات داخل لوحة اللاعب.",
+    focusMode: "وضع التركيز",
+    standard: "قياسي",
+    focused: "مركز",
+    standardDescription: "إظهار كل لوحات الداشبورد وإضافات السايد بار.",
+    focusedDescription: "إخفاء العناصر الجانبية غير الأساسية.",
+    browserNotifications: "إشعارات المتصفح",
+    enabled: "مفعلة",
+    disabled: "معطلة",
+    permission: "الصلاحية:",
+    notSupported: "غير مدعومة",
+    turnOff: "إيقاف",
+    turnOn: "تشغيل",
+    reset: "إعادة ضبط",
+    focusSummary: "وضع التركيز",
+    standardSummary: "الوضع القياسي",
+  },
+} as const;
+
 const readPreference = <T extends string>(
   key: string,
   allowed: readonly T[],
@@ -136,6 +225,7 @@ export default function PlayerSettingsPage() {
         : "unsupported";
     });
 
+  const t = settingsCopy[language];
   const dashboardSettings = useMemo(
     () => ({ language, theme, density, motion, focusMode }),
     [density, focusMode, language, motion, theme],
@@ -178,21 +268,21 @@ export default function PlayerSettingsPage() {
   };
 
   const summary = [
-    language === "ar" ? "Arabic" : "English",
-    theme === "dark" ? "Dark" : "Light",
-    density === "compact" ? "Compact" : "Comfortable",
-    motion === "reduced" ? "Reduced motion" : "Full motion",
-    focusMode === "on" ? "Focus mode" : "Standard mode",
+    language === "ar" ? t.arabic : t.english,
+    theme === "dark" ? t.dark : t.light,
+    density === "compact" ? t.compact : t.comfortable,
+    motion === "reduced" ? t.reducedMotion : t.fullMotion,
+    focusMode === "on" ? t.focusSummary : t.standardSummary,
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Player Settings"
-        description="Tune the dashboard behavior on this device."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Settings" },
+          { label: t.home, href: "/player/home" },
+          { label: t.settings },
         ]}
       />
 
@@ -200,14 +290,14 @@ export default function PlayerSettingsPage() {
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 place-items-center rounded-lg bg-cyan-400/10 text-lg font-bold text-cyan-100">
-              {getInitials(user?.fullName || "Player")}
+              {getInitials(user?.fullName || t.player)}
             </div>
             <div>
               <p className="text-lg font-semibold text-white">
-                {user?.fullName || "Player"}
+                {user?.fullName || t.player}
               </p>
               <p className="text-sm text-slate-400">
-                Preferences are saved for this browser.
+                {t.savedBrowser}
               </p>
             </div>
           </div>
@@ -226,21 +316,21 @@ export default function PlayerSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Languages className="h-4 w-4 text-cyan-300" />
-              Language
+              {t.language}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <OptionCard
               active={language === "en"}
-              title="English"
-              description="English labels and left-to-right layout."
+              title={t.english}
+              description={t.englishDescription}
               icon={Languages}
               onClick={() => setLanguage("en")}
             />
             <OptionCard
               active={language === "ar"}
-              title="Arabic"
-              description="Arabic labels and right-to-left layout."
+              title={t.arabic}
+              description={t.arabicDescription}
               icon={Languages}
               onClick={() => setLanguage("ar")}
             />
@@ -251,21 +341,21 @@ export default function PlayerSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Settings className="h-4 w-4 text-lime-300" />
-              Theme
+              {t.theme}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <OptionCard
               active={theme === "light"}
-              title="Light"
-              description="Brighter surfaces for daytime use."
+              title={t.light}
+              description={t.lightDescription}
               icon={Sun}
               onClick={() => setTheme("light")}
             />
             <OptionCard
               active={theme === "dark"}
-              title="Dark"
-              description="Darker surfaces for low-light sessions."
+              title={t.dark}
+              description={t.darkDescription}
               icon={Moon}
               onClick={() => setTheme("dark")}
             />
@@ -278,21 +368,21 @@ export default function PlayerSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Minimize2 className="h-4 w-4 text-cyan-300" />
-              Density
+              {t.density}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={density === "comfortable"}
-              title="Comfortable"
-              description="More breathing room between dashboard elements."
+              title={t.comfortable}
+              description={t.comfortableDescription}
               icon={Maximize2}
               onClick={() => setDensity("comfortable")}
             />
             <OptionCard
               active={density === "compact"}
-              title="Compact"
-              description="Tighter spacing for scanning more data at once."
+              title={t.compact}
+              description={t.compactDescription}
               icon={Minimize2}
               onClick={() => setDensity("compact")}
             />
@@ -303,21 +393,21 @@ export default function PlayerSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Move className="h-4 w-4 text-amber-300" />
-              Motion
+              {t.motion}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={motion === "full"}
-              title="Full motion"
-              description="Keep transitions and animated loaders enabled."
+              title={t.fullMotion}
+              description={t.fullMotionDescription}
               icon={Sparkles}
               onClick={() => setMotion("full")}
             />
             <OptionCard
               active={motion === "reduced"}
-              title="Reduced motion"
-              description="Minimize transitions across the player dashboard."
+              title={t.reducedMotion}
+              description={t.reducedMotionDescription}
               icon={ZapOff}
               onClick={() => setMotion("reduced")}
             />
@@ -328,21 +418,21 @@ export default function PlayerSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <PanelLeftClose className="h-4 w-4 text-lime-300" />
-              Focus Mode
+              {t.focusMode}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={focusMode === "off"}
-              title="Standard"
-              description="Show all dashboard panels and sidebar extras."
+              title={t.standard}
+              description={t.standardDescription}
               icon={Settings}
               onClick={() => setFocusMode("off")}
             />
             <OptionCard
               active={focusMode === "on"}
-              title="Focused"
-              description="Hide non-essential sidebar promo content."
+              title={t.focused}
+              description={t.focusedDescription}
               icon={PanelLeftClose}
               onClick={() => setFocusMode("on")}
             />
@@ -354,18 +444,18 @@ export default function PlayerSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Bell className="h-4 w-4 text-amber-300" />
-            Browser Notifications
+            {t.browserNotifications}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-white">
-              {browserNotifications ? "Enabled" : "Disabled"}
+              {browserNotifications ? t.enabled : t.disabled}
             </p>
             <p className="mt-1 text-sm text-slate-400">
-              Permission:{" "}
+              {t.permission}{" "}
               {notificationPermission === "unsupported"
-                ? "not supported"
+                ? t.notSupported
                 : notificationPermission}
             </p>
           </div>
@@ -376,11 +466,11 @@ export default function PlayerSettingsPage() {
               onClick={toggleBrowserNotifications}
               disabled={notificationPermission === "unsupported"}
             >
-              {browserNotifications ? "Turn off" : "Turn on"}
+              {browserNotifications ? t.turnOff : t.turnOn}
             </Button>
             <Button type="button" variant="outline" onClick={resetPreferences}>
               <RotateCcw className="h-4 w-4" />
-              Reset
+              {t.reset}
             </Button>
           </div>
         </CardContent>

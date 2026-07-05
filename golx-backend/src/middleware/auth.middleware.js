@@ -123,6 +123,9 @@ const authenticateAccessToken = async (token, { allowMfaSetup = false } = {}) =>
     }
 
     const decoded = verifyAccessToken(token);
+    if (decoded.purpose === '2fa') {
+        throw new UnauthorizedError('Invalid token purpose');
+    }
     await assertActiveAccessSession(decoded);
     const activeUser = await assertActiveAuthUser(decoded);
     const mfaRequired = mfaEnforcedRoles.has(activeUser.role) && !activeUser.totp_enabled;
@@ -186,6 +189,10 @@ const optionalAuth = (req, _res, next) => {
 
     try {
         const decoded = verifyAccessToken(token);
+        if (decoded.purpose === '2fa') {
+            req.user = null;
+            return next();
+        }
         req.user = createAbility({
             userId: decoded.userId,
             role: decoded.role,

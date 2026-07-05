@@ -50,6 +50,7 @@ import {
   useUpsertTrainingEvaluationsMutation,
 } from "@/lib/store/api/calendarApi";
 import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import type { TrainingParticipant } from "@/lib/store/api/calendarApi";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
@@ -178,7 +179,60 @@ const initialEvaluationMode = (): "all" | "search" => {
     : "all";
 };
 
+const trainingDetailCopy = {
+  en: {
+    evaluationView: "Evaluation View",
+    attendedReady: "{count} attended players ready for review.",
+    published: "published",
+    saveAll: "Save All",
+    publishTrainingEvaluations: "Publish Training Evaluations",
+    allPlayers: "All players",
+    searchPlayer: "Search player",
+    searchAttendedPlayers: "Search attended players",
+    noPosition: "No position",
+    noGroup: "No group",
+    selectPlayerPrompt: "Select a player to open his evaluation section.",
+    overall: "Overall /10",
+    selectRating: "Select rating",
+    saveEvaluation: "Save Evaluation",
+    trainingClosesSoon: "Training closes soon",
+    closesDescription: "This training closes in {count} minutes. Current attendance times and player evaluations are being auto-saved.",
+    currentWindow: "Current window",
+    extendByMinutes: "Extend by minutes",
+    maxExtension: "Maximum total extension is one hour.",
+    attendance: "Attendance",
+    ok: "OK",
+    extendTime: "Extend Time",
+  },
+  ar: {
+    evaluationView: "عرض التقييم",
+    attendedReady: "{count} لاعب حاضر جاهز للمراجعة.",
+    published: "منشور",
+    saveAll: "حفظ الكل",
+    publishTrainingEvaluations: "نشر تقييمات التدريب",
+    allPlayers: "كل اللاعبين",
+    searchPlayer: "البحث عن لاعب",
+    searchAttendedPlayers: "ابحث في اللاعبين الحاضرين",
+    noPosition: "لا يوجد مركز",
+    noGroup: "لا توجد مجموعة",
+    selectPlayerPrompt: "اختر لاعبًا لفتح قسم التقييم الخاص به.",
+    overall: "الإجمالي /10",
+    selectRating: "اختر التقييم",
+    saveEvaluation: "حفظ التقييم",
+    trainingClosesSoon: "التدريب سيغلق قريبًا",
+    closesDescription: "سيغلق هذا التدريب خلال {count} دقيقة. يتم حفظ أوقات الحضور وتقييمات اللاعبين تلقائيًا.",
+    currentWindow: "النافذة الحالية",
+    extendByMinutes: "التمديد بالدقائق",
+    maxExtension: "الحد الأقصى للتمديد ساعة واحدة.",
+    attendance: "الحضور",
+    ok: "حسنًا",
+    extendTime: "تمديد الوقت",
+  },
+} as const;
+
 export default function CoachTrainingEventPage() {
+  const language = useDashboardLanguage();
+  const t = trainingDetailCopy[language];
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
   const { can } = useCoachPermissions();
@@ -676,7 +730,7 @@ export default function CoachTrainingEventPage() {
 
           {canTakeAttendance && <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Attendance</CardTitle>
+              <CardTitle className="text-base">{t.attendance}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {participants.map((player) => (
@@ -752,17 +806,16 @@ export default function CoachTrainingEventPage() {
             <CardContent className="space-y-4 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-medium">Evaluation View</p>
+                  <p className="font-medium">{t.evaluationView}</p>
                   <p className="text-xs text-muted-foreground">
-                    {attendedPlayers.length} attended player
-                    {attendedPlayers.length === 1 ? "" : "s"} ready for review.
+                    {t.attendedReady.replace("{count}", String(attendedPlayers.length))}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     variant={allEvaluationsPublished ? "success" : "secondary"}
                   >
-                    {publishedEvaluationCount}/{attendedPlayers.length} published
+                    {publishedEvaluationCount}/{attendedPlayers.length} {t.published}
                   </Badge>
                   <Button
                     type="button"
@@ -781,7 +834,7 @@ export default function CoachTrainingEventPage() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Save All
+                    {t.saveAll}
                   </Button>
                   <Button
                     type="button"
@@ -799,7 +852,7 @@ export default function CoachTrainingEventPage() {
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    Publish Training Evaluations
+                    {t.publishTrainingEvaluations}
                   </Button>
                   <Button
                     type="button"
@@ -810,7 +863,7 @@ export default function CoachTrainingEventPage() {
                       setSelectedPlayerId("");
                     }}
                   >
-                    All players
+                    {t.allPlayers}
                   </Button>
                   <Button
                     type="button"
@@ -818,7 +871,7 @@ export default function CoachTrainingEventPage() {
                     variant={evaluationMode === "search" ? "default" : "outline"}
                     onClick={() => setEvaluationMode("search")}
                   >
-                    Search player
+                    {t.searchPlayer}
                   </Button>
                 </div>
               </div>
@@ -834,7 +887,7 @@ export default function CoachTrainingEventPage() {
                         onChange={(event) =>
                           setEvaluationSearch(event.target.value)
                         }
-                        placeholder="Search attended players"
+                        placeholder={t.searchAttendedPlayers}
                       />
                     </div>
                     <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
@@ -851,8 +904,8 @@ export default function CoachTrainingEventPage() {
                         >
                           <span className="font-medium">{player.full_name}</span>
                           <span className="mt-1 block text-xs text-muted-foreground">
-                            {player.position ?? "No position"} -{" "}
-                            {player.group_name ?? "No group"}
+                            {player.position ?? t.noPosition} -{" "}
+                            {player.group_name ?? t.noGroup}
                           </span>
                         </button>
                       ))}
@@ -860,7 +913,7 @@ export default function CoachTrainingEventPage() {
                   </div>
                   {!selectedPlayerId && (
                     <div className="flex min-h-40 items-center justify-center rounded-md border border-border/50 text-sm text-muted-foreground">
-                      Select a player to open his evaluation section.
+                      {t.selectPlayerPrompt}
                     </div>
                   )}
                 </div>
@@ -960,7 +1013,7 @@ export default function CoachTrainingEventPage() {
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                     <div className="space-y-1">
-                      <Label>Overall /10</Label>
+                      <Label>{t.overall}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -1000,7 +1053,7 @@ export default function CoachTrainingEventPage() {
                           }
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select rating" />
+                            <SelectValue placeholder={t.selectRating} />
                           </SelectTrigger>
                           <SelectContent>
                             {rating10Options.map((option) => (
@@ -1075,7 +1128,7 @@ export default function CoachTrainingEventPage() {
                         onClick={() => saveEvaluation(player)}
                       >
                         <Save className="h-4 w-4" />
-                        Save Evaluation
+                        {t.saveEvaluation}
                       </Button>
                     </div>
                   </div>
@@ -1097,17 +1150,15 @@ export default function CoachTrainingEventPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Training closes soon</DialogTitle>
+            <DialogTitle>{t.trainingClosesSoon}</DialogTitle>
             <DialogDescription>
-              This training closes in {minutesUntilClose} minute
-              {minutesUntilClose === 1 ? "" : "s"}. Current attendance times and
-              player evaluations are being auto-saved.
+              {t.closesDescription.replace("{count}", String(minutesUntilClose))}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="rounded-md border border-border/50 bg-muted/10 px-3 py-2 text-sm">
-              <p className="text-xs text-muted-foreground">Current window</p>
+              <p className="text-xs text-muted-foreground">{t.currentWindow}</p>
               <p className="mt-1 font-medium">
                 {event
                   ? `${formatTime12(event.start_datetime)} - ${formatTime12(
@@ -1118,7 +1169,7 @@ export default function CoachTrainingEventPage() {
             </div>
             {canManageTraining && (
               <div className="space-y-2">
-                <Label>Extend by minutes</Label>
+                <Label>{t.extendByMinutes}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -1129,7 +1180,7 @@ export default function CoachTrainingEventPage() {
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Maximum total extension is one hour.
+                  {t.maxExtension}
                 </p>
               </div>
             )}
@@ -1145,7 +1196,7 @@ export default function CoachTrainingEventPage() {
               {autoSaving && !extendingTraining && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              OK
+              {t.ok}
             </Button>
             {canManageTraining && (
               <Button
@@ -1157,7 +1208,7 @@ export default function CoachTrainingEventPage() {
                 {extendingTraining && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                Extend Time
+                {t.extendTime}
               </Button>
             )}
           </DialogFooter>

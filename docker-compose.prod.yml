@@ -3,14 +3,43 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
+      frontend:
+        condition: service_healthy
       api-1:
         condition: service_healthy
       api-2:
         condition: service_healthy
     ports:
       - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./ops/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ops/nginx/certs:/etc/nginx/certs:ro
+      - ./ops/nginx/acme:/var/www/certbot:ro
+
+  frontend:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3001
+      GOALIX_INTERNAL_API_URL: http://api-1:3000
+      GOALIX_ACCESS_JWT_SECRET: ${GOALIX_ACCESS_JWT_SECRET:?GOALIX_ACCESS_JWT_SECRET must match backend JWT_SECRET}
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_SOCKET_URL: ""
+    expose:
+      - "3001"
+    depends_on:
+      api-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 45s
 
   api-1: &api
     build:
@@ -25,6 +54,13 @@ services:
       BULLMQ_WORKERS_ENABLED: "false"
       BACKGROUND_AUTOMATIONS_ENABLED: "false"
       INJURY_RISK_AUTOMATION_ENABLED: "false"
+      REDIS_REQUIRED: "true"
+      QUEUE_REDIS_FAILURE_MODE: "throw"
+      PYTHON_BIN: /opt/goalix-model-venv/bin/python
+      RANKING_MODEL_DIR: /models/Ranking Model
+      INJURY_RISK_MODEL_DIR: /models
+    volumes:
+      - ./Models:/models:ro
     expose:
       - "3000"
     healthcheck:
@@ -46,6 +82,13 @@ services:
     environment:
       NODE_ENV: production
       BULLMQ_ENABLED: "true"
+      REDIS_REQUIRED: "true"
+      QUEUE_REDIS_FAILURE_MODE: "throw"
+      PYTHON_BIN: /opt/goalix-model-venv/bin/python
+      RANKING_MODEL_DIR: /models/Ranking Model
+      INJURY_RISK_MODEL_DIR: /models
+    volumes:
+      - ./Models:/models:ro
     command: ["node", "src/workers/run.js"]
 
   worker-2:

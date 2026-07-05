@@ -515,11 +515,28 @@ function ParentQrScannerDialog({
   }, [cameraActive, disabled, scannerElementId, stopJsQrLoop, submitPayload, t.cameraScanning, t.qrDetected]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (open) {
-      setStatus({ type: "idle", message: t.readyToScan });
-      void startCamera();
+      const timer = window.setTimeout(() => {
+        if (cancelled) return;
+        setStatus({ type: "idle", message: t.readyToScan });
+        void startCamera();
+      }, 0);
+
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
     } else {
-      void stopCamera();
+      const timer = window.setTimeout(() => {
+        if (!cancelled) void stopCamera();
+      }, 0);
+
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
     }
   }, [open, startCamera, stopCamera, t.readyToScan]);
 

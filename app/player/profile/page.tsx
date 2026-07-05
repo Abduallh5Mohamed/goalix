@@ -29,6 +29,7 @@ import {
   useGetPlayerProgressQuery,
 } from "@/lib/store/api/calendarApi";
 import type { PlayerProfile } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 
 type IconType = ComponentType<{ className?: string }>;
@@ -169,7 +170,179 @@ const progressValue = (value: unknown, multiplier = 1) => {
 const profileStatusVariant = (status: string | null | undefined) =>
   status === "complete" ? ("success" as const) : ("warning" as const);
 
-function InfoRow({ label, value, icon: Icon }: InfoItem) {
+const profileCopy = {
+  en: {
+    player: "Player",
+    notSet: "Not set",
+    title: "My Profile",
+    description: "Your full live player profile from the academy database.",
+    home: "Home",
+    profile: "Profile",
+    loadWarning:
+      "Some profile data could not load from the backend. Anything shown here is still live data that was available.",
+    loading: "Loading your full player profile...",
+    noAssignment: "No academy assignment set",
+    code: "Code",
+    age: "Age",
+    foot: "Foot",
+    level: "Level",
+    attendance: "Attendance",
+    training: "Training",
+    matches: "Matches",
+    complete: "Complete",
+    incomplete: "Incomplete",
+    profileCompletion: "Profile Completion",
+    trainingsAttended: "Trainings Attended",
+    fromLiveAttendance: "From live attendance",
+    matchesPlayed: "Matches Played",
+    goals: "goals",
+    assists: "assists",
+    monthlyMinutes: "Monthly Minutes",
+    personalData: "Personal Data",
+    academyData: "Academy Data",
+    attendanceQr: "Attendance QR",
+    loadingQr: "Loading QR...",
+    qrUnavailable: "Attendance QR is not available yet.",
+    contactData: "Contact Data",
+    completeFields: "Complete Profile Fields",
+    noCompleteFields:
+      "No complete profile fields have been filled for this player yet.",
+    progressSummary: "Progress Summary",
+    monthlySummary: "Monthly Progress Summary",
+    noMonthlySummary: "No monthly progress summary has been generated yet.",
+    coachNotes: "Coach Profile Notes",
+    additionalDetails: "Additional Details",
+    noAdditionalDetails: "No additional profile details are available yet.",
+    labels: {
+      fullName: "Full Name",
+      playerCode: "Player Code",
+      dateOfBirth: "Date of Birth",
+      mainPosition: "Main Position",
+      preferredFoot: "Preferred Foot",
+      height: "Height",
+      weight: "Weight",
+      branch: "Branch",
+      group: "Group",
+      profileStatus: "Profile Status",
+      completedAt: "Completed At",
+      joined: "Joined",
+      createdAt: "Created At",
+      username: "Username",
+      accountPhone: "Account Phone",
+      playerPhone: "Player Phone",
+      guardianName: "Guardian Name",
+      guardianPhone: "Guardian Phone",
+      address: "Address",
+      gender: "Gender",
+      nationality: "Nationality",
+      guardianRelation: "Guardian Relation",
+      latestMeasurement: "Latest Measurement",
+      bmi: "BMI",
+      strengths: "Strengths",
+      weaknesses: "Weaknesses",
+      coachNotes: "Coach Notes",
+      improvementNotes: "Improvement Notes",
+      developmentPlan: "Development Plan",
+      recommendedPosition: "Recommended Position",
+      finalNotes: "Final Notes",
+      medicalNotes: "Medical Notes",
+      injuryHistory: "Injury History",
+      generalNotes: "General Notes",
+      trainingAttendance: "Training Attendance",
+      matchAttendance: "Match Attendance",
+      averageTraining: "Average Training",
+      averageMatch: "Average Match",
+      yellowCards: "Yellow Cards",
+      redCards: "Red Cards",
+    },
+  },
+  ar: {
+    player: "لاعب",
+    notSet: "غير محدد",
+    title: "ملفي الشخصي",
+    description: "ملفك الكامل المباشر من قاعدة بيانات الأكاديمية.",
+    home: "الرئيسية",
+    profile: "الملف الشخصي",
+    loadWarning:
+      "تعذر تحميل بعض بيانات الملف الشخصي من الباك إند. أي بيانات ظاهرة هنا هي بيانات مباشرة كانت متاحة.",
+    loading: "جاري تحميل ملف اللاعب الكامل...",
+    noAssignment: "لا يوجد تعيين أكاديمي",
+    code: "الكود",
+    age: "العمر",
+    foot: "القدم",
+    level: "المستوى",
+    attendance: "الحضور",
+    training: "التدريب",
+    matches: "المباريات",
+    complete: "مكتمل",
+    incomplete: "غير مكتمل",
+    profileCompletion: "اكتمال الملف",
+    trainingsAttended: "التدريبات التي حضرتها",
+    fromLiveAttendance: "من الحضور المباشر",
+    matchesPlayed: "المباريات الملعوبة",
+    goals: "أهداف",
+    assists: "تمريرات حاسمة",
+    monthlyMinutes: "دقائق الشهر",
+    personalData: "البيانات الشخصية",
+    academyData: "بيانات الأكاديمية",
+    attendanceQr: "QR الحضور",
+    loadingQr: "جاري تحميل QR...",
+    qrUnavailable: "QR الحضور غير متاح حتى الآن.",
+    contactData: "بيانات التواصل",
+    completeFields: "حقول الملف المكتملة",
+    noCompleteFields: "لا توجد حقول ملف مكتملة لهذا اللاعب حتى الآن.",
+    progressSummary: "ملخص التقدم",
+    monthlySummary: "ملخص التقدم الشهري",
+    noMonthlySummary: "لم يتم إنشاء ملخص تقدم شهري حتى الآن.",
+    coachNotes: "ملاحظات المدرب في الملف",
+    additionalDetails: "تفاصيل إضافية",
+    noAdditionalDetails: "لا توجد تفاصيل إضافية متاحة حتى الآن.",
+    labels: {
+      fullName: "الاسم الكامل",
+      playerCode: "كود اللاعب",
+      dateOfBirth: "تاريخ الميلاد",
+      mainPosition: "المركز الأساسي",
+      preferredFoot: "القدم المفضلة",
+      height: "الطول",
+      weight: "الوزن",
+      branch: "الفرع",
+      group: "المجموعة",
+      profileStatus: "حالة الملف",
+      completedAt: "اكتمل في",
+      joined: "تاريخ الانضمام",
+      createdAt: "تاريخ الإنشاء",
+      username: "اسم المستخدم",
+      accountPhone: "هاتف الحساب",
+      playerPhone: "هاتف اللاعب",
+      guardianName: "اسم ولي الأمر",
+      guardianPhone: "هاتف ولي الأمر",
+      address: "العنوان",
+      gender: "الجنس",
+      nationality: "الجنسية",
+      guardianRelation: "صلة ولي الأمر",
+      latestMeasurement: "آخر قياس",
+      bmi: "مؤشر كتلة الجسم",
+      strengths: "نقاط القوة",
+      weaknesses: "نقاط الضعف",
+      coachNotes: "ملاحظات المدرب",
+      improvementNotes: "ملاحظات التحسين",
+      developmentPlan: "خطة التطوير",
+      recommendedPosition: "المركز المقترح",
+      finalNotes: "ملاحظات نهائية",
+      medicalNotes: "ملاحظات طبية",
+      injuryHistory: "تاريخ الإصابات",
+      generalNotes: "ملاحظات عامة",
+      trainingAttendance: "حضور التدريب",
+      matchAttendance: "حضور المباريات",
+      averageTraining: "متوسط التدريب",
+      averageMatch: "متوسط المباراة",
+      yellowCards: "بطاقات صفراء",
+      redCards: "بطاقات حمراء",
+    },
+  },
+} as const;
+
+function InfoRow({ label, value, icon: Icon, fallback = "Not set" }: InfoItem & { fallback?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.035] px-3 py-2">
       <span className="flex min-w-0 items-center gap-2 text-sm text-slate-400">
@@ -177,18 +350,18 @@ function InfoRow({ label, value, icon: Icon }: InfoItem) {
         <span className="truncate">{label}</span>
       </span>
       <span className="max-w-[60%] break-words text-right text-sm font-medium text-slate-100">
-        {value || "Not set"}
+        {value || fallback}
       </span>
     </div>
   );
 }
 
-function FieldTile({ label, value }: { label: string; value: string | null }) {
+function FieldTile({ label, value, fallback = "Not set" }: { label: string; value: string | null; fallback?: string }) {
   return (
     <div className="rounded-lg bg-white/[0.035] p-3">
       <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
       <p className="mt-2 break-words text-sm leading-6 text-slate-100">
-        {value || "Not set"}
+        {value || fallback}
       </p>
     </div>
   );
@@ -203,6 +376,8 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export default function PlayerProfilePage() {
+  const language = useDashboardLanguage();
+  const copy = profileCopy[language];
   const profileQuery = useGetPlayerProfileQuery();
   const progressQuery = useGetPlayerProgressQuery();
   const attendanceQrQuery = useGetPlayerAttendanceQrQuery();
@@ -213,7 +388,7 @@ export default function PlayerProfilePage() {
   const isLoading = profileQuery.isLoading || progressQuery.isLoading;
   const hasError = profileQuery.isError;
 
-  const playerName = profile?.full_name || progress?.playerName || "Player";
+  const playerName = profile?.full_name || progress?.playerName || copy.player;
   const mainPosition =
     profileValue(profile, ["main_position", "main position"]) ||
     profile?.position ||
@@ -236,62 +411,62 @@ export default function PlayerProfilePage() {
   );
 
   const personalInfo: InfoItem[] = [
-    { label: "Full Name", value: profile?.full_name || null, icon: User },
-    { label: "Player Code", value: textValue(profile?.player_code), icon: IdCard },
-    { label: "Date of Birth", value: safeDate(profile?.date_of_birth), icon: Calendar },
-    { label: "Age", value: age, icon: Clock },
-    { label: "Main Position", value: mainPosition, icon: ShieldCheck },
-    { label: "Preferred Foot", value: preferredFoot, icon: Footprints },
-    { label: "Level", value: titleCase(profile?.level), icon: Trophy },
-    { label: "Height", value: height, icon: Activity },
-    { label: "Weight", value: weight, icon: Heart },
+    { label: copy.labels.fullName, value: profile?.full_name || null, icon: User },
+    { label: copy.labels.playerCode, value: textValue(profile?.player_code), icon: IdCard },
+    { label: copy.labels.dateOfBirth, value: safeDate(profile?.date_of_birth), icon: Calendar },
+    { label: copy.age, value: age, icon: Clock },
+    { label: copy.labels.mainPosition, value: mainPosition, icon: ShieldCheck },
+    { label: copy.labels.preferredFoot, value: preferredFoot, icon: Footprints },
+    { label: copy.level, value: titleCase(profile?.level || copy.notSet), icon: Trophy },
+    { label: copy.labels.height, value: height, icon: Activity },
+    { label: copy.labels.weight, value: weight, icon: Heart },
   ];
 
   const academyInfo: InfoItem[] = [
-    { label: "Branch", value: profile?.branch_name || null, icon: MapPin },
-    { label: "Group", value: profile?.group_name || null, icon: User },
-    { label: "Profile Status", value: titleCase(profile?.profile_status), icon: CheckCircle2 },
+    { label: copy.labels.branch, value: profile?.branch_name || null, icon: MapPin },
+    { label: copy.labels.group, value: profile?.group_name || null, icon: User },
+    { label: copy.labels.profileStatus, value: profile?.profile_status === "complete" ? copy.complete : copy.incomplete, icon: CheckCircle2 },
     {
-      label: "Completed At",
+      label: copy.labels.completedAt,
       value: safeDateTime(profile?.profile_completed_at),
       icon: Calendar,
     },
-    { label: "Joined", value: safeDate(profile?.date_joined), icon: Calendar },
-    { label: "Created At", value: safeDateTime(profile?.created_at), icon: Clock },
+    { label: copy.labels.joined, value: safeDate(profile?.date_joined), icon: Calendar },
+    { label: copy.labels.createdAt, value: safeDateTime(profile?.created_at), icon: Clock },
   ];
 
   const contactInfo: InfoItem[] = [
-    { label: "Username", value: profile?.username || null, icon: User },
-    { label: "Account Phone", value: profile?.account_phone || null, icon: Phone },
-    { label: "Player Phone", value: profile?.phone || null, icon: Phone },
-    { label: "Guardian Name", value: profile?.guardian_name || null, icon: Heart },
-    { label: "Guardian Phone", value: profile?.guardian_phone || null, icon: Phone },
+    { label: copy.labels.username, value: profile?.username || null, icon: User },
+    { label: copy.labels.accountPhone, value: profile?.account_phone || null, icon: Phone },
+    { label: copy.labels.playerPhone, value: profile?.phone || null, icon: Phone },
+    { label: copy.labels.guardianName, value: profile?.guardian_name || null, icon: Heart },
+    { label: copy.labels.guardianPhone, value: profile?.guardian_phone || null, icon: Phone },
   ];
 
   const additionalFields = [
-    { label: "Address", value: textValue(profile?.address) },
-    { label: "Gender", value: titleCase(textValue(profile?.gender)) },
-    { label: "Nationality", value: textValue(profile?.nationality) },
+    { label: copy.labels.address, value: textValue(profile?.address) },
+    { label: copy.labels.gender, value: titleCase(textValue(profile?.gender) || copy.notSet) },
+    { label: copy.labels.nationality, value: textValue(profile?.nationality) },
     {
-      label: "Guardian Relation",
-      value: titleCase(textValue(profile?.guardian_relation)),
+      label: copy.labels.guardianRelation,
+      value: titleCase(textValue(profile?.guardian_relation) || copy.notSet),
     },
     {
-      label: "Latest Measurement",
+      label: copy.labels.latestMeasurement,
       value: safeDate(latestMeasurement?.measured_at),
     },
-    { label: "BMI", value: textValue(latestMeasurement?.bmi) },
-  ].filter((field) => field.value && field.value !== "Not set");
+    { label: copy.labels.bmi, value: textValue(latestMeasurement?.bmi) },
+  ].filter((field) => field.value && field.value !== "Not set" && field.value !== copy.notSet);
 
   const profileNotes = [
-    { label: "Strengths", value: profileValue(profile, ["strengths"]) },
-    { label: "Weaknesses", value: profileValue(profile, ["weaknesses"]) },
+    { label: copy.labels.strengths, value: profileValue(profile, ["strengths"]) },
+    { label: copy.labels.weaknesses, value: profileValue(profile, ["weaknesses"]) },
     {
-      label: "Coach Notes",
+      label: copy.labels.coachNotes,
       value: profileValue(profile, ["coach_notes", "coach notes", "coachNotes"]),
     },
     {
-      label: "Improvement Notes",
+      label: copy.labels.improvementNotes,
       value: profileValue(profile, [
         "improvement_notes",
         "improvement notes",
@@ -299,7 +474,7 @@ export default function PlayerProfilePage() {
       ]),
     },
     {
-      label: "Development Plan",
+      label: copy.labels.developmentPlan,
       value: profileValue(profile, [
         "development_plan",
         "development plan",
@@ -307,7 +482,7 @@ export default function PlayerProfilePage() {
       ]),
     },
     {
-      label: "Recommended Position",
+      label: copy.labels.recommendedPosition,
       value: profileValue(profile, [
         "recommended_position",
         "recommended position",
@@ -315,19 +490,19 @@ export default function PlayerProfilePage() {
       ]),
     },
     {
-      label: "Final Notes",
+      label: copy.labels.finalNotes,
       value: profileValue(profile, ["final_notes", "final notes", "coachFinalNotes"]),
     },
     {
-      label: "Medical Notes",
+      label: copy.labels.medicalNotes,
       value: profileValue(profile, ["medical_notes", "medical notes", "medicalNotes"]),
     },
     {
-      label: "Injury History",
+      label: copy.labels.injuryHistory,
       value: profileValue(profile, ["injury_history", "injury history", "injuryHistory"]),
     },
     {
-      label: "General Notes",
+      label: copy.labels.generalNotes,
       value: profileValue(profile, ["notes", "general notes"]),
     },
   ].filter((field) => field.value);
@@ -338,19 +513,18 @@ export default function PlayerProfilePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Profile"
-        description="Your full live player profile from the academy database."
+        title={copy.title}
+        description={copy.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Profile" },
+          { label: copy.home, href: "/player/home" },
+          { label: copy.profile },
         ]}
       />
 
       {hasError && (
         <Card className="border-amber-400/30 bg-amber-500/10 shadow-none">
           <CardContent className="p-4 text-sm text-amber-100">
-            Some profile data could not load from the backend. Anything shown
-            here is still live data that was available.
+            {copy.loadWarning}
           </CardContent>
         </Card>
       )}
@@ -359,7 +533,7 @@ export default function PlayerProfilePage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading your full player profile...
+            {copy.loading}
           </CardContent>
         </Card>
       ) : (
@@ -384,24 +558,24 @@ export default function PlayerProfilePage() {
                       {playerName}
                     </h2>
                     <Badge variant={profileStatusVariant(profile?.profile_status)}>
-                      {titleCase(profile?.profile_status)}
+                      {profile?.profile_status === "complete" ? copy.complete : copy.incomplete}
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm text-slate-400">
                     {[mainPosition, profile?.group_name, profile?.branch_name]
                       .filter(Boolean)
-                      .join(" | ") || "No academy assignment set"}
+                      .join(" | ") || copy.noAssignment}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {profile?.player_code && (
-                      <Badge variant="outline">Code {profile.player_code}</Badge>
+                      <Badge variant="outline">{copy.code} {profile.player_code}</Badge>
                     )}
-                    {age && <Badge variant="secondary">Age {age}</Badge>}
+                    {age && <Badge variant="secondary">{copy.age} {age}</Badge>}
                     {preferredFoot && (
-                      <Badge variant="outline">{preferredFoot} Foot</Badge>
+                      <Badge variant="outline">{preferredFoot} {copy.foot}</Badge>
                     )}
                     {profile?.level && (
-                      <Badge variant="info">Level {titleCase(profile.level)}</Badge>
+                      <Badge variant="info">{copy.level} {titleCase(profile.level)}</Badge>
                     )}
                   </div>
                 </div>
@@ -411,19 +585,19 @@ export default function PlayerProfilePage() {
                     <p className="text-xl font-semibold text-cyan-200">
                       {percentText(progress?.attendancePercentage)}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">Attendance</p>
+                    <p className="mt-1 text-xs text-slate-400">{copy.attendance}</p>
                   </div>
                   <div>
                     <p className="text-xl font-semibold text-lime-200">
                       {ratingText(progress?.averageTrainingRating)}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">Training</p>
+                    <p className="mt-1 text-xs text-slate-400">{copy.training}</p>
                   </div>
                   <div>
                     <p className="text-xl font-semibold text-amber-200">
                       {ratingText(progress?.averageMatchRating)}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">Matches</p>
+                    <p className="mt-1 text-xs text-slate-400">{copy.matches}</p>
                   </div>
                 </div>
               </div>
@@ -434,10 +608,10 @@ export default function PlayerProfilePage() {
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Profile Completion
+                  {copy.profileCompletion}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-white">
-                  {profile?.profile_status === "complete" ? "Complete" : "Incomplete"}
+                  {profile?.profile_status === "complete" ? copy.complete : copy.incomplete}
                 </p>
                 <Progress
                   value={profileCompletion}
@@ -453,32 +627,32 @@ export default function PlayerProfilePage() {
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Trainings Attended
+                  {copy.trainingsAttended}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-cyan-100">
                   {numberText(progress?.trainingsAttended)}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">From live attendance</p>
+                <p className="mt-2 text-sm text-slate-400">{copy.fromLiveAttendance}</p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Matches Played
+                  {copy.matchesPlayed}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-lime-100">
                   {numberText(progress?.matchesPlayed)}
                 </p>
                 <p className="mt-2 text-sm text-slate-400">
-                  {numberText(progress?.goals)} goals |{" "}
-                  {numberText(progress?.assists)} assists
+                  {numberText(progress?.goals)} {copy.goals} |{" "}
+                  {numberText(progress?.assists)} {copy.assists}
                 </p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardContent className="p-4">
                 <p className="text-xs font-semibold uppercase text-slate-500">
-                  Monthly Minutes
+                  {copy.monthlyMinutes}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-amber-100">
                   {numberText(progress?.monthlyMinutesPlayed)}
@@ -496,12 +670,12 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <User className="h-4 w-4 text-cyan-300" />
-                  Personal Data
+                  {copy.personalData}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {personalInfo.map((item) => (
-                  <InfoRow key={item.label} {...item} />
+                  <InfoRow key={item.label} {...item} fallback={copy.notSet} />
                 ))}
               </CardContent>
             </Card>
@@ -510,12 +684,12 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <ShieldCheck className="h-4 w-4 text-lime-300" />
-                  Academy Data
+                  {copy.academyData}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {academyInfo.map((item) => (
-                  <InfoRow key={item.label} {...item} />
+                  <InfoRow key={item.label} {...item} fallback={copy.notSet} />
                 ))}
               </CardContent>
             </Card>
@@ -524,21 +698,21 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <QrCode className="h-4 w-4 text-cyan-300" />
-                  Attendance QR
+                  {copy.attendanceQr}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {attendanceQrQuery.isLoading ? (
                   <div className="flex items-center gap-2 rounded-lg bg-white/[0.035] p-4 text-sm text-slate-300">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading QR...
+                    {copy.loadingQr}
                   </div>
                 ) : attendanceQr?.qrCodeDataUrl ? (
                   <>
                     <div className="mx-auto flex aspect-square max-w-56 items-center justify-center rounded-lg bg-white p-3">
                       <Image
                         src={attendanceQr.qrCodeDataUrl}
-                        alt="Attendance QR"
+                        alt={copy.attendanceQr}
                         width={220}
                         height={220}
                         unoptimized
@@ -549,10 +723,11 @@ export default function PlayerProfilePage() {
                       label="Player Code"
                       value={attendanceQr.playerCode || profile?.player_code || null}
                       icon={IdCard}
+                      fallback={copy.notSet}
                     />
                   </>
                 ) : (
-                  <EmptyState text="Attendance QR is not available yet." />
+                  <EmptyState text={copy.qrUnavailable} />
                 )}
               </CardContent>
             </Card>
@@ -561,12 +736,12 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Phone className="h-4 w-4 text-amber-300" />
-                  Contact Data
+                  {copy.contactData}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {contactInfo.map((item) => (
-                  <InfoRow key={item.label} {...item} />
+                  <InfoRow key={item.label} {...item} fallback={copy.notSet} />
                 ))}
               </CardContent>
             </Card>
@@ -577,7 +752,7 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4 text-cyan-300" />
-                  Complete Profile Fields
+                  {copy.completeFields}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -588,11 +763,12 @@ export default function PlayerProfilePage() {
                         key={`${field.key}-${field.label}`}
                         label={field.label || titleCase(field.key)}
                         value={textValue(field.value)}
+                        fallback={copy.notSet}
                       />
                     ))}
                   </div>
                 ) : (
-                  <EmptyState text="No complete profile fields have been filled for this player yet." />
+                  <EmptyState text={copy.noCompleteFields} />
                 )}
               </CardContent>
             </Card>
@@ -601,43 +777,49 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Activity className="h-4 w-4 text-lime-300" />
-                  Progress Summary
+                  {copy.progressSummary}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FieldTile
-                    label="Training Attendance"
+                    label={copy.labels.trainingAttendance}
                     value={`${numberText(progress?.trainingsAttended)}/${numberText(progress?.trainingsRecorded)}`}
+                    fallback={copy.notSet}
                   />
                   <FieldTile
-                    label="Match Attendance"
+                    label={copy.labels.matchAttendance}
                     value={`${numberText(progress?.matchesAttended)}/${numberText(progress?.matchesRecorded)}`}
+                    fallback={copy.notSet}
                   />
                   <FieldTile
-                    label="Average Training"
+                    label={copy.labels.averageTraining}
                     value={ratingText(progress?.averageTrainingRating)}
+                    fallback={copy.notSet}
                   />
                   <FieldTile
-                    label="Average Match"
+                    label={copy.labels.averageMatch}
                     value={ratingText(progress?.averageMatchRating)}
+                    fallback={copy.notSet}
                   />
                   <FieldTile
-                    label="Yellow Cards"
+                    label={copy.labels.yellowCards}
                     value={numberText(progress?.disciplineRecord?.yellowCards)}
+                    fallback={copy.notSet}
                   />
                   <FieldTile
-                    label="Red Cards"
+                    label={copy.labels.redCards}
                     value={numberText(progress?.disciplineRecord?.redCards)}
+                    fallback={copy.notSet}
                   />
                 </div>
                 <div className="rounded-lg bg-white/[0.035] p-4">
                   <p className="text-xs font-semibold uppercase text-slate-500">
-                    Monthly Progress Summary
+                    {copy.monthlySummary}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-200">
                     {progress?.monthlyProgressSummary ||
-                      "No monthly progress summary has been generated yet."}
+                      copy.noMonthlySummary}
                   </p>
                 </div>
               </CardContent>
@@ -649,7 +831,7 @@ export default function PlayerProfilePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-4 w-4 text-cyan-300" />
-                  Coach Profile Notes
+                  {copy.coachNotes}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -659,6 +841,7 @@ export default function PlayerProfilePage() {
                       key={field.label}
                       label={field.label}
                       value={field.value}
+                      fallback={copy.notSet}
                     />
                   ))}
                 </div>
@@ -670,7 +853,7 @@ export default function PlayerProfilePage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <IdCard className="h-4 w-4 text-cyan-300" />
-                Additional Details
+                {copy.additionalDetails}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -681,11 +864,12 @@ export default function PlayerProfilePage() {
                       key={field.label}
                       label={field.label}
                       value={field.value}
+                      fallback={copy.notSet}
                     />
                   ))}
                 </div>
               ) : (
-                <EmptyState text="No additional profile details are available yet." />
+                <EmptyState text={copy.noAdditionalDetails} />
               )}
             </CardContent>
           </Card>

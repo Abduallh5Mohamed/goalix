@@ -29,6 +29,7 @@ import {
   type CoachRow,
 } from "@/lib/store/api/adminApi";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { cn, getInitials } from "@/lib/utils";
 import { Cake, Check, Pencil, Search, Save, ShieldCheck, Trash2, Users, X } from "lucide-react";
 
@@ -42,15 +43,146 @@ const fallbackRoleOptions: Array<CoachAssignmentRoleDefinition> = [
   { value: "assistant_coach", label: "Assistant coach", description: "", permissions: [] },
 ];
 
+const assignCoachCopy = {
+  en: {
+    roles: {
+      head_coach: "Head coach",
+      assistant_coach: "Assistant coach",
+      coach: "Coach",
+    },
+    selectAccessError: "Select at least one group or birth year access option.",
+    saveError: "Could not save coach access. Please review the selected branch and access list.",
+    removeError: "Could not remove coach access for this branch.",
+    pageTitle: "Assign Coach",
+    pageDescription: "Assign coach access by branch, groups, birth years, or both.",
+    dashboard: "Dashboard",
+    coaches: "Coaches",
+    coachAccess: "Coach Access",
+    selectCoach: "Select Coach",
+    chooseCoach: "Choose a coach...",
+    selectBranch: "Select Branch",
+    chooseBranch: "Choose a branch...",
+    assignmentRole: "Assignment Role",
+    permissions: "permissions",
+    backendEnforced: "Enforced by the backend for this branch and its selected groups or birth years.",
+    groupsAccess: "Groups Access",
+    groupsAccessDescription: "Choose all or selected groups.",
+    birthdaysAccess: "Birthdays Access",
+    birthdaysAccessDescription: "Choose all or selected birth years.",
+    branchFallback: "branch",
+    groupsIn: "Groups in {branch}",
+    birthdaysIn: "Birthdays in {branch}",
+    allGroupsSelected: "All groups selected",
+    allBirthdaysSelected: "All birthdays selected",
+    selected: "selected",
+    allGroups: "All groups",
+    allBirthdays: "All birthdays",
+    searchGroups: "Search groups...",
+    searchBirthdays: "Search birthdays...",
+    loadingGroups: "Loading groups...",
+    loadingBirthdays: "Loading birthdays...",
+    noBirthYear: "No birth year",
+    noGroups: "No groups found for this branch.",
+    noBirthdays: "No birthdays found for this branch.",
+    to: "to",
+    saving: "Saving...",
+    updateAssignment: "Update Assignment",
+    assignCoach: "Assign Coach",
+    removing: "Removing...",
+    unassign: "Unassign",
+    assignedCoaches: "Assigned Coaches",
+    searchAssigned: "Search assigned coaches...",
+    assigned: "Assigned",
+    unassigned: "Unassigned",
+    update: "Update",
+    noAssigned: "No assigned coaches found.",
+    allCoaches: "All Coaches",
+    profile: "Profile",
+    loadingAccess: "Loading current access...",
+    runtimeEntries: "{count} runtime group entries in {branch}.",
+    noAccess: "No access assigned in {branch}.",
+    thisBranch: "this branch",
+  },
+  ar: {
+    roles: {
+      head_coach: "المدرب الرئيسي",
+      assistant_coach: "المدرب المساعد",
+      coach: "مدرب",
+    },
+    selectAccessError: "اختر صلاحية مجموعة واحدة أو سنة ميلاد واحدة على الأقل.",
+    saveError: "تعذر حفظ صلاحيات المدرب. راجع الفرع وقائمة الصلاحيات المختارة.",
+    removeError: "تعذر إزالة صلاحية المدرب لهذا الفرع.",
+    pageTitle: "تعيين مدرب",
+    pageDescription: "تعيين صلاحيات المدرب حسب الفرع أو المجموعات أو سنوات الميلاد أو كلاهما.",
+    dashboard: "لوحة التحكم",
+    coaches: "المدربون",
+    coachAccess: "صلاحيات المدرب",
+    selectCoach: "اختر المدرب",
+    chooseCoach: "اختر مدربًا...",
+    selectBranch: "اختر الفرع",
+    chooseBranch: "اختر فرعًا...",
+    assignmentRole: "دور التعيين",
+    permissions: "الصلاحيات",
+    backendEnforced: "يتم فرضها من الباك لهذا الفرع والمجموعات أو سنوات الميلاد المحددة.",
+    groupsAccess: "صلاحيات المجموعات",
+    groupsAccessDescription: "اختر كل المجموعات أو مجموعات محددة.",
+    birthdaysAccess: "صلاحيات سنوات الميلاد",
+    birthdaysAccessDescription: "اختر كل سنوات الميلاد أو سنوات محددة.",
+    branchFallback: "فرع",
+    groupsIn: "المجموعات في {branch}",
+    birthdaysIn: "سنوات الميلاد في {branch}",
+    allGroupsSelected: "كل المجموعات مختارة",
+    allBirthdaysSelected: "كل سنوات الميلاد مختارة",
+    selected: "مختارة",
+    allGroups: "كل المجموعات",
+    allBirthdays: "كل سنوات الميلاد",
+    searchGroups: "ابحث في المجموعات...",
+    searchBirthdays: "ابحث في سنوات الميلاد...",
+    loadingGroups: "جاري تحميل المجموعات...",
+    loadingBirthdays: "جاري تحميل سنوات الميلاد...",
+    noBirthYear: "لا توجد سنة ميلاد",
+    noGroups: "لا توجد مجموعات لهذا الفرع.",
+    noBirthdays: "لا توجد سنوات ميلاد لهذا الفرع.",
+    to: "إلى",
+    saving: "جاري الحفظ...",
+    updateAssignment: "تحديث التعيين",
+    assignCoach: "تعيين المدرب",
+    removing: "جاري الإزالة...",
+    unassign: "إلغاء التعيين",
+    assignedCoaches: "المدربون المعينون",
+    searchAssigned: "ابحث في المدربين المعينين...",
+    assigned: "معين",
+    unassigned: "غير معين",
+    update: "تحديث",
+    noAssigned: "لا يوجد مدربون معينون.",
+    allCoaches: "كل المدربين",
+    profile: "الملف",
+    loadingAccess: "جاري تحميل الصلاحية الحالية...",
+    runtimeEntries: "{count} مدخلات مجموعات تشغيلية في {branch}.",
+    noAccess: "لا توجد صلاحية معينة في {branch}.",
+    thisBranch: "هذا الفرع",
+  },
+} as const;
+
+type AssignCoachCopy = (typeof assignCoachCopy)[keyof typeof assignCoachCopy];
+
 const roleLabel = (
   value?: string | null,
-  options: CoachAssignmentRoleDefinition[] = fallbackRoleOptions
-) => options.find((option) => option.value === value)?.label ?? value ?? "Coach";
+  options: CoachAssignmentRoleDefinition[] = fallbackRoleOptions,
+  t?: AssignCoachCopy,
+) => {
+  if (value && t && value in t.roles) {
+    return t.roles[value as keyof typeof t.roles];
+  }
+  return options.find((option) => option.value === value)?.label ?? value ?? t?.roles.coach ?? "Coach";
+};
 
-const getCoachLabel = (coach: CoachRow, options: CoachAssignmentRoleDefinition[]) =>
-  `${coach.full_name}${coach.specialization ? ` - ${roleLabel(coach.specialization, options)}` : ""}`;
+const getCoachLabel = (coach: CoachRow, options: CoachAssignmentRoleDefinition[], t: AssignCoachCopy) =>
+  `${coach.full_name}${coach.specialization ? ` - ${roleLabel(coach.specialization, options, t)}` : ""}`;
 
 export default function AssignCoachPage() {
+  const language = useDashboardLanguage();
+  const t = assignCoachCopy[language];
   const [selectedCoach, setSelectedCoach] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [role, setRole] = useState<CoachAssignmentRole>("assistant_coach");
@@ -205,7 +337,7 @@ export default function AssignCoachPage() {
 
   const handleSave = async () => {
     if (!canSave) {
-      setFormError("Select at least one group or birth year access option.");
+      setFormError(t.selectAccessError);
       return;
     }
     setFormError("");
@@ -221,7 +353,7 @@ export default function AssignCoachPage() {
         birthYearIds: birthYearsEnabled && !allBirthYears ? selectedBirthYearIds : [],
       }).unwrap();
     } catch {
-      setFormError("Could not save coach access. Please review the selected branch and access list.");
+      setFormError(t.saveError);
     }
   };
 
@@ -232,7 +364,7 @@ export default function AssignCoachPage() {
       await removeAccess({ coachId, branchId }).unwrap();
       if (coachId === selectedCoach && branchId === selectedBranch) resetAccessSelection();
     } catch {
-      setFormError("Could not remove coach access for this branch.");
+      setFormError(t.removeError);
     }
   };
 
@@ -247,30 +379,30 @@ export default function AssignCoachPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Assign Coach"
-        description="Assign coach access by branch, groups, birth years, or both."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Coaches", href: "/admin/coaches" },
-          { label: "Assign Coach" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.coaches, href: "/admin/coaches" },
+          { label: t.pageTitle },
         ]}
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Coach Access</CardTitle>
+            <CardTitle className="text-base">{t.coachAccess}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Coach</label>
+                <label className="text-sm font-medium text-foreground">{t.selectCoach}</label>
                 <Select value={selectedCoach} onValueChange={(value) => { setSelectedCoach(value); setFormError(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Choose a coach..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.chooseCoach} /></SelectTrigger>
                   <SelectContent>
                     {coaches.map((coach) => (
                       <SelectItem key={coach.id} value={coach.id}>
-                        {getCoachLabel(coach, roleOptions)}
+                        {getCoachLabel(coach, roleOptions, t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -278,9 +410,9 @@ export default function AssignCoachPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Branch</label>
+                <label className="text-sm font-medium text-foreground">{t.selectBranch}</label>
                 <Select value={selectedBranch} onValueChange={handleBranchChange}>
-                  <SelectTrigger><SelectValue placeholder="Choose a branch..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.chooseBranch} /></SelectTrigger>
                   <SelectContent>
                     {(branches ?? []).map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
@@ -291,12 +423,12 @@ export default function AssignCoachPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Assignment Role</label>
+              <label className="text-sm font-medium text-foreground">{t.assignmentRole}</label>
               <Select value={role} onValueChange={(value) => setRole(value as CoachAssignmentRole)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    <SelectItem key={option.value} value={option.value}>{roleLabel(option.value, roleOptions, t)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -307,7 +439,9 @@ export default function AssignCoachPage() {
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{selectedRoleDefinition.label} permissions</p>
+                    <p className="text-sm font-semibold">
+                      {roleLabel(selectedRoleDefinition.value, roleOptions, t)} {t.permissions}
+                    </p>
                     {selectedRoleDefinition.description && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {selectedRoleDefinition.description}
@@ -334,7 +468,7 @@ export default function AssignCoachPage() {
                       ))}
                     </div>
                     <p className="mt-3 text-[11px] text-muted-foreground">
-                      Enforced by the backend for this branch and its selected groups or birth years.
+                      {t.backendEnforced}
                     </p>
                   </div>
                 </div>
@@ -352,8 +486,8 @@ export default function AssignCoachPage() {
               >
                 <Users className="h-5 w-5 text-primary" />
                 <span>
-                  <span className="block text-sm font-semibold">Groups Access</span>
-                  <span className="text-xs text-muted-foreground">Choose all or selected groups.</span>
+                  <span className="block text-sm font-semibold">{t.groupsAccess}</span>
+                  <span className="text-xs text-muted-foreground">{t.groupsAccessDescription}</span>
                 </span>
               </button>
               <button
@@ -366,8 +500,8 @@ export default function AssignCoachPage() {
               >
                 <Cake className="h-5 w-5 text-primary" />
                 <span>
-                  <span className="block text-sm font-semibold">Birthdays Access</span>
-                  <span className="text-xs text-muted-foreground">Choose all or selected birth years.</span>
+                  <span className="block text-sm font-semibold">{t.birthdaysAccess}</span>
+                  <span className="text-xs text-muted-foreground">{t.birthdaysAccessDescription}</span>
                 </span>
               </button>
             </div>
@@ -376,21 +510,25 @@ export default function AssignCoachPage() {
               <div className="space-y-3 rounded-lg border border-border/60 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">Groups in {selectedBranchRow?.name ?? "branch"}</p>
-                    <p className="text-xs text-muted-foreground">{allGroups ? "All groups selected" : `${selectedGroupIds.length} selected`}</p>
+                    <p className="text-sm font-semibold">
+                      {t.groupsIn.replace("{branch}", selectedBranchRow?.name ?? t.branchFallback)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {allGroups ? t.allGroupsSelected : `${selectedGroupIds.length} ${t.selected}`}
+                    </p>
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={allGroups} onChange={(event) => setAllGroups(event.target.checked)} className="h-4 w-4 accent-primary" />
-                    All groups
+                    {t.allGroups}
                   </label>
                 </div>
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder="Search groups..." className="pl-9" />
+                  <Input value={groupSearch} onChange={(event) => setGroupSearch(event.target.value)} placeholder={t.searchGroups} className="pl-9" />
                 </div>
                 <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                   {loadingGroups ? (
-                    <p className="py-4 text-sm text-muted-foreground">Loading groups...</p>
+                    <p className="py-4 text-sm text-muted-foreground">{t.loadingGroups}</p>
                   ) : filteredGroups.length ? (
                     filteredGroups.map((group) => (
                       <label
@@ -406,14 +544,14 @@ export default function AssignCoachPage() {
                           <span className="text-xs text-muted-foreground">
                             {group.birth_years?.length
                               ? group.birth_years.map((item) => item.label).join(", ")
-                              : group.birth_year_label ?? "No birth year"}
+                              : group.birth_year_label ?? t.noBirthYear}
                           </span>
                         </span>
                         <input type="checkbox" checked={allGroups || selectedGroupIds.includes(group.id)} onChange={() => toggleGroup(group.id)} disabled={allGroups} className="h-4 w-4 accent-primary" />
                       </label>
                     ))
                   ) : (
-                    <p className="py-4 text-sm text-muted-foreground">No groups found for this branch.</p>
+                    <p className="py-4 text-sm text-muted-foreground">{t.noGroups}</p>
                   )}
                 </div>
               </div>
@@ -423,21 +561,25 @@ export default function AssignCoachPage() {
               <div className="space-y-3 rounded-lg border border-border/60 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">Birthdays in {selectedBranchRow?.name ?? "branch"}</p>
-                    <p className="text-xs text-muted-foreground">{allBirthYears ? "All birthdays selected" : `${selectedBirthYearIds.length} selected`}</p>
+                    <p className="text-sm font-semibold">
+                      {t.birthdaysIn.replace("{branch}", selectedBranchRow?.name ?? t.branchFallback)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {allBirthYears ? t.allBirthdaysSelected : `${selectedBirthYearIds.length} ${t.selected}`}
+                    </p>
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={allBirthYears} onChange={(event) => setAllBirthYears(event.target.checked)} className="h-4 w-4 accent-primary" />
-                    All birthdays
+                    {t.allBirthdays}
                   </label>
                 </div>
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={birthYearSearch} onChange={(event) => setBirthYearSearch(event.target.value)} placeholder="Search birthdays..." className="pl-9" />
+                  <Input value={birthYearSearch} onChange={(event) => setBirthYearSearch(event.target.value)} placeholder={t.searchBirthdays} className="pl-9" />
                 </div>
                 <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                   {loadingBirthYears ? (
-                    <p className="py-4 text-sm text-muted-foreground">Loading birthdays...</p>
+                    <p className="py-4 text-sm text-muted-foreground">{t.loadingBirthdays}</p>
                   ) : filteredBirthYears.length ? (
                     filteredBirthYears.map((birthYear) => (
                       <label
@@ -450,13 +592,13 @@ export default function AssignCoachPage() {
                       >
                         <span>
                           <span className="block font-medium">{birthYear.label}</span>
-                          <span className="text-xs text-muted-foreground">{birthYear.fromYear} to {birthYear.toYear}</span>
+                          <span className="text-xs text-muted-foreground">{birthYear.fromYear} {t.to} {birthYear.toYear}</span>
                         </span>
                         <input type="checkbox" checked={allBirthYears || selectedBirthYearIds.includes(birthYear.id)} onChange={() => toggleBirthYear(birthYear.id)} disabled={allBirthYears} className="h-4 w-4 accent-primary" />
                       </label>
                     ))
                   ) : (
-                    <p className="py-4 text-sm text-muted-foreground">No birthdays found for this branch.</p>
+                    <p className="py-4 text-sm text-muted-foreground">{t.noBirthdays}</p>
                   )}
                 </div>
               </div>
@@ -467,11 +609,11 @@ export default function AssignCoachPage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button className="flex-1 gap-1.5" disabled={!canSave || saving || removing} onClick={handleSave}>
                 <Save className="h-4 w-4" />
-                {saving ? "Saving..." : activeAccess ? "Update Assignment" : "Assign Coach"}
+                {saving ? t.saving : activeAccess ? t.updateAssignment : t.assignCoach}
               </Button>
               <Button variant="outline" className="gap-1.5" disabled={!activeAccess || saving || removing} onClick={() => handleRemove()}>
                 <Trash2 className="h-4 w-4" />
-                {removing ? "Removing..." : "Unassign"}
+                {removing ? t.removing : t.unassign}
               </Button>
             </div>
           </CardContent>
@@ -480,12 +622,12 @@ export default function AssignCoachPage() {
         <div className="space-y-6">
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Assigned Coaches</CardTitle>
+              <CardTitle className="text-base">{t.assignedCoaches}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={assignedSearch} onChange={(event) => setAssignedSearch(event.target.value)} placeholder="Search assigned coaches..." className="pl-9" />
+                <Input value={assignedSearch} onChange={(event) => setAssignedSearch(event.target.value)} placeholder={t.searchAssigned} className="pl-9" />
               </div>
 
               <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
@@ -500,31 +642,31 @@ export default function AssignCoachPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{coach.full_name}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {branch.name} - {roleLabel(branch.role, roleOptions)}
+                          {branch.name} - {roleLabel(branch.role, roleOptions, t)}
                         </p>
                       </div>
-                      <Badge variant="success">Assigned</Badge>
+                      <Badge variant="success">{t.assigned}</Badge>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleEditAssigned(coach.id, branch.id)}>
                         <Pencil className="h-3.5 w-3.5" />
-                        Update
+                        {t.update}
                       </Button>
                       <Button size="sm" variant="destructive" className="gap-1.5" disabled={removing} onClick={() => handleRemove(coach.id, branch.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
-                        Unassign
+                        {t.unassign}
                       </Button>
                     </div>
                   </div>
                 ))}
-                {!assignedRows.length && <p className="py-8 text-center text-sm text-muted-foreground">No assigned coaches found.</p>}
+                {!assignedRows.length && <p className="py-8 text-center text-sm text-muted-foreground">{t.noAssigned}</p>}
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">All Coaches</CardTitle>
+              <CardTitle className="text-base">{t.allCoaches}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {coaches.map((coach) => {
@@ -549,10 +691,10 @@ export default function AssignCoachPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{coach.full_name}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          Profile: {roleLabel(coach.specialization, roleOptions)}
+                          {t.profile}: {roleLabel(coach.specialization, roleOptions, t)}
                         </p>
                       </div>
-                      <Badge variant={assigned ? "success" : "secondary"}>{assigned ? "Assigned" : "Unassigned"}</Badge>
+                      <Badge variant={assigned ? "success" : "secondary"}>{assigned ? t.assigned : t.unassigned}</Badge>
                     </div>
                   </button>
                 );
@@ -562,10 +704,12 @@ export default function AssignCoachPage() {
                   <p className="text-sm font-semibold">{selectedCoachRow.full_name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {loadingAccess
-                      ? "Loading current access..."
+                      ? t.loadingAccess
                       : activeAccess
-                        ? `${activeAccess.assignedGroups.length} runtime group entries in ${selectedBranchRow?.name ?? "this branch"}.`
-                        : `No access assigned in ${selectedBranchRow?.name ?? "this branch"}.`}
+                        ? t.runtimeEntries
+                            .replace("{count}", String(activeAccess.assignedGroups.length))
+                            .replace("{branch}", selectedBranchRow?.name ?? t.thisBranch)
+                        : t.noAccess.replace("{branch}", selectedBranchRow?.name ?? t.thisBranch)}
                   </p>
                 </div>
               )}

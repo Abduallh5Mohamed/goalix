@@ -34,6 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth, useCurrentUser } from "@/lib/auth/auth-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardBrand } from "@/components/layout/DashboardBrand";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { getInitials } from "@/lib/utils";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -146,6 +147,7 @@ function NavItem({
 }
 
 export function PortalSidebar({ role }: PortalSidebarProps) {
+  const language = useDashboardLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useCurrentUser();
   const { logout } = useAuth();
@@ -207,7 +209,7 @@ export function PortalSidebar({ role }: PortalSidebarProps) {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
         >
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          <span>{language === "ar" ? "تسجيل الخروج" : "Sign Out"}</span>
         </button>
       </div>
     </div>

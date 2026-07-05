@@ -35,10 +35,16 @@ class NotificationsService {
         await deleteCacheKeys(redis, userIds.map(unreadCountCacheKey));
     }
 
+    async _resolveRecipients(data, academyId) {
+        if (!data.userId) return this.repo.targetUsers(academyId, data.targetRole);
+
+        const recipient = await this.repo.findTargetUser(academyId, data.userId);
+        if (!recipient) throw new NotFoundError('User', data.userId);
+        return [recipient];
+    }
+
     async sendNotification(data, academyId) {
-        const recipients = data.userId
-            ? [{ user_id: data.userId }]
-            : await this.repo.targetUsers(academyId, data.targetRole);
+        const recipients = await this._resolveRecipients(data, academyId);
 
         const notifications = recipients.length
             ? await this.repo.createBulk(recipients.map((recipient) => ({
@@ -66,9 +72,11 @@ class NotificationsService {
         for (const notification of notifications) {
             await this.repo.logNotification({
                 notification_id: notification.id,
+                academy_id: academyId,
                 user_id: notification.user_id,
                 channel: data.channel,
                 status: 'sent',
+                sent_at: new Date(),
             });
         }
 

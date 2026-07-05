@@ -3,6 +3,7 @@ const createRankingsWorker = require('./ranking.worker');
 const createNotificationsWorker = require('./notification.worker');
 const createPaymentsWorker = require('./payment.worker');
 const createAiWorker = require('./ai.worker');
+const createAuditWorker = require('./audit.worker');
 
 function buildRedisConnection(redisUrl) {
     const url = new URL(redisUrl);
@@ -25,6 +26,7 @@ function startWorkers(redisConnection) {
         notifications: createNotificationsWorker(redisConnection),
         payments: createPaymentsWorker(redisConnection),
         ai: createAiWorker(redisConnection),
+        audit: createAuditWorker(redisConnection),
     };
 
     logger.info('All BullMQ workers started');

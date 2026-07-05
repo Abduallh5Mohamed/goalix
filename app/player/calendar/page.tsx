@@ -23,16 +23,139 @@ import {
   useGetPlayerCalendarEventsQuery,
   useGetPlayerMatchesQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import type { CalendarEvent, Match } from "@/lib/store/api/calendarApi";
-import { cn, formatDate, formatTime12, localDatePart, localDateTimeTimestamp } from "@/lib/utils";
+import { cn, formatTime12, localDatePart, localDateTimeTimestamp } from "@/lib/utils";
 
-const titleCase = (value: string | null | undefined) =>
-  (value || "Not set")
+type DashboardLanguage = "en" | "ar";
+
+const labelMaps: Record<DashboardLanguage, Record<string, string>> = {
+  en: {
+    absent: "Absent",
+    cancelled: "Cancelled",
+    completed: "Completed",
+    finished: "Finished",
+    injured: "Injured",
+    late: "Late",
+    match: "Match",
+    postponed: "Postponed",
+    present: "Present",
+    reserve: "Reserve",
+    scheduled: "Scheduled",
+    starter: "Starter",
+    substitute: "Substitute",
+    training: "Training",
+  },
+  ar: {
+    absent: "غائب",
+    cancelled: "ملغي",
+    completed: "مكتمل",
+    finished: "منتهي",
+    injured: "مصاب",
+    late: "متأخر",
+    match: "مباراة",
+    postponed: "مؤجل",
+    present: "حاضر",
+    reserve: "احتياطي",
+    scheduled: "مجدول",
+    starter: "أساسي",
+    substitute: "بديل",
+    training: "تدريب",
+  },
+};
+
+const titleCase = (
+  value: string | null | undefined,
+  language: DashboardLanguage,
+  fallback: string,
+) => {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase().replace(/\s+/g, "_");
+  const mapped = labelMaps[language][normalized];
+  if (mapped) return mapped;
+  return value
     .replace(/_/g, " ")
     .split(" ")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+};
+
+const calendarCopy = {
+  en: {
+    pageTitle: "Calendar",
+    pageDescription:
+      "Your visible academy events, training sessions, match reminders, and published plans.",
+    home: "Home",
+    calendar: "Calendar",
+    loading: "Loading calendar...",
+    monthOverview: "Month Overview",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    selectedDate: "Selected Date",
+    noItemsOnDate: "No training or matches on this date.",
+    focus: "Focus",
+    intensity: "Intensity",
+    notSet: "Not set",
+    notSelected: "Not selected",
+    notAssigned: "Not assigned",
+    yourPosition: "Your Position",
+    formation: "Formation",
+    yourInstructions: "Your Instructions",
+    tacticalNotes: "Tactical Notes",
+    unpublishedPlan: "Match configuration has not been published for you yet.",
+    upcomingAgenda: "Upcoming Agenda",
+    noUpcoming: "No upcoming calendar events are visible for you yet.",
+    matchReminders: "Match Reminders",
+    noReminders: "No match reminders yet.",
+    recentEvents: "Recent Events",
+    noRecent: "No recent events yet.",
+  },
+  ar: {
+    pageTitle: "التقويم",
+    pageDescription:
+      "أحداث الأكاديمية الظاهرة لك، حصص التدريب، تذكيرات المباريات، والخطط المنشورة.",
+    home: "الرئيسية",
+    calendar: "التقويم",
+    loading: "جاري تحميل التقويم...",
+    monthOverview: "نظرة الشهر",
+    previousMonth: "الشهر السابق",
+    nextMonth: "الشهر التالي",
+    selectedDate: "التاريخ المحدد",
+    noItemsOnDate: "لا توجد تدريبات أو مباريات في هذا التاريخ.",
+    focus: "التركيز",
+    intensity: "الشدة",
+    notSet: "غير محدد",
+    notSelected: "لم يتم الاختيار",
+    notAssigned: "غير معين",
+    yourPosition: "مركزك",
+    formation: "الخطة",
+    yourInstructions: "تعليماتك",
+    tacticalNotes: "ملاحظات تكتيكية",
+    unpublishedPlan: "لم يتم نشر إعدادات المباراة لك بعد.",
+    upcomingAgenda: "الأجندة القادمة",
+    noUpcoming: "لا توجد أحداث قادمة ظاهرة لك حتى الآن.",
+    matchReminders: "تذكيرات المباريات",
+    noReminders: "لا توجد تذكيرات مباريات بعد.",
+    recentEvents: "الأحداث الأخيرة",
+    noRecent: "لا توجد أحداث حديثة بعد.",
+  },
+} as const;
+
+type CalendarCopy = (typeof calendarCopy)[DashboardLanguage];
+
+const localeFor = (language: DashboardLanguage) =>
+  language === "ar" ? "ar-EG" : "en-US";
+
+const formatCalendarDate = (value: string | Date, language: DashboardLanguage) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat(localeFor(language), {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
 
 const eventTimestamp = (event: CalendarEvent) => {
   const timestamp = Date.parse(event.start_datetime ?? "");
@@ -108,22 +231,29 @@ const monthCells = (visibleMonth: Date): MonthCell[] => {
   });
 };
 
-const weekdayLabels = () => {
+const weekdayLabels = (language: DashboardLanguage) => {
   const start = new Date(2026, 5, 7);
   return Array.from({ length: 7 }, (_, index) =>
-    new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
+    new Intl.DateTimeFormat(localeFor(language), { weekday: "short" }).format(
       new Date(start.getFullYear(), start.getMonth(), start.getDate() + index),
     ),
   );
 };
 
-const monthLabel = (date: Date) =>
-  new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(date);
+const monthLabel = (date: Date, language: DashboardLanguage) =>
+  new Intl.DateTimeFormat(localeFor(language), {
+    month: "long",
+    year: "numeric",
+  }).format(date);
 
 function MonthOverview({
   items,
+  language,
+  copy,
 }: {
   items: MonthItem[];
+  language: DashboardLanguage;
+  copy: CalendarCopy;
 }) {
   const [todayKey] = useState(() => localDatePart(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -132,7 +262,7 @@ function MonthOverview({
   });
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const cells = monthCells(visibleMonth);
-  const weekDays = weekdayLabels();
+  const weekDays = weekdayLabels(language);
   const eventsByDate = useMemo(
     () =>
       items.reduce<Record<string, MonthItem[]>>((acc, item) => {
@@ -153,15 +283,15 @@ function MonthOverview({
       <CardContent className="p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-white">Month Overview</h2>
-            <p className="text-sm text-slate-400">{monthLabel(visibleMonth)}</p>
+            <h2 className="text-base font-semibold text-white">{copy.monthOverview}</h2>
+            <p className="text-sm text-slate-400">{monthLabel(visibleMonth, language)}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="icon-sm"
-              aria-label="Previous month"
+              aria-label={copy.previousMonth}
               onClick={() => moveMonth(-1)}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -170,7 +300,7 @@ function MonthOverview({
               type="button"
               variant="outline"
               size="icon-sm"
-              aria-label="Next month"
+              aria-label={copy.nextMonth}
               onClick={() => moveMonth(1)}
             >
               <ChevronRight className="h-4 w-4" />
@@ -212,7 +342,7 @@ function MonthOverview({
                         today && "bg-cyan-300 text-[#06111f]",
                       )}
                     >
-                      {new Intl.DateTimeFormat("en-US", { day: "numeric" }).format(cell.date)}
+                      {new Intl.DateTimeFormat(localeFor(language), { day: "numeric" }).format(cell.date)}
                     </span>
                     <div className="mt-2 min-h-8 space-y-1">
                       {trainings > 0 && (
@@ -237,8 +367,8 @@ function MonthOverview({
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-white">Selected Date</h3>
-                <p className="text-xs text-slate-400">{formatDate(selectedDate)}</p>
+                <h3 className="text-sm font-semibold text-white">{copy.selectedDate}</h3>
+                <p className="text-xs text-slate-400">{formatCalendarDate(selectedDate, language)}</p>
               </div>
               <Badge variant="outline">{selectedItems.length}</Badge>
             </div>
@@ -250,9 +380,11 @@ function MonthOverview({
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant={item.kind === "match" ? "warning" : "info"}>
-                            {item.kind === "match" ? "Match" : "Training"}
+                            {titleCase(item.kind, language, copy.notSet)}
                           </Badge>
-                          <Badge variant={statusVariant(item.status)}>{titleCase(item.status)}</Badge>
+                          <Badge variant={statusVariant(item.status)}>
+                            {titleCase(item.status, language, copy.notSet)}
+                          </Badge>
                         </div>
                         <p className="mt-2 font-semibold text-white">{item.title}</p>
                         <p className="mt-1 text-xs text-slate-400">
@@ -265,7 +397,7 @@ function MonthOverview({
                 ))}
               </div>
             ) : (
-              <EmptyState text="No training or matches on this date." />
+              <EmptyState text={copy.noItemsOnDate} />
             )}
           </section>
         </div>
@@ -274,7 +406,15 @@ function MonthOverview({
   );
 }
 
-function EventCard({ event }: { event: CalendarEvent }) {
+function EventCard({
+  event,
+  language,
+  copy,
+}: {
+  event: CalendarEvent;
+  language: DashboardLanguage;
+  copy: CalendarCopy;
+}) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -283,15 +423,17 @@ function EventCard({ event }: { event: CalendarEvent }) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-white">{event.title}</h3>
-              <Badge variant="outline">{titleCase(event.event_type)}</Badge>
+              <Badge variant="outline">
+                {titleCase(event.event_type, language, copy.notSet)}
+              </Badge>
               <Badge variant={statusVariant(event.status)}>
-                {titleCase(event.status)}
+                {titleCase(event.status, language, copy.notSet)}
               </Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-400">
               <span className="flex items-center gap-1">
                 <CalendarClock className="h-4 w-4" />
-                {formatDate(event.start_datetime)}
+                {formatCalendarDate(event.start_datetime, language)}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
@@ -313,19 +455,19 @@ function EventCard({ event }: { event: CalendarEvent }) {
           <div className="rounded-lg bg-white/[0.035] p-3">
             <p className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
               <Target className="h-4 w-4" />
-              Focus
+              {copy.focus}
             </p>
             <p className="mt-2 text-sm text-slate-200">
-              {event.training.training_focus || "Not set"}
+              {event.training.training_focus || copy.notSet}
             </p>
           </div>
           <div className="rounded-lg bg-white/[0.035] p-3">
             <p className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500">
               <ShieldCheck className="h-4 w-4" />
-              Intensity
+              {copy.intensity}
             </p>
             <p className="mt-2 text-sm text-slate-200">
-              {titleCase(event.training.intensity_level)}
+              {titleCase(event.training.intensity_level, language, copy.notSet)}
             </p>
           </div>
         </div>
@@ -334,7 +476,15 @@ function EventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
-function MatchReminder({ match }: { match: Match }) {
+function MatchReminder({
+  match,
+  language,
+  copy,
+}: {
+  match: Match;
+  language: DashboardLanguage;
+  copy: CalendarCopy;
+}) {
   const squad = match.squad?.[0];
   const hasPlan = Boolean(match.tactics || squad);
 
@@ -345,16 +495,18 @@ function MatchReminder({ match }: { match: Match }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-white">{match.opponent_name}</h3>
             <Badge variant={statusVariant(match.status)}>
-              {titleCase(match.status)}
+              {titleCase(match.status, language, copy.notSet)}
             </Badge>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            {formatDate(match.match_date)} | {formatTime12(match.match_time)}
+            {formatCalendarDate(match.match_date, language)} | {formatTime12(match.match_time)}
             {match.location ? ` | ${match.location}` : ""}
           </p>
         </div>
         <Badge variant={squad ? statusVariant(squad.squad_role) : "secondary"}>
-          {squad ? titleCase(squad.squad_role) : "Not selected"}
+          {squad
+            ? titleCase(squad.squad_role, language, copy.notSet)
+            : copy.notSelected}
         </Badge>
       </div>
 
@@ -364,19 +516,19 @@ function MatchReminder({ match }: { match: Match }) {
             <div className="rounded-lg bg-cyan-400/10 p-3">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase text-cyan-200">
                 <UserCheck className="h-4 w-4" />
-                Your Position
+                {copy.yourPosition}
               </p>
               <p className="mt-2 font-semibold text-white">
-                {squad?.position || "Not assigned"}
+                {squad?.position || copy.notAssigned}
               </p>
             </div>
             <div className="rounded-lg bg-lime-400/10 p-3">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase text-lime-200">
                 <ShieldCheck className="h-4 w-4" />
-                Formation
+                {copy.formation}
               </p>
               <p className="mt-2 font-semibold text-white">
-                {match.tactics?.formation || "Not set"}
+                {match.tactics?.formation || copy.notSet}
               </p>
             </div>
           </div>
@@ -385,7 +537,7 @@ function MatchReminder({ match }: { match: Match }) {
               {squad?.player_instruction && (
                 <div className="rounded-lg bg-cyan-400/10 p-3">
                   <p className="text-xs font-semibold uppercase text-cyan-200">
-                    Your Instructions
+                    {copy.yourInstructions}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-200">
                     {squad.player_instruction}
@@ -395,7 +547,7 @@ function MatchReminder({ match }: { match: Match }) {
               {match.tactics?.tactical_notes && (
                 <div className="rounded-lg bg-lime-400/10 p-3">
                   <p className="text-xs font-semibold uppercase text-lime-200">
-                    Tactical Notes
+                    {copy.tacticalNotes}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-200">
                     {match.tactics.tactical_notes}
@@ -407,7 +559,7 @@ function MatchReminder({ match }: { match: Match }) {
         </div>
       ) : (
         <p className="mt-4 rounded-lg bg-white/[0.035] p-3 text-sm text-slate-400">
-          Match configuration has not been published for you yet.
+          {copy.unpublishedPlan}
         </p>
       )}
     </div>
@@ -415,6 +567,8 @@ function MatchReminder({ match }: { match: Match }) {
 }
 
 export default function PlayerCalendarPage() {
+  const language = useDashboardLanguage();
+  const t = calendarCopy[language];
   const eventsQuery = useGetPlayerCalendarEventsQuery();
   const matchesQuery = useGetPlayerMatchesQuery();
   const events = (eventsQuery.data?.data ?? [])
@@ -466,11 +620,11 @@ export default function PlayerCalendarPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Calendar"
-        description="Your visible academy events, training sessions, match reminders, and published plans."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Calendar" },
+          { label: t.home, href: "/player/home" },
+          { label: t.calendar },
         ]}
       />
 
@@ -478,25 +632,30 @@ export default function PlayerCalendarPage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading calendar...
+            {t.loading}
           </CardContent>
         </Card>
       ) : (
         <>
-          <MonthOverview items={monthItems} />
+          <MonthOverview items={monthItems} language={language} copy={t} />
 
           <div className="grid gap-4 xl:grid-cols-[1fr_0.85fr]">
             <Card className="border-white/10 bg-white/[0.045] shadow-none">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Upcoming Agenda</CardTitle>
+                <CardTitle className="text-base">{t.upcomingAgenda}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {upcomingEvents.length ? (
                   upcomingEvents.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      language={language}
+                      copy={t}
+                    />
                   ))
                 ) : (
-                  <EmptyState text="No upcoming calendar events are visible for you yet." />
+                  <EmptyState text={t.noUpcoming} />
                 )}
               </CardContent>
             </Card>
@@ -504,22 +663,27 @@ export default function PlayerCalendarPage() {
             <div className="space-y-4">
               <Card className="border-white/10 bg-white/[0.045] shadow-none">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Match Reminders</CardTitle>
+                  <CardTitle className="text-base">{t.matchReminders}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {matchReminders.length ? (
                     matchReminders.map((match) => (
-                      <MatchReminder key={match.id} match={match} />
+                      <MatchReminder
+                        key={match.id}
+                        match={match}
+                        language={language}
+                        copy={t}
+                      />
                     ))
                   ) : (
-                    <EmptyState text="No match reminders yet." />
+                    <EmptyState text={t.noReminders} />
                   )}
                 </CardContent>
               </Card>
 
               <Card className="border-white/10 bg-white/[0.045] shadow-none">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Recent Events</CardTitle>
+                  <CardTitle className="text-base">{t.recentEvents}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {pastEvents.length ? (
@@ -531,16 +695,16 @@ export default function PlayerCalendarPage() {
                         <div>
                           <p className="font-medium text-white">{event.title}</p>
                           <p className="mt-1 text-sm text-slate-400">
-                            {formatDate(event.start_datetime)}
+                            {formatCalendarDate(event.start_datetime, language)}
                           </p>
                         </div>
                         <Badge variant={statusVariant(event.status)}>
-                          {titleCase(event.status)}
+                          {titleCase(event.status, language, t.notSet)}
                         </Badge>
                       </div>
                     ))
                   ) : (
-                    <EmptyState text="No recent events yet." />
+                    <EmptyState text={t.noRecent} />
                   )}
                 </CardContent>
               </Card>

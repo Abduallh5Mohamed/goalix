@@ -10,9 +10,38 @@ import {
   useGetCoachMatchQuery,
   useGetCoachMatchesQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
+const archiveCopy = {
+  en: {
+    title: "Finished Matches",
+    description:
+      "Review played matches with saved tactics, squad, attendance, incidents, and player stats.",
+    home: "Home",
+    matches: "Matches",
+    archive: "Archive",
+    finished: "finished",
+    toBeConfirmed: "To be confirmed",
+    loading: "Loading finished matches...",
+    empty: "No finished matches yet.",
+  },
+  ar: {
+    title: "المباريات المنتهية",
+    description: "راجع المباريات الملعوبة بالتكتيك والقائمة والحضور والأحداث والإحصائيات.",
+    home: "الرئيسية",
+    matches: "المباريات",
+    archive: "الأرشيف",
+    finished: "منتهية",
+    toBeConfirmed: "سيتم التأكيد",
+    loading: "جاري تحميل المباريات المنتهية...",
+    empty: "لا توجد مباريات منتهية حتى الآن.",
+  },
+} as const;
+
 export default function CoachMatchArchivePage() {
+  const language = useDashboardLanguage();
+  const t = archiveCopy[language];
   const { data: matchesRes, isLoading } = useGetCoachMatchesQuery();
   const [selectedId, setSelectedId] = useState("");
   const matches = useMemo(() => matchesRes?.data ?? [], [matchesRes?.data]);
@@ -35,12 +64,12 @@ export default function CoachMatchArchivePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Finished Matches"
-        description="Review played matches with saved tactics, squad, attendance, incidents, and player stats."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches", href: "/coach/matches" },
-          { label: "Archive" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.matches, href: "/coach/matches" },
+          { label: t.archive },
         ]}
       />
 
@@ -66,22 +95,22 @@ export default function CoachMatchArchivePage() {
                       {formatTime12(item.match_time)}
                     </p>
                   </div>
-                  <Badge variant="success">finished</Badge>
+                  <Badge variant="success">{t.finished}</Badge>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {item.location || "To be confirmed"}
+                  {item.location || t.toBeConfirmed}
                 </p>
               </button>
             ))}
             {isLoading && (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading finished matches...
+                {t.loading}
               </p>
             )}
             {!finishedMatches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No finished matches yet.
+                {t.empty}
               </p>
             )}
           </CardContent>

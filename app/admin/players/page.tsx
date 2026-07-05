@@ -48,6 +48,7 @@ import {
   useUpdatePlayerMutation,
   type PlayerRow,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 type ApiErrorDetails = {
   data?: {
@@ -81,22 +82,175 @@ function calculateAge(birthDate: string) {
 }
 
 const GUARDIAN_RELATIONS = [
-  { value: "father", label: "Father" },
-  { value: "mother", label: "Mother" },
-  { value: "paternal_uncle", label: "Paternal Uncle" },
-  { value: "maternal_uncle", label: "Maternal Uncle" },
-  { value: "paternal_aunt", label: "Paternal Aunt" },
-  { value: "maternal_aunt", label: "Maternal Aunt" },
-  { value: "grandfather", label: "Grandfather" },
-  { value: "grandmother", label: "Grandmother" },
-  { value: "older_brother", label: "Older Brother" },
-  { value: "older_sister", label: "Older Sister" },
-  { value: "legal_guardian", label: "Legal Guardian" },
-  { value: "other", label: "Other" },
-];
+  { value: "father", label: { en: "Father", ar: "الأب" } },
+  { value: "mother", label: { en: "Mother", ar: "الأم" } },
+  { value: "paternal_uncle", label: { en: "Paternal Uncle", ar: "العم" } },
+  { value: "maternal_uncle", label: { en: "Maternal Uncle", ar: "الخال" } },
+  { value: "paternal_aunt", label: { en: "Paternal Aunt", ar: "العمة" } },
+  { value: "maternal_aunt", label: { en: "Maternal Aunt", ar: "الخالة" } },
+  { value: "grandfather", label: { en: "Grandfather", ar: "الجد" } },
+  { value: "grandmother", label: { en: "Grandmother", ar: "الجدة" } },
+  { value: "older_brother", label: { en: "Older Brother", ar: "الأخ الأكبر" } },
+  { value: "older_sister", label: { en: "Older Sister", ar: "الأخت الكبرى" } },
+  { value: "legal_guardian", label: { en: "Legal Guardian", ar: "ولي الأمر القانوني" } },
+  { value: "other", label: { en: "Other", ar: "أخرى" } },
+] as const;
+
+const playersCopy = {
+  en: {
+    player: "Player",
+    completeProfile: "Complete profile",
+    completeProfileRequired: "Complete profile required",
+    born: "Born",
+    noDob: "No DOB",
+    joined: "Joined",
+    level: "Level",
+    notAvailable: "N/A",
+    trend: "Trend",
+    improving: "Improving",
+    declining: "Declining",
+    stable: "Stable",
+    status: "Status",
+    inactive: "Inactive",
+    active: "Active",
+    actions: "Actions",
+    edit: "Edit",
+    activate: "Activate",
+    setInactive: "Set inactive",
+    deleteForever: "Delete forever",
+    requiredBasicsError: "Fill all required player basics.",
+    positiveNumbersError: "Height and weight must be valid positive numbers.",
+    createError: "Could not create player. Please check the entered data.",
+    deleteConfirmPrefix: "delete forever",
+    deleteConfirmError: "Type \"{expected}\" to confirm deletion.",
+    deleteError: "Could not permanently delete player.",
+    loadError: "Failed to load players.",
+    retry: "Retry",
+    playersTitle: "Players",
+    pageDescription: "View and manage all registered players.",
+    dashboard: "Dashboard",
+    addPlayer: "Add Player",
+    searchPlaceholder: "Search players...",
+    addPlayerDescription:
+      "Create the required player basics. Matching groups are assigned automatically from birth year.",
+    name: "Name",
+    birthDate: "Birth date",
+    age: "Age",
+    autoCalculated: "Auto calculated",
+    gender: "Gender",
+    chooseGender: "Choose gender...",
+    male: "Male",
+    female: "Female",
+    other: "Other",
+    height: "Height (cm)",
+    weight: "Weight (kg)",
+    preferredFoot: "Preferred Foot",
+    chooseFoot: "Choose foot...",
+    right: "Right",
+    left: "Left",
+    dateJoinedAcademy: "Date Joined Academy",
+    nationality: "Nationality",
+    phoneNumber: "Phone Number",
+    guardianName: "Guardian Name",
+    guardianNamePlaceholder: "Parent or guardian name",
+    guardianPhone: "Guardian Phone",
+    guardianPhonePlaceholder: "Parent or guardian phone",
+    guardianRelation: "Guardian Relation",
+    chooseRelation: "Choose relation",
+    username: "Username",
+    password: "Password",
+    branch: "Branch",
+    chooseBranch: "Choose branch...",
+    address: "Address",
+    close: "Close",
+    createPlayer: "Create Player",
+    deleteTitle: "Delete Player Forever",
+    deleteDescription:
+      "This permanently removes the player profile and linked player login account. Type",
+    toConfirm: "to confirm.",
+    confirmation: "Confirmation",
+    cancel: "Cancel",
+  },
+  ar: {
+    player: "اللاعب",
+    completeProfile: "الملف مكتمل",
+    completeProfileRequired: "يلزم استكمال الملف",
+    born: "تاريخ الميلاد",
+    noDob: "لا يوجد تاريخ ميلاد",
+    joined: "انضم",
+    level: "المستوى",
+    notAvailable: "غير متاح",
+    trend: "الاتجاه",
+    improving: "يتحسن",
+    declining: "يتراجع",
+    stable: "مستقر",
+    status: "الحالة",
+    inactive: "غير نشط",
+    active: "نشط",
+    actions: "الإجراءات",
+    edit: "تعديل",
+    activate: "تفعيل",
+    setInactive: "تعطيل",
+    deleteForever: "حذف نهائي",
+    requiredBasicsError: "املأ كل بيانات اللاعب الأساسية المطلوبة.",
+    positiveNumbersError: "يجب أن يكون الطول والوزن أرقامًا صحيحة موجبة.",
+    createError: "تعذر إنشاء اللاعب. راجع البيانات المدخلة.",
+    deleteConfirmPrefix: "احذف نهائيًا",
+    deleteConfirmError: "اكتب \"{expected}\" لتأكيد الحذف.",
+    deleteError: "تعذر حذف اللاعب نهائيًا.",
+    loadError: "فشل تحميل اللاعبين.",
+    retry: "إعادة المحاولة",
+    playersTitle: "اللاعبون",
+    pageDescription: "عرض وإدارة كل اللاعبين المسجلين.",
+    dashboard: "لوحة التحكم",
+    addPlayer: "إضافة لاعب",
+    searchPlaceholder: "ابحث في اللاعبين...",
+    addPlayerDescription:
+      "أنشئ بيانات اللاعب الأساسية المطلوبة. يتم تعيين المجموعات تلقائيًا حسب سنة الميلاد.",
+    name: "الاسم",
+    birthDate: "تاريخ الميلاد",
+    age: "العمر",
+    autoCalculated: "يحسب تلقائيًا",
+    gender: "النوع",
+    chooseGender: "اختر النوع...",
+    male: "ذكر",
+    female: "أنثى",
+    other: "أخرى",
+    height: "الطول (سم)",
+    weight: "الوزن (كجم)",
+    preferredFoot: "القدم المفضلة",
+    chooseFoot: "اختر القدم...",
+    right: "اليمنى",
+    left: "اليسرى",
+    dateJoinedAcademy: "تاريخ الانضمام للأكاديمية",
+    nationality: "الجنسية",
+    phoneNumber: "رقم الهاتف",
+    guardianName: "اسم ولي الأمر",
+    guardianNamePlaceholder: "اسم ولي الأمر",
+    guardianPhone: "هاتف ولي الأمر",
+    guardianPhonePlaceholder: "رقم هاتف ولي الأمر",
+    guardianRelation: "صلة ولي الأمر",
+    chooseRelation: "اختر الصلة",
+    username: "اسم المستخدم",
+    password: "كلمة المرور",
+    branch: "الفرع",
+    chooseBranch: "اختر الفرع...",
+    address: "العنوان",
+    close: "إغلاق",
+    createPlayer: "إنشاء لاعب",
+    deleteTitle: "حذف اللاعب نهائيًا",
+    deleteDescription:
+      "سيتم حذف ملف اللاعب وحساب تسجيل الدخول المرتبط به نهائيًا. اكتب",
+    toConfirm: "للتأكيد.",
+    confirmation: "التأكيد",
+    cancel: "إلغاء",
+  },
+} as const;
 
 export default function PlayersPage() {
   const router = useRouter();
+  const language = useDashboardLanguage();
+  const t = playersCopy[language];
   const [open, setOpen] = useState(false);
   const emptyCreateForm = () => ({
     fullName: "",
@@ -143,7 +297,7 @@ export default function PlayersPage() {
     () => [
       {
         key: "name",
-        header: "Player",
+        header: t.player,
         accessor: (row) => (
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
@@ -155,15 +309,15 @@ export default function PlayersPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium text-foreground">{row.full_name}</p>
                 <Badge variant={row.profile_status === "complete" ? "success" : "warning"}>
-                  {row.profile_status === "complete" ? "Complete profile" : "Complete profile required"}
+                  {row.profile_status === "complete" ? t.completeProfile : t.completeProfileRequired}
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground">
                 {row.position ?? "-"} -{" "}
                 {row.date_of_birth
-                  ? `Born ${formatDate(row.date_of_birth)}`
-                  : "No DOB"}{" "}
-                - Joined {formatDate(row.date_joined ?? row.created_at)}
+                  ? `${t.born} ${formatDate(row.date_of_birth)}`
+                  : t.noDob}{" "}
+                - {t.joined} {formatDate(row.date_joined ?? row.created_at)}
               </p>
             </div>
           </div>
@@ -173,7 +327,7 @@ export default function PlayersPage() {
       },
       {
         key: "level",
-        header: "Level",
+        header: t.level,
         accessor: (row) => (
           <Badge
             variant={
@@ -184,7 +338,7 @@ export default function PlayersPage() {
                   : "destructive"
             }
           >
-            {row.level ? `Level ${row.level}` : "N/A"}
+            {row.level ? `${t.level} ${row.level}` : t.notAvailable}
           </Badge>
         ),
         sortable: true,
@@ -192,7 +346,7 @@ export default function PlayersPage() {
       },
       {
         key: "trend",
-        header: "Trend",
+        header: t.trend,
         accessor: (row) => (
           <div className="flex items-center gap-1.5">
             {row.level === "A" ? (
@@ -204,10 +358,10 @@ export default function PlayersPage() {
             )}
             <span className="text-xs font-medium text-muted-foreground">
               {row.level === "A"
-                ? "Improving"
+                ? t.improving
                 : row.level === "D" || row.level === "F"
-                  ? "Declining"
-                  : "Stable"}
+                  ? t.declining
+                  : t.stable}
             </span>
           </div>
         ),
@@ -216,7 +370,7 @@ export default function PlayersPage() {
       },
       {
         key: "joined",
-        header: "Joined",
+        header: t.joined,
         accessor: (row) => (
           <span className="text-xs text-muted-foreground">
             {formatDate(row.date_joined ?? row.created_at)}
@@ -227,10 +381,10 @@ export default function PlayersPage() {
       },
       {
         key: "status",
-        header: "Status",
+        header: t.status,
         accessor: (row) => (
           <Badge variant={row.is_active === false ? "secondary" : "success"}>
-            {row.is_active === false ? "Inactive" : "Active"}
+            {row.is_active === false ? t.inactive : t.active}
           </Badge>
         ),
         sortable: true,
@@ -238,7 +392,7 @@ export default function PlayersPage() {
       },
       {
         key: "actions",
-        header: "Actions",
+        header: t.actions,
         className: "text-right",
         accessor: (row) => (
           <div
@@ -252,7 +406,7 @@ export default function PlayersPage() {
               onClick={() => router.push(`/admin/players/${row.id}`)}
             >
               <Pencil className="h-3.5 w-3.5" />
-              Edit
+              {t.edit}
             </Button>
             <Button
               size="sm"
@@ -271,7 +425,7 @@ export default function PlayersPage() {
               ) : (
                 <UserX className="h-3.5 w-3.5" />
               )}
-              {row.is_active === false ? "Activate" : "Set inactive"}
+              {row.is_active === false ? t.activate : t.setInactive}
             </Button>
             <Button
               size="sm"
@@ -280,13 +434,13 @@ export default function PlayersPage() {
               onClick={() => openDelete(row)}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete forever
+              {t.deleteForever}
             </Button>
           </div>
         ),
       },
     ],
-    [isUpdating, openDelete, router, updatePlayer],
+    [isUpdating, openDelete, router, t, updatePlayer],
   );
 
   const updateForm = (field: keyof typeof form, value: string) => {
@@ -318,11 +472,11 @@ export default function PlayersPage() {
       form.guardianRelation,
     ];
     if (requiredValues.some((value) => !value)) {
-      setFormError("Fill all required player basics.");
+      setFormError(t.requiredBasicsError);
       return;
     }
     if (Number(form.heightCm) <= 0 || Number(form.weightKg) <= 0) {
-      setFormError("Height and weight must be valid positive numbers.");
+      setFormError(t.positiveNumbersError);
       return;
     }
 
@@ -351,7 +505,7 @@ export default function PlayersPage() {
       setFormError(
         getApiErrorMessage(
           err,
-          "Could not create player. Please check the entered data.",
+          t.createError,
         ),
       );
     }
@@ -359,10 +513,10 @@ export default function PlayersPage() {
 
   const handleDeletePlayer = async () => {
     if (!deletePlayerRow) return;
-    const expected = `delete forever ${deletePlayerRow.full_name}`;
+    const expected = `${t.deleteConfirmPrefix} ${deletePlayerRow.full_name}`;
     setDeleteError("");
     if (deleteConfirm.trim() !== expected) {
-      setDeleteError(`Type "${expected}" to confirm deletion.`);
+      setDeleteError(t.deleteConfirmError.replace("{expected}", expected));
       return;
     }
 
@@ -372,7 +526,7 @@ export default function PlayersPage() {
       setDeleteConfirm("");
     } catch (err) {
       setDeleteError(
-        getApiErrorMessage(err, "Could not permanently delete player."),
+        getApiErrorMessage(err, t.deleteError),
       );
     }
   };
@@ -390,31 +544,31 @@ export default function PlayersPage() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p className="text-muted-foreground">Failed to load players.</p>
+        <p className="text-muted-foreground">{t.loadError}</p>
         <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
           <RefreshCw className="h-4 w-4" />
-          Retry
+          {t.retry}
         </Button>
       </div>
     );
   }
 
   const players = data?.data ?? [];
-  const deleteExpected = `delete forever ${deletePlayerRow?.full_name ?? ""}`;
+  const deleteExpected = `${t.deleteConfirmPrefix} ${deletePlayerRow?.full_name ?? ""}`;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title={`Players (${data?.pagination?.total ?? players.length})`}
-        description="View and manage all registered players."
+        title={`${t.playersTitle} (${data?.pagination?.total ?? players.length})`}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Players" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.playersTitle },
         ]}
         actions={
           <Button className="gap-1.5" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add Player
+            {t.addPlayer}
           </Button>
         }
       />
@@ -423,7 +577,7 @@ export default function PlayersPage() {
         data={players}
         columns={columns}
         searchable
-        searchPlaceholder="Search players..."
+        searchPlaceholder={t.searchPlaceholder}
         searchKey={(row) => `${row.full_name} ${row.position ?? ""}`}
         onRowClick={(row) => router.push(`/admin/players/${row.id}`)}
       />
@@ -436,10 +590,9 @@ export default function PlayersPage() {
       >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Add Player</DialogTitle>
+            <DialogTitle>{t.addPlayer}</DialogTitle>
             <DialogDescription>
-              Create the required player basics. Matching groups are assigned
-              automatically from birth year.
+              {t.addPlayerDescription}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -448,7 +601,7 @@ export default function PlayersPage() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="player-full-name">Name</Label>
+                <Label htmlFor="player-full-name">{t.name}</Label>
                 <Input
                   id="player-full-name"
                   value={form.fullName}
@@ -459,7 +612,7 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-birth-date">Birth date</Label>
+                <Label htmlFor="player-birth-date">{t.birthDate}</Label>
                 <Input
                   id="player-birth-date"
                   type="date"
@@ -471,32 +624,32 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-age">Age</Label>
+                <Label htmlFor="player-age">{t.age}</Label>
                 <Input
                   id="player-age"
                   value={calculateAge(form.birthDate)}
                   readOnly
-                  placeholder="Auto calculated"
+                  placeholder={t.autoCalculated}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Gender</Label>
+                <Label>{t.gender}</Label>
                 <Select
                   value={form.gender}
                   onValueChange={(value) => updateForm("gender", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose gender..." />
+                    <SelectValue placeholder={t.chooseGender} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="male">{t.male}</SelectItem>
+                    <SelectItem value="female">{t.female}</SelectItem>
+                    <SelectItem value="other">{t.other}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-height">Height (cm)</Label>
+                <Label htmlFor="player-height">{t.height}</Label>
                 <Input
                   id="player-height"
                   type="number"
@@ -510,7 +663,7 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-weight">Weight (kg)</Label>
+                <Label htmlFor="player-weight">{t.weight}</Label>
                 <Input
                   id="player-weight"
                   type="number"
@@ -524,22 +677,22 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Preferred Foot</Label>
+                <Label>{t.preferredFoot}</Label>
                 <Select
                   value={form.preferredFoot}
                   onValueChange={(value) => updateForm("preferredFoot", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose foot..." />
+                    <SelectValue placeholder={t.chooseFoot} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="right">Right</SelectItem>
-                    <SelectItem value="left">Left</SelectItem>
+                    <SelectItem value="right">{t.right}</SelectItem>
+                    <SelectItem value="left">{t.left}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-date-joined">Date Joined Academy</Label>
+                <Label htmlFor="player-date-joined">{t.dateJoinedAcademy}</Label>
                 <Input
                   id="player-date-joined"
                   type="date"
@@ -551,7 +704,7 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-nationality">Nationality</Label>
+                <Label htmlFor="player-nationality">{t.nationality}</Label>
                 <Input
                   id="player-nationality"
                   value={form.nationality}
@@ -562,7 +715,7 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-phone">Phone Number</Label>
+                <Label htmlFor="player-phone">{t.phoneNumber}</Label>
                 <Input
                   id="player-phone"
                   value={form.phone}
@@ -571,32 +724,32 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-guardian-name">Guardian Name</Label>
+                <Label htmlFor="player-guardian-name">{t.guardianName}</Label>
                 <Input
                   id="player-guardian-name"
                   value={form.guardianName}
                   onChange={(event) =>
                     updateForm("guardianName", event.target.value)
                   }
-                  placeholder="Parent or guardian name"
+                  placeholder={t.guardianNamePlaceholder}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-guardian-phone">Guardian Phone</Label>
+                <Label htmlFor="player-guardian-phone">{t.guardianPhone}</Label>
                 <Input
                   id="player-guardian-phone"
                   value={form.guardianPhone}
                   onChange={(event) =>
                     updateForm("guardianPhone", event.target.value)
                   }
-                  placeholder="Parent or guardian phone"
+                  placeholder={t.guardianPhonePlaceholder}
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="player-guardian-relation">
-                  Guardian Relation
+                  {t.guardianRelation}
                 </Label>
                 <Select
                   value={form.guardianRelation}
@@ -605,19 +758,19 @@ export default function PlayersPage() {
                   }
                 >
                   <SelectTrigger id="player-guardian-relation">
-                    <SelectValue placeholder="Choose relation" />
+                    <SelectValue placeholder={t.chooseRelation} />
                   </SelectTrigger>
                   <SelectContent>
                     {GUARDIAN_RELATIONS.map((relation) => (
                       <SelectItem key={relation.value} value={relation.value}>
-                        {relation.label}
+                        {relation.label[language]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-username">Username</Label>
+                <Label htmlFor="player-username">{t.username}</Label>
                 <Input
                   id="player-username"
                   value={form.username}
@@ -628,7 +781,7 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="player-password">Password</Label>
+                <Label htmlFor="player-password">{t.password}</Label>
                 <Input
                   id="player-password"
                   type="password"
@@ -640,13 +793,13 @@ export default function PlayersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Branch</Label>
+                <Label>{t.branch}</Label>
                 <Select
                   value={form.branchId}
                   onValueChange={(value) => updateForm("branchId", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose branch..." />
+                    <SelectValue placeholder={t.chooseBranch} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((branch) => (
@@ -658,7 +811,7 @@ export default function PlayersPage() {
                 </Select>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="player-address">Address</Label>
+                <Label htmlFor="player-address">{t.address}</Label>
                 <Input
                   id="player-address"
                   value={form.address}
@@ -676,7 +829,7 @@ export default function PlayersPage() {
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Close
+                {t.close}
               </Button>
               <Button
                 type="submit"
@@ -689,7 +842,7 @@ export default function PlayersPage() {
                 className="gap-2"
               >
                 {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create Player
+                {t.createPlayer}
               </Button>
             </DialogFooter>
           </form>
@@ -705,18 +858,17 @@ export default function PlayersPage() {
             <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle>Delete Player Forever</DialogTitle>
+            <DialogTitle>{t.deleteTitle}</DialogTitle>
             <DialogDescription>
-              This permanently removes the player profile and linked player
-              login account. Type{" "}
+              {t.deleteDescription}{" "}
               <span className="font-semibold text-foreground">
                 {deleteExpected}
               </span>{" "}
-              to confirm.
+              {t.toConfirm}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="delete-player-confirm">Confirmation</Label>
+            <Label htmlFor="delete-player-confirm">{t.confirmation}</Label>
             <Input
               id="delete-player-confirm"
               value={deleteConfirm}
@@ -731,7 +883,7 @@ export default function PlayersPage() {
               variant="outline"
               onClick={() => setDeletePlayerRow(null)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -743,7 +895,7 @@ export default function PlayersPage() {
               className="gap-2"
             >
               {isHardDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Forever
+              {t.deleteForever}
             </Button>
           </DialogFooter>
         </DialogContent>

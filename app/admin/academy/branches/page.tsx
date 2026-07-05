@@ -26,6 +26,7 @@ import {
   useUpdateBranchMutation,
   type Branch,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 type ApiErrorDetail = {
   reason?: string;
@@ -42,23 +43,118 @@ type ApiMutationError = {
   };
 };
 
-function getApiError(error: unknown) {
+function getApiError(
+  error: unknown,
+  fallbackMessage: string,
+  fallbackSolution: string,
+) {
   const apiError = error as ApiMutationError | undefined;
   const detail = apiError?.data?.error?.details?.[0];
 
   return {
-    message: apiError?.data?.error?.message ?? "The request could not be completed.",
+    message: apiError?.data?.error?.message ?? fallbackMessage,
     solution:
       detail?.solution ??
-      "Review the linked records, remove the dependency that blocks this action, then try again.",
+      fallbackSolution,
     blockers: detail?.blockers ?? [],
   };
 }
 
-const baseColumns: Column<Branch>[] = [
+const branchCopy = {
+  en: {
+    requestFailed: "The request could not be completed.",
+    dependencySolution:
+      "Review the linked records, remove the dependency that blocks this action, then try again.",
+    branchName: "Branch Name",
+    city: "City",
+    capacity: "Capacity",
+    status: "Status",
+    active: "Active",
+    inactive: "Inactive",
+    actions: "Actions",
+    failedLoad: "Failed to load branches.",
+    retry: "Retry",
+    title: (count: number) => `Branches (${count})`,
+    description: "Manage all academy branches and their details.",
+    dashboard: "Dashboard",
+    academy: "Academy",
+    branches: "Branches",
+    addBranch: "Add Branch",
+    editBranch: "Edit Branch",
+    addBranchDescription: "Create a new academy branch.",
+    address: "Address",
+    capacityOptional: "Capacity (optional)",
+    createError: "Could not create the branch. Please check the fields and try again.",
+    cancel: "Cancel",
+    saveBranch: "Save Branch",
+    createBranch: "Create Branch",
+    searchPlaceholder: "Search branches...",
+    deleteBranch: "Delete Branch",
+    clearCommand: "clear",
+    confirmDelete: (name: string) => `Type clear ${name} to confirm deletion.`,
+    deletePlaceholder: (name: string) => `clear ${name}`,
+    error: "Error",
+    blockingData: "Blocking data",
+    relatedRecords: "related records",
+    solution: "Solution",
+    deleting: "Deleting...",
+    delete: "Delete",
+    empty: "-",
+    namePlaceholder: "Cairo - Main",
+    addressPlaceholder: "Street, city",
+    cityPlaceholder: "Cairo",
+  },
+  ar: {
+    requestFailed: "تعذر إكمال الطلب.",
+    dependencySolution:
+      "راجع السجلات المرتبطة، أزل الاعتماد الذي يمنع هذا الإجراء، ثم حاول مرة أخرى.",
+    branchName: "اسم الفرع",
+    city: "المدينة",
+    capacity: "السعة",
+    status: "الحالة",
+    active: "نشط",
+    inactive: "غير نشط",
+    actions: "الإجراءات",
+    failedLoad: "فشل تحميل الفروع.",
+    retry: "إعادة المحاولة",
+    title: (count: number) => `الفروع (${count})`,
+    description: "إدارة كل فروع الأكاديمية وتفاصيلها.",
+    dashboard: "لوحة التحكم",
+    academy: "الأكاديمية",
+    branches: "الفروع",
+    addBranch: "إضافة فرع",
+    editBranch: "تعديل الفرع",
+    addBranchDescription: "أنشئ فرعا جديدا للأكاديمية.",
+    address: "العنوان",
+    capacityOptional: "السعة (اختياري)",
+    createError: "تعذر إنشاء الفرع. راجع الحقول ثم حاول مرة أخرى.",
+    cancel: "إلغاء",
+    saveBranch: "حفظ الفرع",
+    createBranch: "إنشاء الفرع",
+    searchPlaceholder: "ابحث في الفروع...",
+    deleteBranch: "حذف الفرع",
+    clearCommand: "حذف",
+    confirmDelete: (name: string) => `اكتب حذف ${name} لتأكيد الحذف.`,
+    deletePlaceholder: (name: string) => `حذف ${name}`,
+    error: "خطأ",
+    blockingData: "بيانات تمنع الحذف",
+    relatedRecords: "سجلات مرتبطة",
+    solution: "الحل",
+    deleting: "جاري الحذف...",
+    delete: "حذف",
+    empty: "-",
+    namePlaceholder: "القاهرة - الرئيسي",
+    addressPlaceholder: "الشارع، المدينة",
+    cityPlaceholder: "القاهرة",
+  },
+} as const;
+
+type BranchCopy = (typeof branchCopy)[keyof typeof branchCopy];
+
+const createBaseColumns = (copy: BranchCopy): Column<Branch>[] => [
   {
     key: "name",
-    header: "Branch Name",
+    header: copy.branchName,
     accessor: (row) => (
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -66,7 +162,7 @@ const baseColumns: Column<Branch>[] = [
         </div>
         <div>
           <p className="font-medium text-foreground">{row.name}</p>
-          <p className="text-xs text-muted-foreground">{row.address ?? row.city ?? "—"}</p>
+          <p className="text-xs text-muted-foreground">{row.address ?? row.city ?? copy.empty}</p>
         </div>
       </div>
     ),
@@ -75,26 +171,26 @@ const baseColumns: Column<Branch>[] = [
   },
   {
     key: "city",
-    header: "City",
-    accessor: (row) => row.city ?? "—",
+    header: copy.city,
+    accessor: (row) => row.city ?? copy.empty,
     sortable: true,
     sortValue: (row) => row.city ?? "",
   },
   {
     key: "capacity",
-    header: "Capacity",
+    header: copy.capacity,
     accessor: (row) => (
-      <span>{row.capacity != null ? row.capacity : "—"}</span>
+      <span>{row.capacity != null ? row.capacity : copy.empty}</span>
     ),
     sortable: true,
     sortValue: (row) => row.capacity ?? 0,
   },
   {
     key: "status",
-    header: "Status",
+    header: copy.status,
     accessor: (row) => (
       <Badge variant={row.is_active ? "success" : "secondary"}>
-        {row.is_active ? "Active" : "Inactive"}
+        {row.is_active ? copy.active : copy.inactive}
       </Badge>
     ),
     sortable: true,
@@ -103,6 +199,8 @@ const baseColumns: Column<Branch>[] = [
 ];
 
 export default function BranchesPage() {
+  const language = useDashboardLanguage();
+  const t = branchCopy[language];
   const router = useRouter();
   const { data: branches, isLoading, isError, refetch } = useGetBranchesQuery();
   const [createOpen, setCreateOpen] = useState(false);
@@ -121,10 +219,10 @@ export default function BranchesPage() {
   const [deleteBranch, { isLoading: isDeleting, error: deleteError }] = useDeleteBranchMutation();
 
   const columns = useMemo<Column<Branch>[]>(() => [
-    ...baseColumns,
+    ...createBaseColumns(t),
     {
       key: "actions",
-      header: "Actions",
+      header: t.actions,
       accessor: (row) => (
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="icon" onClick={(event) => {
@@ -150,7 +248,7 @@ export default function BranchesPage() {
         </div>
       ),
     },
-  ], []);
+  ], [t]);
 
   const handleDialogChange = (open: boolean) => {
     setCreateOpen(open);
@@ -190,9 +288,12 @@ export default function BranchesPage() {
   };
 
   const deleteName = deleteTarget?.name ?? "";
-  const deleteApiError = deleteError ? getApiError(deleteError) : null;
+  const deleteConfirmText = `${t.clearCommand} ${deleteName}`;
+  const deleteApiError = deleteError
+    ? getApiError(deleteError, t.requestFailed, t.dependencySolution)
+    : null;
   const handleDelete = async () => {
-    if (!deleteTarget || deleteText !== `clear ${deleteName}`) return;
+    if (!deleteTarget || deleteText !== deleteConfirmText) return;
 
     try {
       await deleteBranch(deleteTarget.id).unwrap();
@@ -216,10 +317,10 @@ export default function BranchesPage() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p className="text-muted-foreground">Failed to load branches.</p>
+        <p className="text-muted-foreground">{t.failedLoad}</p>
         <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
           <RefreshCw className="h-4 w-4" />
-          Retry
+          {t.retry}
         </Button>
       </div>
     );
@@ -228,17 +329,17 @@ export default function BranchesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title={`Branches (${branches?.length ?? 0})`}
-        description="Manage all academy branches and their details."
+        title={t.title(branches?.length ?? 0)}
+        description={t.description}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Academy" },
-          { label: "Branches" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.academy },
+          { label: t.branches },
         ]}
         actions={
           <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add Branch
+            {t.addBranch}
           </Button>
         }
       />
@@ -246,48 +347,48 @@ export default function BranchesPage() {
       <Dialog open={createOpen} onOpenChange={handleDialogChange}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingBranch ? "Edit Branch" : "Add Branch"}</DialogTitle>
+            <DialogTitle>{editingBranch ? t.editBranch : t.addBranch}</DialogTitle>
             <DialogDescription>
-              Create a new academy branch.
+              {t.addBranchDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateBranch}>
             <div className="space-y-2">
-              <Label htmlFor="branch-name">Branch Name</Label>
+              <Label htmlFor="branch-name">{t.branchName}</Label>
               <Input
                 id="branch-name"
                 value={form.name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, name: event.target.value }))
                 }
-                placeholder="Cairo - Main"
+                placeholder={t.namePlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-address">Address</Label>
+              <Label htmlFor="branch-address">{t.address}</Label>
               <Input
                 id="branch-address"
                 value={form.address}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, address: event.target.value }))
                 }
-                placeholder="Street, city"
+                placeholder={t.addressPlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-city">City</Label>
+              <Label htmlFor="branch-city">{t.city}</Label>
               <Input
                 id="branch-city"
                 value={form.city}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, city: event.target.value }))
                 }
-                placeholder="Cairo"
+                placeholder={t.cityPlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-capacity">Capacity (optional)</Label>
+              <Label htmlFor="branch-capacity">{t.capacityOptional}</Label>
               <Input
                 id="branch-capacity"
                 type="number"
@@ -301,16 +402,16 @@ export default function BranchesPage() {
             </div>
             {(createError || updateError) && (
               <p className="text-sm text-red-400">
-                Could not create the branch. Please check the fields and try again.
+                {t.createError}
               </p>
             )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
-                Cancel
+                {t.cancel}
               </Button>
               <Button type="submit" disabled={form.name.trim().length === 0 || isCreating || isUpdating} className="gap-2">
                 {(isCreating || isUpdating) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editingBranch ? "Save Branch" : "Create Branch"}
+                {editingBranch ? t.saveBranch : t.createBranch}
               </Button>
             </DialogFooter>
           </form>
@@ -321,7 +422,7 @@ export default function BranchesPage() {
         data={branches ?? []}
         columns={columns}
         searchable
-        searchPlaceholder="Search branches..."
+        searchPlaceholder={t.searchPlaceholder}
         searchKey={(row) => `${row.name} ${row.address ?? ""} ${row.city ?? ""}`}
         onRowClick={(row) => router.push(`/admin/academy/branches/${row.id}`)}
       />
@@ -329,40 +430,40 @@ export default function BranchesPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(next) => !next && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Branch</DialogTitle>
-            <DialogDescription>Type clear {deleteName} to confirm deletion.</DialogDescription>
+            <DialogTitle>{t.deleteBranch}</DialogTitle>
+            <DialogDescription>{t.confirmDelete(deleteName)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={`clear ${deleteName}`} />
+            <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={t.deletePlaceholder(deleteName)} />
             {deleteApiError && (
               <div className="space-y-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm">
                 <div>
-                  <p className="font-semibold text-red-300">Error</p>
+                  <p className="font-semibold text-red-300">{t.error}</p>
                   <p className="text-red-100">{deleteApiError.message}</p>
                 </div>
                 {deleteApiError.blockers.length > 0 && (
                   <div>
-                    <p className="font-semibold text-red-300">Blocking data</p>
+                    <p className="font-semibold text-red-300">{t.blockingData}</p>
                     <ul className="mt-1 list-disc space-y-1 pl-5 text-red-100">
                       {deleteApiError.blockers.map((blocker) => (
                         <li key={blocker.key ?? blocker.label}>
-                          {blocker.count ?? 0} {blocker.label ?? "related records"}
+                          {blocker.count ?? 0} {blocker.label ?? t.relatedRecords}
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold text-red-300">Solution</p>
+                  <p className="font-semibold text-red-300">{t.solution}</p>
                   <p className="text-red-100">{deleteApiError.solution}</p>
                 </div>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button type="button" variant="destructive" disabled={isDeleting || deleteText !== `clear ${deleteName}`} onClick={handleDelete}>
-              {isDeleting ? "Deleting..." : "Delete"}
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>{t.cancel}</Button>
+            <Button type="button" variant="destructive" disabled={isDeleting || deleteText !== deleteConfirmText} onClick={handleDelete}>
+              {isDeleting ? t.deleting : t.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -54,15 +54,14 @@ B --> H[Parent]
 
 C --> I[Shared Components]
 
-D --> J[React Query / Zustand]
+D --> J[Redux Toolkit / RTK Query]
 ```
 
 ### Tech Decisions
 
 - Next.js (App Router)
 - Server Components + Client Components
-- React Query (data fetching)
-- Zustand (state)
+- Redux Toolkit & RTK Query (data fetching and state management)
 - Tailwind CSS
 
 ## Role-Based Routing Structure

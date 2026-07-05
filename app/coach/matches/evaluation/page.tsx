@@ -8,9 +8,39 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGetCoachMatchesQuery } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
+const evaluationListCopy = {
+  en: {
+    title: "Match Evaluations",
+    description: "Open finished matches to complete or review locked player evaluations.",
+    home: "Home",
+    matches: "Matches",
+    finishedMatches: "Finished Matches",
+    loading: "Loading matches...",
+    locked: "locked",
+    pending: "pending",
+    view: "View Evaluation",
+    open: "Open Evaluation",
+  },
+  ar: {
+    title: "تقييمات المباريات",
+    description: "افتح المباريات المنتهية لإكمال أو مراجعة تقييمات اللاعبين المقفلة.",
+    home: "الرئيسية",
+    matches: "المباريات",
+    finishedMatches: "المباريات المنتهية",
+    loading: "جاري تحميل المباريات...",
+    locked: "مقفل",
+    pending: "معلق",
+    view: "عرض التقييم",
+    open: "فتح التقييم",
+  },
+} as const;
+
 export default function CoachMatchEvaluationsPage() {
+  const language = useDashboardLanguage();
+  const t = evaluationListCopy[language];
   const { data: matchesRes, isLoading } = useGetCoachMatchesQuery();
   const finishedMatches = useMemo(
     () =>
@@ -32,24 +62,24 @@ export default function CoachMatchEvaluationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Match Evaluations"
-        description="Open finished matches to complete or review locked player evaluations."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches", href: "/coach/matches" },
-          { label: "Match Evaluations" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.matches, href: "/coach/matches" },
+          { label: t.title },
         ]}
       />
 
       <Card className="border-border/50 bg-card">
         <CardHeader>
-          <CardTitle className="text-base">Finished Matches</CardTitle>
+          <CardTitle className="text-base">{t.finishedMatches}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading matches...
+              {t.loading}
             </div>
           )}
 
@@ -67,7 +97,7 @@ export default function CoachMatchEvaluationsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{match.opponent_name}</h3>
                     <Badge variant={locked ? "success" : "warning"}>
-                      {locked ? "locked" : "pending"}
+                      {locked ? t.locked : t.pending}
                     </Badge>
                     <Badge variant="outline">
                       {match.our_score ?? 0} - {match.opponent_score ?? 0}
@@ -81,7 +111,7 @@ export default function CoachMatchEvaluationsPage() {
                 </div>
                 <Button asChild size="sm" variant={locked ? "outline" : "default"}>
                   <Link href={`/coach/matches/evaluation/${match.id}`}>
-                    {locked ? "View Evaluation" : "Open Evaluation"}
+                    {locked ? t.view : t.open}
                   </Link>
                 </Button>
               </div>

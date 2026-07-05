@@ -12,10 +12,13 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
 /out/
+/.turbo/
 
 # production
 /build
@@ -25,6 +28,8 @@
 .DS_Store
 *.pem
 /.tmp/
+/.codex-logs/
+/.cache/
 
 # debug
 npm-debug.log*
@@ -35,6 +40,8 @@ dev-server.*.log
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!golx-backend/.env.example
 
 # vercel
 .vercel
@@ -58,22 +65,29 @@ next-env.d.ts
 /DATA FOR PROJECT/*.dump
 /DATA FOR PROJECT/*.backup
 /uploads/
+/golx-backend/backups/
 /migrations/
 /golx-backend/uploads/
 /golx-backend/load-tests/*.local.json
-/golx-backend/migrations/052_chat_and_match_request_cleanup.js
-/golx-backend/migrations/053_chat_message_edit_metadata.js
-/golx-backend/migrations/054_chat_message_read_receipts.js
-/golx-backend/migrations/055_injury_risk_position_categories.js
-/golx-backend/migrations/056_injury_risk_fatigue_and_recent_injuries.js
-/golx-backend/migrations/057_injury_risk_monthly_attendance.js
-/golx-backend/migrations/058_injury_risk_weekly_inputs_and_three_month_injuries.js
-/golx-backend/migrations/059_injury_risk_weekly_pain_discomfort.js
-/golx-backend/migrations/060_injury_risk_combined_fatigue.js
-/golx-backend/migrations/061_injury_risk_rolling_match_minutes.js
-/golx-backend/migrations/062_injury_risk_latest_activity_fatigue.js
-/golx-backend/migrations/063_injury_risk_custom_main_position.js
+/Models/*.zip
+/Models/*.tar
+/Models/*.tar.gz
+/Models/*.onnx
+/Models/*.pkl
+/Models/*.joblib
+/Models/**/*.zip
+/Models/**/*.tar
+/Models/**/*.tar.gz
+/Models/**/*.onnx
+/Models/**/*.pkl
+/Models/**/*.joblib
+/Models/**/*.pt/
+/Models/**/*.pth/
 
 certificates
+ops/nginx/certs/*
+!ops/nginx/certs/.gitkeep
+ops/nginx/acme/*
+!ops/nginx/acme/.gitkeep
 
 testsprite_tests\tmp\config.json

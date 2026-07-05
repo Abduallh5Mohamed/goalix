@@ -16,6 +16,7 @@ const {
 } = require("../../shared/access-policy");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const storage = require("../../shared/storage");
+const { assertMimeSignature } = require("../../shared/file-signature");
 
 const chatImageTypes = {
   "image/png": ".png",
@@ -722,6 +723,7 @@ class ChatService {
     if (buffer.length > 8 * 1024 * 1024) {
       throw new BadRequestError("Chat image must be 8MB or smaller.");
     }
+    assertMimeSignature(normalizedMimeType, buffer, "Chat image");
 
     const upload = await storage.putUpload({
       scope: "chat",

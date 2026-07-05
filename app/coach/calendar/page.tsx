@@ -9,9 +9,39 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGetCoachCalendarEventsQuery } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
+const calendarCopy = {
+  en: {
+    title: "My Calendar",
+    description: "Events for your assigned groups only.",
+    home: "Home",
+    calendar: "Calendar",
+    refresh: "Refresh",
+    loading: "Loading calendar...",
+    loadError:
+      "Could not load backend calendar data. Make sure the backend is running and your coach session is valid.",
+    openTraining: "Open Training",
+    empty:
+      "No backend calendar events are visible for this coach yet. Events must target one of this coach's assigned groups, birth years, or players.",
+  },
+  ar: {
+    title: "تقويمي",
+    description: "الأحداث الخاصة بالمجموعات المخصصة لك فقط.",
+    home: "الرئيسية",
+    calendar: "التقويم",
+    refresh: "تحديث",
+    loading: "جاري تحميل التقويم...",
+    loadError: "تعذر تحميل بيانات التقويم من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
+    openTraining: "فتح التدريب",
+    empty: "لا توجد أحداث تقويم ظاهرة لهذا المدرب حتى الآن. يجب أن تستهدف الأحداث مجموعة أو سنة ميلاد أو لاعبين ضمن نطاق المدرب.",
+  },
+} as const;
+
 export default function CoachCalendarPage() {
+  const language = useDashboardLanguage();
+  const t = calendarCopy[language];
   const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const calendarItems = useMemo(
@@ -30,15 +60,15 @@ export default function CoachCalendarPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Calendar"
-        description="Events for your assigned groups only."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Calendar" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.calendar },
         ]}
         actions={
           <Button variant="outline" onClick={() => refetch()}>
-            Refresh
+            {t.refresh}
           </Button>
         }
       />
@@ -47,7 +77,7 @@ export default function CoachCalendarPage() {
         <Card>
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading calendar...
+            {t.loading}
           </CardContent>
         </Card>
       ) : (
@@ -55,11 +85,11 @@ export default function CoachCalendarPage() {
           {isError && (
             <Card className="border-destructive/30 bg-destructive/10">
               <CardContent className="p-4 text-sm text-destructive">
-                Could not load backend calendar data. Make sure the backend is running and your coach session is valid.
+                {t.loadError}
               </CardContent>
             </Card>
           )}
-          <MonthCalendar title="My Calendar" items={calendarItems} />
+          <MonthCalendar title={t.title} items={calendarItems} />
           {events.map((event) => (
             <Card key={event.id} className="border-border/50 bg-card">
               <CardContent className="flex flex-wrap items-start gap-3 p-4">
@@ -94,7 +124,7 @@ export default function CoachCalendarPage() {
                 {event.event_type === "training" && (
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/coach/training/${event.id}`}>
-                      Open Training
+                      {t.openTraining}
                     </Link>
                   </Button>
                 )}
@@ -104,7 +134,7 @@ export default function CoachCalendarPage() {
           {!events.length && (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                No backend calendar events are visible for this coach yet. Events must target one of this coach&apos;s assigned groups, birth years, or players.
+                {t.empty}
               </CardContent>
             </Card>
           )}

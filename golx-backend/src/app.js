@@ -13,6 +13,7 @@ const { corsOrigin, isAllowedOrigin } = require('./config/cors');
 const logger = require('./shared/logger');
 const db = require('./infrastructure/database');
 const { isRedisAvailable } = require('./infrastructure/redis');
+const { auditQueue } = require('./infrastructure/queue');
 const errorHandler = require('./middleware/errorHandler.middleware');
 const { authMiddleware } = require('./middleware/auth.middleware');
 const { apiLimiter } = require('./middleware/rateLimit.middleware');
@@ -115,7 +116,8 @@ app.use((req, res, next) => {
         if (!req.user?.userId) return;
         const routePath = req.route?.path || req.path;
         const normalizedPath = String(routePath).replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-        db('audit_logs').insert({
+        
+        const logData = {
             user_id: req.user.userId,
             action: `${auditTarget.entityType}_${req.method.toLowerCase()}_${normalizedPath || 'mutation'}`,
             table_name: auditTarget.entityType,
@@ -129,7 +131,21 @@ app.use((req, res, next) => {
                 statusCode: res.statusCode,
                 requestId: req.id,
             }),
-        }).catch((err) => logger.warn({ err, requestId: req.id }, 'Failed to write sensitive audit log'));
+        };
+
+        const queueEnabled = process.env.BULLMQ_ENABLED !== 'false' && env.NODE_ENV !== 'test';
+        if (queueEnabled && isRedisAvailable() && auditQueue) {
+            auditQueue.add('log', logData).catch((err) => {
+                logger.warn({ err, requestId: req.id }, 'Failed to queue audit log, attempting direct insert fallback');
+                db('audit_logs').insert(logData).catch((dbErr) => {
+                    logger.warn({ err: dbErr, requestId: req.id }, 'Failed to write sensitive audit log in fallback');
+                });
+            });
+        } else {
+            db('audit_logs').insert(logData).catch((err) => {
+                logger.warn({ err, requestId: req.id }, 'Failed to write sensitive audit log directly');
+            });
+        }
     });
 
     return next();

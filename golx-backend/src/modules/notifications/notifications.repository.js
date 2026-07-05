@@ -7,7 +7,7 @@ const {
 
 class NotificationsRepository extends BaseRepository {
     constructor(db) {
-        super('notification_inbox', db);
+        super('notification_inbox', db, { hasSoftDelete: false });
     }
 
     async _notificationPlayer(user) {
@@ -149,6 +149,13 @@ class NotificationsRepository extends BaseRepository {
             .select('id as user_id');
     }
 
+    async findTargetUser(academyId, userId) {
+        return this.db('auth_users')
+            .where({ id: userId, academy_id: academyId, is_active: true })
+            .whereNull('deleted_at')
+            .first('id as user_id', 'academy_id');
+    }
+
     async markAsRead(id, userId) {
         const [row] = await this.db('notification_inbox')
             .where({ id, user_id: userId })
@@ -176,9 +183,10 @@ class NotificationsRepository extends BaseRepository {
         return +count;
     }
 
-    async findLogs({ channel, status, page = 1, limit = 20 } = {}) {
+    async findLogs({ academyId, channel, status, page = 1, limit = 20 } = {}) {
         const query = this.db('notification_logs')
             .modify((q) => {
+                if (academyId) q.where('academy_id', academyId);
                 if (channel) q.where('channel', channel);
                 if (status) q.where('status', status);
             });

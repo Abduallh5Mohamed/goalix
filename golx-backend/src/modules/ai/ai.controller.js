@@ -24,7 +24,7 @@ class AiController {
     getAllScores = async (req, res, next) => {
         try {
             const { page, limit } = parsePagination(req.query);
-            const result = await this.service.getAllScores(req.user.academyId, { page, limit });
+            const result = await this.service.getAllScores(req.user.academyId, { page, limit }, req.user);
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };

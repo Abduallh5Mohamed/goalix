@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Loader2, QrCode, ShieldCheck, UserRound, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -167,9 +168,12 @@ export function ParentProfilePage({
                 {child.attendanceQr?.qrCodeDataUrl && (
                   <div className="shrink-0 rounded-lg border border-border/50 bg-background/50 p-3 text-center">
                     <QrCode className="mx-auto h-4 w-4 text-primary" />
-                    <img
+                    <Image
                       src={child.attendanceQr.qrCodeDataUrl}
                       alt={`${child.player.full_name} QR code`}
+                      width={144}
+                      height={144}
+                      unoptimized
                       className="mt-2 h-36 w-36 rounded-md bg-white p-2"
                     />
                   </div>

@@ -191,18 +191,33 @@ function PermissionStat({
 function PermissionBadge({
   enabled,
   label,
+  disabledLabel,
 }: {
   enabled: boolean;
   label: string;
+  disabledLabel: string;
 }) {
   return (
     <Badge variant={enabled ? "success" : "secondary"}>
-      {enabled ? label : `No ${label.toLowerCase()}`}
+      {enabled ? label : disabledLabel}
     </Badge>
   );
 }
 
-function CoachGroupPermissionRow({ group }: { group: CoachGroup }) {
+function CoachGroupPermissionRow({
+  group,
+  labels,
+}: {
+  group: CoachGroup;
+  labels: {
+    training: string;
+    noTraining: string;
+    attendance: string;
+    noAttendance: string;
+    evaluation: string;
+    noEvaluation: string;
+  };
+}) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -227,13 +242,209 @@ function CoachGroupPermissionRow({ group }: { group: CoachGroup }) {
         </Badge>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <PermissionBadge enabled={group.can_create_training} label="Training" />
-        <PermissionBadge enabled={group.can_take_attendance} label="Attendance" />
-        <PermissionBadge enabled={group.can_evaluate_players} label="Evaluation" />
+        <PermissionBadge
+          enabled={group.can_create_training}
+          label={labels.training}
+          disabledLabel={labels.noTraining}
+        />
+        <PermissionBadge
+          enabled={group.can_take_attendance}
+          label={labels.attendance}
+          disabledLabel={labels.noAttendance}
+        />
+        <PermissionBadge
+          enabled={group.can_evaluate_players}
+          label={labels.evaluation}
+          disabledLabel={labels.noEvaluation}
+        />
       </div>
     </div>
   );
 }
+
+const coachSettingsCopy = {
+  en: {
+    pageTitle: "Coach Settings",
+    pageDescription:
+      "Control your coach workspace and review the group permissions assigned by the academy.",
+    home: "Home",
+    settings: "Settings",
+    loginSecurity: "Coach Login Security",
+    twoFactorOn: "2FA On",
+    twoFactorOff: "2FA Off",
+    mfaEnabled:
+      "Coach login is protected with MFA. Authenticator devices and backup codes are managed by the academy admin.",
+    mfaDisabled:
+      "MFA has not been configured for this coach account yet. Ask an academy admin to add an authenticator device before using the coach dashboard.",
+    adminManagedSecurity: "Admin managed security",
+    adminManagedSecurityDescription:
+      "Coaches can sign in with their authenticator code or a backup code issued by the admin. They cannot add devices, disable MFA, or generate backup codes from this page.",
+    coachFallback: "Coach",
+    personalPreferences: "Personal coach preferences for this browser.",
+    arabic: "Arabic",
+    english: "English",
+    dark: "Dark",
+    light: "Light",
+    compact: "Compact",
+    comfortable: "Comfortable",
+    focus: "Focus",
+    standard: "Standard",
+    searchReview: "Search review",
+    allPlayerReview: "All-player review",
+    loadingScope: "Loading scope",
+    groupsCount: (count: number) => `${count} groups`,
+    checkingEvaluation: "Checking evaluation",
+    evaluationGroupsCount: (count: number) => `${count} evaluation groups`,
+    permissionsScope: "Coach Permissions & Scope",
+    assignedGroups: "Assigned groups",
+    assignedGroupsHint: "Groups visible in your coach workspace.",
+    createTraining: "Create training",
+    createTrainingHint: "Groups where you can create sessions.",
+    attendance: "Attendance",
+    attendanceHint: "Groups where attendance can be edited.",
+    evaluation: "Evaluation",
+    evaluationHint: "Groups where player ratings can be saved.",
+    loadingPermissions: "Loading coach permissions...",
+    permissionsError:
+      "Could not load your coach permissions right now. Saved workspace preferences will still work on this browser.",
+    noGroups:
+      "No coach groups are assigned to this account yet. Academy admins control group assignment and system permissions.",
+    training: "Training",
+    noTraining: "No training",
+    noAttendance: "No attendance",
+    noEvaluation: "No evaluation",
+    evaluationWorkspace: "Training Evaluation Workspace",
+    evaluationWorkspaceHint:
+      "Applies to training evaluation pages where your group role allows player ratings.",
+    checkingAccess: "Checking access",
+    evaluationGroupCount: (count: number) =>
+      `${count} evaluation group${count === 1 ? "" : "s"}`,
+    noEvaluationAccess: "No evaluation access",
+    allPlayers: "All players",
+    allPlayersDescription:
+      "Open training evaluations with every attended player visible.",
+    searchPlayer: "Search player",
+    searchPlayerDescription:
+      "Open training evaluations in focused search mode.",
+    browserNotifications: "Browser Notifications",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    permission: "Permission",
+    notSupported: "not supported",
+    turnOff: "Turn off",
+    turnOn: "Turn on",
+    language: "Language",
+    englishDescription: "English labels and left-to-right layout.",
+    arabicDescription: "Arabic labels and right-to-left layout.",
+    theme: "Theme",
+    lightDescription: "Brighter surfaces for daytime work.",
+    darkDescription: "Darker surfaces for late sessions.",
+    density: "Density",
+    comfortableDescription: "More spacing between dashboard sections.",
+    compactDescription: "Tighter layout for quicker scanning.",
+    motion: "Motion",
+    fullMotion: "Full motion",
+    fullMotionDescription: "Keep transitions and loading animations.",
+    reducedMotion: "Reduced motion",
+    reducedMotionDescription: "Minimize transitions during repeated work.",
+    focusMode: "Focus Mode",
+    standardDescription: "Show all sidebar content and assistant prompts.",
+    focused: "Focused",
+    focusedDescription: "Hide non-essential sidebar promo content.",
+    resetPreferences: "Reset coach preferences",
+    resetDescription: "Restores the workspace to the default coach experience.",
+    reset: "Reset",
+  },
+  ar: {
+    pageTitle: "إعدادات المدرب",
+    pageDescription:
+      "تحكم في مساحة عمل المدرب وراجع صلاحيات المجموعات المعينة من الأكاديمية.",
+    home: "الرئيسية",
+    settings: "الإعدادات",
+    loginSecurity: "أمان تسجيل دخول المدرب",
+    twoFactorOn: "المصادقة الثنائية مفعلة",
+    twoFactorOff: "المصادقة الثنائية غير مفعلة",
+    mfaEnabled:
+      "تسجيل دخول المدرب محمي بالمصادقة متعددة العوامل. أجهزة المصادقة وأكواد النسخ الاحتياطي يديرها مسؤول الأكاديمية.",
+    mfaDisabled:
+      "لم يتم إعداد المصادقة متعددة العوامل لهذا الحساب بعد. اطلب من مسؤول الأكاديمية إضافة جهاز مصادقة قبل استخدام لوحة المدرب.",
+    adminManagedSecurity: "أمان مدار من المسؤول",
+    adminManagedSecurityDescription:
+      "يمكن للمدربين تسجيل الدخول بكود المصادقة أو كود احتياطي صادر من المسؤول. لا يمكن إضافة أجهزة أو تعطيل المصادقة أو إنشاء أكواد احتياطية من هذه الصفحة.",
+    coachFallback: "مدرب",
+    personalPreferences: "تفضيلات المدرب الشخصية لهذا المتصفح.",
+    arabic: "العربية",
+    english: "الإنجليزية",
+    dark: "داكن",
+    light: "فاتح",
+    compact: "مضغوط",
+    comfortable: "مريح",
+    focus: "تركيز",
+    standard: "قياسي",
+    searchReview: "مراجعة بالبحث",
+    allPlayerReview: "مراجعة كل اللاعبين",
+    loadingScope: "تحميل النطاق",
+    groupsCount: (count: number) => `${count} مجموعات`,
+    checkingEvaluation: "فحص التقييم",
+    evaluationGroupsCount: (count: number) => `${count} مجموعات تقييم`,
+    permissionsScope: "صلاحيات ونطاق المدرب",
+    assignedGroups: "المجموعات المعينة",
+    assignedGroupsHint: "المجموعات الظاهرة في مساحة عمل المدرب.",
+    createTraining: "إنشاء تدريب",
+    createTrainingHint: "المجموعات التي يمكنك إنشاء حصص لها.",
+    attendance: "الحضور",
+    attendanceHint: "المجموعات التي يمكن تعديل الحضور فيها.",
+    evaluation: "التقييم",
+    evaluationHint: "المجموعات التي يمكن حفظ تقييمات اللاعبين فيها.",
+    loadingPermissions: "جاري تحميل صلاحيات المدرب...",
+    permissionsError:
+      "تعذر تحميل صلاحيات المدرب الآن. ستظل تفضيلات مساحة العمل المحفوظة تعمل على هذا المتصفح.",
+    noGroups:
+      "لا توجد مجموعات مدرب معينة لهذا الحساب بعد. مسؤولو الأكاديمية يديرون تعيين المجموعات وصلاحيات النظام.",
+    training: "التدريب",
+    noTraining: "لا يوجد تدريب",
+    noAttendance: "لا يوجد حضور",
+    noEvaluation: "لا يوجد تقييم",
+    evaluationWorkspace: "مساحة تقييم التدريب",
+    evaluationWorkspaceHint:
+      "تطبق على صفحات تقييم التدريب عندما تسمح صلاحية المجموعة بتقييم اللاعبين.",
+    checkingAccess: "فحص الوصول",
+    evaluationGroupCount: (count: number) => `${count} مجموعات تقييم`,
+    noEvaluationAccess: "لا توجد صلاحية تقييم",
+    allPlayers: "كل اللاعبين",
+    allPlayersDescription: "افتح تقييم التدريب مع ظهور كل اللاعبين الحاضرين.",
+    searchPlayer: "البحث عن لاعب",
+    searchPlayerDescription: "افتح تقييم التدريب في وضع البحث المركز.",
+    browserNotifications: "إشعارات المتصفح",
+    enabled: "مفعلة",
+    disabled: "معطلة",
+    permission: "الصلاحية",
+    notSupported: "غير مدعومة",
+    turnOff: "إيقاف",
+    turnOn: "تشغيل",
+    language: "اللغة",
+    englishDescription: "تسميات إنجليزية واتجاه من اليسار إلى اليمين.",
+    arabicDescription: "تسميات عربية واتجاه من اليمين إلى اليسار.",
+    theme: "الثيم",
+    lightDescription: "أسطح أفتح للعمل أثناء النهار.",
+    darkDescription: "أسطح داكنة للجلسات المتأخرة.",
+    density: "الكثافة",
+    comfortableDescription: "مسافات أكبر بين أقسام لوحة التحكم.",
+    compactDescription: "تخطيط أضيق للمراجعة السريعة.",
+    motion: "الحركة",
+    fullMotion: "حركة كاملة",
+    fullMotionDescription: "الإبقاء على الانتقالات وحركات التحميل.",
+    reducedMotion: "حركة مخففة",
+    reducedMotionDescription: "تقليل الانتقالات أثناء العمل المتكرر.",
+    focusMode: "وضع التركيز",
+    standardDescription: "إظهار كل محتوى الشريط الجانبي وتنبيهات المساعد.",
+    focused: "مركز",
+    focusedDescription: "إخفاء محتوى الشريط الجانبي غير الأساسي.",
+    resetPreferences: "إعادة تفضيلات المدرب",
+    resetDescription: "يعيد مساحة العمل إلى تجربة المدرب الافتراضية.",
+    reset: "إعادة ضبط",
+  },
+} as const;
 
 export default function CoachSettingsPage() {
   const { user } = useCurrentUser();
@@ -252,6 +463,7 @@ export default function CoachSettingsPage() {
     useState<NotificationPermission | "unsupported">("default");
   const groupsQuery = useGetCoachGroupsScopedQuery();
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const t = coachSettingsCopy[language];
   const permissionCounts = useMemo(
     () =>
       groups.reduce(
@@ -352,25 +564,25 @@ export default function CoachSettingsPage() {
   };
 
   const summary = [
-    language === "ar" ? "Arabic" : "English",
-    theme === "dark" ? "Dark" : "Light",
-    density === "compact" ? "Compact" : "Comfortable",
-    focusMode === "on" ? "Focus" : "Standard",
-    evaluationMode === "search" ? "Search review" : "All-player review",
-    permissionsLoading ? "Loading scope" : `${permissionCounts.total} groups`,
+    language === "ar" ? t.arabic : t.english,
+    theme === "dark" ? t.dark : t.light,
+    density === "compact" ? t.compact : t.comfortable,
+    focusMode === "on" ? t.focus : t.standard,
+    evaluationMode === "search" ? t.searchReview : t.allPlayerReview,
+    permissionsLoading ? t.loadingScope : t.groupsCount(permissionCounts.total),
     permissionsLoading
-      ? "Checking evaluation"
-      : `${permissionCounts.evaluation} evaluation groups`,
+      ? t.checkingEvaluation
+      : t.evaluationGroupsCount(permissionCounts.evaluation),
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Coach Settings"
-        description="Control your coach workspace and review the group permissions assigned by the academy."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Settings" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.settings },
         ]}
       />
 
@@ -379,10 +591,10 @@ export default function CoachSettingsPage() {
           <CardTitle className="flex items-center justify-between gap-3 text-base">
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-lime-300" />
-              Coach Login Security
+              {t.loginSecurity}
             </span>
             <Badge variant={totpEnabled ? "success" : "secondary"}>
-              {totpEnabled ? "2FA On" : "2FA Off"}
+              {totpEnabled ? t.twoFactorOn : t.twoFactorOff}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -395,14 +607,12 @@ export default function CoachSettingsPage() {
                 : "border-amber-400/20 bg-amber-400/10 text-amber-100",
             )}
           >
-            {totpEnabled
-              ? "Coach login is protected with MFA. Authenticator devices and backup codes are managed by the academy admin."
-              : "MFA has not been configured for this coach account yet. Ask an academy admin to add an authenticator device before using the coach dashboard."}
+            {totpEnabled ? t.mfaEnabled : t.mfaDisabled}
           </div>
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <p className="font-semibold text-white">Admin managed security</p>
+            <p className="font-semibold text-white">{t.adminManagedSecurity}</p>
             <p className="mt-1 text-sm text-slate-400">
-              Coaches can sign in with their authenticator code or a backup code issued by the admin. They cannot add devices, disable MFA, or generate backup codes from this page.
+              {t.adminManagedSecurityDescription}
             </p>
           </div>
         </CardContent>
@@ -412,14 +622,14 @@ export default function CoachSettingsPage() {
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 place-items-center rounded-lg bg-lime-300/10 text-lg font-bold text-lime-100">
-              {getInitials(user?.fullName || "Coach")}
+              {getInitials(user?.fullName || t.coachFallback)}
             </div>
             <div>
               <p className="text-lg font-semibold text-white">
-                {user?.fullName || "Coach"}
+                {user?.fullName || t.coachFallback}
               </p>
               <p className="text-sm text-slate-400">
-                Personal coach preferences for this browser.
+                {t.personalPreferences}
               </p>
             </div>
           </div>
@@ -437,36 +647,36 @@ export default function CoachSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="h-4 w-4 text-lime-300" />
-            Coach Permissions & Scope
+            {t.permissionsScope}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <PermissionStat
-              label="Assigned groups"
+              label={t.assignedGroups}
               value={permissionsLoading ? "..." : permissionCounts.total}
-              hint="Groups visible in your coach workspace."
+              hint={t.assignedGroupsHint}
               icon={Users}
               tone="slate"
             />
             <PermissionStat
-              label="Create training"
+              label={t.createTraining}
               value={permissionsLoading ? "..." : permissionCounts.training}
-              hint="Groups where you can create sessions."
+              hint={t.createTrainingHint}
               icon={Dumbbell}
               tone="cyan"
             />
             <PermissionStat
-              label="Attendance"
+              label={t.attendance}
               value={permissionsLoading ? "..." : permissionCounts.attendance}
-              hint="Groups where attendance can be edited."
+              hint={t.attendanceHint}
               icon={ClipboardCheck}
               tone="amber"
             />
             <PermissionStat
-              label="Evaluation"
+              label={t.evaluation}
               value={permissionsLoading ? "..." : permissionCounts.evaluation}
-              hint="Groups where player ratings can be saved."
+              hint={t.evaluationHint}
               icon={Star}
               tone="lime"
             />
@@ -475,23 +685,32 @@ export default function CoachSettingsPage() {
           {permissionsLoading ? (
             <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
               <Loader2 className="h-4 w-4 animate-spin text-lime-300" />
-              Loading coach permissions...
+              {t.loadingPermissions}
             </div>
           ) : groupsQuery.isError ? (
             <div className="rounded-lg border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
-              Could not load your coach permissions right now. Saved workspace
-              preferences will still work on this browser.
+              {t.permissionsError}
             </div>
           ) : groups.length > 0 ? (
             <div className="grid gap-3 xl:grid-cols-2">
               {groups.map((group) => (
-                <CoachGroupPermissionRow key={group.group_id} group={group} />
+                <CoachGroupPermissionRow
+                  key={group.group_id}
+                  group={group}
+                  labels={{
+                    training: t.training,
+                    noTraining: t.noTraining,
+                    attendance: t.attendance,
+                    noAttendance: t.noAttendance,
+                    evaluation: t.evaluation,
+                    noEvaluation: t.noEvaluation,
+                  }}
+                />
               ))}
             </div>
           ) : (
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
-              No coach groups are assigned to this account yet. Academy admins
-              control group assignment and system permissions.
+              {t.noGroups}
             </div>
           )}
         </CardContent>
@@ -502,14 +721,13 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ListChecks className="h-4 w-4 text-lime-300" />
-              Training Evaluation Workspace
+              {t.evaluationWorkspace}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-400">
-                Applies to training evaluation pages where your group role
-                allows player ratings.
+                {t.evaluationWorkspaceHint}
               </p>
               <Badge
                 variant={
@@ -522,27 +740,25 @@ export default function CoachSettingsPage() {
                 className="w-fit"
               >
                 {permissionsLoading
-                  ? "Checking access"
+                  ? t.checkingAccess
                   : permissionCounts.evaluation > 0
-                    ? `${permissionCounts.evaluation} evaluation group${
-                        permissionCounts.evaluation === 1 ? "" : "s"
-                      }`
-                    : "No evaluation access"}
+                    ? t.evaluationGroupCount(permissionCounts.evaluation)
+                    : t.noEvaluationAccess}
               </Badge>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <OptionCard
                 active={evaluationMode === "all"}
-                title="All players"
-                description="Open training evaluations with every attended player visible."
+                title={t.allPlayers}
+                description={t.allPlayersDescription}
                 icon={Users}
                 onClick={() => setEvaluationMode("all")}
                 disabled={evaluationOptionsDisabled}
               />
               <OptionCard
                 active={evaluationMode === "search"}
-                title="Search player"
-                description="Open training evaluations in focused search mode."
+                title={t.searchPlayer}
+                description={t.searchPlayerDescription}
                 icon={Search}
                 onClick={() => setEvaluationMode("search")}
                 disabled={evaluationOptionsDisabled}
@@ -555,18 +771,18 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Bell className="h-4 w-4 text-amber-300" />
-              Browser Notifications
+              {t.browserNotifications}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold text-white">
-                {browserNotifications ? "Enabled" : "Disabled"}
+                {browserNotifications ? t.enabled : t.disabled}
               </p>
               <p className="mt-1 text-sm text-slate-400">
-                Permission:{" "}
+                {t.permission}:{" "}
                 {notificationPermission === "unsupported"
-                  ? "not supported"
+                  ? t.notSupported
                   : notificationPermission}
               </p>
             </div>
@@ -576,7 +792,7 @@ export default function CoachSettingsPage() {
               onClick={toggleBrowserNotifications}
               disabled={notificationPermission === "unsupported"}
             >
-              {browserNotifications ? "Turn off" : "Turn on"}
+              {browserNotifications ? t.turnOff : t.turnOn}
             </Button>
           </CardContent>
         </Card>
@@ -587,21 +803,21 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Languages className="h-4 w-4 text-cyan-300" />
-              Language
+              {t.language}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <OptionCard
               active={language === "en"}
-              title="English"
-              description="English labels and left-to-right layout."
+              title={t.english}
+              description={t.englishDescription}
               icon={Languages}
               onClick={() => setLanguage("en")}
             />
             <OptionCard
               active={language === "ar"}
-              title="Arabic"
-              description="Arabic labels and right-to-left layout."
+              title={t.arabic}
+              description={t.arabicDescription}
               icon={Languages}
               onClick={() => setLanguage("ar")}
             />
@@ -612,21 +828,21 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Settings className="h-4 w-4 text-lime-300" />
-              Theme
+              {t.theme}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <OptionCard
               active={theme === "light"}
-              title="Light"
-              description="Brighter surfaces for daytime work."
+              title={t.light}
+              description={t.lightDescription}
               icon={Sun}
               onClick={() => setTheme("light")}
             />
             <OptionCard
               active={theme === "dark"}
-              title="Dark"
-              description="Darker surfaces for late sessions."
+              title={t.dark}
+              description={t.darkDescription}
               icon={Moon}
               onClick={() => setTheme("dark")}
             />
@@ -639,21 +855,21 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Minimize2 className="h-4 w-4 text-cyan-300" />
-              Density
+              {t.density}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={density === "comfortable"}
-              title="Comfortable"
-              description="More spacing between dashboard sections."
+              title={t.comfortable}
+              description={t.comfortableDescription}
               icon={Maximize2}
               onClick={() => setDensity("comfortable")}
             />
             <OptionCard
               active={density === "compact"}
-              title="Compact"
-              description="Tighter layout for quicker scanning."
+              title={t.compact}
+              description={t.compactDescription}
               icon={Minimize2}
               onClick={() => setDensity("compact")}
             />
@@ -664,21 +880,21 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Move className="h-4 w-4 text-amber-300" />
-              Motion
+              {t.motion}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={motion === "full"}
-              title="Full motion"
-              description="Keep transitions and loading animations."
+              title={t.fullMotion}
+              description={t.fullMotionDescription}
               icon={Sparkles}
               onClick={() => setMotion("full")}
             />
             <OptionCard
               active={motion === "reduced"}
-              title="Reduced motion"
-              description="Minimize transitions during repeated work."
+              title={t.reducedMotion}
+              description={t.reducedMotionDescription}
               icon={ZapOff}
               onClick={() => setMotion("reduced")}
             />
@@ -689,21 +905,21 @@ export default function CoachSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <PanelLeftClose className="h-4 w-4 text-lime-300" />
-              Focus Mode
+              {t.focusMode}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <OptionCard
               active={focusMode === "off"}
-              title="Standard"
-              description="Show all sidebar content and assistant prompts."
+              title={t.standard}
+              description={t.standardDescription}
               icon={Settings}
               onClick={() => setFocusMode("off")}
             />
             <OptionCard
               active={focusMode === "on"}
-              title="Focused"
-              description="Hide non-essential sidebar promo content."
+              title={t.focused}
+              description={t.focusedDescription}
               icon={PanelLeftClose}
               onClick={() => setFocusMode("on")}
             />
@@ -714,14 +930,14 @@ export default function CoachSettingsPage() {
       <Card className="border-white/10 bg-white/[0.045] shadow-none">
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-semibold text-white">Reset coach preferences</p>
+            <p className="font-semibold text-white">{t.resetPreferences}</p>
             <p className="mt-1 text-sm text-slate-400">
-              Restores the workspace to the default coach experience.
+              {t.resetDescription}
             </p>
           </div>
           <Button type="button" variant="outline" onClick={resetPreferences}>
             <RotateCcw className="h-4 w-4" />
-            Reset
+            {t.reset}
           </Button>
         </CardContent>
       </Card>

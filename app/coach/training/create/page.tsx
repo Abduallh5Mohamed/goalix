@@ -23,61 +23,193 @@ import {
   useGetCoachGroupsScopedQuery,
   useGetCoachPlayersScopedQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 const focusGroups = [
   {
-    label: "Technical",
+    labelKey: "technical",
     options: [
-      ["passing", "Passing"],
-      ["shooting", "Shooting"],
-      ["dribbling", "Dribbling"],
-      ["ball_control", "Ball Control"],
-      ["crossing", "Crossing"],
-      ["finishing", "Finishing"],
+      ["passing", "passing"],
+      ["shooting", "shooting"],
+      ["dribbling", "dribbling"],
+      ["ball_control", "ballControl"],
+      ["crossing", "crossing"],
+      ["finishing", "finishing"],
     ],
   },
   {
-    label: "Tactical",
+    labelKey: "tactical",
     options: [
-      ["attacking", "Attacking"],
-      ["defense", "Defense"],
-      ["pressing", "Pressing"],
-      ["transition", "Transition"],
-      ["possession", "Possession"],
+      ["attacking", "attacking"],
+      ["defense", "defense"],
+      ["pressing", "pressing"],
+      ["transition", "transition"],
+      ["possession", "possession"],
     ],
   },
   {
-    label: "Physical",
+    labelKey: "physical",
     options: [
-      ["speed", "Speed"],
-      ["agility", "Agility"],
-      ["strength", "Strength"],
-      ["endurance", "Endurance"],
-      ["fitness", "Fitness"],
-      ["recovery", "Recovery"],
+      ["speed", "speed"],
+      ["agility", "agility"],
+      ["strength", "strength"],
+      ["endurance", "endurance"],
+      ["fitness", "fitness"],
+      ["recovery", "recovery"],
     ],
   },
   {
-    label: "Mental",
+    labelKey: "mental",
     options: [
-      ["mentality", "Mentality"],
-      ["vision", "Vision"],
-      ["decision_making", "Decision Making"],
+      ["mentality", "mentality"],
+      ["vision", "vision"],
+      ["decision_making", "decisionMaking"],
     ],
   },
   {
-    label: "Special",
+    labelKey: "special",
     options: [
-      ["goalkeeper", "Goalkeeper"],
-      ["set_pieces", "Set Pieces"],
+      ["goalkeeper", "goalkeeper"],
+      ["set_pieces", "setPieces"],
     ],
   },
 ] as const;
+
+const trainingCreateCopy = {
+  en: {
+    createError: "Could not create training. Check the selected targets.",
+    created: "{title} created",
+    pageTitle: "Create Training Event",
+    pageDescription: "Schedule training for selected groups, birth years, and players.",
+    home: "Home",
+    createTrainingBreadcrumb: "Create Training",
+    title: "Title",
+    trainingFocus: "Training Focus",
+    focusGroups: {
+      technical: "Technical",
+      tactical: "Tactical",
+      physical: "Physical",
+      mental: "Mental",
+      special: "Special",
+    },
+    focusOptions: {
+      passing: "Passing",
+      shooting: "Shooting",
+      dribbling: "Dribbling",
+      ballControl: "Ball Control",
+      crossing: "Crossing",
+      finishing: "Finishing",
+      attacking: "Attacking",
+      defense: "Defense",
+      pressing: "Pressing",
+      transition: "Transition",
+      possession: "Possession",
+      speed: "Speed",
+      agility: "Agility",
+      strength: "Strength",
+      endurance: "Endurance",
+      fitness: "Fitness",
+      recovery: "Recovery",
+      mentality: "Mentality",
+      vision: "Vision",
+      decisionMaking: "Decision Making",
+      goalkeeper: "Goalkeeper",
+      setPieces: "Set Pieces",
+    },
+    date: "Date",
+    startTime: "Start Time",
+    endTime: "End Time",
+    location: "Location",
+    intensity: "Intensity",
+    intensityOptions: {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    },
+    groups: "Groups",
+    allGroups: "All groups",
+    birthYears: "Birth Years",
+    allBirthYears: "All birth years",
+    players: "Players",
+    allPlayers: "All players",
+    searchPlayers: "Search players",
+    objectives: "Objectives",
+    sessionPlan: "Session Plan",
+    equipmentNeeded: "Equipment Needed",
+    notes: "Notes",
+    createTraining: "Create Training",
+  },
+  ar: {
+    createError: "تعذر إنشاء التدريب. راجع الأهداف المحددة.",
+    created: "تم إنشاء {title}",
+    pageTitle: "إنشاء حصة تدريب",
+    pageDescription: "جدول تدريبًا للمجموعات أو سنوات الميلاد أو اللاعبين المحددين.",
+    home: "الرئيسية",
+    createTrainingBreadcrumb: "إنشاء تدريب",
+    title: "العنوان",
+    trainingFocus: "تركيز التدريب",
+    focusGroups: {
+      technical: "فني",
+      tactical: "تكتيكي",
+      physical: "بدني",
+      mental: "ذهني",
+      special: "خاص",
+    },
+    focusOptions: {
+      passing: "التمرير",
+      shooting: "التسديد",
+      dribbling: "المراوغة",
+      ballControl: "التحكم في الكرة",
+      crossing: "العرضيات",
+      finishing: "إنهاء الهجمة",
+      attacking: "الهجوم",
+      defense: "الدفاع",
+      pressing: "الضغط",
+      transition: "التحول",
+      possession: "الاستحواذ",
+      speed: "السرعة",
+      agility: "الرشاقة",
+      strength: "القوة",
+      endurance: "التحمل",
+      fitness: "اللياقة",
+      recovery: "الاستشفاء",
+      mentality: "العقلية",
+      vision: "الرؤية",
+      decisionMaking: "اتخاذ القرار",
+      goalkeeper: "حارس المرمى",
+      setPieces: "الكرات الثابتة",
+    },
+    date: "التاريخ",
+    startTime: "وقت البداية",
+    endTime: "وقت النهاية",
+    location: "المكان",
+    intensity: "الشدة",
+    intensityOptions: {
+      low: "منخفضة",
+      medium: "متوسطة",
+      high: "عالية",
+    },
+    groups: "المجموعات",
+    allGroups: "كل المجموعات",
+    birthYears: "سنوات الميلاد",
+    allBirthYears: "كل سنوات الميلاد",
+    players: "اللاعبون",
+    allPlayers: "كل اللاعبين",
+    searchPlayers: "ابحث عن لاعب",
+    objectives: "الأهداف",
+    sessionPlan: "خطة الحصة",
+    equipmentNeeded: "المعدات المطلوبة",
+    notes: "ملاحظات",
+    createTraining: "إنشاء التدريب",
+  },
+} as const;
 
 const toggleId = (items: string[], id: string) =>
   items.includes(id) ? items.filter((item) => item !== id) : [...items, id];
 
 export default function CreateTrainingEventPage() {
+  const language = useDashboardLanguage();
+  const t = trainingCreateCopy[language];
   const { data: groups = [] } = useGetCoachGroupsScopedQuery();
   const { data: birthYears = [] } = useGetCoachBirthdaysQuery();
   const { data: playersRes } = useGetCoachPlayersScopedQuery({ limit: 200 });
@@ -164,18 +296,18 @@ export default function CreateTrainingEventPage() {
         allPlayers: false,
       }));
     } catch {
-      setPageError("Could not create training. Check the selected targets.");
+      setPageError(t.createError);
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Create Training Event"
-        description="Schedule training for selected groups, birth years, and players."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Create Training" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.createTrainingBreadcrumb },
         ]}
       />
 
@@ -190,13 +322,13 @@ export default function CreateTrainingEventPage() {
             {createdTitle && (
               <p className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
                 <Check className="h-4 w-4" />
-                {createdTitle} created
+                {t.created.replace("{title}", createdTitle)}
               </p>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>{t.title}</Label>
                 <Input
                   value={form.title}
                   onChange={(event) =>
@@ -206,7 +338,7 @@ export default function CreateTrainingEventPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Training Focus</Label>
+                <Label>{t.trainingFocus}</Label>
                 <Select
                   value={form.trainingFocus}
                   onValueChange={(value) =>
@@ -218,9 +350,9 @@ export default function CreateTrainingEventPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {focusGroups.flatMap((group) =>
-                      group.options.map(([value, label]) => (
+                      group.options.map(([value, labelKey]) => (
                         <SelectItem key={value} value={value}>
-                          {group.label} - {label}
+                          {t.focusGroups[group.labelKey]} - {t.focusOptions[labelKey]}
                         </SelectItem>
                       )),
                     )}
@@ -228,7 +360,7 @@ export default function CreateTrainingEventPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>{t.date}</Label>
                 <Input
                   type="date"
                   value={form.date}
@@ -240,7 +372,7 @@ export default function CreateTrainingEventPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Start Time</Label>
+                  <Label>{t.startTime}</Label>
                   <Input
                     type="time"
                     value={form.startTime}
@@ -254,7 +386,7 @@ export default function CreateTrainingEventPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End Time</Label>
+                  <Label>{t.endTime}</Label>
                   <Input
                     type="time"
                     value={form.endTime}
@@ -269,7 +401,7 @@ export default function CreateTrainingEventPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Location</Label>
+                <Label>{t.location}</Label>
                 <Input
                   value={form.location}
                   onChange={(event) =>
@@ -281,7 +413,7 @@ export default function CreateTrainingEventPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Intensity</Label>
+                <Label>{t.intensity}</Label>
                 <Select
                   value={form.intensityLevel}
                   onValueChange={(value) =>
@@ -292,9 +424,9 @@ export default function CreateTrainingEventPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="low">{t.intensityOptions.low}</SelectItem>
+                    <SelectItem value="medium">{t.intensityOptions.medium}</SelectItem>
+                    <SelectItem value="high">{t.intensityOptions.high}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -302,8 +434,8 @@ export default function CreateTrainingEventPage() {
 
             <div className="grid gap-4 lg:grid-cols-3">
               <TargetBlock
-                title="Groups"
-                allLabel="All groups"
+                title={t.groups}
+                allLabel={t.allGroups}
                 allChecked={form.allGroups}
                 onAllChange={(checked) =>
                   setForm((prev) => ({
@@ -335,8 +467,8 @@ export default function CreateTrainingEventPage() {
               </TargetBlock>
 
               <TargetBlock
-                title="Birth Years"
-                allLabel="All birth years"
+                title={t.birthYears}
+                allLabel={t.allBirthYears}
                 allChecked={form.allBirthYears}
                 onAllChange={(checked) =>
                   setForm((prev) => ({
@@ -368,8 +500,8 @@ export default function CreateTrainingEventPage() {
               </TargetBlock>
 
               <TargetBlock
-                title="Players"
-                allLabel="All players"
+                title={t.players}
+                allLabel={t.allPlayers}
                 allChecked={form.allPlayers}
                 onAllChange={(checked) =>
                   setForm((prev) => ({
@@ -385,7 +517,7 @@ export default function CreateTrainingEventPage() {
                     className="pl-9"
                     value={playerSearch}
                     onChange={(event) => setPlayerSearch(event.target.value)}
-                    placeholder="Search players"
+                    placeholder={t.searchPlayers}
                   />
                 </div>
                 <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
@@ -419,7 +551,7 @@ export default function CreateTrainingEventPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2">
-                <Label>Objectives</Label>
+                <Label>{t.objectives}</Label>
                 <Textarea
                   value={form.objectives}
                   onChange={(event) =>
@@ -431,7 +563,7 @@ export default function CreateTrainingEventPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Session Plan</Label>
+                <Label>{t.sessionPlan}</Label>
                 <Textarea
                   value={form.sessionPlan}
                   onChange={(event) =>
@@ -443,7 +575,7 @@ export default function CreateTrainingEventPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Equipment Needed</Label>
+                <Label>{t.equipmentNeeded}</Label>
                 <Textarea
                   value={form.equipmentNeeded}
                   onChange={(event) =>
@@ -455,7 +587,7 @@ export default function CreateTrainingEventPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>{t.notes}</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(event) =>
@@ -475,7 +607,7 @@ export default function CreateTrainingEventPage() {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              Create Training
+              {t.createTraining}
             </Button>
           </form>
         </CardContent>

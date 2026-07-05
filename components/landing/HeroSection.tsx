@@ -1,5 +1,6 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
+
+import "@/app/landing.css";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -13,7 +14,6 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { ROLE_ROUTES } from "@/lib/constants";
 
 const S = {
   bg: "#000510",
@@ -31,13 +31,6 @@ const navLinks = [
   { label: "Product Suite", id: "product-suite" },
   { label: "Clubs & Coaches", id: "clubs-coaches" },
   { label: "Ecosystem", id: "goalix-ecosystem" },
-];
-
-const testDashboardLinks = [
-  { label: "Admin Dashboard", href: ROLE_ROUTES.admin, border: "rgba(163,230,53,0.55)" },
-  { label: "Coach Dashboard", href: ROLE_ROUTES.coach, border: "rgba(34,211,238,0.55)" },
-  { label: "Player Dashboard", href: ROLE_ROUTES.player, border: "rgba(59,130,246,0.55)" },
-  { label: "Parent Dashboard", href: ROLE_ROUTES.parent, border: "rgba(167,139,250,0.55)" },
 ];
 
 export type PublicAcademyProfile = {
@@ -367,27 +360,6 @@ export default function HeroSection({
                 Watch Demo
               </button>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {testDashboardLinks.map((link) => (
-                <button
-                  key={link.href}
-                  onClick={() => router.push(link.href)}
-                  style={{
-                    background: "rgba(6,13,26,0.85)",
-                    border: `1px solid ${link.border}`,
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    color: "#e2e8f0",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "'Inter',sans-serif",
-                  }}
-                >
-                  {link.label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -489,8 +461,8 @@ function GoalixAddedSections({
           </div>
         </div>
         <div className="gx-dashboard-art">
-          <img
-            src="/goalix-dashboard-mockup.png?v=20260524"
+          <Image
+            src="/goalix-dashboard-mockup.png"
             alt="GOALIX analytics dashboard mockup"
             width={1448}
             height={1086}
@@ -510,8 +482,8 @@ function GoalixAddedSections({
           <p>Goalix products give teams the tools to analyze, understand and improve performance with clarity.</p>
         </div>
         <div className="gx-product-art">
-          <img
-            src="/goalix-feature-cards.png?v=20260524"
+          <Image
+            src="/goalix-feature-cards.png"
             alt="Goalix product feature cards"
             width={1536}
             height={864}
@@ -540,8 +512,8 @@ function GoalixAddedSections({
           </div>
         </div>
         <div className="gx-club-image">
-          <img
-            src="/goalix-coach-tablet.png?v=20260524"
+          <Image
+            src="/goalix-coach-tablet.png"
             alt="Coach using Goalix tablet analytics"
             width={1536}
             height={1024}
@@ -560,8 +532,8 @@ function GoalixAddedSections({
           </button>
         </div>
         <div className="gx-kit-art">
-          <img
-            src="/goalix-ecosystem-kit.png?v=20260524"
+          <Image
+            src="/goalix-ecosystem-kit.png"
             alt="Goalix product ecosystem kit"
             width={1536}
             height={1024}

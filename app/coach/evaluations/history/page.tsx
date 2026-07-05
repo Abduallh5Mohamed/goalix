@@ -8,6 +8,7 @@ import {
   useGetCoachEvaluationsQuery,
   type CoachEvaluation,
 } from "@/lib/store/api/coachApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate } from "@/lib/utils";
 import { Loader2, RefreshCw } from "lucide-react";
 
@@ -76,7 +77,32 @@ const columns: Column<CoachEvaluation>[] = [
   },
 ];
 
+const historyCopy = {
+  en: {
+    title: "Evaluation History",
+    description: "Past player evaluations",
+    home: "Home",
+    evaluations: "Evaluations",
+    history: "History",
+    loading: "Loading evaluations...",
+    loadError: "Could not load evaluations.",
+    retry: "Retry",
+  },
+  ar: {
+    title: "تاريخ التقييمات",
+    description: "تقييمات اللاعبين السابقة",
+    home: "الرئيسية",
+    evaluations: "التقييمات",
+    history: "التاريخ",
+    loading: "جاري تحميل التقييمات...",
+    loadError: "تعذر تحميل التقييمات.",
+    retry: "إعادة المحاولة",
+  },
+} as const;
+
 export default function CoachEvaluationHistoryPage() {
+  const language = useDashboardLanguage();
+  const t = historyCopy[language];
   const { data, isLoading, isError, refetch } = useGetCoachEvaluationsQuery({
     limit: 100,
   });
@@ -85,12 +111,12 @@ export default function CoachEvaluationHistoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Evaluation History"
-        description="Past player evaluations"
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Evaluations" },
-          { label: "History" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.evaluations },
+          { label: t.history },
         ]}
       />
 
@@ -98,7 +124,7 @@ export default function CoachEvaluationHistoryPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading evaluations...
+            {t.loading}
           </CardContent>
         </Card>
       )}
@@ -106,10 +132,10 @@ export default function CoachEvaluationHistoryPage() {
       {isError && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-red-300">
-            <span>Could not load evaluations.</span>
+            <span>{t.loadError}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="mr-1 h-4 w-4" />
-              Retry
+              {t.retry}
             </Button>
           </CardContent>
         </Card>

@@ -31,24 +31,15 @@ import {
   type RankingSystemInput,
   useGetCoachRankingSystemInputsQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   buildMonthlyRankingRows,
   isActualCompletedRankingRow,
   rankingDateKey,
   rankingMonthKey,
   rankingMonthRange,
-  rankingWeekLabel,
-  rankingWeeksInMonthLabel,
 } from "@/lib/rankings/monthlyRanking";
 import { cn, formatDate, getInitials } from "@/lib/utils";
-
-const roleLabels: Record<RankingSystemInput["role_family"], string> = {
-  attack: "Attack",
-  midfield: "Midfield",
-  defense: "Defense",
-  goalkeeper: "Goalkeeper",
-  unknown: "Unknown",
-};
 
 const roleTone: Record<RankingSystemInput["role_family"], string> = {
   attack: "border-rose-400/30 bg-rose-500/10 text-rose-200",
@@ -82,36 +73,26 @@ const trendTone: Record<RankingSystemInput["trend"], string> = {
 
 const leaderCards: Array<{
   key: "overall" | "attack" | "defense" | "goalkeeper";
-  title: string;
-  subtitle: string;
   icon: ElementType;
   tone: string;
 }> = [
   {
     key: "overall",
-    title: "Overall #1",
-    subtitle: "Best player across all roles",
     icon: Trophy,
     tone: "from-yellow-500/20 to-cyan-500/10 text-yellow-200",
   },
   {
     key: "attack",
-    title: "Top Attacker",
-    subtitle: "Ranked among attackers only",
     icon: Target,
     tone: "from-rose-500/20 to-orange-500/10 text-rose-200",
   },
   {
     key: "defense",
-    title: "Top Defender",
-    subtitle: "Ranked among defenders only",
     icon: Shield,
     tone: "from-emerald-500/20 to-lime-500/10 text-emerald-200",
   },
   {
     key: "goalkeeper",
-    title: "Top Goalkeeper",
-    subtitle: "Ranked among goalkeepers only",
     icon: User,
     tone: "from-amber-500/20 to-cyan-500/10 text-amber-200",
   },
@@ -144,14 +125,210 @@ type PeriodSummary = {
 
 const roleTopCards: Array<{
   role: RoleTopKey;
-  title: string;
   icon: ElementType;
 }> = [
-  { role: "attack", title: "Top Attackers", icon: Target },
-  { role: "midfield", title: "Top Midfielders", icon: Medal },
-  { role: "defense", title: "Top Defenders", icon: Shield },
-  { role: "goalkeeper", title: "Top Goalkeepers", icon: User },
+  { role: "attack", icon: Target },
+  { role: "midfield", icon: Medal },
+  { role: "defense", icon: Shield },
+  { role: "goalkeeper", icon: User },
 ];
+
+const rankingsCopy = {
+  en: {
+    roleLabels: {
+      attack: "Attack",
+      midfield: "Midfield",
+      defense: "Defense",
+      goalkeeper: "Goalkeeper",
+      unknown: "Unknown",
+    },
+    trends: {
+      New: "New",
+      Improving: "Improving",
+      Declining: "Declining",
+      Stable: "Stable",
+    },
+    leaderCards: {
+      overall: {
+        title: "Overall #1",
+        subtitle: "Best player across all roles",
+      },
+      attack: {
+        title: "Top Attacker",
+        subtitle: "Ranked among attackers only",
+      },
+      defense: {
+        title: "Top Defender",
+        subtitle: "Ranked among defenders only",
+      },
+      goalkeeper: {
+        title: "Top Goalkeeper",
+        subtitle: "Ranked among goalkeepers only",
+      },
+    },
+    roleTopTitles: {
+      attack: "Top Attackers",
+      midfield: "Top Midfielders",
+      defense: "Top Defenders",
+      goalkeeper: "Top Goalkeepers",
+    },
+    playerFallback: "Player",
+    score: "Score",
+    rank: "Rank",
+    grade: "Grade",
+    predicted: "Predicted",
+    noModelRole: "No model output for this role yet.",
+    rankedAgainst: "Ranked against {count} {players} in this pool.",
+    playerSingular: "player",
+    playerPlural: "players",
+    noPlayerYet: "No player yet",
+    winnerPodium: "Winner Podium",
+    podiumDescription: "Top 3 overall players from the selected weekly Ranking System output.",
+    overallTop3: "Overall top 3",
+    second: "Second",
+    winner: "Winner",
+    third: "Third",
+    weekShort: "wk",
+    weekPluralShort: "wks",
+    noPlayersRole: "No players in this role yet.",
+    week: "week",
+    weeks: "weeks",
+    overallTopTitle: "Overall Top 3",
+    noPeriodRows: "No ranking rows for this period.",
+    roleLeaders: "Role Leaders",
+    noRoleData: "No {role} data",
+    fullRanking: "Full Ranking",
+    rankingHistory: "Ranking History",
+    rankingHistoryDescription: "Weekly records plus monthly aggregates from the Ranking System output.",
+    weekly: "Weekly",
+    monthly: "Monthly",
+    noWeeklyHistory: "No weekly ranking history is available yet.",
+    noMonthlyHistory: "No monthly ranking history is available yet.",
+    monthlyCycle: "Monthly Ranking Cycle",
+    to: "to",
+    monthlyCycleDescription: "monthly rank is recalculated from this month's completed weekly scores only.",
+    players: "Players",
+    weeksCounted: "Weeks counted",
+    reset: "Reset",
+    resetDescription: "Next month starts from zero. This month does not use old inputs.",
+    monthlyLeader: "Monthly leader",
+    points: "pts",
+    noMonthlyPlayer: "No monthly player yet.",
+    weekOf: "Week of",
+    weekCountSummary: "{count} counted weeks",
+    monthlyAggregated: "aggregated by average score",
+    pageTitle: "Rankings",
+    pageDescription: "Latest weekly rankings from the Ranking System model output.",
+    home: "Home",
+    refresh: "Refresh",
+    loadError: "Could not load Ranking System output.",
+    retry: "Retry",
+    loading: "Loading model rankings...",
+    selectedWeek: "Selected Week",
+    noWeeklyOutput: "No weekly model output yet",
+    chooseWeek: "Choose week",
+    fullModelRanking: "Full Model Ranking",
+    noRankingOutput: "No Ranking System output is available yet.",
+  },
+  ar: {
+    roleLabels: {
+      attack: "هجوم",
+      midfield: "وسط",
+      defense: "دفاع",
+      goalkeeper: "حارس مرمى",
+      unknown: "غير محدد",
+    },
+    trends: {
+      New: "جديد",
+      Improving: "يتحسن",
+      Declining: "يتراجع",
+      Stable: "مستقر",
+    },
+    leaderCards: {
+      overall: {
+        title: "الأول إجمالًا",
+        subtitle: "أفضل لاعب بين كل الأدوار",
+      },
+      attack: {
+        title: "أفضل مهاجم",
+        subtitle: "ترتيب بين المهاجمين فقط",
+      },
+      defense: {
+        title: "أفضل مدافع",
+        subtitle: "ترتيب بين المدافعين فقط",
+      },
+      goalkeeper: {
+        title: "أفضل حارس",
+        subtitle: "ترتيب بين حراس المرمى فقط",
+      },
+    },
+    roleTopTitles: {
+      attack: "أفضل المهاجمين",
+      midfield: "أفضل لاعبي الوسط",
+      defense: "أفضل المدافعين",
+      goalkeeper: "أفضل الحراس",
+    },
+    playerFallback: "لاعب",
+    score: "النقاط",
+    rank: "الترتيب",
+    grade: "التقييم",
+    predicted: "المتوقع",
+    noModelRole: "لا توجد مخرجات نموذج لهذا الدور بعد.",
+    rankedAgainst: "تم ترتيبه مقابل {count} {players} في هذه المجموعة.",
+    playerSingular: "لاعب",
+    playerPlural: "لاعبين",
+    noPlayerYet: "لا يوجد لاعب بعد",
+    winnerPodium: "منصة الفائزين",
+    podiumDescription: "أفضل 3 لاعبين إجمالًا من مخرجات نظام الترتيب الأسبوعية المحددة.",
+    overallTop3: "أفضل 3 إجمالًا",
+    second: "الثاني",
+    winner: "الفائز",
+    third: "الثالث",
+    weekShort: "أسبوع",
+    weekPluralShort: "أسابيع",
+    noPlayersRole: "لا يوجد لاعبون في هذا الدور بعد.",
+    week: "أسبوع",
+    weeks: "أسابيع",
+    overallTopTitle: "أفضل 3 إجمالًا",
+    noPeriodRows: "لا توجد صفوف ترتيب لهذه الفترة.",
+    roleLeaders: "متصدرو الأدوار",
+    noRoleData: "لا توجد بيانات {role}",
+    fullRanking: "الترتيب الكامل",
+    rankingHistory: "سجل الترتيب",
+    rankingHistoryDescription: "السجلات الأسبوعية مع تجميعات شهرية من مخرجات نظام الترتيب.",
+    weekly: "أسبوعي",
+    monthly: "شهري",
+    noWeeklyHistory: "لا يوجد سجل ترتيب أسبوعي بعد.",
+    noMonthlyHistory: "لا يوجد سجل ترتيب شهري بعد.",
+    monthlyCycle: "دورة الترتيب الشهرية",
+    to: "إلى",
+    monthlyCycleDescription: "يعاد حساب الترتيب الشهري من نتائج الأسابيع المكتملة لهذا الشهر فقط.",
+    players: "اللاعبون",
+    weeksCounted: "الأسابيع المحسوبة",
+    reset: "إعادة البدء",
+    resetDescription: "الشهر القادم يبدأ من الصفر. هذا الشهر لا يستخدم مدخلات قديمة.",
+    monthlyLeader: "متصدر الشهر",
+    points: "نقطة",
+    noMonthlyPlayer: "لا يوجد لاعب شهري بعد.",
+    weekOf: "أسبوع",
+    weekCountSummary: "{count} أسابيع محسوبة",
+    monthlyAggregated: "مجمعة بمتوسط النقاط",
+    pageTitle: "الترتيبات",
+    pageDescription: "أحدث الترتيبات الأسبوعية من مخرجات نموذج نظام الترتيب.",
+    home: "الرئيسية",
+    refresh: "تحديث",
+    loadError: "تعذر تحميل مخرجات نظام الترتيب.",
+    retry: "إعادة المحاولة",
+    loading: "جاري تحميل ترتيبات النموذج...",
+    selectedWeek: "الأسبوع المحدد",
+    noWeeklyOutput: "لا توجد مخرجات أسبوعية للنموذج بعد",
+    chooseWeek: "اختر الأسبوع",
+    fullModelRanking: "ترتيب النموذج الكامل",
+    noRankingOutput: "لا توجد مخرجات لنظام الترتيب بعد.",
+  },
+} as const;
+
+type RankingsCopy = (typeof rankingsCopy)[keyof typeof rankingsCopy];
 
 const numberValue = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -242,16 +419,19 @@ const roleTopFromRows = (
   ).slice(0, 3),
 });
 
-const monthLabel = (key: string) => {
+const monthLabel = (key: string, language: "en" | "ar") => {
   const [year, month] = key.split("-").map(Number);
-  if (!year || !month) return key || "Unknown month";
-  return new Intl.DateTimeFormat("en", {
+  if (!year || !month) return key || (language === "ar" ? "شهر غير معروف" : "Unknown month");
+  return new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en", {
     month: "long",
     year: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 };
 
-const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
+const buildWeeklyHistory = (
+  rows: RankingSystemInput[],
+  t: RankingsCopy,
+): PeriodSummary[] => {
   const byWeek = new Map<string, RankingSystemInput[]>();
   rows.forEach((row) => {
     const key = rankingDateKey(row.week_start);
@@ -267,8 +447,8 @@ const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
       const weekEnd = weekRows[0]?.week_end;
       return {
         key,
-        label: rankingWeekLabel(key),
-        subLabel: `${formatDate(key)} to ${formatDate(weekEnd)}`,
+        label: `${t.weekOf} ${formatDate(key)}`,
+        subLabel: `${formatDate(key)} ${t.to} ${formatDate(weekEnd)}`,
         rows: rankedRows,
         roleTop: roleTopFromRows(rankedRows),
         weekCount: 1,
@@ -276,7 +456,11 @@ const buildWeeklyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
     });
 };
 
-const buildMonthlyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
+const buildMonthlyHistory = (
+  rows: RankingSystemInput[],
+  t: RankingsCopy,
+  language: "en" | "ar",
+): PeriodSummary[] => {
   const byMonth = new Map<string, RankingSystemInput[]>();
   rows.forEach((row) => {
     const key = rankingMonthKey(row.week_start);
@@ -300,19 +484,15 @@ const buildMonthlyHistory = (rows: RankingSystemInput[]): PeriodSummary[] => {
         trend: row.latestRow?.trend || "Stable",
         rank: row.rank,
         weekCount: row.weekCount,
-        weekLabel: rankingWeeksInMonthLabel(row.weekStarts, row.month),
+        weekLabel: `${row.weekCount} ${row.weekCount === 1 ? t.weekShort : t.weekPluralShort}`,
       }));
       const weekCount = new Set(
         monthRows.map((row) => rankingDateKey(row.week_start)).filter(Boolean),
       ).size;
-      const weekStarts = [
-        ...new Set(monthRows.map((row) => rankingDateKey(row.week_start)).filter(Boolean)),
-      ];
-
       return {
         key,
-        label: monthLabel(key),
-        subLabel: `${rankingWeeksInMonthLabel(weekStarts, key)} aggregated by average score`,
+        label: monthLabel(key, language),
+        subLabel: `${t.weekCountSummary.replace("{count}", String(weekCount))} - ${t.monthlyAggregated}`,
         rows: rankedRows,
         roleTop: roleTopFromRows(rankedRows),
         weekCount,
@@ -342,6 +522,7 @@ function LeaderCard({
   poolSize,
   icon: Icon,
   tone,
+  t,
 }: {
   title: string;
   subtitle: string;
@@ -350,6 +531,7 @@ function LeaderCard({
   poolSize?: number;
   icon: ElementType;
   tone: string;
+  t: RankingsCopy;
 }) {
   return (
     <Card className="overflow-hidden border-border/50 bg-card">
@@ -371,19 +553,19 @@ function LeaderCard({
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12 border border-primary/30">
                   <AvatarFallback className="bg-primary/15 text-primary">
-                    {getInitials(player.player_name || "Player")}
+                    {getInitials(player.player_name || t.playerFallback)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <p className="truncate font-semibold">
-                    {player.player_name || "Player"}
+                    {player.player_name || t.playerFallback}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <Badge
                       variant="outline"
                       className={cn("rounded-md", roleTone[player.role_family])}
                     >
-                      {roleLabels[player.role_family]}
+                      {t.roleLabels[player.role_family]}
                     </Badge>
                     {player.position && (
                       <Badge variant="secondary" className="rounded-md">
@@ -395,19 +577,19 @@ function LeaderCard({
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-md bg-muted/35 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
+                  <p className="text-xs text-muted-foreground">{t.score}</p>
                   <p className="mt-1 font-mono text-xl font-bold text-primary">
                     {formatScore(scoreValue(player))}
                   </p>
                 </div>
                 <div className="rounded-md bg-muted/35 p-3">
-                  <p className="text-xs text-muted-foreground">Rank</p>
+                  <p className="text-xs text-muted-foreground">{t.rank}</p>
                   <p className="mt-1 font-mono text-xl font-bold">
                     #{categoryRank ?? rankValue(player)}
                   </p>
                 </div>
                 <div className="rounded-md bg-muted/35 p-3">
-                  <p className="text-xs text-muted-foreground">Grade</p>
+                  <p className="text-xs text-muted-foreground">{t.grade}</p>
                   <div className="mt-1 flex justify-center">
                     <GradeBadge grade={gradeValue(player)} />
                   </div>
@@ -415,14 +597,18 @@ function LeaderCard({
               </div>
               {poolSize !== undefined && (
                 <p className="text-xs text-muted-foreground">
-                  Ranked against {poolSize} player{poolSize === 1 ? "" : "s"} in
-                  this pool.
+                  {t.rankedAgainst
+                    .replace("{count}", String(poolSize))
+                    .replace(
+                      "{players}",
+                      poolSize === 1 ? t.playerSingular : t.playerPlural,
+                    )}
                 </p>
               )}
             </div>
           ) : (
             <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-border/50 text-sm text-muted-foreground">
-              No model output for this role yet.
+              {t.noModelRole}
             </div>
           )}
         </div>
@@ -439,6 +625,7 @@ function PodiumPlayer({
   heightClass,
   cardTone,
   baseTone,
+  t,
 }: {
   player?: RankingSystemInput;
   place: 1 | 2 | 3;
@@ -447,6 +634,7 @@ function PodiumPlayer({
   heightClass: string;
   cardTone: string;
   baseTone: string;
+  t: RankingsCopy;
 }) {
   const Icon = place === 1 ? Trophy : Medal;
 
@@ -462,19 +650,19 @@ function PodiumPlayer({
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12 shrink-0 border border-white/15">
               <AvatarFallback className="bg-background/65 font-semibold text-primary">
-                {getInitials(player.player_name || "Player")}
+                {getInitials(player.player_name || t.playerFallback)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="truncate text-base font-semibold">
-                {player.player_name || "Player"}
+                {player.player_name || t.playerFallback}
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <Badge
                   variant="outline"
                   className={cn("rounded-md", roleTone[player.role_family])}
                 >
-                  {roleLabels[player.role_family]}
+                  {t.roleLabels[player.role_family]}
                 </Badge>
                 {player.position && (
                   <Badge variant="secondary" className="rounded-md">
@@ -486,17 +674,17 @@ function PodiumPlayer({
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-md bg-background/35 p-2">
-              <p className="text-[11px] text-muted-foreground">Score</p>
+              <p className="text-[11px] text-muted-foreground">{t.score}</p>
               <p className="mt-1 font-mono text-lg font-bold text-primary">
                 {formatScore(scoreValue(player))}
               </p>
             </div>
             <div className="rounded-md bg-background/35 p-2">
-              <p className="text-[11px] text-muted-foreground">Rank</p>
+              <p className="text-[11px] text-muted-foreground">{t.rank}</p>
               <p className="mt-1 font-mono text-lg font-bold">#{rankValue(player)}</p>
             </div>
             <div className="rounded-md bg-background/35 p-2">
-              <p className="text-[11px] text-muted-foreground">Grade</p>
+              <p className="text-[11px] text-muted-foreground">{t.grade}</p>
               <div className="mt-1 flex justify-center">
                 <GradeBadge grade={gradeValue(player)} />
               </div>
@@ -505,7 +693,7 @@ function PodiumPlayer({
         </div>
       ) : (
         <div className="flex min-h-[152px] items-center justify-center rounded-lg border border-dashed border-border/50 text-sm text-muted-foreground">
-          No player yet
+          {t.noPlayerYet}
         </div>
       )}
 
@@ -526,7 +714,7 @@ function PodiumPlayer({
   );
 }
 
-function WinnerPodium({ players }: { players: RankingSystemInput[] }) {
+function WinnerPodium({ players, t }: { players: RankingSystemInput[]; t: RankingsCopy }) {
   if (!players.length) return null;
 
   return (
@@ -536,14 +724,14 @@ function WinnerPodium({ players }: { players: RankingSystemInput[] }) {
           <div>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Trophy className="h-4 w-4 text-yellow-300" />
-              Winner Podium
+              {t.winnerPodium}
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Top 3 overall players from the selected weekly Ranking System output.
+              {t.podiumDescription}
             </p>
           </div>
           <Badge variant="outline" className="w-fit rounded-md">
-            Overall top 3
+            {t.overallTop3}
           </Badge>
         </div>
       </CardHeader>
@@ -552,29 +740,32 @@ function WinnerPodium({ players }: { players: RankingSystemInput[] }) {
           <PodiumPlayer
             player={players[1]}
             place={2}
-            title="Second"
+            title={t.second}
             orderClass="order-2 md:order-1"
             heightClass="h-28 md:h-36"
             cardTone="border-slate-300/25 bg-gradient-to-b from-slate-300/15 via-cyan-500/10 to-background/20"
             baseTone="border-slate-300/30 bg-slate-400/10 text-slate-100"
+            t={t}
           />
           <PodiumPlayer
             player={players[0]}
             place={1}
-            title="Winner"
+            title={t.winner}
             orderClass="order-1 md:order-2"
             heightClass="h-36 md:h-48"
             cardTone="border-yellow-400/35 bg-gradient-to-b from-yellow-400/25 via-amber-500/15 to-background/20"
             baseTone="border-yellow-400/40 bg-yellow-500/15 text-yellow-100"
+            t={t}
           />
           <PodiumPlayer
             player={players[2]}
             place={3}
-            title="Third"
+            title={t.third}
             orderClass="order-3"
             heightClass="h-24 md:h-32"
             cardTone="border-orange-400/30 bg-gradient-to-b from-orange-500/20 via-amber-700/10 to-background/20"
             baseTone="border-orange-400/35 bg-orange-500/12 text-orange-100"
+            t={t}
           />
         </div>
       </CardContent>
@@ -586,10 +777,12 @@ function CompactRankRow({
   row,
   rankLabel,
   showWeeks = false,
+  t,
 }: {
   row: RankingDisplayRow;
   rankLabel?: string;
   showWeeks?: boolean;
+  t: RankingsCopy;
 }) {
   const TrendIcon = trendIcons[row.trend] || Minus;
 
@@ -611,7 +804,7 @@ function CompactRankRow({
               variant="outline"
               className={cn("rounded-md text-[11px]", roleTone[row.roleFamily])}
             >
-              {roleLabels[row.roleFamily]}
+              {t.roleLabels[row.roleFamily]}
             </Badge>
             {row.position && (
               <Badge variant="secondary" className="rounded-md text-[11px]">
@@ -620,19 +813,19 @@ function CompactRankRow({
             )}
             {showWeeks && (
               <span className="text-[11px] text-muted-foreground">
-                {row.weekLabel ?? `${row.weekCount} wk${row.weekCount === 1 ? "" : "s"}`}
+                {row.weekLabel ?? `${row.weekCount} ${row.weekCount === 1 ? t.weekShort : t.weekPluralShort}`}
               </span>
             )}
             <span className={cn("inline-flex items-center gap-1 text-[11px]", trendTone[row.trend])}>
               <TrendIcon className="h-3 w-3" />
-              {row.trend}
+              {t.trends[row.trend]}
             </span>
           </div>
         </div>
       </div>
       <div className="grid shrink-0 grid-cols-[72px_42px] items-center gap-2 text-right">
         <div>
-          <p className="text-[11px] text-muted-foreground">Score</p>
+          <p className="text-[11px] text-muted-foreground">{t.score}</p>
           <p className="font-mono text-sm font-bold text-primary">
             {formatScore(row.score)}
           </p>
@@ -645,18 +838,18 @@ function CompactRankRow({
   );
 }
 
-function RoleTopThreeSection({ rows }: { rows: RankingDisplayRow[] }) {
+function RoleTopThreeSection({ rows, t }: { rows: RankingDisplayRow[]; t: RankingsCopy }) {
   const roleTop = roleTopFromRows(rows);
 
   return (
     <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-      {roleTopCards.map(({ role, title, icon: Icon }) => {
+      {roleTopCards.map(({ role, icon: Icon }) => {
         const players = roleTop[role];
         return (
           <Card key={role} className="border-border/50 bg-card">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between gap-2 text-base font-semibold">
-                <span>{title}</span>
+                <span>{t.roleTopTitles[role]}</span>
                 <span className={cn("rounded-md border p-2", roleTone[role])}>
                   <Icon className="h-4 w-4" />
                 </span>
@@ -668,11 +861,12 @@ function RoleTopThreeSection({ rows }: { rows: RankingDisplayRow[] }) {
                   key={player.id}
                   row={player}
                   rankLabel={`#${index + 1}`}
+                  t={t}
                 />
               ))}
               {!players.length && (
                 <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-border/50 text-sm text-muted-foreground">
-                  No players in this role yet.
+                  {t.noPlayersRole}
                 </div>
               )}
             </CardContent>
@@ -686,9 +880,11 @@ function RoleTopThreeSection({ rows }: { rows: RankingDisplayRow[] }) {
 function PeriodHistoryCard({
   summary,
   mode,
+  t,
 }: {
   summary: PeriodSummary;
   mode: "weekly" | "monthly";
+  t: RankingsCopy;
 }) {
   const topOverall = summary.rows.slice(0, 3);
   const showWeeks = mode === "monthly";
@@ -702,11 +898,11 @@ function PeriodHistoryCard({
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="info" className="rounded-md">
-            {summary.rows.length} player{summary.rows.length === 1 ? "" : "s"}
+            {summary.rows.length} {summary.rows.length === 1 ? t.playerSingular : t.playerPlural}
           </Badge>
           {mode === "monthly" && (
             <Badge variant="outline" className="rounded-md">
-              {summary.weekCount} week{summary.weekCount === 1 ? "" : "s"}
+              {summary.weekCount} {summary.weekCount === 1 ? t.week : t.weeks}
             </Badge>
           )}
         </div>
@@ -715,7 +911,7 @@ function PeriodHistoryCard({
       <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            Overall Top 3
+            {t.overallTopTitle}
           </p>
           <div className="space-y-2">
             {topOverall.map((row) => (
@@ -723,11 +919,12 @@ function PeriodHistoryCard({
                 key={row.id}
                 row={row}
                 showWeeks={showWeeks}
+                t={t}
               />
             ))}
             {!topOverall.length && (
               <div className="rounded-md border border-dashed border-border/50 p-4 text-center text-sm text-muted-foreground">
-                No ranking rows for this period.
+                {t.noPeriodRows}
               </div>
             )}
           </div>
@@ -735,17 +932,17 @@ function PeriodHistoryCard({
 
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            Role Leaders
+            {t.roleLeaders}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {roleTopCards.map(({ role, title }) => {
+            {roleTopCards.map(({ role }) => {
               const leader = summary.roleTop[role][0];
               return leader ? (
                 <div
                   key={role}
                   className="rounded-md border border-border/30 bg-background/35 p-3"
                 >
-                  <p className="text-xs text-muted-foreground">{title}</p>
+                  <p className="text-xs text-muted-foreground">{t.roleTopTitles[role]}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium">
                       {leader.playerName}
@@ -760,7 +957,7 @@ function PeriodHistoryCard({
                   key={role}
                   className="rounded-md border border-dashed border-border/40 p-3 text-xs text-muted-foreground"
                 >
-                  No {roleLabels[role].toLowerCase()} data
+                  {t.noRoleData.replace("{role}", t.roleLabels[role])}
                 </div>
               );
             })}
@@ -770,7 +967,7 @@ function PeriodHistoryCard({
 
       <div className="mt-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          Full Ranking
+          {t.fullRanking}
         </p>
         <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {summary.rows.map((row) => (
@@ -778,6 +975,7 @@ function PeriodHistoryCard({
               key={row.id}
               row={row}
               showWeeks={showWeeks}
+              t={t}
             />
           ))}
         </div>
@@ -789,23 +987,25 @@ function PeriodHistoryCard({
 function RankingHistory({
   weekly,
   monthly,
+  t,
 }: {
   weekly: PeriodSummary[];
   monthly: PeriodSummary[];
+  t: RankingsCopy;
 }) {
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Ranking History</CardTitle>
+        <CardTitle className="text-base font-semibold">{t.rankingHistory}</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Weekly records plus monthly aggregates from the Ranking System output.
+          {t.rankingHistoryDescription}
         </p>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="weekly" className="space-y-4">
           <TabsList className="w-full justify-start overflow-x-auto bg-muted/30 sm:w-fit">
-            <TabsTrigger value="weekly">Weekly ({weekly.length})</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly ({monthly.length})</TabsTrigger>
+            <TabsTrigger value="weekly">{t.weekly} ({weekly.length})</TabsTrigger>
+            <TabsTrigger value="monthly">{t.monthly} ({monthly.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="weekly" className="mt-0 space-y-3">
             {weekly.map((summary) => (
@@ -813,11 +1013,12 @@ function RankingHistory({
                 key={summary.key}
                 summary={summary}
                 mode="weekly"
+                t={t}
               />
             ))}
             {!weekly.length && (
               <div className="py-10 text-center text-muted-foreground">
-                No weekly ranking history is available yet.
+                {t.noWeeklyHistory}
               </div>
             )}
           </TabsContent>
@@ -827,11 +1028,12 @@ function RankingHistory({
                 key={summary.key}
                 summary={summary}
                 mode="monthly"
+                t={t}
               />
             ))}
             {!monthly.length && (
               <div className="py-10 text-center text-muted-foreground">
-                No monthly ranking history is available yet.
+                {t.noMonthlyHistory}
               </div>
             )}
           </TabsContent>
@@ -841,7 +1043,13 @@ function RankingHistory({
   );
 }
 
-function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
+function MonthlyCycleSummary({
+  summary,
+  t,
+}: {
+  summary?: PeriodSummary;
+  t: RankingsCopy;
+}) {
   if (!summary) return null;
   const range = rankingMonthRange(summary.key);
 
@@ -849,43 +1057,43 @@ function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between gap-3 text-base font-semibold">
-          <span>Monthly Ranking Cycle</span>
+          <span>{t.monthlyCycle}</span>
           <Badge variant="success" className="rounded-md">
-            {range.label}
+            {summary.label}
           </Badge>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          {range.start ? `${formatDate(range.start)} to ${formatDate(range.end)}` : summary.key} - monthly rank is recalculated from this month&apos;s completed weekly scores only.
+          {range.start ? `${formatDate(range.start)} ${t.to} ${formatDate(range.end)}` : summary.key} - {t.monthlyCycleDescription}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-            <p className="text-xs text-muted-foreground">Players</p>
+            <p className="text-xs text-muted-foreground">{t.players}</p>
             <p className="mt-1 text-2xl font-black">{summary.rows.length}</p>
           </div>
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-            <p className="text-xs text-muted-foreground">Weeks counted</p>
+            <p className="text-xs text-muted-foreground">{t.weeksCounted}</p>
             <p className="mt-1 text-2xl font-black">{summary.weekCount}</p>
             <p className="mt-1 text-xs text-muted-foreground">{summary.subLabel}</p>
           </div>
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-            <p className="text-xs text-muted-foreground">Reset</p>
+            <p className="text-xs text-muted-foreground">{t.reset}</p>
             <p className="mt-1 text-sm font-semibold">
-              Next month starts from zero. This month does not use old inputs.
+              {t.resetDescription}
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {roleTopCards.map(({ role, title, icon: Icon }) => {
+          {roleTopCards.map(({ role, icon: Icon }) => {
             const leader = summary.roleTop[role][0];
             return (
               <div key={role} className="rounded-lg border border-border/40 bg-muted/15 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="text-xs text-muted-foreground">Monthly leader</p>
+                    <p className="text-sm font-semibold">{t.roleTopTitles[role]}</p>
+                    <p className="text-xs text-muted-foreground">{t.monthlyLeader}</p>
                   </div>
                   <span className={cn("rounded-md border p-2", roleTone[role])}>
                     <Icon className="h-4 w-4" />
@@ -901,12 +1109,12 @@ function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{leader.playerName}</p>
                       <p className="text-xs text-muted-foreground">
-                        #{leader.rank} - {formatScore(leader.score)} pts - {leader.weekLabel ?? `${leader.weekCount} wk${leader.weekCount === 1 ? "" : "s"}`}
+                        #{leader.rank} - {formatScore(leader.score)} {t.points} - {leader.weekLabel ?? `${leader.weekCount} ${leader.weekCount === 1 ? t.weekShort : t.weekPluralShort}`}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-muted-foreground">No monthly player yet.</p>
+                  <p className="mt-4 text-sm text-muted-foreground">{t.noMonthlyPlayer}</p>
                 )}
               </div>
             );
@@ -918,6 +1126,8 @@ function MonthlyCycleSummary({ summary }: { summary?: PeriodSummary }) {
 }
 
 export default function CoachRankingsPage() {
+  const language = useDashboardLanguage();
+  const t = rankingsCopy[language];
   const { data, isLoading, isError, refetch } =
     useGetCoachRankingSystemInputsQuery({ limit: 100 });
 
@@ -926,10 +1136,13 @@ export default function CoachRankingsPage() {
     () => rows.filter((row) => isActualCompletedRankingRow(row)),
     [rows],
   );
-  const weeklyHistory = useMemo(() => buildWeeklyHistory(completedRows), [completedRows]);
+  const weeklyHistory = useMemo(
+    () => buildWeeklyHistory(completedRows, t),
+    [completedRows, t],
+  );
   const monthlyHistory = useMemo(
-    () => buildMonthlyHistory(completedRows),
-    [completedRows],
+    () => buildMonthlyHistory(completedRows, t, language),
+    [completedRows, language, t],
   );
   const [selectedWeek, setSelectedWeek] = useState("");
   const defaultWeek = weeklyHistory[0]?.key ?? "";
@@ -991,16 +1204,16 @@ export default function CoachRankingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Rankings"
-        description="Latest weekly rankings from the Ranking System model output."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Rankings" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.pageTitle },
         ]}
         actions={
           <Button variant="outline" className="gap-2" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t.refresh}
           </Button>
         }
       />
@@ -1008,9 +1221,9 @@ export default function CoachRankingsPage() {
       {isError && (
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-destructive">
-            <span>Could not load Ranking System output.</span>
+            <span>{t.loadError}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Retry
+              {t.retry}
             </Button>
           </CardContent>
         </Card>
@@ -1020,7 +1233,7 @@ export default function CoachRankingsPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading model rankings...
+            {t.loading}
           </CardContent>
         </Card>
       ) : (
@@ -1028,40 +1241,40 @@ export default function CoachRankingsPage() {
           <Card className="border-border/50 bg-card">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-medium">Selected Week</p>
+                <p className="text-sm font-medium">{t.selectedWeek}</p>
                 <p className="text-xs text-muted-foreground">
                   {selectedWeekSummary
                     ? selectedWeekSummary.subLabel
-                    : "No weekly model output yet"}
+                    : t.noWeeklyOutput}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 {weeklyHistory.length > 0 && (
                   <Select value={effectiveWeek} onValueChange={setSelectedWeek}>
                     <SelectTrigger className="w-full sm:w-64">
-                      <SelectValue placeholder="Choose week" />
+                      <SelectValue placeholder={t.chooseWeek} />
                     </SelectTrigger>
                     <SelectContent>
                       {weeklyHistory.map((summary) => (
                         <SelectItem key={summary.key} value={summary.key}>
-                          {summary.label} - {summary.rows.length} players
+                          {summary.label} - {summary.rows.length} {summary.rows.length === 1 ? t.playerSingular : t.playerPlural}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
                 <Badge variant="info" className="w-fit rounded-md">
-                  {modelRows.length} player{modelRows.length === 1 ? "" : "s"}
+                  {modelRows.length} {modelRows.length === 1 ? t.playerSingular : t.playerPlural}
                 </Badge>
               </div>
             </CardContent>
           </Card>
 
-          <MonthlyCycleSummary summary={latestMonthlySummary} />
+          <MonthlyCycleSummary summary={latestMonthlySummary} t={t} />
 
-          <WinnerPodium players={podiumPlayers} />
+          <WinnerPodium players={podiumPlayers} t={t} />
 
-          <RoleTopThreeSection rows={selectedDisplayRows} />
+          <RoleTopThreeSection rows={selectedDisplayRows} t={t} />
 
           <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {leaderCards.map((card) => {
@@ -1070,24 +1283,25 @@ export default function CoachRankingsPage() {
               return (
                 <LeaderCard
                   key={card.key}
-                  title={card.title}
-                  subtitle={card.subtitle}
+                  title={t.leaderCards[card.key].title}
+                  subtitle={t.leaderCards[card.key].subtitle}
                   player={player}
                   categoryRank={player ? 1 : undefined}
                   poolSize={poolSize}
                   icon={card.icon}
                   tone={card.tone}
+                  t={t}
                 />
               );
             })}
           </section>
 
-          <RankingHistory weekly={weeklyHistory} monthly={monthlyHistory} />
+          <RankingHistory weekly={weeklyHistory} monthly={monthlyHistory} t={t} />
 
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">
-                Full Model Ranking
+                {t.fullModelRanking}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -1122,7 +1336,7 @@ export default function CoachRankingsPage() {
                             variant="outline"
                             className={cn("rounded-md", roleTone[row.role_family])}
                           >
-                            {roleLabels[row.role_family]}
+                            {t.roleLabels[row.role_family]}
                           </Badge>
                           {row.position && (
                             <Badge variant="secondary" className="rounded-md">
@@ -1136,26 +1350,26 @@ export default function CoachRankingsPage() {
                             )}
                           >
                             <TrendIcon className="h-3 w-3" />
-                            {row.trend}
+                            {t.trends[row.trend]}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-right sm:min-w-[320px]">
                       <div>
-                        <p className="text-xs text-muted-foreground">Score</p>
+                        <p className="text-xs text-muted-foreground">{t.score}</p>
                         <p className="font-mono text-xl font-bold text-primary">
                           {formatScore(scoreValue(row))}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Predicted</p>
+                        <p className="text-xs text-muted-foreground">{t.predicted}</p>
                         <p className="font-mono text-xl font-bold">
                           {formatScore(predictedValue(row))}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Grade</p>
+                        <p className="text-xs text-muted-foreground">{t.grade}</p>
                         <div className="mt-1 flex justify-end">
                           <GradeBadge grade={gradeValue(row)} />
                         </div>
@@ -1168,7 +1382,7 @@ export default function CoachRankingsPage() {
               {!isLoading && modelRows.length === 0 && (
                 <div className="py-10 text-center text-muted-foreground">
                   <Trophy className="mx-auto mb-3 h-10 w-10 opacity-30" />
-                  <p>No Ranking System output is available yet.</p>
+                  <p>{t.noRankingOutput}</p>
                 </div>
               )}
             </CardContent>

@@ -17,8 +17,10 @@ import { Bell, LogOut, User, Settings } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
 import { useGetUnreadNotificationsCountQuery } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 export function AdminHeader() {
+  const language = useDashboardLanguage();
   const authState = useCurrentUser();
   const { user } = authState;
   const { logout } = useAuth();
@@ -37,7 +39,11 @@ export function AdminHeader() {
       <div className="flex items-center gap-3">
         <AdminMobileToggle />
         <SearchInput
-          placeholder="Search players, coaches, groups..."
+          placeholder={
+            language === "ar"
+              ? "ابحث عن لاعبين أو مدربين أو مجموعات..."
+              : "Search players, coaches, groups..."
+          }
           className="hidden w-80 rounded-full border-white/10 bg-white/[0.03] text-slate-200 placeholder:text-slate-500 sm:block"
         />
       </div>

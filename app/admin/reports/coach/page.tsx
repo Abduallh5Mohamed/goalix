@@ -16,14 +16,97 @@ import {
 } from "@/components/ui/select";
 import { useGetBranchesQuery } from "@/lib/store/api/adminApi";
 import { useGetReportsOverviewQuery } from "@/lib/store/api/dashboardApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 const toDate = (date: Date) => date.toISOString().slice(0, 10);
-const roleLabel = (value: string | null) =>
-  (value || "coach")
+
+type DashboardLanguage = "en" | "ar";
+
+const coachReportCopy = {
+  en: {
+    title: "Coach Report",
+    description: "Coach workload, groups, players and attendance performance.",
+    refreshReport: "Refresh report",
+    exportCsv: "Export CSV",
+    branch: "Branch",
+    allBranches: "All branches",
+    from: "From",
+    to: "To",
+    loadError: "Could not load coach performance.",
+    loading: "Loading coach report from the database...",
+    coach: "Coach",
+    role: "Role",
+    groups: "Groups",
+    players: "Players",
+    sessions: "Sessions",
+    attendance: "Attendance",
+    coaches: "Coaches",
+    coachesHelper: "In selected branch",
+    assignedGroups: "Assigned Groups",
+    assignedGroupsHelper: "Current group assignments",
+    managedPlayers: "Managed Players",
+    managedPlayersHelper: "Unique active assignments",
+    completed: "completed",
+    coachWorkload: "Coach Workload",
+    managedPlayersDataset: "Managed players",
+    noCoachesBranch: "No coaches found for this branch.",
+    noPrimaryBranch: "No primary branch",
+    playerAttendance: "player attendance",
+    coachFallback: "coach",
+  },
+  ar: {
+    title: "تقرير المدربين",
+    description: "عبء عمل المدربين، المجموعات، اللاعبين، وأداء الحضور.",
+    refreshReport: "تحديث التقرير",
+    exportCsv: "تصدير CSV",
+    branch: "الفرع",
+    allBranches: "كل الفروع",
+    from: "من",
+    to: "إلى",
+    loadError: "تعذر تحميل أداء المدربين.",
+    loading: "جاري تحميل تقرير المدربين من قاعدة البيانات...",
+    coach: "المدرب",
+    role: "الدور",
+    groups: "المجموعات",
+    players: "اللاعبون",
+    sessions: "الحصص",
+    attendance: "الحضور",
+    coaches: "المدربون",
+    coachesHelper: "في الفرع المحدد",
+    assignedGroups: "المجموعات المعينة",
+    assignedGroupsHelper: "تعيينات المجموعات الحالية",
+    managedPlayers: "اللاعبون المدارون",
+    managedPlayersHelper: "تعيينات نشطة فريدة",
+    completed: "مكتملة",
+    coachWorkload: "عبء عمل المدرب",
+    managedPlayersDataset: "اللاعبون المدارون",
+    noCoachesBranch: "لا يوجد مدربون لهذا الفرع.",
+    noPrimaryBranch: "لا يوجد فرع أساسي",
+    playerAttendance: "حضور اللاعبين",
+    coachFallback: "مدرب",
+  },
+} as const;
+
+const roleLabel = (value: string | null, language: DashboardLanguage, fallback: string) => {
+  if (language === "ar") {
+    const roles: Record<string, string> = {
+      coach: "مدرب",
+      head_coach: "مدرب رئيسي",
+      assistant_coach: "مدرب مساعد",
+      fitness_coach: "مدرب لياقة",
+      goalkeeper_coach: "مدرب حراس",
+    };
+    const key = String(value || fallback).toLowerCase();
+    return roles[key] ?? String(value || fallback).replaceAll("_", " ");
+  }
+  return (value || fallback)
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
 
 export default function CoachReportPage() {
+  const language = useDashboardLanguage();
+  const t = coachReportCopy[language];
   const router = useRouter();
   const today = useMemo(() => new Date(), []);
   const from = useMemo(() => {
@@ -47,10 +130,10 @@ export default function CoachReportPage() {
 
   const exportCsv = () => {
     const rows = [
-      ["Coach", "Role", "Branch", "Groups", "Players", "Sessions", "Attendance"],
+      [t.coach, t.role, t.branch, t.groups, t.players, t.sessions, t.attendance],
       ...coaches.map((coach) => [
         coach.name,
-        roleLabel(coach.role || coach.specialization),
+        roleLabel(coach.role || coach.specialization, language, t.coachFallback),
         coach.branchName ?? "",
         coach.groupCount,
         coach.playerCount,
@@ -74,8 +157,8 @@ export default function CoachReportPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Coach Report"
-        description="Coach workload, groups, players and attendance performance."
+        title={t.title}
+        description={t.description}
         actions={
           <div className="flex gap-2">
             <Button
@@ -83,13 +166,13 @@ export default function CoachReportPage() {
               size="icon"
               onClick={() => refetch()}
               disabled={isFetching}
-              title="Refresh report"
+              title={t.refreshReport}
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             <Button onClick={exportCsv} disabled={!coaches.length}>
               <Download className="h-4 w-4" />
-              Export CSV
+              {t.exportCsv}
             </Button>
           </div>
         }
@@ -97,13 +180,13 @@ export default function CoachReportPage() {
 
       <section className="grid gap-3 border-y border-[#29435f]/80 py-4 sm:grid-cols-3">
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Branch</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.branch}</span>
           <Select value={branchId} onValueChange={setBranchId}>
             <SelectTrigger className="border-[#29435f] bg-[#07172a]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
+              <SelectItem value="all">{t.allBranches}</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -113,7 +196,7 @@ export default function CoachReportPage() {
           </Select>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">From</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.from}</span>
           <input
             type="date"
             value={dateFrom}
@@ -123,7 +206,7 @@ export default function CoachReportPage() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">To</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.to}</span>
           <input
             type="date"
             value={dateTo}
@@ -137,22 +220,22 @@ export default function CoachReportPage() {
 
       {isError && (
         <div className="border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-          Could not load coach performance.
+          {t.loadError}
         </div>
       )}
 
       {isLoading ? (
         <div className="grid min-h-72 place-items-center text-sm text-slate-400">
-          Loading coach report from the database...
+          {t.loading}
         </div>
       ) : data ? (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              [Users, "Coaches", coaches.length, "In selected branch"],
-              [Waypoints, "Assigned Groups", totalGroups, "Current group assignments"],
-              [Users, "Managed Players", totalPlayers, "Unique active assignments"],
-              [CalendarCheck2, "Sessions", data.summary.totalSessions, `${data.summary.completedSessions} completed`],
+              [Users, t.coaches, coaches.length, t.coachesHelper],
+              [Waypoints, t.assignedGroups, totalGroups, t.assignedGroupsHelper],
+              [Users, t.managedPlayers, totalPlayers, t.managedPlayersHelper],
+              [CalendarCheck2, t.sessions, data.summary.totalSessions, `${data.summary.completedSessions} ${t.completed}`],
             ].map(([Icon, label, value, helper]) => {
               const MetricIcon = Icon as typeof Users;
               return (
@@ -174,7 +257,7 @@ export default function CoachReportPage() {
 
           <Card className="border-[#29435f] bg-[#07172a]/80">
             <CardHeader>
-              <CardTitle className="text-base text-white">Coach Workload</CardTitle>
+              <CardTitle className="text-base text-white">{t.coachWorkload}</CardTitle>
             </CardHeader>
             <CardContent>
               {coaches.length ? (
@@ -182,12 +265,12 @@ export default function CoachReportPage() {
                   labels={coaches.map((coach) => coach.name)}
                   datasets={[
                     {
-                      label: "Sessions",
+                      label: t.sessions,
                       data: coaches.map((coach) => coach.sessions),
                       backgroundColor: "#22d3ee",
                     },
                     {
-                      label: "Managed players",
+                      label: t.managedPlayersDataset,
                       data: coaches.map((coach) => coach.playerCount),
                       backgroundColor: "#b6ff00",
                     },
@@ -196,7 +279,7 @@ export default function CoachReportPage() {
                 />
               ) : (
                 <p className="py-12 text-center text-sm text-slate-400">
-                  No coaches found for this branch.
+                  {t.noCoachesBranch}
                 </p>
               )}
             </CardContent>
@@ -214,31 +297,31 @@ export default function CoachReportPage() {
                     <div>
                       <h2 className="font-semibold text-white">{coach.name}</h2>
                       <p className="mt-1 text-sm text-cyan-300">
-                        {roleLabel(coach.role || coach.specialization)}
+                        {roleLabel(coach.role || coach.specialization, language, t.coachFallback)}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        {coach.branchName || "No primary branch"}
+                        {coach.branchName || t.noPrimaryBranch}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-lime-300">
                         {coach.attendanceRate}%
                       </p>
-                      <p className="text-xs text-slate-500">player attendance</p>
+                      <p className="text-xs text-slate-500">{t.playerAttendance}</p>
                     </div>
                   </div>
                   <div className="mt-5 grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-4 text-center">
                     <div>
                       <p className="text-xl font-bold text-white">{coach.groupCount}</p>
-                      <p className="text-xs text-slate-500">Groups</p>
+                      <p className="text-xs text-slate-500">{t.groups}</p>
                     </div>
                     <div>
                       <p className="text-xl font-bold text-white">{coach.playerCount}</p>
-                      <p className="text-xs text-slate-500">Players</p>
+                      <p className="text-xs text-slate-500">{t.players}</p>
                     </div>
                     <div>
                       <p className="text-xl font-bold text-white">{coach.sessions}</p>
-                      <p className="text-xs text-slate-500">Sessions</p>
+                      <p className="text-xs text-slate-500">{t.sessions}</p>
                     </div>
                   </div>
                 </CardContent>

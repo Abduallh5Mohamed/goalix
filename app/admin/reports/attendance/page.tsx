@@ -15,10 +15,86 @@ import {
 } from "@/components/ui/select";
 import { useGetBranchesQuery } from "@/lib/store/api/adminApi";
 import { useGetReportsOverviewQuery } from "@/lib/store/api/dashboardApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 const toDate = (date: Date) => date.toISOString().slice(0, 10);
 
+const attendanceReportCopy = {
+  en: {
+    title: "Attendance Report",
+    description: "Attendance status, weekly trend and group comparison.",
+    refreshReport: "Refresh report",
+    exportCsv: "Export CSV",
+    branch: "Branch",
+    allBranches: "All branches",
+    from: "From",
+    to: "To",
+    loadError: "Could not load attendance data.",
+    loading: "Loading attendance from the database...",
+    status: "Status",
+    count: "Count",
+    present: "Present",
+    late: "Late",
+    absent: "Absent",
+    excused: "Excused",
+    injured: "Injured",
+    group: "Group",
+    players: "Players",
+    trainings: "Trainings",
+    attendanceRate: "Attendance Rate",
+    records: (count: number) => `${count} records`,
+    onTime: "On time",
+    countedAsAttended: "Counted as attended",
+    unexcusedAbsence: "Unexcused absence",
+    approvedAbsence: "Approved absence",
+    injuryUnavailable: "Unavailable due to injury",
+    weeklyAttendanceRate: "Weekly Attendance Rate",
+    attendancePercent: "Attendance %",
+    noAttendancePeriod: "No attendance has been marked in this period yet.",
+    statusDistribution: "Status Distribution",
+    attendanceByGroup: "Attendance by Group",
+    noGroups: "No active groups found for this branch.",
+  },
+  ar: {
+    title: "تقرير الحضور",
+    description: "حالات الحضور، الاتجاه الأسبوعي، ومقارنة المجموعات.",
+    refreshReport: "تحديث التقرير",
+    exportCsv: "تصدير CSV",
+    branch: "الفرع",
+    allBranches: "كل الفروع",
+    from: "من",
+    to: "إلى",
+    loadError: "تعذر تحميل بيانات الحضور.",
+    loading: "جاري تحميل الحضور من قاعدة البيانات...",
+    status: "الحالة",
+    count: "العدد",
+    present: "حاضر",
+    late: "متأخر",
+    absent: "غائب",
+    excused: "بعذر",
+    injured: "مصاب",
+    group: "المجموعة",
+    players: "اللاعبون",
+    trainings: "التدريبات",
+    attendanceRate: "نسبة الحضور",
+    records: (count: number) => `${count} سجلات`,
+    onTime: "في الموعد",
+    countedAsAttended: "يحسب ضمن الحضور",
+    unexcusedAbsence: "غياب بدون عذر",
+    approvedAbsence: "غياب معتمد",
+    injuryUnavailable: "غير متاح بسبب الإصابة",
+    weeklyAttendanceRate: "نسبة الحضور الأسبوعية",
+    attendancePercent: "نسبة الحضور %",
+    noAttendancePeriod: "لم يتم تسجيل حضور في هذه الفترة بعد.",
+    statusDistribution: "توزيع الحالات",
+    attendanceByGroup: "الحضور حسب المجموعة",
+    noGroups: "لا توجد مجموعات نشطة لهذا الفرع.",
+  },
+} as const;
+
 export default function AttendanceReportPage() {
+  const language = useDashboardLanguage();
+  const t = attendanceReportCopy[language];
   const today = useMemo(() => new Date(), []);
   const from = useMemo(() => {
     const date = new Date(today);
@@ -41,18 +117,18 @@ export default function AttendanceReportPage() {
   const exportCsv = () => {
     if (!data) return;
     const rows = [
-      ["Attendance Report"],
-      ["From", dateFrom],
-      ["To", dateTo],
+      [t.title],
+      [t.from, dateFrom],
+      [t.to, dateTo],
       [],
-      ["Status", "Count"],
-      ["Present", data.attendance.present],
-      ["Late", data.attendance.late],
-      ["Absent", data.attendance.absent],
-      ["Excused", data.attendance.excused],
-      ["Injured", data.attendance.injured],
+      [t.status, t.count],
+      [t.present, data.attendance.present],
+      [t.late, data.attendance.late],
+      [t.absent, data.attendance.absent],
+      [t.excused, data.attendance.excused],
+      [t.injured, data.attendance.injured],
       [],
-      ["Group", "Branch", "Players", "Trainings", "Attendance Rate"],
+      [t.group, t.branch, t.players, t.trainings, t.attendanceRate],
       ...data.groups.map((group) => [
         group.name,
         group.branchName,
@@ -77,8 +153,8 @@ export default function AttendanceReportPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Attendance Report"
-        description="Attendance status, weekly trend and group comparison."
+        title={t.title}
+        description={t.description}
         actions={
           <div className="flex gap-2">
             <Button
@@ -86,13 +162,13 @@ export default function AttendanceReportPage() {
               size="icon"
               onClick={() => refetch()}
               disabled={isFetching}
-              title="Refresh report"
+              title={t.refreshReport}
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             <Button onClick={exportCsv} disabled={!data}>
               <Download className="h-4 w-4" />
-              Export CSV
+              {t.exportCsv}
             </Button>
           </div>
         }
@@ -100,13 +176,13 @@ export default function AttendanceReportPage() {
 
       <section className="grid gap-3 border-y border-[#29435f]/80 py-4 sm:grid-cols-3">
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Branch</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.branch}</span>
           <Select value={branchId} onValueChange={setBranchId}>
             <SelectTrigger className="border-[#29435f] bg-[#07172a]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
+              <SelectItem value="all">{t.allBranches}</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -116,7 +192,7 @@ export default function AttendanceReportPage() {
           </Select>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">From</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.from}</span>
           <input
             type="date"
             value={dateFrom}
@@ -126,7 +202,7 @@ export default function AttendanceReportPage() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">To</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.to}</span>
           <input
             type="date"
             value={dateTo}
@@ -140,24 +216,24 @@ export default function AttendanceReportPage() {
 
       {isError && (
         <div className="border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-          Could not load attendance data.
+          {t.loadError}
         </div>
       )}
 
       {isLoading ? (
         <div className="grid min-h-72 place-items-center text-sm text-slate-400">
-          Loading attendance from the database...
+          {t.loading}
         </div>
       ) : data ? (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {[
-              [UserCheck, "Attendance Rate", `${data.summary.attendanceRate}%`, `${data.attendance.total} records`, "text-lime-300"],
-              [UserCheck, "Present", data.attendance.present, "On time", "text-cyan-300"],
-              [Clock3, "Late", data.attendance.late, "Counted as attended", "text-amber-300"],
-              [UserX, "Absent", data.attendance.absent, "Unexcused absence", "text-red-300"],
-              [UserX, "Excused", data.attendance.excused, "Approved absence", "text-violet-300"],
-              [HeartPulse, "Injured", data.attendance.injured, "Unavailable due to injury", "text-rose-300"],
+              [UserCheck, t.attendanceRate, `${data.summary.attendanceRate}%`, t.records(data.attendance.total), "text-lime-300"],
+              [UserCheck, t.present, data.attendance.present, t.onTime, "text-cyan-300"],
+              [Clock3, t.late, data.attendance.late, t.countedAsAttended, "text-amber-300"],
+              [UserX, t.absent, data.attendance.absent, t.unexcusedAbsence, "text-red-300"],
+              [UserX, t.excused, data.attendance.excused, t.approvedAbsence, "text-violet-300"],
+              [HeartPulse, t.injured, data.attendance.injured, t.injuryUnavailable, "text-rose-300"],
             ].map(([Icon, label, value, helper, tone]) => {
               const MetricIcon = Icon as typeof UserCheck;
               return (
@@ -182,7 +258,7 @@ export default function AttendanceReportPage() {
           <section className="grid gap-4 xl:grid-cols-2">
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader>
-                <CardTitle className="text-base text-white">Weekly Attendance Rate</CardTitle>
+                <CardTitle className="text-base text-white">{t.weeklyAttendanceRate}</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.attendanceTrend.length ? (
@@ -190,7 +266,7 @@ export default function AttendanceReportPage() {
                     labels={data.attendanceTrend.map((point) => point.label)}
                     datasets={[
                       {
-                        label: "Attendance %",
+                        label: t.attendancePercent,
                         data: data.attendanceTrend.map((point) => point.rate),
                         backgroundColor: "#b6ff00",
                       },
@@ -199,7 +275,7 @@ export default function AttendanceReportPage() {
                   />
                 ) : (
                   <p className="py-28 text-center text-sm text-slate-400">
-                    No attendance has been marked in this period yet.
+                    {t.noAttendancePeriod}
                   </p>
                 )}
               </CardContent>
@@ -207,15 +283,15 @@ export default function AttendanceReportPage() {
 
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader>
-                <CardTitle className="text-base text-white">Status Distribution</CardTitle>
+                <CardTitle className="text-base text-white">{t.statusDistribution}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
                 {[
-                  ["Present", data.attendance.present, "bg-cyan-400"],
-                  ["Late", data.attendance.late, "bg-amber-400"],
-                  ["Absent", data.attendance.absent, "bg-red-400"],
-                  ["Excused", data.attendance.excused, "bg-violet-400"],
-                  ["Injured", data.attendance.injured, "bg-rose-400"],
+                  [t.present, data.attendance.present, "bg-cyan-400"],
+                  [t.late, data.attendance.late, "bg-amber-400"],
+                  [t.absent, data.attendance.absent, "bg-red-400"],
+                  [t.excused, data.attendance.excused, "bg-violet-400"],
+                  [t.injured, data.attendance.injured, "bg-rose-400"],
                 ].map(([label, count, color]) => {
                   const total = Math.max(data.attendance.total, 1);
                   const numericCount = Number(count);
@@ -242,17 +318,17 @@ export default function AttendanceReportPage() {
 
           <Card className="border-[#29435f] bg-[#07172a]/80">
             <CardHeader>
-              <CardTitle className="text-base text-white">Attendance by Group</CardTitle>
+              <CardTitle className="text-base text-white">{t.attendanceByGroup}</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full min-w-[650px] text-left text-sm">
                 <thead className="text-xs uppercase text-slate-500">
                   <tr>
-                    <th className="pb-3">Group</th>
-                    <th className="pb-3">Branch</th>
-                    <th className="pb-3">Players</th>
-                    <th className="pb-3">Trainings</th>
-                    <th className="pb-3 text-right">Attendance Rate</th>
+                    <th className="pb-3">{t.group}</th>
+                    <th className="pb-3">{t.branch}</th>
+                    <th className="pb-3">{t.players}</th>
+                    <th className="pb-3">{t.trainings}</th>
+                    <th className="pb-3 text-right">{t.attendanceRate}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -271,7 +347,7 @@ export default function AttendanceReportPage() {
               </table>
               {!data.groups.length && (
                 <p className="py-10 text-center text-sm text-slate-400">
-                  No active groups found for this branch.
+                  {t.noGroups}
                 </p>
               )}
             </CardContent>

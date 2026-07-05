@@ -31,6 +31,7 @@ import {
 } from "@/lib/store/api/coachApi";
 import { useGetCoachPlayersScopedQuery } from "@/lib/store/api/calendarApi";
 import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { Clock, ChevronRight, Loader2, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 
@@ -52,7 +53,92 @@ const getApiErrorMessage = (err: unknown, fallback: string) => {
   );
 };
 
+const myGroupsCopy = {
+  en: {
+    pageTitle: "My Groups",
+    pageDescription: "Groups assigned to you",
+    home: "Home",
+    createGroup: "Create Group",
+    createDescription: "Create a new group and assign it to yourself.",
+    branch: "Branch",
+    loadingBranches: "Loading branches...",
+    selectBranch: "Select branch",
+    birthYear: "Birth Year",
+    selectBirthYear: "Select birth year",
+    players: "Players",
+    playersHint: "Optional. Search and choose specific players for this group.",
+    selected: "{count} selected",
+    searchPlayers: "Search player name, position, guardian...",
+    removePlayer: "Remove {name}",
+    selectBranchFirst: "Select a branch and birth year first.",
+    loadingPlayers: "Loading players...",
+    noPosition: "No position",
+    noPlayers: "No players found for this branch and birth year.",
+    addBirthYear: "Add Birth Year",
+    addBirthYearHint: "Create a new birth year for the selected branch.",
+    fromYear: "From year",
+    toYear: "To year",
+    labelOptional: "Label (optional)",
+    adding: "Adding...",
+    add: "Add",
+    birthYearError: "Could not create the birth year. Please check the values.",
+    groupName: "Group Name",
+    groupNamePlaceholder: "U14 Elite",
+    createError: "Could not create the group. Please try again.",
+    cancel: "Cancel",
+    creating: "Creating...",
+    loadingGroups: "Loading groups...",
+    loadError: "Could not load your groups from the backend.",
+    attendance: "Attendance",
+    avgScore: "Avg Score",
+    noGroups: "No groups assigned yet.",
+    statuses: { active: "active", inactive: "inactive" },
+  },
+  ar: {
+    pageTitle: "مجموعاتي",
+    pageDescription: "المجموعات المعينة لك",
+    home: "الرئيسية",
+    createGroup: "إنشاء مجموعة",
+    createDescription: "أنشئ مجموعة جديدة وعيّنها لنفسك.",
+    branch: "الفرع",
+    loadingBranches: "جاري تحميل الفروع...",
+    selectBranch: "اختر فرعًا",
+    birthYear: "سنة الميلاد",
+    selectBirthYear: "اختر سنة الميلاد",
+    players: "اللاعبون",
+    playersHint: "اختياري. ابحث واختر لاعبين محددين لهذه المجموعة.",
+    selected: "{count} محدد",
+    searchPlayers: "ابحث باسم اللاعب أو المركز أو ولي الأمر...",
+    removePlayer: "إزالة {name}",
+    selectBranchFirst: "اختر فرعًا وسنة ميلاد أولًا.",
+    loadingPlayers: "جاري تحميل اللاعبين...",
+    noPosition: "لا يوجد مركز",
+    noPlayers: "لا يوجد لاعبون لهذا الفرع وسنة الميلاد.",
+    addBirthYear: "إضافة سنة ميلاد",
+    addBirthYearHint: "أنشئ سنة ميلاد جديدة للفرع المحدد.",
+    fromYear: "من سنة",
+    toYear: "إلى سنة",
+    labelOptional: "العنوان (اختياري)",
+    adding: "جاري الإضافة...",
+    add: "إضافة",
+    birthYearError: "تعذر إنشاء سنة الميلاد. راجع القيم.",
+    groupName: "اسم المجموعة",
+    groupNamePlaceholder: "نخبة U14",
+    createError: "تعذر إنشاء المجموعة. حاول مرة أخرى.",
+    cancel: "إلغاء",
+    creating: "جاري الإنشاء...",
+    loadingGroups: "جاري تحميل المجموعات...",
+    loadError: "تعذر تحميل مجموعاتك من الباك.",
+    attendance: "الحضور",
+    avgScore: "متوسط النتيجة",
+    noGroups: "لا توجد مجموعات معينة حتى الآن.",
+    statuses: { active: "نشطة", inactive: "غير نشطة" },
+  },
+} as const;
+
 export default function CoachMyGroupsPage() {
+  const language = useDashboardLanguage();
+  const t = myGroupsCopy[language];
   const { can } = useCoachPermissions();
   const canManageGroups = can("can_manage_groups");
   const { data: myGroups = [], isLoading, isError } = useGetCoachGroupsQuery();
@@ -230,7 +316,7 @@ export default function CoachMyGroupsPage() {
       setBirthYearFormError(
         getApiErrorMessage(
           err,
-          "Could not create the birth year. Please check the values.",
+          t.birthYearError,
         ),
       );
     }
@@ -239,17 +325,17 @@ export default function CoachMyGroupsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Groups"
-        description="Groups assigned to you"
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "My Groups" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.pageTitle },
         ]}
         actions={
           canManageGroups ? (
             <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
-              Create Group
+              {t.createGroup}
             </Button>
           ) : undefined
         }
@@ -258,14 +344,14 @@ export default function CoachMyGroupsPage() {
       <Dialog open={createOpen} onOpenChange={handleDialogChange}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Create Group</DialogTitle>
+            <DialogTitle>{t.createGroup}</DialogTitle>
             <DialogDescription>
-              Create a new group and assign it to yourself.
+              {t.createDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateGroup}>
             <div className="space-y-2">
-              <Label>Branch</Label>
+              <Label>{t.branch}</Label>
               <Select
                 value={form.branchId}
                 onValueChange={handleBranchChange}
@@ -274,7 +360,7 @@ export default function CoachMyGroupsPage() {
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      loadingBirthdays ? "Loading branches..." : "Select branch"
+                      loadingBirthdays ? t.loadingBranches : t.selectBranch
                     }
                   />
                 </SelectTrigger>
@@ -288,14 +374,14 @@ export default function CoachMyGroupsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Birth Year</Label>
+              <Label>{t.birthYear}</Label>
               <Select
                 value={form.birthYearId}
                 onValueChange={handleBirthYearChange}
                 disabled={!form.branchId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select birth year" />
+                  <SelectValue placeholder={t.selectBirthYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {birthYearOptions.map((year) => (
@@ -309,13 +395,13 @@ export default function CoachMyGroupsPage() {
             <div className="space-y-2 rounded-lg border border-border/60 bg-muted/15 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <Label>Players</Label>
+                  <Label>{t.players}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Optional. Search and choose specific players for this group.
+                    {t.playersHint}
                   </p>
                 </div>
                 <Badge variant="secondary">
-                  {form.playerIds.length} selected
+                  {t.selected.replace("{count}", String(form.playerIds.length))}
                 </Badge>
               </div>
               <div className="relative">
@@ -324,7 +410,7 @@ export default function CoachMyGroupsPage() {
                   className="pl-9"
                   value={playerSearch}
                   onChange={(event) => setPlayerSearch(event.target.value)}
-                  placeholder="Search player name, position, guardian..."
+                  placeholder={t.searchPlayers}
                   disabled={!form.branchId || !form.birthYearId}
                 />
               </div>
@@ -341,7 +427,7 @@ export default function CoachMyGroupsPage() {
                         type="button"
                         className="rounded-full text-muted-foreground hover:text-foreground"
                         onClick={() => togglePlayer(player.id, false)}
-                        aria-label={`Remove ${player.full_name}`}
+                        aria-label={t.removePlayer.replace("{name}", player.full_name)}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -352,12 +438,12 @@ export default function CoachMyGroupsPage() {
               <div className="grid max-h-48 gap-2 overflow-auto rounded-md border border-border/70 p-3">
                 {!form.branchId || !form.birthYearId ? (
                   <p className="text-sm text-muted-foreground">
-                    Select a branch and birth year first.
+                    {t.selectBranchFirst}
                   </p>
                 ) : loadingPlayers ? (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading players...
+                    {t.loadingPlayers}
                   </p>
                 ) : availablePlayers.length ? (
                   availablePlayers.map((player) => (
@@ -376,27 +462,27 @@ export default function CoachMyGroupsPage() {
                         <span>{player.full_name}</span>
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {player.position ?? "No position"}
+                        {player.position ?? t.noPosition}
                       </span>
                     </label>
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No players found for this branch and birth year.
+                    {t.noPlayers}
                   </p>
                 )}
               </div>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
               <p className="text-sm font-semibold text-foreground">
-                Add Birth Year
+                {t.addBirthYear}
               </p>
               <p className="text-xs text-muted-foreground">
-                Create a new birth year for the selected branch.
+                {t.addBirthYearHint}
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
                 <div className="space-y-2">
-                  <Label htmlFor="coach-birth-year-from">From year</Label>
+                  <Label htmlFor="coach-birth-year-from">{t.fromYear}</Label>
                   <Input
                     id="coach-birth-year-from"
                     type="number"
@@ -413,7 +499,7 @@ export default function CoachMyGroupsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="coach-birth-year-to">To year</Label>
+                  <Label htmlFor="coach-birth-year-to">{t.toYear}</Label>
                   <Input
                     id="coach-birth-year-to"
                     type="number"
@@ -431,7 +517,7 @@ export default function CoachMyGroupsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="coach-birth-year-label">
-                    Label (optional)
+                    {t.labelOptional}
                   </Label>
                   <Input
                     id="coach-birth-year-label"
@@ -455,31 +541,31 @@ export default function CoachMyGroupsPage() {
                   {isCreatingBirthYear && (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   )}
-                  {isCreatingBirthYear ? "Adding..." : "Add"}
+                  {isCreatingBirthYear ? t.adding : t.add}
                 </Button>
               </div>
               {(birthYearFormError || birthYearError) && (
                 <p className="mt-2 text-xs text-red-400">
                   {birthYearFormError ||
-                    "Could not create the birth year. Please check the values."}
+                    t.birthYearError}
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="coach-group-name">Group Name</Label>
+              <Label htmlFor="coach-group-name">{t.groupName}</Label>
               <Input
                 id="coach-group-name"
                 value={form.name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, name: event.target.value }))
                 }
-                placeholder="U14 Elite"
+                placeholder={t.groupNamePlaceholder}
                 required
               />
             </div>
             {createError && (
               <p className="text-sm text-red-400">
-                Could not create the group. Please try again.
+                {t.createError}
               </p>
             )}
             <DialogFooter>
@@ -488,11 +574,11 @@ export default function CoachMyGroupsPage() {
                 variant="outline"
                 onClick={() => handleDialogChange(false)}
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button type="submit" disabled={!canSubmit} className="gap-2">
                 {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isCreating ? "Creating..." : "Create Group"}
+                {isCreating ? t.creating : t.createGroup}
               </Button>
             </DialogFooter>
           </form>
@@ -503,7 +589,7 @@ export default function CoachMyGroupsPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading groups...
+            {t.loadingGroups}
           </CardContent>
         </Card>
       )}
@@ -511,7 +597,7 @@ export default function CoachMyGroupsPage() {
       {isError && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="p-4 text-sm text-red-300">
-            Could not load your groups from the backend.
+            {t.loadError}
           </CardContent>
         </Card>
       )}
@@ -535,7 +621,9 @@ export default function CoachMyGroupsPage() {
                         group.status === "active" ? "default" : "secondary"
                       }
                     >
-                      {group.status}
+                      {group.status in t.statuses
+                        ? t.statuses[group.status as keyof typeof t.statuses]
+                        : group.status}
                     </Badge>
                   </div>
 
@@ -544,7 +632,7 @@ export default function CoachMyGroupsPage() {
                     <div className="text-center">
                       <p className="text-lg font-bold">{group.playerCount}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        Players
+                        {t.players}
                       </p>
                     </div>
                     <div className="text-center">
@@ -552,7 +640,7 @@ export default function CoachMyGroupsPage() {
                         {group.avgAttendance}%
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Attendance
+                        {t.attendance}
                       </p>
                     </div>
                     <div className="text-center">
@@ -560,7 +648,7 @@ export default function CoachMyGroupsPage() {
                         {group.avgPerformance}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Avg Score
+                        {t.avgScore}
                       </p>
                     </div>
                   </div>
@@ -588,7 +676,7 @@ export default function CoachMyGroupsPage() {
       {!isLoading && myGroups.length === 0 && (
         <Card className="border-border/50 bg-card">
           <CardContent className="p-8 text-center text-muted-foreground">
-            No groups assigned yet.
+            {t.noGroups}
           </CardContent>
         </Card>
       )}

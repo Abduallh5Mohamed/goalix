@@ -37,11 +37,133 @@ import {
   type BirthYearGroup,
   type GroupAssignmentMode,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { Edit2, Layers, Loader2, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 
 type PlayerPick = Pick<PlayerRow, "id" | "full_name" | "date_of_birth" | "player_code"> & { code: string };
 
+const groupsCopy = {
+  en: {
+    group: "Group",
+    noBirthYears: "No birth years",
+    players: "Players",
+    coaches: "Coaches",
+    status: "Status",
+    active: "Active",
+    inactive: "Inactive",
+    actions: "Actions",
+    pageTitle: "Groups",
+    pageDescription: "Create groups under a branch and its birth years.",
+    dashboard: "Dashboard",
+    academy: "Academy",
+    selectBranch: "Select branch...",
+    createGroup: "Create Group",
+    selectBranchPrompt: "Select a branch to view its groups.",
+    loadError: "Failed to load groups.",
+    retry: "Retry",
+    searchGroups: "Search groups...",
+    emptyTitle: "No groups yet",
+    emptyDescription: "Create a group for one of this branch's birth years.",
+    editGroup: "Edit Group",
+    dialogDescription: "Build the group from birth years or selected players.",
+    groupBasis: "Group basis",
+    birthDateRanges: "Birth date ranges",
+    playersById: "Players by ID or search",
+    birthYears: "Birth Years",
+    searchBirthYears: "Search birth years...",
+    playerIdRange: "Player ID range",
+    fromPlayerId: "From player ID, e.g. PLY-U14-2026-0001",
+    toPlayerId: "To player ID, e.g. PLY-U14-2026-0025",
+    useRange: "Use range",
+    rangeHelpStart:
+      "The full range is resolved securely on save inside the selected branch.",
+    rangeHelpEnd:
+      "matching players are visible in the current search result.",
+    searchPlayers: "Search by player name or ID...",
+    selectedManually: "selected manually",
+    clearSelected: "Clear selected",
+    remove: "Remove",
+    searchingPlayers: "Searching players...",
+    noPlayers: "No players found in this branch.",
+    groupName: "Group Name",
+    groupNamePlaceholder: "U14 Elite",
+    description: "Description",
+    descriptionPlaceholder: "Optional group notes",
+    maxPlayers: "Max Players",
+    missingBirthYear: "Create a birth year for this branch before creating groups.",
+    saveError: "Could not save this group.",
+    cancel: "Cancel",
+    save: "Save",
+    create: "Create",
+    deleteGroup: "Delete Group",
+    deletePrefix: "clear",
+    deleteDescription: "Type {expected} to confirm deletion.",
+    deleteError: "Could not delete this group. It may have active relations.",
+    deleting: "Deleting...",
+    delete: "Delete",
+  },
+  ar: {
+    group: "المجموعة",
+    noBirthYears: "لا توجد سنوات ميلاد",
+    players: "اللاعبون",
+    coaches: "المدربون",
+    status: "الحالة",
+    active: "نشطة",
+    inactive: "غير نشطة",
+    actions: "الإجراءات",
+    pageTitle: "المجموعات",
+    pageDescription: "إنشاء مجموعات داخل الفرع وسنوات الميلاد التابعة له.",
+    dashboard: "لوحة التحكم",
+    academy: "الأكاديمية",
+    selectBranch: "اختر الفرع...",
+    createGroup: "إنشاء مجموعة",
+    selectBranchPrompt: "اختر فرعًا لعرض مجموعاته.",
+    loadError: "فشل تحميل المجموعات.",
+    retry: "إعادة المحاولة",
+    searchGroups: "ابحث في المجموعات...",
+    emptyTitle: "لا توجد مجموعات بعد",
+    emptyDescription: "أنشئ مجموعة لإحدى سنوات الميلاد في هذا الفرع.",
+    editGroup: "تعديل المجموعة",
+    dialogDescription: "كوّن المجموعة من سنوات الميلاد أو من لاعبين محددين.",
+    groupBasis: "أساس المجموعة",
+    birthDateRanges: "نطاقات تاريخ الميلاد",
+    playersById: "لاعبون بالرقم أو البحث",
+    birthYears: "سنوات الميلاد",
+    searchBirthYears: "ابحث في سنوات الميلاد...",
+    playerIdRange: "نطاق أرقام اللاعبين",
+    fromPlayerId: "من رقم اللاعب، مثال PLY-U14-2026-0001",
+    toPlayerId: "إلى رقم اللاعب، مثال PLY-U14-2026-0025",
+    useRange: "استخدام النطاق",
+    rangeHelpStart: "يتم حل النطاق الكامل بأمان عند الحفظ داخل الفرع المحدد.",
+    rangeHelpEnd: "لاعبين مطابقين ظاهرين في نتيجة البحث الحالية.",
+    searchPlayers: "ابحث باسم اللاعب أو رقمه...",
+    selectedManually: "تم اختيارهم يدويًا",
+    clearSelected: "مسح المختارين",
+    remove: "إزالة",
+    searchingPlayers: "جاري البحث عن اللاعبين...",
+    noPlayers: "لا يوجد لاعبون في هذا الفرع.",
+    groupName: "اسم المجموعة",
+    groupNamePlaceholder: "فريق U14 المميز",
+    description: "الوصف",
+    descriptionPlaceholder: "ملاحظات اختيارية للمجموعة",
+    maxPlayers: "الحد الأقصى للاعبين",
+    missingBirthYear: "أنشئ سنة ميلاد لهذا الفرع قبل إنشاء المجموعات.",
+    saveError: "تعذر حفظ هذه المجموعة.",
+    cancel: "إلغاء",
+    save: "حفظ",
+    create: "إنشاء",
+    deleteGroup: "حذف المجموعة",
+    deletePrefix: "مسح",
+    deleteDescription: "اكتب {expected} لتأكيد الحذف.",
+    deleteError: "تعذر حذف هذه المجموعة. قد تكون مرتبطة بعلاقات نشطة.",
+    deleting: "جاري الحذف...",
+    delete: "حذف",
+  },
+} as const;
+
 export default function GroupsPage() {
+  const language = useDashboardLanguage();
+  const t = groupsCopy[language];
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [open, setOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
@@ -162,14 +284,14 @@ export default function GroupsPage() {
   const columns = useMemo<Column<Group>[]>(() => [
     {
       key: "name",
-      header: "Group",
+      header: t.group,
       accessor: (row) => (
         <div>
           <p className="font-medium text-foreground">{row.name}</p>
           <p className="text-xs text-muted-foreground">
             {row.birth_years?.length
               ? row.birth_years.map((birthYear) => `${birthYear.label} ${birthYear.fromYear}-${birthYear.toYear}`).join(", ")
-              : "No birth years"}
+              : t.noBirthYears}
           </p>
         </div>
       ),
@@ -178,7 +300,7 @@ export default function GroupsPage() {
     },
     {
       key: "players",
-      header: "Players",
+      header: t.players,
       accessor: (row) => (
         <div className="flex items-center gap-1.5">
           <Users className="h-3.5 w-3.5 text-muted-foreground" />
@@ -190,17 +312,17 @@ export default function GroupsPage() {
     },
     {
       key: "coaches",
-      header: "Coaches",
+      header: t.coaches,
       accessor: (row) => row.coach_count ?? 0,
       sortable: true,
       sortValue: (row) => row.coach_count ?? 0,
     },
     {
       key: "status",
-      header: "Status",
+      header: t.status,
       accessor: (row) => (
         <Badge variant={row.is_active ? "success" : "secondary"}>
-          {row.is_active ? "Active" : "Inactive"}
+          {row.is_active ? t.active : t.inactive}
         </Badge>
       ),
       sortable: true,
@@ -208,7 +330,7 @@ export default function GroupsPage() {
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t.actions,
       accessor: (row) => (
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="icon" onClick={(event) => { event.stopPropagation(); openEdit(row); }}>
@@ -220,7 +342,7 @@ export default function GroupsPage() {
         </div>
       ),
     },
-  ], [openEdit]);
+  ], [openEdit, t]);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -282,7 +404,7 @@ export default function GroupsPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget || deleteText !== `clear ${deleteTarget.name}`) return;
+    if (!deleteTarget || deleteText !== `${t.deletePrefix} ${deleteTarget.name}`) return;
     await deleteGroup(deleteTarget.id).unwrap();
     setDeleteTarget(null);
     setDeleteText("");
@@ -291,19 +413,19 @@ export default function GroupsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Groups"
-        description="Create groups under a branch and its birth years."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Academy" },
-          { label: "Groups" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.academy },
+          { label: t.pageTitle },
         ]}
         actions={
           <div className="flex gap-2">
             {!loadingBranches && (
               <Select value={selectedBranch} onValueChange={handleBranchChange}>
                 <SelectTrigger className="w-52">
-                  <SelectValue placeholder="Select branch..." />
+                  <SelectValue placeholder={t.selectBranch} />
                 </SelectTrigger>
                 <SelectContent>
                   {(branches ?? []).map((branch) => (
@@ -316,7 +438,7 @@ export default function GroupsPage() {
             )}
             <Button className="gap-1.5" disabled={!selectedBranch} onClick={() => { resetForm(); setOpen(true); }}>
               <Plus className="h-4 w-4" />
-              Create Group
+              {t.createGroup}
             </Button>
           </div>
         }
@@ -325,7 +447,7 @@ export default function GroupsPage() {
       {!selectedBranch ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
           <Layers className="h-10 w-10 opacity-30" />
-          <p>Select a branch to view its groups.</p>
+          <p>{t.selectBranchPrompt}</p>
         </div>
       ) : loadingGroups ? (
         <div className="space-y-4">
@@ -335,10 +457,10 @@ export default function GroupsPage() {
         </div>
       ) : isError ? (
         <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <p className="text-muted-foreground">Failed to load groups.</p>
+          <p className="text-muted-foreground">{t.loadError}</p>
           <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
             <RefreshCw className="h-4 w-4" />
-            Retry
+            {t.retry}
           </Button>
         </div>
       ) : (
@@ -346,22 +468,22 @@ export default function GroupsPage() {
           data={groups ?? []}
           columns={columns}
           searchable
-          searchPlaceholder="Search groups..."
+          searchPlaceholder={t.searchGroups}
           searchKey={(row) => `${row.name} ${row.birth_years?.map((birthYear) => birthYear.label).join(" ") ?? ""}`}
-          emptyTitle="No groups yet"
-          emptyDescription="Create a group for one of this branch's birth years."
+          emptyTitle={t.emptyTitle}
+          emptyDescription={t.emptyDescription}
         />
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingGroup ? "Edit Group" : "Create Group"}</DialogTitle>
-            <DialogDescription>Build the group from birth years or selected players.</DialogDescription>
+            <DialogTitle>{editingGroup ? t.editGroup : t.createGroup}</DialogTitle>
+            <DialogDescription>{t.dialogDescription}</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreate}>
             <div className="space-y-2">
-              <Label>Group basis</Label>
+              <Label>{t.groupBasis}</Label>
               <Select value={form.assignmentMode} onValueChange={(value) => {
                 setForm((current) => ({ ...current, assignmentMode: value as GroupAssignmentMode, birthYearIds: [], playerIds: [] }));
                 setSelectedPlayerMap({});
@@ -370,15 +492,15 @@ export default function GroupsPage() {
               }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="birth_year">Birth date ranges</SelectItem>
-                  <SelectItem value="players">Players by ID or search</SelectItem>
+                  <SelectItem value="birth_year">{t.birthDateRanges}</SelectItem>
+                  <SelectItem value="players">{t.playersById}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {form.assignmentMode === "birth_year" ? (
               <div className="space-y-2">
-                <Label>Birth Years</Label>
-                <Input value={birthYearSearch} onChange={(event) => setBirthYearSearch(event.target.value)} placeholder="Search birth years..." />
+                <Label>{t.birthYears}</Label>
+                <Input value={birthYearSearch} onChange={(event) => setBirthYearSearch(event.target.value)} placeholder={t.searchBirthYears} />
                 <div className="grid max-h-56 gap-2 overflow-auto rounded-md border border-border p-3">
                 {filteredBirthYearOptions.map((birthYear) => (
                   <label key={birthYear.id} className="flex items-center gap-2 text-sm">
@@ -399,26 +521,26 @@ export default function GroupsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>Player ID range</Label>
+                <Label>{t.playerIdRange}</Label>
                 <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                  <Input value={fromPlayerCode} onChange={(event) => setFromPlayerCode(event.target.value)} placeholder="From player ID, e.g. PLY-U14-2026-0001" />
-                  <Input value={toPlayerCode} onChange={(event) => setToPlayerCode(event.target.value)} placeholder="To player ID, e.g. PLY-U14-2026-0025" />
+                  <Input value={fromPlayerCode} onChange={(event) => setFromPlayerCode(event.target.value)} placeholder={t.fromPlayerId} />
+                  <Input value={toPlayerCode} onChange={(event) => setToPlayerCode(event.target.value)} placeholder={t.toPlayerId} />
                   <Button type="button" variant="outline" onClick={applyPlayerRange} disabled={!fromPlayerCode.trim() || !toPlayerCode.trim()}>
-                    Use range
+                    {t.useRange}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The full range is resolved securely on save inside the selected branch. {rangePlayers.length} matching players are visible in the current search result.
+                  {t.rangeHelpStart} {rangePlayers.length} {t.rangeHelpEnd}
                 </p>
 
-                <Label>Players</Label>
-                <Input value={playerSearch} onChange={(event) => setPlayerSearch(event.target.value)} placeholder="Search by player name or ID..." />
+                <Label>{t.players}</Label>
+                <Input value={playerSearch} onChange={(event) => setPlayerSearch(event.target.value)} placeholder={t.searchPlayers} />
                 {!!selectedPlayers.length && (
                   <div className="space-y-2 rounded-md border border-border p-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{selectedPlayers.length} selected manually</span>
+                      <span>{selectedPlayers.length} {t.selectedManually}</span>
                       <Button type="button" variant="ghost" size="sm" onClick={() => { setForm((current) => ({ ...current, playerIds: [] })); setSelectedPlayerMap({}); }}>
-                        Clear selected
+                        {t.clearSelected}
                       </Button>
                     </div>
                     {selectedPlayers.map((player) => (
@@ -430,14 +552,14 @@ export default function GroupsPage() {
                           size="sm"
                           onClick={() => togglePlayer(player, false)}
                         >
-                          Remove
+                          {t.remove}
                         </Button>
                       </div>
                     ))}
                   </div>
                 )}
                 <div className="grid max-h-56 gap-2 overflow-auto rounded-md border border-border p-3">
-                  {loadingPlayers && <p className="text-sm text-muted-foreground">Searching players...</p>}
+                  {loadingPlayers && <p className="text-sm text-muted-foreground">{t.searchingPlayers}</p>}
                   {filteredPlayers.map((player) => (
                     <label key={player.id} className="flex items-center gap-2 text-sm">
                       <input
@@ -448,31 +570,31 @@ export default function GroupsPage() {
                       {player.full_name} <span className="text-muted-foreground">#{player.code}</span>
                     </label>
                   ))}
-                  {!loadingPlayers && !filteredPlayers.length && <p className="text-sm text-muted-foreground">No players found in this branch.</p>}
+                  {!loadingPlayers && !filteredPlayers.length && <p className="text-sm text-muted-foreground">{t.noPlayers}</p>}
                 </div>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="group-name">Group Name</Label>
+              <Label htmlFor="group-name">{t.groupName}</Label>
               <Input
                 id="group-name"
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="U14 Elite"
+                placeholder={t.groupNamePlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="group-description">Description</Label>
+              <Label htmlFor="group-description">{t.description}</Label>
               <Input
                 id="group-description"
                 value={form.description}
                 onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                placeholder="Optional group notes"
+                placeholder={t.descriptionPlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="group-max">Max Players</Label>
+              <Label htmlFor="group-max">{t.maxPlayers}</Label>
               <Input
                 id="group-max"
                 type="number"
@@ -483,12 +605,12 @@ export default function GroupsPage() {
               />
             </div>
             {form.assignmentMode === "birth_year" && !birthYearOptions.length && (
-              <p className="text-sm text-amber-400">Create a birth year for this branch before creating groups.</p>
+              <p className="text-sm text-amber-400">{t.missingBirthYear}</p>
             )}
-            {(createError || updateError) && <p className="text-sm text-red-400">Could not save this group.</p>}
+            {(createError || updateError) && <p className="text-sm text-red-400">{t.saveError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 type="submit"
@@ -496,7 +618,7 @@ export default function GroupsPage() {
                 className="gap-2"
               >
                 {(isCreating || isUpdating) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editingGroup ? "Save" : "Create"}
+                {editingGroup ? t.save : t.create}
               </Button>
             </DialogFooter>
           </form>
@@ -506,17 +628,22 @@ export default function GroupsPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(next) => !next && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Group</DialogTitle>
-            <DialogDescription>Type clear {deleteTarget?.name} to confirm deletion.</DialogDescription>
+            <DialogTitle>{t.deleteGroup}</DialogTitle>
+            <DialogDescription>
+              {t.deleteDescription.replace(
+                "{expected}",
+                `${t.deletePrefix} ${deleteTarget?.name ?? ""}`,
+              )}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={`clear ${deleteTarget?.name ?? ""}`} />
-            {deleteError && <p className="text-sm text-red-400">Could not delete this group. It may have active relations.</p>}
+            <Input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder={`${t.deletePrefix} ${deleteTarget?.name ?? ""}`} />
+            {deleteError && <p className="text-sm text-red-400">{t.deleteError}</p>}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button type="button" variant="destructive" disabled={isDeleting || deleteText !== `clear ${deleteTarget?.name ?? ""}`} onClick={handleDelete}>
-              {isDeleting ? "Deleting..." : "Delete"}
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>{t.cancel}</Button>
+            <Button type="button" variant="destructive" disabled={isDeleting || deleteText !== `${t.deletePrefix} ${deleteTarget?.name ?? ""}`} onClick={handleDelete}>
+              {isDeleting ? t.deleting : t.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
