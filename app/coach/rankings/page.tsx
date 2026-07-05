@@ -6,7 +6,6 @@ import {
   Loader2,
   Medal,
   Minus,
-  RefreshCw,
   Shield,
   Target,
   TrendingDown,
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import {
   type RankingSystemInput,
   useGetCoachRankingSystemInputsQuery,
@@ -1211,10 +1211,7 @@ export default function CoachRankingsPage() {
           { label: t.pageTitle },
         ]}
         actions={
-          <Button variant="outline" className="gap-2" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4" />
-            {t.refresh}
-          </Button>
+          <RefreshButton onRefresh={refetch} label={t.refresh} />
         }
       />
 

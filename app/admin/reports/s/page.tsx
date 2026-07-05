@@ -5,12 +5,12 @@ import {
   Activity,
   CalendarDays,
   Download,
-  RefreshCw,
   TrendingUp,
   UserCheck,
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -292,15 +292,12 @@ export default function ReportsOverviewPage() {
         description={t.pageDescription}
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
+            <RefreshButton
               size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onRefresh={refetch}
+              isRefreshing={isFetching}
               title={t.refreshReports}
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            </Button>
+            />
             <Button onClick={exportCsv} disabled={!data}>
               <Download className="h-4 w-4" />
               {t.exportCsv}

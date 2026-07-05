@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { MonthCalendar } from "@/components/shared/MonthCalendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,8 @@ const calendarCopy = {
 export default function CoachCalendarPage() {
   const language = useDashboardLanguage();
   const t = calendarCopy[language];
-  const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
+  const { data, isLoading, isError, isFetching, refetch } =
+    useGetCoachCalendarEventsQuery();
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const calendarItems = useMemo(
     () =>
@@ -67,9 +69,11 @@ export default function CoachCalendarPage() {
           { label: t.calendar },
         ]}
         actions={
-          <Button variant="outline" onClick={() => refetch()}>
-            {t.refresh}
-          </Button>
+          <RefreshButton
+            onRefresh={refetch}
+            isRefreshing={isFetching}
+            label={t.refresh}
+          />
         }
       />
 

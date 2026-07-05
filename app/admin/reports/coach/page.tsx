@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck2, Download, RefreshCw, Users, Waypoints } from "lucide-react";
+import { CalendarCheck2, Download, Users, Waypoints } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart } from "@/components/charts/BarChart";
@@ -161,15 +162,12 @@ export default function CoachReportPage() {
         description={t.description}
         actions={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
+            <RefreshButton
               size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onRefresh={refetch}
+              isRefreshing={isFetching}
               title={t.refreshReport}
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            </Button>
+            />
             <Button onClick={exportCsv} disabled={!coaches.length}>
               <Download className="h-4 w-4" />
               {t.exportCsv}

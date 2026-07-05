@@ -10,13 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   useDisable2FAMutation,
   useGetAcademyQuery,
   useGetCurrentUserQuery,
@@ -40,7 +33,6 @@ type AcademyDraft = {
   email?: string;
   phone?: string;
   address?: string;
-  timezone?: string;
   communityWhatsappUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -120,7 +112,6 @@ const settingsCopy = {
     twitterUrl: "Twitter / X URL",
     linkedinUrl: "LinkedIn URL",
     systemDefaults: "System Defaults",
-    timezone: "Timezone",
     matchDayOpen: "Match Day opens before kick-off",
     whatsappCommunity: "WhatsApp Community Link",
     lateGrace: "Late Grace Minutes",
@@ -197,7 +188,6 @@ const settingsCopy = {
     twitterUrl: "رابط تويتر / X",
     linkedinUrl: "رابط لينكدإن",
     systemDefaults: "إعدادات النظام الافتراضية",
-    timezone: "المنطقة الزمنية",
     matchDayOpen: "فتح يوم المباراة قبل ضربة البداية",
     whatsappCommunity: "رابط مجتمع واتساب",
     lateGrace: "دقائق السماح للتأخير",
@@ -302,6 +292,8 @@ export default function AcademyProfilePage() {
     typeof settings.socialLinks === "object" && settings.socialLinks
       ? (settings.socialLinks as Record<string, unknown>)
       : {};
+  const settingsWithoutTimezone = { ...settings };
+  delete settingsWithoutTimezone.timezone;
   const facebookUrl =
     academyDraft.facebookUrl ??
     (typeof socialLinks.facebook === "string" ? socialLinks.facebook : "");
@@ -314,9 +306,6 @@ export default function AcademyProfilePage() {
   const linkedinUrl =
     academyDraft.linkedinUrl ??
     (typeof socialLinks.linkedin === "string" ? socialLinks.linkedin : "");
-  const timezone =
-    academyDraft.timezone ??
-    (typeof settings.timezone === "string" ? settings.timezone : "Africa/Cairo");
   const communityWhatsappUrl =
     academyDraft.communityWhatsappUrl ??
     (typeof settings.communityWhatsappUrl === "string" ? settings.communityWhatsappUrl : "");
@@ -367,8 +356,7 @@ export default function AcademyProfilePage() {
         phone: academyPhone.trim() || null,
         address: academyAddress.trim() || null,
         settings: {
-          ...settings,
-          timezone,
+          ...settingsWithoutTimezone,
           weekStartsOn: SYSTEM_WEEK_STARTS_ON,
           communityWhatsappUrl: normalizeOptionalUrl(communityWhatsappUrl),
           socialLinks: {
@@ -625,23 +613,6 @@ export default function AcademyProfilePage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>{t.timezone}</Label>
-                  <Select
-                    value={timezone}
-                    onValueChange={(value) => updateDraft("timezone", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Africa/Cairo">Africa/Cairo</SelectItem>
-                      <SelectItem value="Asia/Riyadh">Asia/Riyadh</SelectItem>
-                      <SelectItem value="Europe/London">Europe/London</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="match-day-open-minutes">
                     {t.matchDayOpen}
                   </Label>
@@ -659,6 +630,11 @@ export default function AcademyProfilePage() {
                       )
                     }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {language === "ar"
+                      ? "\u0639\u062f\u062f \u0627\u0644\u062f\u0642\u0627\u0626\u0642 \u0642\u0628\u0644 \u0636\u0631\u0628\u0629 \u0627\u0644\u0628\u062f\u0627\u064a\u0629 \u0627\u0644\u062a\u064a \u064a\u0645\u0643\u0646 \u0644\u0644\u0645\u062f\u0631\u0628 \u062e\u0644\u0627\u0644\u0647\u0627 \u0641\u062a\u062d \u064a\u0648\u0645 \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629 (0\u2013240)."
+                      : "Minutes before kick-off when coaches can open Match Day (0\u2013240)."}
+                  </p>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="community-whatsapp-url">{t.whatsappCommunity}</Label>
@@ -710,6 +686,27 @@ export default function AcademyProfilePage() {
                   }
                 />
               </label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  className="gap-1.5"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {saving ? t.saving : t.saveChanges}
+                </Button>
+                {saved && (
+                  <span className="flex items-center gap-1 text-sm text-emerald-400">
+                    <CheckCircle className="h-4 w-4" /> {t.saved}
+                  </span>
+                )}
+              </div>
+              {saveError && <p className="text-sm text-red-400">{saveError}</p>}
             </CardContent>
           </Card>
 

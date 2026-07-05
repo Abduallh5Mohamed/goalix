@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DoughnutChart } from "@/components/charts/DoughnutChart";
@@ -157,7 +158,7 @@ export default function AttendanceOverviewPage() {
   const t = attendanceCopy[language];
   const statusLabel = (status: string) =>
     t.statusLabels[status as keyof typeof t.statusLabels] ?? status;
-  const { data, isLoading, isError, refetch } = useGetAttendanceOverviewQuery(
+  const { data, isLoading, isError, isFetching, refetch } = useGetAttendanceOverviewQuery(
     undefined,
     { refetchOnMountOrArgChange: 30 },
   );
@@ -223,10 +224,11 @@ export default function AttendanceOverviewPage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="h-4 w-4" />
-              {t.refresh}
-            </Button>
+            <RefreshButton
+              onRefresh={refetch}
+              isRefreshing={isFetching}
+              label={t.refresh}
+            />
             <Button asChild variant="outline" className="gap-1.5">
               <Link href="/admin/reports/attendance">
                 <FileDown className="h-4 w-4" />

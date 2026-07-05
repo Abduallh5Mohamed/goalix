@@ -101,17 +101,23 @@ export default function ComposeNotificationPage() {
   const [message, setMessage] = useState("");
   const [targetRole, setTargetRole] = useState("all");
   const [type, setType] = useState("info");
-  const [sendNotification, { isLoading, isError }] = useSendNotificationMutation();
+  const [sendError, setSendError] = useState("");
+  const [sendNotification, { isLoading }] = useSendNotificationMutation();
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
-    await sendNotification({
-      title: title.trim(),
-      body: message.trim(),
-      type,
-      ...(targetRole !== "all" ? { targetRole } : {}),
-    }).unwrap();
-    router.push("/admin/notifications");
+    setSendError("");
+    try {
+      await sendNotification({
+        title: title.trim(),
+        body: message.trim(),
+        type,
+        ...(targetRole !== "all" ? { targetRole } : {}),
+      }).unwrap();
+      router.push("/admin/notifications");
+    } catch {
+      setSendError(t.sendError);
+    }
   };
 
   return (
@@ -181,7 +187,7 @@ export default function ComposeNotificationPage() {
                   </Select>
                 </div>
               </div>
-              {isError && <p className="text-sm text-red-400">{t.sendError}</p>}
+              {sendError && <p className="text-sm text-red-400">{sendError}</p>}
               <Button
                 className="w-full gap-1.5"
                 disabled={!title.trim() || !message.trim() || isLoading}
