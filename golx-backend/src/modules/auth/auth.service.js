@@ -64,6 +64,54 @@ class AuthService {
         this.redis = redis;
     }
 
+    async _storeMfaChallenge(challengeId, userId) {
+        try {
+            const stored = await this.redis.set(
+                mfaChallengeKey(challengeId),
+                userId,
+                'EX',
+                5 * 60,
+                'NX',
+            );
+            if (stored === 'OK') return;
+        } catch {
+            // PostgreSQL remains available as the durable fallback.
+        }
+
+        try {
+            await this.repo.createMfaChallenge(
+                challengeId,
+                userId,
+                new Date(Date.now() + 5 * 60 * 1000),
+            );
+        } catch {
+            throw new AppError(
+                'MFA verification is temporarily unavailable. Please try again.',
+                503,
+                'MFA_SERVICE_UNAVAILABLE',
+            );
+        }
+    }
+
+    async _consumeMfaChallenge(challengeId, userId) {
+        try {
+            const redisUserId = await this.redis.getdel(mfaChallengeKey(challengeId));
+            if (redisUserId === userId) return userId;
+        } catch {
+            // The challenge may have been created in PostgreSQL during a Redis outage.
+        }
+
+        try {
+            return await this.repo.consumeMfaChallenge(challengeId, userId);
+        } catch {
+            throw new AppError(
+                'MFA verification is temporarily unavailable. Please try again.',
+                503,
+                'MFA_SERVICE_UNAVAILABLE',
+            );
+        }
+    }
+
     // ─── Signup (creates pending registration for approval) ─────────────
     async signup({ email, phone, password, role, fullName, linkedPlayerId, academyId }) {
         // Check if there's already an active account — return generic success to prevent enumeration
@@ -266,22 +314,7 @@ class AuthService {
                 { userId: user.id, purpose: '2fa', jti: challengeId },
                 { expiresIn: '5m' },
             );
-            try {
-                const stored = await this.redis.set(
-                    mfaChallengeKey(challengeId),
-                    user.id,
-                    'EX',
-                    5 * 60,
-                    'NX',
-                );
-                if (stored !== 'OK') throw new Error('MFA challenge was not stored');
-            } catch {
-                throw new AppError(
-                    'MFA verification is temporarily unavailable. Please try again.',
-                    503,
-                    'MFA_SERVICE_UNAVAILABLE',
-                );
-            }
+            await this._storeMfaChallenge(challengeId, user.id);
 
             return {
                 requires2FA: true,
@@ -323,16 +356,7 @@ class AuthService {
             throw new UnauthorizedError('Invalid token purpose');
         }
 
-        let challengeUserId;
-        try {
-            challengeUserId = await this.redis.getdel(mfaChallengeKey(decoded.jti));
-        } catch {
-            throw new AppError(
-                'MFA verification is temporarily unavailable. Please try again.',
-                503,
-                'MFA_SERVICE_UNAVAILABLE',
-            );
-        }
+        const challengeUserId = await this._consumeMfaChallenge(decoded.jti, decoded.userId);
         if (challengeUserId !== decoded.userId) {
             throw new UnauthorizedError('Invalid or already used 2FA token');
         }

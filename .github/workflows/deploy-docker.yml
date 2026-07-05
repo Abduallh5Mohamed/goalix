@@ -46,7 +46,7 @@ jobs:
         run: npm run security:scan-dumps
 
       - name: Audit frontend production dependencies
-        run: npm audit --omit=dev --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint and build frontend
         run: |
@@ -59,7 +59,7 @@ jobs:
 
       - name: Audit backend production dependencies
         working-directory: golx-backend
-        run: npm audit --omit=dev --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint and test backend
         working-directory: golx-backend

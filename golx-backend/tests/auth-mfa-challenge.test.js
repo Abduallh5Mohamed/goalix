@@ -7,6 +7,7 @@ const { UnauthorizedError } = require('../src/shared/errors');
 describe('MFA login challenges', () => {
     test('rejects a challenge after it has already been consumed', async () => {
         const repo = {
+            consumeMfaChallenge: jest.fn(async () => null),
             findById: jest.fn(),
         };
         const redis = {
@@ -29,7 +30,48 @@ describe('MFA login challenges', () => {
         expect(redis.getdel).toHaveBeenCalledWith(
             'goalix:auth:mfa-challenge:dd12eb1b-365f-4ce1-86d4-014a6a3a33d4',
         );
+        expect(repo.consumeMfaChallenge).toHaveBeenCalledWith(
+            'dd12eb1b-365f-4ce1-86d4-014a6a3a33d4',
+            'user-1',
+        );
         expect(repo.findById).not.toHaveBeenCalled();
+    });
+
+    test('stores a challenge in PostgreSQL when Redis is unavailable', async () => {
+        const repo = {
+            createMfaChallenge: jest.fn(async () => ({})),
+        };
+        const redis = {
+            set: jest.fn(async () => {
+                throw new Error('Redis unavailable');
+            }),
+        };
+        const service = new AuthService(repo, redis);
+
+        await service._storeMfaChallenge('challenge-1', 'user-1');
+
+        expect(repo.createMfaChallenge).toHaveBeenCalledWith(
+            'challenge-1',
+            'user-1',
+            expect.any(Date),
+        );
+    });
+
+    test('consumes a PostgreSQL challenge when Redis is unavailable', async () => {
+        const repo = {
+            consumeMfaChallenge: jest.fn(async () => 'user-1'),
+        };
+        const redis = {
+            getdel: jest.fn(async () => {
+                throw new Error('Redis unavailable');
+            }),
+        };
+        const service = new AuthService(repo, redis);
+
+        await expect(
+            service._consumeMfaChallenge('challenge-1', 'user-1'),
+        ).resolves.toBe('user-1');
+        expect(repo.consumeMfaChallenge).toHaveBeenCalledWith('challenge-1', 'user-1');
     });
 });
 

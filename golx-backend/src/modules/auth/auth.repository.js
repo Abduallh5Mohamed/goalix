@@ -130,6 +130,40 @@ class AuthRepository extends BaseRepository {
             .update({ is_revoked: true, revoke_reason: 'logout_all' });
     }
 
+    // --- MFA login challenges (PostgreSQL fallback when Redis is unavailable) ---
+
+    async createMfaChallenge(challengeId, userId, expiresAt) {
+        const now = new Date();
+        await this.db('auth_mfa_challenges')
+            .where('expires_at', '<=', now)
+            .del();
+
+        const [row] = await this.db('auth_mfa_challenges')
+            .insert({
+                id: challengeId,
+                user_id: userId,
+                expires_at: expiresAt,
+            })
+            .returning('*');
+        return row;
+    }
+
+    async consumeMfaChallenge(challengeId, userId) {
+        const [row] = await this.db('auth_mfa_challenges')
+            .where({
+                id: challengeId,
+                user_id: userId,
+            })
+            .whereNull('consumed_at')
+            .where('expires_at', '>', new Date())
+            .update({
+                consumed_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('user_id');
+        return row?.user_id || null;
+    }
+
     // --- Password reset tokens (owned by auth module) ---
 
     async createPasswordReset(data) {
