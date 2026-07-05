@@ -2,7 +2,7 @@ const BaseRepository = require('../../shared/base.repository');
 
 class PaymentsRepository extends BaseRepository {
     constructor(db) {
-        super('payment_subscriptions', db);
+        super('payment_subscriptions', db, { hasSoftDelete: false });
     }
 
     // ─── Subscriptions ──────────────────────────────────────────────────

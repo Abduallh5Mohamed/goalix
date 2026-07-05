@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useGetBranchesQuery } from "@/lib/store/api/adminApi";
 import { useGetReportsOverviewQuery } from "@/lib/store/api/dashboardApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 const toDate = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -32,7 +33,146 @@ const levelVariant = (level: string | null) => {
   return "destructive" as const;
 };
 
+const playerProgressCopy = {
+  en: {
+    pageTitle: "Player Progress Report",
+    pageDescription: "Player profiles, main positions, measurements and attendance.",
+    refreshReport: "Refresh report",
+    exportCsv: "Export CSV",
+    search: "Search",
+    searchPlaceholder: "Player, code, position or group",
+    branch: "Branch",
+    allBranches: "All branches",
+    level: "Level",
+    allLevels: "All levels",
+    levelItem: "Level {level}",
+    from: "From",
+    to: "To",
+    loadError: "Could not load player progress. Refresh the report and try again.",
+    loading: "Loading player progress from the database...",
+    metrics: {
+      activePlayers: "Active Players",
+      shown: "{count} shown",
+      mainPositions: "Main Positions",
+      distinctPositions: "Distinct assigned positions",
+      completeProfiles: "Complete Profiles",
+      incomplete: "{count} incomplete",
+      measuredPlayers: "Measured Players",
+      physicalMeasurements: "Players with physical measurements",
+    },
+    playersTitle: "Players ({count})",
+    mainPositionSource: "Main Position comes from the completed custom profile",
+    table: {
+      player: "Player",
+      mainPosition: "Main Position",
+      level: "Level",
+      branchGroup: "Branch / Group",
+      latestMeasurement: "Latest Measurement",
+      attendance: "Attendance",
+      profile: "Profile",
+    },
+    csv: {
+      player: "Player",
+      code: "Code",
+      mainPosition: "Main Position",
+      level: "Level",
+      branch: "Branch",
+      group: "Group",
+      profile: "Profile",
+      attendance: "Attendance",
+      height: "Height cm",
+      weight: "Weight kg",
+      measuredAt: "Measured at",
+    },
+    noPlayerCode: "No player code",
+    notCompleted: "Not completed",
+    feet: {
+      right: "right foot",
+      left: "left foot",
+      both: "both feet",
+    },
+    noBranch: "No branch",
+    noActiveGroup: "No active group",
+    noMeasurements: "No measurements",
+    attended: "{attended}/{total} attended",
+    statuses: {
+      complete: "complete",
+      incomplete: "incomplete",
+    },
+    noPlayers: "No players match the selected filters.",
+  },
+  ar: {
+    pageTitle: "تقرير تقدم اللاعبين",
+    pageDescription: "ملفات اللاعبين والمراكز الرئيسية والقياسات والحضور.",
+    refreshReport: "تحديث التقرير",
+    exportCsv: "تصدير CSV",
+    search: "بحث",
+    searchPlaceholder: "لاعب أو كود أو مركز أو مجموعة",
+    branch: "الفرع",
+    allBranches: "كل الفروع",
+    level: "المستوى",
+    allLevels: "كل المستويات",
+    levelItem: "المستوى {level}",
+    from: "من",
+    to: "إلى",
+    loadError: "تعذر تحميل تقدم اللاعبين. حدّث التقرير وحاول مرة أخرى.",
+    loading: "جاري تحميل تقدم اللاعبين من قاعدة البيانات...",
+    metrics: {
+      activePlayers: "لاعبون نشطون",
+      shown: "{count} ظاهر",
+      mainPositions: "المراكز الرئيسية",
+      distinctPositions: "مراكز معينة مختلفة",
+      completeProfiles: "ملفات مكتملة",
+      incomplete: "{count} غير مكتمل",
+      measuredPlayers: "لاعبون مقاسون",
+      physicalMeasurements: "لاعبون لديهم قياسات بدنية",
+    },
+    playersTitle: "اللاعبون ({count})",
+    mainPositionSource: "المركز الرئيسي يأتي من الملف المخصص المكتمل",
+    table: {
+      player: "اللاعب",
+      mainPosition: "المركز الرئيسي",
+      level: "المستوى",
+      branchGroup: "الفرع / المجموعة",
+      latestMeasurement: "آخر قياس",
+      attendance: "الحضور",
+      profile: "الملف",
+    },
+    csv: {
+      player: "اللاعب",
+      code: "الكود",
+      mainPosition: "المركز الرئيسي",
+      level: "المستوى",
+      branch: "الفرع",
+      group: "المجموعة",
+      profile: "الملف",
+      attendance: "الحضور",
+      height: "الطول سم",
+      weight: "الوزن كجم",
+      measuredAt: "وقت القياس",
+    },
+    noPlayerCode: "لا يوجد كود لاعب",
+    notCompleted: "غير مكتمل",
+    feet: {
+      right: "القدم اليمنى",
+      left: "القدم اليسرى",
+      both: "كلتا القدمين",
+    },
+    noBranch: "لا يوجد فرع",
+    noActiveGroup: "لا توجد مجموعة نشطة",
+    noMeasurements: "لا توجد قياسات",
+    attended: "{attended}/{total} حضور",
+    statuses: {
+      complete: "مكتمل",
+      incomplete: "غير مكتمل",
+    },
+    noPlayers: "لا يوجد لاعبون مطابقون للفلاتر المحددة.",
+  },
+} as const;
+
 export default function PlayerProgressReportPage() {
+  const language = useDashboardLanguage();
+  const t = playerProgressCopy[language];
   const today = useMemo(() => new Date(), []);
   const from = useMemo(() => {
     const date = new Date(today);
@@ -82,17 +222,17 @@ export default function PlayerProgressReportPage() {
   const exportCsv = () => {
     const rows = [
       [
-        "Player",
-        "Code",
-        "Main Position",
-        "Level",
-        "Branch",
-        "Group",
-        "Profile",
-        "Attendance",
-        "Height cm",
-        "Weight kg",
-        "Measured at",
+        t.csv.player,
+        t.csv.code,
+        t.csv.mainPosition,
+        t.csv.level,
+        t.csv.branch,
+        t.csv.group,
+        t.csv.profile,
+        t.csv.attendance,
+        t.csv.height,
+        t.csv.weight,
+        t.csv.measuredAt,
       ],
       ...players.map((player) => [
         player.fullName,
@@ -128,19 +268,21 @@ export default function PlayerProgressReportPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Player Progress Report"
-        description="Player profiles, main positions, measurements and attendance."
+        title={t.pageTitle}
+        description={t.pageDescription}
         actions={
           <div className="flex gap-2">
             <RefreshButton
               size="icon"
-              onRefresh={refetch}
-              isRefreshing={isFetching}
-              title="Refresh report"
-            />
+              onClick={() => refetch()}
+              disabled={isFetching}
+              title={t.refreshReport}
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            </Button>
             <Button onClick={exportCsv} disabled={!players.length}>
               <Download className="h-4 w-4" />
-              Export CSV
+              {t.exportCsv}
             </Button>
           </div>
         }
@@ -148,25 +290,25 @@ export default function PlayerProgressReportPage() {
 
       <section className="grid gap-3 border-y border-[#29435f]/80 py-4 md:grid-cols-2 xl:grid-cols-[1.2fr_180px_180px_180px]">
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Search</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.search}</span>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Player, code, position or group"
+              placeholder={t.searchPlaceholder}
               className="h-10 w-full rounded-lg border border-[#29435f] bg-[#07172a] pl-9 pr-3 text-sm text-white outline-none focus:border-lime-300/70"
             />
           </div>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Branch</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.branch}</span>
           <Select value={branchId} onValueChange={setBranchId}>
             <SelectTrigger className="border-[#29435f] bg-[#07172a]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
+              <SelectItem value="all">{t.allBranches}</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -176,16 +318,16 @@ export default function PlayerProgressReportPage() {
           </Select>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Level</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.level}</span>
           <Select value={level} onValueChange={setLevel}>
             <SelectTrigger className="border-[#29435f] bg-[#07172a]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All levels</SelectItem>
+              <SelectItem value="all">{t.allLevels}</SelectItem>
               {["A", "B", "C", "D", "F"].map((item) => (
                 <SelectItem key={item} value={item}>
-                  Level {item}
+                  {t.levelItem.replace("{level}", item)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -193,7 +335,7 @@ export default function PlayerProgressReportPage() {
         </label>
         <div className="grid grid-cols-2 gap-2">
           <label className="space-y-1.5">
-            <span className="text-xs font-bold uppercase text-slate-400">From</span>
+            <span className="text-xs font-bold uppercase text-slate-400">{t.from}</span>
             <input
               type="date"
               value={dateFrom}
@@ -203,7 +345,7 @@ export default function PlayerProgressReportPage() {
             />
           </label>
           <label className="space-y-1.5">
-            <span className="text-xs font-bold uppercase text-slate-400">To</span>
+            <span className="text-xs font-bold uppercase text-slate-400">{t.to}</span>
             <input
               type="date"
               value={dateTo}
@@ -218,22 +360,22 @@ export default function PlayerProgressReportPage() {
 
       {isError && (
         <div className="border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-          Could not load player progress. Refresh the report and try again.
+          {t.loadError}
         </div>
       )}
 
       {isLoading ? (
         <div className="grid min-h-72 place-items-center text-sm text-slate-400">
-          Loading player progress from the database...
+          {t.loading}
         </div>
       ) : data ? (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              [Users, "Active Players", data.summary.activePlayers, `${players.length} shown`],
-              [ShieldCheck, "Main Positions", positionCount, "Distinct assigned positions"],
-              [UserCheck, "Complete Profiles", completeProfiles, `${data.players.length - completeProfiles} incomplete`],
-              [Activity, "Measured Players", measuredPlayers, "Players with physical measurements"],
+              [Users, t.metrics.activePlayers, data.summary.activePlayers, t.metrics.shown.replace("{count}", String(players.length))],
+              [ShieldCheck, t.metrics.mainPositions, positionCount, t.metrics.distinctPositions],
+              [UserCheck, t.metrics.completeProfiles, completeProfiles, t.metrics.incomplete.replace("{count}", String(data.players.length - completeProfiles))],
+              [Activity, t.metrics.measuredPlayers, measuredPlayers, t.metrics.physicalMeasurements],
             ].map(([Icon, label, value, helper]) => {
               const MetricIcon = Icon as typeof Users;
               return (
@@ -256,23 +398,23 @@ export default function PlayerProgressReportPage() {
           <Card className="border-[#29435f] bg-[#07172a]/80">
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle className="text-base text-white">
-                Players ({players.length})
+                {t.playersTitle.replace("{count}", String(players.length))}
               </CardTitle>
               <span className="text-xs text-slate-500">
-                Main Position comes from the completed custom profile
+                {t.mainPositionSource}
               </span>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full min-w-[920px] text-left text-sm">
                 <thead className="text-xs uppercase text-slate-500">
                   <tr>
-                    <th className="pb-3">Player</th>
-                    <th className="pb-3">Main Position</th>
-                    <th className="pb-3">Level</th>
-                    <th className="pb-3">Branch / Group</th>
-                    <th className="pb-3">Latest Measurement</th>
-                    <th className="pb-3">Attendance</th>
-                    <th className="pb-3 text-right">Profile</th>
+                    <th className="pb-3">{t.table.player}</th>
+                    <th className="pb-3">{t.table.mainPosition}</th>
+                    <th className="pb-3">{t.table.level}</th>
+                    <th className="pb-3">{t.table.branchGroup}</th>
+                    <th className="pb-3">{t.table.latestMeasurement}</th>
+                    <th className="pb-3">{t.table.attendance}</th>
+                    <th className="pb-3 text-right">{t.table.profile}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -281,16 +423,18 @@ export default function PlayerProgressReportPage() {
                       <td className="py-3 pr-4">
                         <p className="font-semibold text-white">{player.fullName}</p>
                         <p className="text-xs text-slate-500">
-                          {player.playerCode || "No player code"}
+                          {player.playerCode || t.noPlayerCode}
                         </p>
                       </td>
                       <td className="py-3 pr-4">
                         <span className="inline-flex rounded-md border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 font-bold text-cyan-200">
-                          {player.position || "Not completed"}
+                          {player.position || t.notCompleted}
                         </span>
                         {player.preferredFoot && (
                           <p className="mt-1 text-xs capitalize text-slate-500">
-                            {player.preferredFoot} foot
+                            {player.preferredFoot in t.feet
+                              ? t.feet[player.preferredFoot as keyof typeof t.feet]
+                              : player.preferredFoot}
                           </p>
                         )}
                       </td>
@@ -300,9 +444,9 @@ export default function PlayerProgressReportPage() {
                         </Badge>
                       </td>
                       <td className="py-3 pr-4">
-                        <p className="text-slate-300">{player.branchName || "No branch"}</p>
+                        <p className="text-slate-300">{player.branchName || t.noBranch}</p>
                         <p className="text-xs text-slate-500">
-                          {player.groupName || "No active group"}
+                          {player.groupName || t.noActiveGroup}
                         </p>
                       </td>
                       <td className="py-3 pr-4">
@@ -314,7 +458,7 @@ export default function PlayerProgressReportPage() {
                             <p className="text-xs text-slate-500">{player.measuredAt}</p>
                           </>
                         ) : (
-                          <span className="text-slate-500">No measurements</span>
+                          <span className="text-slate-500">{t.noMeasurements}</span>
                         )}
                       </td>
                       <td className="py-3 pr-4">
@@ -322,7 +466,9 @@ export default function PlayerProgressReportPage() {
                           {player.attendanceRate}%
                         </p>
                         <p className="text-xs text-slate-500">
-                          {player.attendanceAttended}/{player.attendanceTotal} attended
+                          {t.attended
+                            .replace("{attended}", String(player.attendanceAttended))
+                            .replace("{total}", String(player.attendanceTotal))}
                         </p>
                       </td>
                       <td className="py-3 text-right">
@@ -331,7 +477,9 @@ export default function PlayerProgressReportPage() {
                             player.profileStatus === "complete" ? "success" : "outline"
                           }
                         >
-                          {player.profileStatus || "incomplete"}
+                          {player.profileStatus === "complete"
+                            ? t.statuses.complete
+                            : t.statuses.incomplete}
                         </Badge>
                       </td>
                     </tr>
@@ -340,7 +488,7 @@ export default function PlayerProgressReportPage() {
               </table>
               {!players.length && (
                 <p className="py-12 text-center text-sm text-slate-400">
-                  No players match the selected filters.
+                  {t.noPlayers}
                 </p>
               )}
             </CardContent>

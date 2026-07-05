@@ -16,7 +16,7 @@ const {
 } = require("../../shared/access-policy");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const storage = require("../../shared/storage");
-const { assertUploadSignature } = require("../../shared/upload-validation");
+const { assertMimeSignature } = require("../../shared/file-signature");
 
 const chatImageTypes = {
   "image/png": ".png",
@@ -25,7 +25,8 @@ const chatImageTypes = {
   "image/webp": ".webp",
 };
 
-const conversationsCacheKey = (userId) => `goalix:chat:${userId}:conversations:v1`;
+const conversationsCacheKey = (userId) =>
+  `goalix:chat:${userId}:conversations:v1`;
 
 function sanitizeFileName(name) {
   return String(name || "chat-image")
@@ -150,9 +151,15 @@ class ChatService {
     }
 
     if (user.role === "coach") {
-      const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+      const coach = await this.repo.findCoachByUserId(
+        user.userId,
+        user.academyId,
+      );
       if (!coach) throw new NotFoundError("Coach profile");
-      const contacts = await this.repo.listCoachContacts(coach.id, user.academyId);
+      const contacts = await this.repo.listCoachContacts(
+        coach.id,
+        user.academyId,
+      );
       return new Set([
         user.userId,
         ...(contacts.admins || []).map((contact) => contact.user_id),
@@ -200,7 +207,10 @@ class ChatService {
     }
 
     if (user.role === "coach") {
-      const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+      const coach = await this.repo.findCoachByUserId(
+        user.userId,
+        user.academyId,
+      );
       if (!coach) throw new NotFoundError("Coach profile");
       return this.repo.listCoachContacts(coach.id, user.academyId);
     }
@@ -218,7 +228,10 @@ class ChatService {
   }
 
   async listParentContacts(user) {
-    const parent = await this.repo.findParentByUserId(user.userId, user.academyId);
+    const parent = await this.repo.findParentByUserId(
+      user.userId,
+      user.academyId,
+    );
     if (!parent) throw new NotFoundError("Parent profile");
     return this.repo.listParentContacts(user.userId, user.academyId);
   }
@@ -230,8 +243,15 @@ class ChatService {
     if (cached !== undefined) return cached;
 
     const rows = await this.repo.listConversationsForUser(user);
-    const conversations = rows.map((row) => this._decorateConversation(row, user));
-    await setJsonCache(redis, cacheKey, conversations, env.CHAT_CONVERSATIONS_CACHE_TTL_SECONDS);
+    const conversations = rows.map((row) =>
+      this._decorateConversation(row, user),
+    );
+    await setJsonCache(
+      redis,
+      cacheKey,
+      conversations,
+      env.CHAT_CONVERSATIONS_CACHE_TTL_SECONDS,
+    );
     return conversations;
   }
 
@@ -240,7 +260,9 @@ class ChatService {
   }
 
   async _decorateNewConversation(conversation, user) {
-    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+    await this._invalidateConversationCaches(
+      this.repo.conversationUserIds(conversation),
+    );
     return this._decorateConversation(conversation, user);
   }
 
@@ -254,7 +276,9 @@ class ChatService {
 
     if (data.type === "chat_group") {
       if (!["admin", "coach"].includes(user.role)) {
-        throw new ForbiddenError("Only admins and coaches can create chat groups");
+        throw new ForbiddenError(
+          "Only admins and coaches can create chat groups",
+        );
       }
 
       const groupName = String(data.groupName || "").trim();
@@ -263,7 +287,9 @@ class ChatService {
       }
 
       const requestedMemberUserIds = [
-        ...new Set((data.memberUserIds || []).filter((id) => id !== user.userId)),
+        ...new Set(
+          (data.memberUserIds || []).filter((id) => id !== user.userId),
+        ),
       ];
       const allowedUserIds = await this._allowedGroupMemberUserIds(user);
       const blockedUserIds = requestedMemberUserIds.filter(
@@ -306,7 +332,10 @@ class ChatService {
         if (!data.coachId) {
           throw new BadRequestError("coachId is required for admin-coach chat");
         }
-        const coach = await this.repo.findCoachById(data.coachId, user.academyId);
+        const coach = await this.repo.findCoachById(
+          data.coachId,
+          user.academyId,
+        );
         if (!coach?.user_id) throw new NotFoundError("Coach", data.coachId);
         const existing = await this.repo.findOpenConversation({
           academyId: user.academyId,
@@ -329,9 +358,14 @@ class ChatService {
 
       if (user.role === "coach") {
         if (!data.adminUserId) {
-          throw new BadRequestError("adminUserId is required for coach-admin chat");
+          throw new BadRequestError(
+            "adminUserId is required for coach-admin chat",
+          );
         }
-        const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+        const coach = await this.repo.findCoachByUserId(
+          user.userId,
+          user.academyId,
+        );
         if (!coach) throw new NotFoundError("Coach profile");
         const admin = await this.repo.findAdminByUserId(
           data.adminUserId,
@@ -367,7 +401,9 @@ class ChatService {
 
       if (user.role === "parent") {
         if (!data.coachId) {
-          throw new BadRequestError("coachId is required for parent-coach chat");
+          throw new BadRequestError(
+            "coachId is required for parent-coach chat",
+          );
         }
         const parent = await this.repo.findParentByUserId(
           user.userId,
@@ -380,9 +416,14 @@ class ChatService {
           user.academyId,
         );
         if (!player) {
-          throw new ForbiddenError("Parent can only chat about linked children");
+          throw new ForbiddenError(
+            "Parent can only chat about linked children",
+          );
         }
-        const coach = await this.repo.findCoachById(data.coachId, user.academyId);
+        const coach = await this.repo.findCoachById(
+          data.coachId,
+          user.academyId,
+        );
         if (!coach?.user_id) throw new NotFoundError("Coach", data.coachId);
         const accessiblePlayer = await this.repo.findCoachScopedPlayerById(
           coach.id,
@@ -415,7 +456,9 @@ class ChatService {
 
       if (user.role === "coach") {
         if (!data.parentUserId) {
-          throw new BadRequestError("parentUserId is required for coach-parent chat");
+          throw new BadRequestError(
+            "parentUserId is required for coach-parent chat",
+          );
         }
         const coach = await this.repo.findCoachByUserId(
           user.userId,
@@ -464,14 +507,21 @@ class ChatService {
         return this._decorateConversation(conversation, user);
       }
 
-      throw new ForbiddenError("Parent-coach chat is only for parents and coaches");
+      throw new ForbiddenError(
+        "Parent-coach chat is only for parents and coaches",
+      );
     }
 
     if (data.type === "admin_player_session") {
       if (user.role !== "admin") {
-        throw new ForbiddenError("Only admins can open player support sessions");
+        throw new ForbiddenError(
+          "Only admins can open player support sessions",
+        );
       }
-      const player = await this.repo.findPlayerById(data.playerId, user.academyId);
+      const player = await this.repo.findPlayerById(
+        data.playerId,
+        user.academyId,
+      );
       if (!player?.user_id) throw new NotFoundError("Player", data.playerId);
       const existing = await this.repo.findOpenConversation({
         academyId: user.academyId,
@@ -497,7 +547,10 @@ class ChatService {
     }
 
     if (user.role === "coach") {
-      const coach = await this.repo.findCoachByUserId(user.userId, user.academyId);
+      const coach = await this.repo.findCoachByUserId(
+        user.userId,
+        user.academyId,
+      );
       if (!coach) throw new NotFoundError("Coach profile");
       const player = await this.repo.findCoachScopedPlayerById(
         coach.id,
@@ -526,7 +579,10 @@ class ChatService {
     }
 
     if (user.role === "player") {
-      const player = await this.repo.findPlayerByUserId(user.userId, user.academyId);
+      const player = await this.repo.findPlayerByUserId(
+        user.userId,
+        user.academyId,
+      );
       if (!player) throw new NotFoundError("Player profile");
       const coach = await this.repo.findCoachById(data.coachId, user.academyId);
       if (!coach?.user_id) throw new NotFoundError("Coach", data.coachId);
@@ -558,7 +614,9 @@ class ChatService {
       return this._decorateNewConversation(conversation, user);
     }
 
-    throw new ForbiddenError("Admins must open an admin-player session for players");
+    throw new ForbiddenError(
+      "Admins must open an admin-player session for players",
+    );
   }
 
   async closeConversation(user, conversationId) {
@@ -569,8 +627,13 @@ class ChatService {
     if (conversation.status === "closed") {
       return this._decorateConversation(conversation, user);
     }
-    const closed = await this.repo.closeConversation(conversationId, user.userId);
-    await this._invalidateConversationCaches(this.repo.conversationUserIds(closed));
+    const closed = await this.repo.closeConversation(
+      conversationId,
+      user.userId,
+    );
+    await this._invalidateConversationCaches(
+      this.repo.conversationUserIds(closed),
+    );
     return this._decorateConversation(closed, user);
   }
 
@@ -578,7 +641,8 @@ class ChatService {
     const conversation = await this._requireConversation(user, conversationId);
     const rows = await this.repo.listMessages(conversation.id, user.userId, {
       ...filters,
-      includeArchive: filters?.includeArchive === true ||
+      includeArchive:
+        filters?.includeArchive === true ||
         filters?.includeArchive === "true" ||
         Boolean(filters?.before),
     });
@@ -599,7 +663,11 @@ class ChatService {
     };
   }
 
-  async sendMessage(user, conversationId, { body = "", image = null, clientMessageId = null } = {}) {
+  async sendMessage(
+    user,
+    conversationId,
+    { body = "", image = null, clientMessageId = null } = {},
+  ) {
     const conversation = await this._requireConversation(user, conversationId);
     await this._assertCurrentCoachPlayerAccess(conversation);
 
@@ -625,9 +693,13 @@ class ChatService {
       attachmentMimeType: attachment?.mimeType,
       attachmentSize: attachment?.sizeBytes,
     });
-    const updatedConversation = await this.repo.findConversationById(conversation.id);
+    const updatedConversation = await this.repo.findConversationById(
+      conversation.id,
+    );
     if (!result.idempotent) {
-      await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+      await this._invalidateConversationCaches(
+        this.repo.conversationUserIds(conversation),
+      );
     }
     return {
       message: result.message,
@@ -661,7 +733,9 @@ class ChatService {
     const updatedConversation = await this.repo.findConversationById(
       conversation.id,
     );
-    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
+    await this._invalidateConversationCaches(
+      this.repo.conversationUserIds(conversation),
+    );
 
     return {
       message: updated,
@@ -705,10 +779,11 @@ class ChatService {
     const deletedMessage = await this.repo.findMessageById(deleted.id, {
       includeDeleted: true,
     });
-    const updatedConversation = await this.repo.refreshConversationLastMessageAt(
-      conversation.id,
+    const updatedConversation =
+      await this.repo.refreshConversationLastMessageAt(conversation.id);
+    await this._invalidateConversationCaches(
+      this.repo.conversationUserIds(conversation),
     );
-    await this._invalidateConversationCaches(this.repo.conversationUserIds(conversation));
     return {
       message: deletedMessage,
       conversation: this._decorateConversation(updatedConversation, user),
@@ -728,7 +803,7 @@ class ChatService {
     if (buffer.length > 8 * 1024 * 1024) {
       throw new BadRequestError("Chat image must be 8MB or smaller.");
     }
-    assertUploadSignature(normalizedMimeType, buffer);
+    assertMimeSignature(normalizedMimeType, buffer, "Chat image");
 
     const upload = await storage.putUpload({
       scope: "chat",
@@ -757,7 +832,9 @@ class ChatService {
     if (!user) return false;
     const message = await this.repo.findMessageByAttachmentUrl(attachmentUrl);
     if (!message) return false;
-    const conversation = await this.repo.findConversationById(message.conversation_id);
+    const conversation = await this.repo.findConversationById(
+      message.conversation_id,
+    );
     const allowed = canAccessAttachment(user, message, conversation);
     if (!allowed) {
       await auditAccessDenied(this.repo.db, user, {

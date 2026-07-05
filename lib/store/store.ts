@@ -2,7 +2,6 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
-import { academyApi } from "./api/academyApi";
 import { dashboardApi } from "./api/dashboardApi";
 import { adminApi } from "./api/adminApi";
 import { coachApi } from "./api/coachApi";
@@ -14,7 +13,6 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     ui: uiReducer,
-    [academyApi.reducerPath]: academyApi.reducer,
     [dashboardApi.reducerPath]: dashboardApi.reducer,
     [adminApi.reducerPath]: adminApi.reducer,
     [coachApi.reducerPath]: coachApi.reducer,
@@ -22,7 +20,6 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
-      .concat(academyApi.middleware)
       .concat(dashboardApi.middleware)
       .concat(adminApi.middleware)
       .concat(coachApi.middleware)

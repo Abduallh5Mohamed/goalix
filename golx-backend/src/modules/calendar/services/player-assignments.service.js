@@ -1,8 +1,6 @@
 const { BadRequestError, NotFoundError } = require("../../../shared/errors");
 const storage = require("../../../shared/storage");
-const {
-  assertUploadSignature,
-} = require("../../../shared/upload-validation");
+const { assertUploadSignature } = require("../../../shared/upload-validation");
 const { normalizePagination } = require("../../../shared/pagination");
 
 const MAX_ASSIGNMENT_FILE_BYTES = 25 * 1024 * 1024;
@@ -246,7 +244,8 @@ class PlayerAssignmentsService {
       id: "daily-ai-score",
       assignmentType: "daily_ai",
       title: "Daily AI Score Module",
-      description: "Daily model input: sleep_hours, trained_today, meals_count.",
+      description:
+        "Daily model input: sleep_hours, trained_today, meals_count.",
       openAt: `${today}T00:00:00`,
       dueAt: `${today}T23:59:59`,
       status: "active",
@@ -255,17 +254,9 @@ class PlayerAssignmentsService {
       groups: [],
       submission: this.shapeDailyAiInput(dailyInput),
       scoringRules: {
-        sleep: [
-          "sleep >= 8h = 40",
-          "sleep >= 7h = 30",
-          "otherwise = 20",
-        ],
+        sleep: ["sleep >= 8h = 40", "sleep >= 7h = 30", "otherwise = 20"],
         training: ["trained_today 1 = 40", "trained_today 0 = 0"],
-        meals: [
-          "4+ meals = 20",
-          "3 meals = 15",
-          "less than 3 meals = 10",
-        ],
+        meals: ["4+ meals = 20", "3 meals = 15", "less than 3 meals = 10"],
         output: "daily_ai_score",
       },
     };
@@ -315,11 +306,7 @@ class PlayerAssignmentsService {
 
     return this.repo
       .db("player_assignments as pa")
-      .join(
-        "player_assignment_groups as pag",
-        "pa.id",
-        "pag.assignment_id",
-      )
+      .join("player_assignment_groups as pag", "pa.id", "pag.assignment_id")
       .where("pa.id", assignmentId)
       .where("pa.academy_id", academyId)
       .where((targetScope) => {
@@ -436,6 +423,7 @@ class PlayerAssignmentsService {
       {
         academyId,
         scope: "player-assignments",
+        uploaderId: userId,
         entityType: "player_assignment_submission",
         entityId: submission.id,
         isSensitive: true,

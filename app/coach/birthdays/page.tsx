@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   type CoachBirthday,
   useCreateCoachBirthYearMutation,
@@ -43,10 +44,95 @@ const getBirthYear = (value: string | null) => {
   return Number.isInteger(year) ? year : null;
 };
 
+const birthdayCopy = {
+  en: {
+    noMainPosition: "No main position",
+    genericError: "Something went wrong.",
+    createdByCoach: (name?: string | null) => `Created by Coach${name ? `: ${name}` : ""}`,
+    createdByAdmin: (name?: string | null) => `Created by Admin${name ? `: ${name}` : ""}`,
+    createError: "Could not create the birth year. Please check the values.",
+    deleteError: "Could not delete this birth year.",
+    title: "Birthdays",
+    description: "View your assigned birth years and the players inside each birthday range.",
+    home: "Home",
+    addBirthYear: "Add Birth Year",
+    loadingBirthdays: "Loading birthdays...",
+    to: "to",
+    players: (count: number) => `${count} players`,
+    deleteAria: (label: string) => `Delete ${label}`,
+    noBirthDate: "No birth date",
+    noPlayersBirthday: "No players in this birthday yet.",
+    noBirthdays: "No birthdays assigned yet.",
+    addFirst: " Add the first birth year from the button above.",
+    dialogTitle: "Add Birth Year",
+    dialogDescription: "Create a birth year in one of the branches you can manage.",
+    branch: "Branch",
+    loadingBranches: "Loading branches...",
+    selectBranch: "Select branch",
+    noManageBranches: "No manageable branches assigned to this account.",
+    fromYear: "From year",
+    toYear: "To year",
+    labelOptional: "Label (optional)",
+    cancel: "Cancel",
+    adding: "Adding...",
+    deleteTitle: "Delete birth year",
+    deleteDescription: (label: string, from: number, toYear: number) =>
+      `Delete ${label} (${from}-${toYear})? You can only delete birth years you created.`,
+    delete: "Delete",
+    profileStatuses: {
+      complete: "Complete",
+      incomplete: "Incomplete",
+      missing: "Missing",
+    },
+  },
+  ar: {
+    noMainPosition: "لا يوجد مركز أساسي",
+    genericError: "حدث خطأ.",
+    createdByCoach: (name?: string | null) => `أنشأه المدرب${name ? `: ${name}` : ""}`,
+    createdByAdmin: (name?: string | null) => `أنشأه الأدمن${name ? `: ${name}` : ""}`,
+    createError: "تعذر إنشاء سنة الميلاد. راجع القيم.",
+    deleteError: "تعذر حذف سنة الميلاد هذه.",
+    title: "سنوات الميلاد",
+    description: "راجع سنوات الميلاد المعينة لك واللاعبين داخل كل نطاق.",
+    home: "الرئيسية",
+    addBirthYear: "إضافة سنة ميلاد",
+    loadingBirthdays: "جاري تحميل سنوات الميلاد...",
+    to: "إلى",
+    players: (count: number) => `${count} لاعبين`,
+    deleteAria: (label: string) => `حذف ${label}`,
+    noBirthDate: "لا يوجد تاريخ ميلاد",
+    noPlayersBirthday: "لا يوجد لاعبون في سنة الميلاد هذه بعد.",
+    noBirthdays: "لا توجد سنوات ميلاد معينة بعد.",
+    addFirst: " أضف أول سنة ميلاد من الزر بالأعلى.",
+    dialogTitle: "إضافة سنة ميلاد",
+    dialogDescription: "أنشئ سنة ميلاد في أحد الفروع التي يمكنك إدارتها.",
+    branch: "الفرع",
+    loadingBranches: "جاري تحميل الفروع...",
+    selectBranch: "اختر فرعا",
+    noManageBranches: "لا توجد فروع قابلة للإدارة لهذا الحساب.",
+    fromYear: "من سنة",
+    toYear: "إلى سنة",
+    labelOptional: "التسمية (اختياري)",
+    cancel: "إلغاء",
+    adding: "جاري الإضافة...",
+    deleteTitle: "حذف سنة الميلاد",
+    deleteDescription: (label: string, from: number, toYear: number) =>
+      `حذف ${label} (${from}-${toYear})؟ يمكنك حذف سنوات الميلاد التي أنشأتها فقط.`,
+    delete: "حذف",
+    profileStatuses: {
+      complete: "مكتمل",
+      incomplete: "غير مكتمل",
+      missing: "ناقص",
+    },
+  },
+} as const;
+
+type BirthdayCopy = (typeof birthdayCopy)[keyof typeof birthdayCopy];
+
 function playerMainPosition(player: {
   position?: string | null;
   customProfile?: Array<{ key?: string; label?: string; value?: unknown }>;
-}) {
+}, fallback: string) {
   const field = player.customProfile?.find((item) => {
     const key = String(item.key || "").toLowerCase();
     const label = String(item.label || "").toLowerCase();
@@ -55,7 +141,7 @@ function playerMainPosition(player: {
   if (typeof field?.value === "string" && field.value.trim()) {
     return field.value.trim();
   }
-  return player.position || "No main position";
+  return player.position || fallback;
 }
 
 const getApiErrorMessage = (error: unknown, fallback = "Something went wrong.") => {
@@ -78,20 +164,31 @@ const getApiErrorMessage = (error: unknown, fallback = "Something went wrong.") 
   return fallback;
 };
 
-const creatorMeta = (birthday: CoachBirthday) => {
+const creatorMeta = (birthday: CoachBirthday, copy: BirthdayCopy) => {
   if (birthday.createdByRole === "coach") {
     return {
-      label: `Created by Coach${birthday.createdByName ? `: ${birthday.createdByName}` : ""}`,
+      label: copy.createdByCoach(birthday.createdByName),
       className: "border-cyan-400/50 bg-cyan-400/15 text-cyan-100",
     };
   }
   return {
-    label: `Created by Admin${birthday.createdByName ? `: ${birthday.createdByName}` : ""}`,
+    label: copy.createdByAdmin(birthday.createdByName),
     className: "border-lime-400/50 bg-lime-400/15 text-lime-100",
   };
 };
 
+const formatProfileStatus = (
+  status: string | null | undefined,
+  copy: BirthdayCopy,
+) => {
+  if (!status) return copy.profileStatuses.missing;
+  const key = status.toLowerCase() as keyof typeof copy.profileStatuses;
+  return copy.profileStatuses[key] ?? status.replace(/_/g, " ");
+};
+
 export default function CoachBirthdaysPage() {
+  const language = useDashboardLanguage();
+  const t = birthdayCopy[language];
   const { can, isLoading: loadingPermissions } = useCoachPermissions();
   const canManageGroups = can("can_manage_groups");
   const { data: birthdays = [], isLoading: loadingBirthdays } = useGetCoachBirthdaysQuery();
@@ -169,7 +266,7 @@ export default function CoachBirthdaysPage() {
       setCreateError(
         getApiErrorMessage(
           error,
-          "Could not create the birth year. Please check the values.",
+          t.createError,
         ),
       );
     }
@@ -182,21 +279,21 @@ export default function CoachBirthdaysPage() {
       await deleteCoachBirthYear(deleteTarget.id).unwrap();
       setDeleteTarget(null);
     } catch (error) {
-      setDeleteError(getApiErrorMessage(error, "Could not delete this birth year."));
+      setDeleteError(getApiErrorMessage(error, t.deleteError));
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Birthdays"
-        description="View your assigned birth years and the players inside each birthday range."
-        breadcrumbs={[{ label: "Home", href: "/coach/home" }, { label: "Birthdays" }]}
+        title={t.title}
+        description={t.description}
+        breadcrumbs={[{ label: t.home, href: "/coach/home" }, { label: t.title }]}
         actions={
           canManageGroups ? (
             <Button className="gap-1.5" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
-              Add Birth Year
+              {t.addBirthYear}
             </Button>
           ) : undefined
         }
@@ -212,14 +309,14 @@ export default function CoachBirthdaysPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading birthdays...
+            {t.loadingBirthdays}
           </CardContent>
         </Card>
       ) : birthdaysWithPlayers.length ? (
         <div className="grid gap-5 xl:grid-cols-2">
           {birthdaysWithPlayers.map((birthday) => (
             (() => {
-              const creator = creatorMeta(birthday);
+              const creator = creatorMeta(birthday, t);
               return (
                 <Card key={birthday.id} className="border-border/50 bg-card">
                   <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
@@ -229,7 +326,7 @@ export default function CoachBirthdaysPage() {
                         {birthday.label}
                       </CardTitle>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {birthday.branchName} - {birthday.fromYear} to {birthday.toYear}
+                        {birthday.branchName} - {birthday.fromYear} {t.to} {birthday.toYear}
                       </p>
                       <Badge
                         variant="outline"
@@ -241,7 +338,7 @@ export default function CoachBirthdaysPage() {
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant="secondary" className="gap-1">
                         <Users className="h-3.5 w-3.5" />
-                        {birthday.players.length} players
+                        {t.players(birthday.players.length)}
                       </Badge>
                       {birthday.canDelete && (
                         <Button
@@ -252,7 +349,7 @@ export default function CoachBirthdaysPage() {
                             setDeleteError("");
                             setDeleteTarget(birthday);
                           }}
-                          aria-label={`Delete ${birthday.label}`}
+                          aria-label={t.deleteAria(birthday.label)}
                         >
                           <Trash2 className="h-4 w-4 text-red-400" />
                         </Button>
@@ -271,18 +368,18 @@ export default function CoachBirthdaysPage() {
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{player.full_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {player.date_of_birth ? formatDate(player.date_of_birth) : "No birth date"} - {playerMainPosition(player)}
+                              {player.date_of_birth ? formatDate(player.date_of_birth) : t.noBirthDate} - {playerMainPosition(player, t.noMainPosition)}
                             </p>
                           </div>
                         </div>
                         <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>
-                          {player.profile_status}
+                          {formatProfileStatus(player.profile_status, t)}
                         </Badge>
                       </div>
                     ))}
                     {!birthday.players.length && (
                       <p className="rounded-lg border border-border/40 p-5 text-center text-sm text-muted-foreground">
-                        No players in this birthday yet.
+                        {t.noPlayersBirthday}
                       </p>
                     )}
                   </CardContent>
@@ -294,8 +391,8 @@ export default function CoachBirthdaysPage() {
       ) : (
         <Card className="border-border/50 bg-card">
           <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            No birthdays assigned yet.
-            {canManageGroups ? " Add the first birth year from the button above." : ""}
+            {t.noBirthdays}
+            {canManageGroups ? t.addFirst : ""}
           </CardContent>
         </Card>
       )}
@@ -303,21 +400,21 @@ export default function CoachBirthdaysPage() {
       <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Add Birth Year</DialogTitle>
+            <DialogTitle>{t.dialogTitle}</DialogTitle>
             <DialogDescription>
-              Create a birth year in one of the branches you can manage.
+              {t.dialogDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreate}>
             <div className="space-y-2">
-              <Label>Branch</Label>
+              <Label>{t.branch}</Label>
               <Select
                 value={form.branchId}
                 onValueChange={(branchId) => setForm((current) => ({ ...current, branchId }))}
                 disabled={loadingBranches || loadingPermissions}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingBranches ? "Loading branches..." : "Select branch"} />
+                  <SelectValue placeholder={loadingBranches ? t.loadingBranches : t.selectBranch} />
                 </SelectTrigger>
                 <SelectContent>
                   {branchOptions.map((branch) => (
@@ -329,13 +426,13 @@ export default function CoachBirthdaysPage() {
               </Select>
               {!loadingBranches && !branchOptions.length && (
                 <p className="text-xs text-muted-foreground">
-                  No manageable branches assigned to this account.
+                  {t.noManageBranches}
                 </p>
               )}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="birth-year-from">From year</Label>
+                <Label htmlFor="birth-year-from">{t.fromYear}</Label>
                 <Input
                   id="birth-year-from"
                   type="number"
@@ -348,7 +445,7 @@ export default function CoachBirthdaysPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="birth-year-to">To year</Label>
+                <Label htmlFor="birth-year-to">{t.toYear}</Label>
                 <Input
                   id="birth-year-to"
                   type="number"
@@ -362,7 +459,7 @@ export default function CoachBirthdaysPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="birth-year-label">Label (optional)</Label>
+              <Label htmlFor="birth-year-label">{t.labelOptional}</Label>
               <Input
                 id="birth-year-label"
                 value={form.label}
@@ -373,7 +470,7 @@ export default function CoachBirthdaysPage() {
             {createError && <p className="text-sm text-red-400">{createError}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleCreateOpenChange(false)}>
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 type="submit"
@@ -387,7 +484,7 @@ export default function CoachBirthdaysPage() {
                 }
               >
                 {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isCreating ? "Adding..." : "Add Birth Year"}
+                {isCreating ? t.adding : t.addBirthYear}
               </Button>
             </DialogFooter>
           </form>
@@ -399,13 +496,13 @@ export default function CoachBirthdaysPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Delete birth year"
+        title={t.deleteTitle}
         description={
           deleteTarget
-            ? `Delete ${deleteTarget.label} (${deleteTarget.fromYear}-${deleteTarget.toYear})? You can only delete birth years you created.`
+            ? t.deleteDescription(deleteTarget.label, deleteTarget.fromYear, deleteTarget.toYear)
             : ""
         }
-        confirmLabel="Delete"
+        confirmLabel={t.delete}
         variant="destructive"
         isLoading={isDeleting}
         onConfirm={() => {

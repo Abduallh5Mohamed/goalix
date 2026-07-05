@@ -2,7 +2,7 @@ const BaseRepository = require('../../shared/base.repository');
 
 class RankingsRepository extends BaseRepository {
     constructor(db) {
-        super('ranking_snapshots', db);
+        super('ranking_snapshots', db, { hasSoftDelete: false });
     }
 
     _avgRatingToScore(value) {

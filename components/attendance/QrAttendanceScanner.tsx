@@ -348,7 +348,13 @@ export function QrAttendanceScanner({
   }, [cameraActive, disabled, scannerElementId, stopJsQrLoop, submitPayload]);
 
   useEffect(() => {
-    if (disabled && cameraActive) void stopCamera();
+    if (!disabled || !cameraActive) return;
+
+    const timer = window.setTimeout(() => {
+      void stopCamera();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [cameraActive, disabled, stopCamera]);
 
   useEffect(() => {

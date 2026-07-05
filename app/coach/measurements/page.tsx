@@ -20,6 +20,7 @@ import {
   useSaveCoachMeasurementsMutation,
 } from "@/lib/store/api/coachApi";
 import { useGetCoachGroupsScopedQuery } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { getInitials } from "@/lib/utils";
 import { CheckCircle2, Loader2, RefreshCw, Ruler, Save, Search, ShieldAlert } from "lucide-react";
 
@@ -57,6 +58,80 @@ const fields: {
   { key: "flexibility", label: "Flexibility (/10)", placeholder: "7.5", min: 0, max: 10 },
 ];
 
+const measurementsCopy = {
+  en: {
+    title: "Player Measurements",
+    description: "Record monthly physical measurements for your players",
+    home: "Home",
+    measurements: "Measurements",
+    noPermission:
+      "Your assigned role does not allow recording measurements for any group.",
+    groupsError: "Could not load your groups.",
+    retry: "Retry",
+    group: "Group",
+    loadingGroups: "Loading groups...",
+    selectGroup: "Select group",
+    measurementMonth: "Measurement month",
+    searchPlayers: "Search players",
+    searchPlaceholder: "Search by name, position, group, branch, or phone",
+    loadingPlayers: "Loading players...",
+    noGroups: "No groups assigned yet.",
+    age: "Age",
+    latest: "Latest:",
+    enduranceShort: "End",
+    flexibilityShort: "Flex",
+    notes: "Notes",
+    optional: "Optional",
+    noSearch: "No players match your search.",
+    saveError: "Could not save measurements. Please check the values.",
+    saving: "Saving...",
+    saved: "Saved",
+    saveMeasurements: "Save Measurements",
+    fields: {
+      heightCm: "Height (cm)",
+      weightKg: "Weight (kg)",
+      sprintSpeed: "Sprint (s)",
+      stamina: "Endurance (/10)",
+      flexibility: "Flexibility (/10)",
+    },
+  },
+  ar: {
+    title: "قياسات اللاعبين",
+    description: "سجل القياسات البدنية الشهرية للاعبين",
+    home: "الرئيسية",
+    measurements: "القياسات",
+    noPermission: "الدور المخصص لك لا يسمح بتسجيل قياسات لأي مجموعة.",
+    groupsError: "تعذر تحميل مجموعاتك.",
+    retry: "إعادة المحاولة",
+    group: "المجموعة",
+    loadingGroups: "جاري تحميل المجموعات...",
+    selectGroup: "اختر المجموعة",
+    measurementMonth: "شهر القياس",
+    searchPlayers: "بحث اللاعبين",
+    searchPlaceholder: "ابحث بالاسم أو المركز أو المجموعة أو الفرع أو الهاتف",
+    loadingPlayers: "جاري تحميل اللاعبين...",
+    noGroups: "لا توجد مجموعات مخصصة بعد.",
+    age: "العمر",
+    latest: "الأحدث:",
+    enduranceShort: "تحمل",
+    flexibilityShort: "مرونة",
+    notes: "ملاحظات",
+    optional: "اختياري",
+    noSearch: "لا يوجد لاعبون مطابقون للبحث.",
+    saveError: "تعذر حفظ القياسات. راجع القيم المدخلة.",
+    saving: "جاري الحفظ...",
+    saved: "تم الحفظ",
+    saveMeasurements: "حفظ القياسات",
+    fields: {
+      heightCm: "الطول (سم)",
+      weightKg: "الوزن (كجم)",
+      sprintSpeed: "السرعة (ث)",
+      stamina: "التحمل (/10)",
+      flexibility: "المرونة (/10)",
+    },
+  },
+} as const;
+
 const toNumber = (value: string) => {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
@@ -70,6 +145,8 @@ const toTenPointValue = (value: number | undefined) => {
 };
 
 export default function CoachMeasurementsPage() {
+  const language = useDashboardLanguage();
+  const t = measurementsCopy[language];
   const { data: allGroups = [], isLoading: loadingGroups, isError: groupsError, refetch } =
     useGetCoachGroupsQuery();
   const { data: permissionGroups = [], isLoading: loadingPermissions } =
@@ -187,11 +264,11 @@ export default function CoachMeasurementsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Player Measurements"
-        description="Record monthly physical measurements for your players"
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Measurements" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.measurements },
         ]}
       />
 
@@ -199,10 +276,7 @@ export default function CoachMeasurementsPage() {
         <Card className="border-amber-500/30 bg-amber-500/10">
           <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-100">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-            <span>
-              Your assigned role does not allow recording measurements for any
-              group.
-            </span>
+            <span>{t.noPermission}</span>
           </CardContent>
         </Card>
       )}
@@ -210,10 +284,10 @@ export default function CoachMeasurementsPage() {
       {groupsError && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-red-300">
-            <span>Could not load your groups.</span>
+            <span>{t.groupsError}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="mr-1 h-4 w-4" />
-              Retry
+              {t.retry}
             </Button>
           </CardContent>
         </Card>
@@ -222,7 +296,7 @@ export default function CoachMeasurementsPage() {
       <Card className="border-border/50 bg-card">
         <CardContent className="grid gap-4 p-4 lg:grid-cols-[240px_180px_1fr]">
           <div>
-            <Label className="mb-2 block text-sm">Group</Label>
+            <Label className="mb-2 block text-sm">{t.group}</Label>
             <Select
               value={selectedGroup}
               onValueChange={(value) => {
@@ -234,7 +308,7 @@ export default function CoachMeasurementsPage() {
             >
               <SelectTrigger>
                 <SelectValue
-                  placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+                  placeholder={loadingGroups ? t.loadingGroups : t.selectGroup}
                 />
               </SelectTrigger>
               <SelectContent>
@@ -249,7 +323,7 @@ export default function CoachMeasurementsPage() {
 
           <div>
             <Label htmlFor="measurement-month" className="mb-2 block text-sm">
-              Measurement month
+              {t.measurementMonth}
             </Label>
             <Input
               id="measurement-month"
@@ -265,7 +339,7 @@ export default function CoachMeasurementsPage() {
 
           <div>
             <Label htmlFor="player-search" className="mb-2 block text-sm">
-              Search players
+              {t.searchPlayers}
             </Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -273,7 +347,7 @@ export default function CoachMeasurementsPage() {
                 id="player-search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name, position, group, branch, or phone"
+                placeholder={t.searchPlaceholder}
                 className="pl-9"
               />
             </div>
@@ -285,7 +359,7 @@ export default function CoachMeasurementsPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading players...
+            {t.loadingPlayers}
           </CardContent>
         </Card>
       ) : null}
@@ -293,7 +367,7 @@ export default function CoachMeasurementsPage() {
       {!loadingGroups && groups.length === 0 && (
         <Card className="border-border/50 bg-card">
           <CardContent className="p-8 text-center text-muted-foreground">
-            No groups assigned yet.
+            {t.noGroups}
           </CardContent>
         </Card>
       )}
@@ -317,17 +391,17 @@ export default function CoachMeasurementsPage() {
                         {player.fullName}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">
-                        {player.position} - Age {player.age} - {player.groupName}
+                        {player.position} - {t.age} {player.age} - {player.groupName}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Ruler className="h-3.5 w-3.5" />
                     <span>
-                      Latest: {player.height || "--"}cm / {player.weight || "--"}kg
+                      {t.latest} {player.height || "--"}cm / {player.weight || "--"}kg
                       {player.sprintSpeed ? ` / ${toTenPointValue(player.sprintSpeed)}s` : ""}
-                      {player.stamina ? ` / End ${toTenPointValue(player.stamina)}` : ""}
-                      {player.flexibility ? ` / Flex ${toTenPointValue(player.flexibility)}` : ""}
+                      {player.stamina ? ` / ${t.enduranceShort} ${toTenPointValue(player.stamina)}` : ""}
+                      {player.flexibility ? ` / ${t.flexibilityShort} ${toTenPointValue(player.flexibility)}` : ""}
                     </span>
                   </div>
                 </div>
@@ -337,7 +411,7 @@ export default function CoachMeasurementsPage() {
                   {fields.map((field) => (
                     <div key={field.key}>
                       <Label className="mb-1 block text-[10px] text-muted-foreground">
-                        {field.label}
+                        {t.fields[field.key]}
                       </Label>
                       <Input
                         type="number"
@@ -355,10 +429,10 @@ export default function CoachMeasurementsPage() {
                   ))}
                   <div className="col-span-2 lg:col-span-1">
                     <Label className="mb-1 block text-[10px] text-muted-foreground">
-                      Notes
+                      {t.notes}
                     </Label>
                     <Input
-                      placeholder="Optional"
+                      placeholder={t.optional}
                       value={draft.notes}
                       onChange={(event) =>
                         handleChange(player, "notes", event.target.value)
@@ -375,14 +449,14 @@ export default function CoachMeasurementsPage() {
       {!loadingGroups && !loadingPlayers && players.length > 0 && !visiblePlayers.length && (
         <Card className="border-border/50 bg-card">
           <CardContent className="p-8 text-center text-muted-foreground">
-            No players match your search.
+            {t.noSearch}
           </CardContent>
         </Card>
       )}
 
       {saveError && (
         <p className="text-sm text-red-400">
-          Could not save measurements. Please check the values.
+          {t.saveError}
         </p>
       )}
 
@@ -397,17 +471,17 @@ export default function CoachMeasurementsPage() {
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Saving...
+                {t.saving}
               </>
             ) : saved ? (
               <>
                 <CheckCircle2 className="mr-2 h-5 w-5" />
-                Saved
+                {t.saved}
               </>
             ) : (
               <>
                 <Save className="mr-2 h-5 w-5" />
-                Save Measurements
+                {t.saveMeasurements}
               </>
             )}
           </Button>

@@ -5,6 +5,16 @@ npm-debug.log*
 .git
 .gitignore
 uploads
+load-tests
+tests
 coverage
-load-tests/*.local.json
 *.log
+*.sql
+*.dump
+*.backup
+*.zip
+SCHEMA_DIAGRAM.md
+BIRTH_YEARS_GROUPS_QUICK_REFERENCE.md
+BIRTH_YEARS_GROUPS_REFACTOR_SUMMARY.md
+pentest.js
+test-register.js

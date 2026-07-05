@@ -1,7 +1,7 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { loginSuccess, logout } from "../slices/authSlice";
-import type { UserRole } from "@/lib/types";
+import { mapApiUser } from "@/lib/auth/mapApiUser";
 import { hasAuthSessionMarker } from "@/lib/auth/session";
 import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
@@ -76,26 +76,7 @@ function logQueryTiming(
   }
 }
 
-function mapApiUser(apiUser: Record<string, unknown>) {
-  return {
-    id: apiUser.id as string,
-    email: (apiUser.email as string) ?? "",
-    username: (apiUser.username as string) ?? undefined,
-    fullName:
-      (apiUser.full_name as string) ??
-      (apiUser.fullName as string) ??
-      (apiUser.username as string) ??
-      (apiUser.email as string),
-    role: apiUser.role as UserRole,
-    avatarUrl: (apiUser.avatar_url as string) ?? "",
-    phone: (apiUser.phone as string) ?? "",
-    linkedPlayerId:
-      (apiUser.linkedPlayerId as string | null) ??
-      (apiUser.linked_player_id as string | null) ??
-      null,
-    createdAt: (apiUser.created_at as string) ?? new Date().toISOString(),
-  };
-}
+// mapApiUser imported from shared utilities
 
 export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,

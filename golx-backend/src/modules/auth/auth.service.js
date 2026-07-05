@@ -15,6 +15,7 @@ const {
     ConflictError,
     NotFoundError,
     ForbiddenError,
+    AppError,
 } = require('../../shared/errors');
 const logger = require('../../shared/logger');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
@@ -31,16 +32,31 @@ const {
     getJsonCache,
     setJsonCache,
 } = require('../../shared/redis-json-cache');
+const {
+    durationToMilliseconds,
+    durationToSeconds,
+} = require('../../shared/duration');
 
 const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 const authPermissionsCacheKey = (user) =>
     `goalix:auth:permissions:v1:${user.userId}:${user.academyId || 'global'}`;
+const mfaChallengeKey = (challengeId) => `goalix:auth:mfa-challenge:${challengeId}`;
 const mfaEnforcedRoles = new Set(
     String(env.MFA_ENFORCED_ROLES || '')
         .split(',')
         .map((role) => role.trim())
         .filter(Boolean),
 );
+const DEFAULT_REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_REFRESH_TTL_SECONDS = DEFAULT_REFRESH_TTL_MS / 1000;
+
+function refreshTokenTtlMs() {
+    return durationToMilliseconds(env.JWT_REFRESH_EXPIRY, DEFAULT_REFRESH_TTL_MS);
+}
+
+function refreshTokenTtlSeconds() {
+    return durationToSeconds(env.JWT_REFRESH_EXPIRY, DEFAULT_REFRESH_TTL_SECONDS);
+}
 
 class AuthService {
     constructor(authRepository, redis) {
@@ -154,8 +170,6 @@ class AuthService {
             academyId: user.academy_id,
             email: user.email,
             username: user.username,
-            role: user.role,
-            username: user.username,
         });
 
         return {
@@ -246,13 +260,28 @@ class AuthService {
             await this.repo.resetFailedAttempts(user.id);
         }
 
-        // Check if 2FA is required
         if (user.totp_enabled) {
-            // Return a temporary token for 2FA verification
+            const challengeId = crypto.randomUUID();
             const tempToken = signAccessToken(
-                { userId: user.id, purpose: '2fa' },
+                { userId: user.id, purpose: '2fa', jti: challengeId },
                 { expiresIn: '5m' },
             );
+            try {
+                const stored = await this.redis.set(
+                    mfaChallengeKey(challengeId),
+                    user.id,
+                    'EX',
+                    5 * 60,
+                    'NX',
+                );
+                if (stored !== 'OK') throw new Error('MFA challenge was not stored');
+            } catch {
+                throw new AppError(
+                    'MFA verification is temporarily unavailable. Please try again.',
+                    503,
+                    'MFA_SERVICE_UNAVAILABLE',
+                );
+            }
 
             return {
                 requires2FA: true,
@@ -290,8 +319,22 @@ class AuthService {
             throw new UnauthorizedError('Invalid or expired 2FA token');
         }
 
-        if (decoded.purpose !== '2fa') {
+        if (decoded.purpose !== '2fa' || !decoded.jti) {
             throw new UnauthorizedError('Invalid token purpose');
+        }
+
+        let challengeUserId;
+        try {
+            challengeUserId = await this.redis.getdel(mfaChallengeKey(decoded.jti));
+        } catch {
+            throw new AppError(
+                'MFA verification is temporarily unavailable. Please try again.',
+                503,
+                'MFA_SERVICE_UNAVAILABLE',
+            );
+        }
+        if (challengeUserId !== decoded.userId) {
+            throw new UnauthorizedError('Invalid or already used 2FA token');
         }
 
         const user = await this.repo.findById(decoded.userId);
@@ -319,34 +362,39 @@ class AuthService {
 
     // ─── Logout ─────────────────────────────────────────────────────────
     async logout(userId, refreshTokenHash, ip, userAgent, accessJti) {
+        let storedToken = null;
         if (refreshTokenHash) {
-            const token = await this.repo.findRefreshTokenByHash(refreshTokenHash);
-            if (token) {
-                await this.repo.revokeRefreshToken(token.id);
+            storedToken = await this.repo.findRefreshTokenByHash(refreshTokenHash);
+            if (storedToken) {
+                await this.repo.revokeRefreshToken(storedToken.id);
             }
         }
-        await this.repo.revokeAccessSessionByJti(userId, accessJti, 'logout');
+        const effectiveUserId = userId || storedToken?.user_id;
+        if (!effectiveUserId) return;
+        await this.repo.revokeAccessSessionByJti(effectiveUserId, accessJti, 'logout');
 
         // Also remove from Redis if cached (best-effort)
         try {
             await Promise.all([
-                this.redis.del(`goalix:auth:refresh:${userId}`),
-                invalidateSession(this.redis, userId, accessJti),
+                this.redis.del(`goalix:auth:refresh:${effectiveUserId}`),
+                accessJti
+                    ? invalidateSession(this.redis, effectiveUserId, accessJti)
+                    : Promise.resolve(),
             ]);
         } catch { /* Redis unavailable */ }
 
         // Audit log
         await this.repo.createAuditLog({
-            user_id: userId,
+            user_id: effectiveUserId,
             action: 'logout',
             table_name: 'auth_users',
-            record_id: userId,
+            record_id: effectiveUserId,
             ip_address: ip,
             user_agent: userAgent,
             session_jti: accessJti || null,
         });
 
-        eventBus.publish(AUTH_EVENTS.USER_LOGGED_OUT, { userId });
+        eventBus.publish(AUTH_EVENTS.USER_LOGGED_OUT, { userId: effectiveUserId });
     }
 
     // ─── Logout All Devices ─────────────────────────────────────────────
@@ -570,7 +618,7 @@ class AuthService {
         const session = await this.repo.createRefreshToken({
             user_id: user.id,
             token_hash: tokenHash,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            expires_at: new Date(Date.now() + refreshTokenTtlMs()),
             access_jti: accessJti,
             ip_address: ip || null,
             user_agent: userAgent || null,
@@ -586,7 +634,7 @@ class AuthService {
                     `goalix:auth:refresh:${user.id}`,
                     tokenHash,
                     'EX',
-                    7 * 24 * 60 * 60,
+                    refreshTokenTtlSeconds(),
                 ),
                 cacheActiveSession(this.redis, decodedAccessToken, session),
                 setJsonCache(

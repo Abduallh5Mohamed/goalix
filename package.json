@@ -21,7 +21,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "security:scan-dumps": "node scripts/check-no-dumps.mjs"
+    "backend:lint": "cd golx-backend && npm run lint",
+    "backend:test": "cd golx-backend && npm test",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "security:audit": "npm audit --audit-level=high && cd golx-backend && npm audit --audit-level=high",
+    "security:scan-dumps": "node scripts/check-no-dumps.mjs",
+    "quality:i18n": "node scripts/check-dashboard-i18n.mjs",
+    "quality:text": "node scripts/check-text-artifacts.mjs",
+    "quality:artifacts": "node scripts/check-no-model-artifacts.mjs",
+    "quality": "npm run quality:i18n && npm run quality:text && npm run quality:artifacts && npm run security:scan-dumps",
+    "verify": "npm run lint && npm run quality && npm run build && npm run backend:lint && npm run backend:test && npm run security:audit"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -60,6 +70,7 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

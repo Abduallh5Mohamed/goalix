@@ -227,6 +227,22 @@ async function assignRole(client, userId, academyId, roleCode, branchId = null) 
   );
 }
 
+async function resetAuthRuntimeState(client, users) {
+  const userIds = Object.values(users).map((user) => user.id);
+  await client.query(
+    "DELETE FROM auth_totp_backup_codes WHERE user_id = ANY($1::uuid[])",
+    [userIds],
+  );
+  await client.query(
+    "DELETE FROM auth_totp_devices WHERE user_id = ANY($1::uuid[])",
+    [userIds],
+  );
+  await client.query(
+    "DELETE FROM auth_refresh_tokens WHERE user_id = ANY($1::uuid[])",
+    [userIds],
+  );
+}
+
 async function upsertCoachProfile(client, user, academyId, branchId) {
   const existing = await one(
     client,
@@ -323,9 +339,6 @@ async function upsertPlayerProfile(
     details.foot,
     details.code,
     details.phone,
-    details.shirtNumber,
-    details.style,
-    details.experience,
     details.guardianName,
     details.guardianPhone,
   ];
@@ -336,11 +349,9 @@ async function upsertPlayerProfile(
       `UPDATE player_profiles
           SET user_id=$2, academy_id=$3, branch_id=$4, full_name=$5,
               date_of_birth=$6, level=$7, position=$8, preferred_foot=$9,
-              player_code=$10, phone=$11, shirt_number=$12, playing_style=$13,
-              years_experience=$14, guardian_name=$15, guardian_phone=$16,
+              player_code=$10, phone=$11, guardian_name=$12, guardian_phone=$13,
               guardian_relation='mother', nationality='Egyptian',
-              secondary_positions='["AM","RW"]'::jsonb,
-              current_team='E2E Elite Squad', profile_status='complete',
+              profile_status='complete',
               profile_completed_at=CURRENT_TIMESTAMP, date_joined=CURRENT_DATE - 180,
               is_active=true, deleted_at=NULL, updated_at=CURRENT_TIMESTAMP
         WHERE id=$1 RETURNING *`,
@@ -352,13 +363,12 @@ async function upsertPlayerProfile(
     client,
     `INSERT INTO player_profiles (
        id, user_id, academy_id, branch_id, full_name, date_of_birth, level,
-       position, preferred_foot, player_code, phone, shirt_number, playing_style,
-       years_experience, guardian_name, guardian_phone, guardian_relation,
-       nationality, secondary_positions, current_team, profile_status,
+       position, preferred_foot, player_code, phone, guardian_name, guardian_phone,
+       guardian_relation, nationality, profile_status,
        profile_completed_at, date_joined, is_active
      ) VALUES (
-       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-       'mother','Egyptian','["AM","RW"]'::jsonb,'E2E Elite Squad','complete',
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+       'mother','Egyptian','complete',
        CURRENT_TIMESTAMP,CURRENT_DATE - 180,true
      ) RETURNING *`,
     [id(), ...data],
@@ -721,9 +731,8 @@ async function createMeasurements(client, coachUserId, players) {
       await client.query(
         `INSERT INTO player_measurements (
            id,player_id,height_cm,weight_kg,measured_at,measured_by,notes,bmi,
-           sprint_speed,acceleration,stamina,strength,agility,balance,
-           jump_height_cm,flexibility
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+           sprint_speed,stamina,flexibility
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           id(),
           player.id,
@@ -734,12 +743,7 @@ async function createMeasurements(client, coachUserId, players) {
           `${FIXTURE}: monthly performance measurement`,
           20.1 + playerIndex * 0.4,
           28.8 + playerIndex + (2 - monthsAgo) * 0.7,
-          78 + playerIndex * 2 + (2 - monthsAgo),
           80 + playerIndex + (2 - monthsAgo) * 2,
-          74 + playerIndex * 2 + (2 - monthsAgo),
-          82 + playerIndex + (2 - monthsAgo) * 2,
-          79 + playerIndex + (2 - monthsAgo),
-          42 + playerIndex * 2 + (2 - monthsAgo),
           76 + playerIndex + (2 - monthsAgo),
         ],
       );
@@ -1042,6 +1046,7 @@ async function main() {
         branch.id,
       );
     }
+    await resetAuthRuntimeState(client, users);
 
     await assignRole(client, users.admin.id, academy.id, "academy_admin");
     await assignRole(client, users.coach.id, academy.id, "head_coach", branch.id);

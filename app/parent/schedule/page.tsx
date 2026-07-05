@@ -66,6 +66,8 @@ const copy = {
     cancelled: "Cancelled",
     postponed: "Postponed",
     unknownStatus: "Unknown status",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
   },
   ar: {
     title: "الجدول",
@@ -103,6 +105,8 @@ const copy = {
     cancelled: "ملغي",
     postponed: "مؤجل",
     unknownStatus: "حالة غير محددة",
+    previousMonth: "الشهر السابق",
+    nextMonth: "الشهر التالي",
   },
 } as const;
 
@@ -485,7 +489,7 @@ export default function ParentSchedulePage() {
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    aria-label="Previous month"
+                    aria-label={t.previousMonth}
                     onClick={() => moveMonth(-1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -494,7 +498,7 @@ export default function ParentSchedulePage() {
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    aria-label="Next month"
+                    aria-label={t.nextMonth}
                     onClick={() => moveMonth(1)}
                   >
                     <ChevronRight className="h-4 w-4" />

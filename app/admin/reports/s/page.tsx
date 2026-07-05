@@ -25,9 +25,10 @@ import {
   type ReportsOverview,
   useGetReportsOverviewQuery,
 } from "@/lib/store/api/dashboardApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat("en-US").format(value);
+const formatNumber = (value: number, locale = "en-US") =>
+  new Intl.NumberFormat(locale).format(value);
 
 const toDateInput = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -62,8 +63,10 @@ function Metric({
 
 function AttendanceTrend({
   points,
+  emptyText,
 }: {
   points: ReportsOverview["attendanceTrend"];
+  emptyText: string;
 }) {
   const chartPoints = points.map((point, index) => ({
     ...point,
@@ -118,7 +121,7 @@ function AttendanceTrend({
           </>
         ) : (
           <text x="270" y="122" fill="#94a3b8" fontSize="14" textAnchor="middle">
-            No attendance records in this period
+            {emptyText}
           </text>
         )}
       </svg>
@@ -126,7 +129,91 @@ function AttendanceTrend({
   );
 }
 
+const reportsCopy = {
+  en: {
+    overviewTitle: "Goalix reports overview",
+    from: "From",
+    to: "To",
+    metric: "Metric",
+    value: "Value",
+    totalPlayers: "Total players",
+    activePlayers: "Active players",
+    newPlayers: "New players",
+    coaches: "Coaches",
+    sessions: "Sessions",
+    attendanceRate: "Attendance rate",
+    group: "Group",
+    branch: "Branch",
+    players: "Players",
+    coach: "Coach",
+    specialization: "Specialization",
+    pageTitle: "Academy Reports",
+    pageDescription: "Operational performance from live academy data.",
+    refreshReports: "Refresh reports",
+    exportCsv: "Export CSV",
+    allBranches: "All branches",
+    reportsLoadError: "Reports could not be loaded. Check the selected dates and try again.",
+    loadingReports: "Loading reports from the database...",
+    joinedInPeriod: "{count} joined in selected period",
+    activeCoachProfiles: "Active academy coach profiles",
+    completed: "{count} completed",
+    attendanceMarks: "{count} attendance marks",
+    attendanceTrend: "Attendance Trend",
+    noAttendanceRecords: "No attendance records in this period",
+    playerLevels: "Player Levels",
+    level: "Level {level}",
+    noActivePlayers: "No active players in this branch.",
+    groupPerformance: "Group Performance",
+    coachActivity: "Coach Activity",
+    playerAttendance: "Player attendance",
+    coachFallback: "Coach",
+    noCoaches: "No coaches found for this branch.",
+  },
+  ar: {
+    overviewTitle: "نظرة عامة على تقارير Goalix",
+    from: "من",
+    to: "إلى",
+    metric: "المؤشر",
+    value: "القيمة",
+    totalPlayers: "إجمالي اللاعبين",
+    activePlayers: "اللاعبون النشطون",
+    newPlayers: "لاعبون جدد",
+    coaches: "المدربون",
+    sessions: "الحصص",
+    attendanceRate: "معدل الحضور",
+    group: "المجموعة",
+    branch: "الفرع",
+    players: "اللاعبون",
+    coach: "المدرب",
+    specialization: "التخصص",
+    pageTitle: "تقارير الأكاديمية",
+    pageDescription: "الأداء التشغيلي من بيانات الأكاديمية المباشرة.",
+    refreshReports: "تحديث التقارير",
+    exportCsv: "تصدير CSV",
+    allBranches: "كل الفروع",
+    reportsLoadError: "تعذر تحميل التقارير. راجع التواريخ المحددة وحاول مرة أخرى.",
+    loadingReports: "جاري تحميل التقارير من قاعدة البيانات...",
+    joinedInPeriod: "{count} انضموا في الفترة المحددة",
+    activeCoachProfiles: "ملفات مدربين نشطة في الأكاديمية",
+    completed: "{count} مكتملة",
+    attendanceMarks: "{count} علامة حضور",
+    attendanceTrend: "اتجاه الحضور",
+    noAttendanceRecords: "لا توجد سجلات حضور في هذه الفترة",
+    playerLevels: "مستويات اللاعبين",
+    level: "المستوى {level}",
+    noActivePlayers: "لا يوجد لاعبون نشطون في هذا الفرع.",
+    groupPerformance: "أداء المجموعات",
+    coachActivity: "نشاط المدربين",
+    playerAttendance: "حضور اللاعبين",
+    coachFallback: "مدرب",
+    noCoaches: "لا يوجد مدربون لهذا الفرع.",
+  },
+} as const;
+
 export default function ReportsOverviewPage() {
+  const language = useDashboardLanguage();
+  const t = reportsCopy[language];
+  const numberLocale = language === "ar" ? "ar-EG" : "en-US";
   const today = useMemo(() => new Date(), []);
   const defaultFrom = useMemo(() => {
     const date = new Date(today);
@@ -152,19 +239,19 @@ export default function ReportsOverviewPage() {
   const exportCsv = () => {
     if (!data) return;
     const rows = [
-      ["Goalix reports overview"],
-      ["From", data.filters.dateFrom],
-      ["To", data.filters.dateTo],
+      [t.overviewTitle],
+      [t.from, data.filters.dateFrom],
+      [t.to, data.filters.dateTo],
       [],
-      ["Metric", "Value"],
-      ["Total players", data.summary.totalPlayers],
-      ["Active players", data.summary.activePlayers],
-      ["New players", data.summary.newPlayers],
-      ["Coaches", data.summary.totalCoaches],
-      ["Sessions", data.summary.totalSessions],
-      ["Attendance rate", `${data.summary.attendanceRate}%`],
+      [t.metric, t.value],
+      [t.totalPlayers, data.summary.totalPlayers],
+      [t.activePlayers, data.summary.activePlayers],
+      [t.newPlayers, data.summary.newPlayers],
+      [t.coaches, data.summary.totalCoaches],
+      [t.sessions, data.summary.totalSessions],
+      [t.attendanceRate, `${data.summary.attendanceRate}%`],
       [],
-      ["Group", "Branch", "Players", "Sessions", "Attendance rate"],
+      [t.group, t.branch, t.players, t.sessions, t.attendanceRate],
       ...data.groups.map((group) => [
         group.name,
         group.branchName,
@@ -173,10 +260,10 @@ export default function ReportsOverviewPage() {
         `${group.attendanceRate}%`,
       ]),
       [],
-      ["Coach", "Specialization", "Sessions", "Attendance rate"],
+      [t.coach, t.specialization, t.sessions, t.attendanceRate],
       ...data.coaches.map((coach) => [
         coach.name,
-        coach.specialization || "Coach",
+        coach.specialization || t.coachFallback,
         coach.sessions,
         `${coach.attendanceRate}%`,
       ]),
@@ -201,19 +288,21 @@ export default function ReportsOverviewPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Academy Reports"
-        description="Operational performance from live academy data."
+        title={t.pageTitle}
+        description={t.pageDescription}
         actions={
           <div className="flex gap-2">
             <RefreshButton
               size="icon"
-              onRefresh={refetch}
-              isRefreshing={isFetching}
-              title="Refresh reports"
-            />
+              onClick={() => refetch()}
+              disabled={isFetching}
+              title={t.refreshReports}
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            </Button>
             <Button onClick={exportCsv} disabled={!data}>
               <Download className="h-4 w-4" />
-              Export CSV
+              {t.exportCsv}
             </Button>
           </div>
         }
@@ -221,13 +310,13 @@ export default function ReportsOverviewPage() {
 
       <section className="grid gap-3 border-y border-[#29435f]/80 py-4 md:grid-cols-[1fr_180px_180px]">
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">Branch</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.branch}</span>
           <Select value={branchId} onValueChange={setBranchId}>
             <SelectTrigger className="border-[#29435f] bg-[#07172a]">
-              <SelectValue placeholder="All branches" />
+              <SelectValue placeholder={t.allBranches} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
+              <SelectItem value="all">{t.allBranches}</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -237,7 +326,7 @@ export default function ReportsOverviewPage() {
           </Select>
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">From</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.from}</span>
           <input
             type="date"
             value={dateFrom}
@@ -247,7 +336,7 @@ export default function ReportsOverviewPage() {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-bold uppercase text-slate-400">To</span>
+          <span className="text-xs font-bold uppercase text-slate-400">{t.to}</span>
           <input
             type="date"
             value={dateTo}
@@ -261,57 +350,57 @@ export default function ReportsOverviewPage() {
 
       {isError && (
         <div className="border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-          Reports could not be loaded. Check the selected dates and try again.
+          {t.reportsLoadError}
         </div>
       )}
 
       {isLoading || !data ? (
         <div className="grid min-h-[320px] place-items-center text-sm text-slate-400">
-          Loading reports from the database...
+          {t.loadingReports}
         </div>
       ) : (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric
               icon={Users}
-              label="Active Players"
-              value={formatNumber(data.summary.activePlayers)}
-              helper={`${formatNumber(data.summary.newPlayers)} joined in selected period`}
+              label={t.activePlayers}
+              value={formatNumber(data.summary.activePlayers, numberLocale)}
+              helper={t.joinedInPeriod.replace("{count}", formatNumber(data.summary.newPlayers, numberLocale))}
             />
             <Metric
               icon={UserCheck}
-              label="Coaches"
-              value={formatNumber(data.summary.totalCoaches)}
-              helper="Active academy coach profiles"
+              label={t.coaches}
+              value={formatNumber(data.summary.totalCoaches, numberLocale)}
+              helper={t.activeCoachProfiles}
             />
             <Metric
               icon={CalendarDays}
-              label="Sessions"
-              value={formatNumber(data.summary.totalSessions)}
-              helper={`${formatNumber(data.summary.completedSessions)} completed`}
+              label={t.sessions}
+              value={formatNumber(data.summary.totalSessions, numberLocale)}
+              helper={t.completed.replace("{count}", formatNumber(data.summary.completedSessions, numberLocale))}
             />
             <Metric
               icon={Activity}
-              label="Attendance"
+              label={t.attendanceRate}
               value={`${data.summary.attendanceRate}%`}
-              helper={`${formatNumber(data.attendance.total)} attendance marks`}
+              helper={t.attendanceMarks.replace("{count}", formatNumber(data.attendance.total, numberLocale))}
             />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="text-base text-white">Attendance Trend</CardTitle>
+                <CardTitle className="text-base text-white">{t.attendanceTrend}</CardTitle>
                 <TrendingUp className="h-5 w-5 text-lime-300" />
               </CardHeader>
               <CardContent>
-                <AttendanceTrend points={data.attendanceTrend} />
+                <AttendanceTrend points={data.attendanceTrend} emptyText={t.noAttendanceRecords} />
               </CardContent>
             </Card>
 
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader>
-                <CardTitle className="text-base text-white">Player Levels</CardTitle>
+                <CardTitle className="text-base text-white">{t.playerLevels}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {data.levelDistribution.map((item) => {
@@ -323,7 +412,7 @@ export default function ReportsOverviewPage() {
                     <div key={item.level}>
                       <div className="mb-1.5 flex justify-between text-sm">
                         <span className="font-semibold text-slate-300">
-                          Level {item.level}
+                          {t.level.replace("{level}", item.level)}
                         </span>
                         <span className="text-white">{item.count}</span>
                       </div>
@@ -338,7 +427,7 @@ export default function ReportsOverviewPage() {
                 })}
                 {data.levelDistribution.length === 0 && (
                   <p className="py-10 text-center text-sm text-slate-400">
-                    No active players in this branch.
+                    {t.noActivePlayers}
                   </p>
                 )}
               </CardContent>
@@ -348,16 +437,16 @@ export default function ReportsOverviewPage() {
           <section className="grid gap-4 xl:grid-cols-2">
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader>
-                <CardTitle className="text-base text-white">Group Performance</CardTitle>
+                <CardTitle className="text-base text-white">{t.groupPerformance}</CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead className="text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="pb-3">Group</th>
-                      <th className="pb-3">Players</th>
-                      <th className="pb-3">Sessions</th>
-                      <th className="pb-3 text-right">Attendance</th>
+                      <th className="pb-3">{t.group}</th>
+                      <th className="pb-3">{t.players}</th>
+                      <th className="pb-3">{t.sessions}</th>
+                      <th className="pb-3 text-right">{t.attendanceRate}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -381,15 +470,15 @@ export default function ReportsOverviewPage() {
 
             <Card className="border-[#29435f] bg-[#07172a]/80">
               <CardHeader>
-                <CardTitle className="text-base text-white">Coach Activity</CardTitle>
+                <CardTitle className="text-base text-white">{t.coachActivity}</CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <table className="w-full min-w-[480px] text-left text-sm">
                   <thead className="text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="pb-3">Coach</th>
-                      <th className="pb-3">Sessions</th>
-                      <th className="pb-3 text-right">Player attendance</th>
+                      <th className="pb-3">{t.coach}</th>
+                      <th className="pb-3">{t.sessions}</th>
+                      <th className="pb-3 text-right">{t.playerAttendance}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -398,7 +487,7 @@ export default function ReportsOverviewPage() {
                         <td className="py-3">
                           <p className="font-semibold text-white">{coach.name}</p>
                           <p className="text-xs text-slate-500">
-                            {coach.specialization || "Coach"}
+                            {coach.specialization || t.coachFallback}
                           </p>
                         </td>
                         <td className="py-3 text-slate-300">{coach.sessions}</td>
@@ -410,7 +499,7 @@ export default function ReportsOverviewPage() {
                     {data.coaches.length === 0 && (
                       <tr>
                         <td colSpan={3} className="py-10 text-center text-slate-400">
-                          No coaches found for this branch.
+                          {t.noCoaches}
                         </td>
                       </tr>
                     )}

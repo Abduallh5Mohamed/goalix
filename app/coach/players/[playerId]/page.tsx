@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
   Activity,
@@ -39,39 +40,477 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetBranchesQuery, useUpdatePlayerMutation } from "@/lib/store/api/adminApi";
+import {
+  useGetBranchesQuery,
+  useUpdatePlayerMutation,
+} from "@/lib/store/api/adminApi";
 import {
   type ParentManagementRole,
   useGetManagedPlayerDetailQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
 
 type AnyRecord = Record<string, unknown>;
 
-const guardianRelationLabels: Record<string, string> = {
-  father: "Father",
-  mother: "Mother",
-  paternal_uncle: "Paternal Uncle",
-  maternal_uncle: "Maternal Uncle",
-  paternal_aunt: "Paternal Aunt",
-  maternal_aunt: "Maternal Aunt",
-  grandfather: "Grandfather",
-  grandmother: "Grandmother",
-  older_brother: "Older Brother",
-  older_sister: "Older Sister",
-  legal_guardian: "Legal Guardian",
-  other: "Other",
-};
+const copy = {
+  en: {
+    empty: "--",
+    yes: "Yes",
+    no: "No",
+    years: "years",
+    dashboard: "Dashboard",
+    players: "Players",
+    loadingProfile: "Loading player profile...",
+    playerNotFound: "Player not found.",
+    backToPlayers: "Back to players",
+    editPlayer: "Edit Player",
+    completeProfile: "Complete profile",
+    back: "Back",
+    completeProfileBadge: "Complete profile",
+    incompleteProfileBadge: "Incomplete profile",
+    age: "Age",
+    preferredFoot: "Preferred foot",
+    phone: "Phone",
+    guardian: "Guardian",
+    playerQrCode: "Player QR Code",
+    matches: "Matches",
+    minutes: "Minutes",
+    goals: "Goals",
+    assists: "Assists",
+    trainingAttendance: "Training attendance",
+    total: "Total",
+    present: "Present",
+    late: "Late",
+    absent: "Absent",
+    injured: "Injured",
+    overview: "Overview",
+    training: "Training",
+    medical: "Medical",
+    development: "Development",
+    payments: "Payments",
+    identity: "Identity",
+    footballProfile: "Football Profile",
+    contactGuardian: "Contact and Guardian",
+    accountStatus: "Account and Status",
+    physicalBaseline: "Physical Baseline",
+    groupAssignments: "Group Assignments",
+    playerAssignments: "Player Assignments",
+    customProfile: "Custom Profile",
+    healthProfile: "Health Profile",
+    noCustomProfile: "No custom profile data.",
+    noGroupHistory: "No group assignment history.",
+    noPlayerAssignments: "No player assignments found.",
+    noMatchStats: "No match stats yet.",
+    noMatchAttendance: "No match attendance yet.",
+    noGoalsAssists: "No goals or assists recorded.",
+    noMatchSummaries: "No match summaries yet.",
+    noSubstitutions: "No substitutions recorded for this player.",
+    noCardsInjuries: "No cards or injuries in matches.",
+    noTrainingSummaries: "No training summaries yet.",
+    noTrainingAttendance: "No training attendance yet.",
+    noTrainingEvaluations: "No training evaluations yet.",
+    noMeasurements: "No measurements yet.",
+    noInjuries: "No injury history.",
+    noSkillAssessments: "No skill assessments yet.",
+    noRankingHistory: "No ranking history yet.",
+    noCoachRatings: "No coach ratings yet.",
+    noSubscriptions: "No payment subscriptions.",
+    noInvoices: "No invoices.",
+    noTransactions: "No payment transactions.",
+    approved: "Approved",
+    rejected: "Rejected",
+    submitted: "Submitted",
+    notSubmitted: "Not submitted",
+    fullNameRequired: "Full name is required.",
+    updateError: "Could not update player.",
+    usernameCannotChange: "Username cannot be changed.",
+    passwordKeepCurrent: "Leave empty to keep current password",
+    chooseFoot: "Choose foot",
+    chooseGender: "Choose gender",
+    chooseLevel: "Choose level",
+    chooseRelation: "Choose relation",
+    chooseBranch: "Choose branch",
+    close: "Close",
+    saveChanges: "Save Changes",
+    goal: "Goal",
+    assist: "Assist",
+    subbedIn: "Subbed in",
+    subbedOff: "Subbed off",
+    labels: {
+      fullName: "Full name",
+      playerCode: "Player code",
+      dateOfBirth: "Date of birth",
+      gender: "Gender",
+      nationality: "Nationality",
+      branch: "Branch",
+      currentGroup: "Current group",
+      dateJoined: "Date joined",
+      profileCompleted: "Profile completed",
+      profileStatus: "Profile status",
+      active: "Active",
+      notes: "Notes",
+      mainPosition: "Main position",
+      secondaryPositions: "Secondary positions",
+      preferredFoot: "Preferred foot",
+      currentTeam: "Current team",
+      shirtNumber: "Shirt number",
+      playingStyle: "Playing style",
+      yearsExperience: "Years experience",
+      previousClub: "Previous club / academy",
+      playerPhone: "Player phone",
+      accountPhone: "Account phone",
+      address: "Address",
+      guardianName: "Guardian name",
+      guardianPhone: "Guardian phone",
+      guardianRelation: "Guardian relation",
+      linkedParentAccount: "Linked parent account",
+      parentUsername: "Parent username",
+      parentPhone: "Parent phone",
+      parentAddress: "Parent address",
+      username: "Username",
+      loginPhone: "Login phone",
+      accountActive: "Account active",
+      accountVerified: "Account verified",
+      createdAt: "Created at",
+      updatedAt: "Updated at",
+      height: "Height",
+      weight: "Weight",
+      bmi: "BMI",
+      sprintSpeed: "Sprint speed",
+      acceleration: "Acceleration",
+      stamina: "Stamina",
+      strength: "Strength",
+      agility: "Agility",
+      balance: "Balance",
+      jumpHeight: "Jump height",
+      flexibility: "Flexibility",
+      group: "Group",
+      joined: "Joined",
+      left: "Left",
+      assignment: "Assignment",
+      target: "Target",
+      coach: "Coach",
+      opened: "Opened",
+      due: "Due",
+      playerStatus: "Player status",
+      files: "Files",
+      date: "Date",
+      opponent: "Opponent",
+      overall: "Overall",
+      status: "Status",
+      minute: "Minute",
+      contribution: "Contribution",
+      rating: "Rating",
+      direction: "Direction",
+      reason: "Reason",
+      type: "Type",
+      sessions: "Sessions",
+      attendance: "Attendance",
+      absence: "Absence",
+      rate: "Rate",
+      focus: "Focus",
+      arrival: "Arrival",
+      sessionStatus: "Session status",
+      technical: "Technical",
+      tactical: "Tactical",
+      physical: "Physical",
+      mental: "Mental",
+      endurance: "Endurance",
+      strengths: "Strengths",
+      improvements: "Improvements",
+      injuryDate: "Injury date",
+      recovery: "Recovery",
+      ballControl: "Ball control",
+      firstTouch: "First touch",
+      passing: "Passing",
+      shooting: "Shooting",
+      dribbling: "Dribbling",
+      crossing: "Crossing",
+      heading: "Heading",
+      tackling: "Tackling",
+      positioning: "Positioning",
+      decisionMaking: "Decision making",
+      teamwork: "Teamwork",
+      gameReading: "Game reading",
+      period: "Period",
+      rank: "Rank",
+      score: "Score",
+      trend: "Trend",
+      potential: "Potential",
+      recommendedPosition: "Recommended position",
+      weaknesses: "Weaknesses",
+      developmentPlan: "Development plan",
+      plan: "Plan",
+      amount: "Amount",
+      currency: "Currency",
+      starts: "Starts",
+      ends: "Ends",
+      paidAt: "Paid at",
+      provider: "Provider",
+      reference: "Reference",
+      birthDate: "Birth date",
+      heightCm: "Height (cm)",
+      weightKg: "Weight (kg)",
+      dateJoinedAcademy: "Date Joined Academy",
+      phone: "Phone",
+      position: "Position",
+      password: "Password",
+      level: "Level",
+    },
+    foot: { right: "Right", left: "Left", both: "Both" },
+    genderOptions: { male: "Male", female: "Female", other: "Other" },
+    guardianRelations: {
+      father: "Father",
+      mother: "Mother",
+      paternal_uncle: "Paternal Uncle",
+      maternal_uncle: "Maternal Uncle",
+      paternal_aunt: "Paternal Aunt",
+      maternal_aunt: "Maternal Aunt",
+      grandfather: "Grandfather",
+      grandmother: "Grandmother",
+      older_brother: "Older Brother",
+      older_sister: "Older Sister",
+      legal_guardian: "Legal Guardian",
+      other: "Other",
+    },
+  },
+  ar: {
+    empty: "--",
+    yes: "نعم",
+    no: "لا",
+    years: "سنة",
+    dashboard: "لوحة التحكم",
+    players: "اللاعبون",
+    loadingProfile: "جاري تحميل ملف اللاعب...",
+    playerNotFound: "اللاعب غير موجود.",
+    backToPlayers: "العودة للاعبين",
+    editPlayer: "تعديل اللاعب",
+    completeProfile: "إكمال الملف",
+    back: "رجوع",
+    completeProfileBadge: "الملف مكتمل",
+    incompleteProfileBadge: "الملف غير مكتمل",
+    age: "العمر",
+    preferredFoot: "القدم المفضلة",
+    phone: "الهاتف",
+    guardian: "ولي الأمر",
+    playerQrCode: "رمز QR للاعب",
+    matches: "المباريات",
+    minutes: "الدقائق",
+    goals: "الأهداف",
+    assists: "التمريرات الحاسمة",
+    trainingAttendance: "حضور التدريب",
+    total: "الإجمالي",
+    present: "حاضر",
+    late: "متأخر",
+    absent: "غائب",
+    injured: "مصاب",
+    overview: "نظرة عامة",
+    training: "التدريب",
+    medical: "الطبي",
+    development: "التطوير",
+    payments: "المدفوعات",
+    identity: "الهوية",
+    footballProfile: "الملف الكروي",
+    contactGuardian: "التواصل وولي الأمر",
+    accountStatus: "الحساب والحالة",
+    physicalBaseline: "القياسات البدنية الأساسية",
+    groupAssignments: "تعيينات المجموعات",
+    playerAssignments: "تكليفات اللاعب",
+    customProfile: "الملف المخصص",
+    healthProfile: "الملف الصحي",
+    noCustomProfile: "لا توجد بيانات مخصصة في الملف.",
+    noGroupHistory: "لا يوجد سجل تعيينات مجموعات.",
+    noPlayerAssignments: "لا توجد تكليفات لهذا اللاعب.",
+    noMatchStats: "لا توجد إحصائيات مباريات بعد.",
+    noMatchAttendance: "لا يوجد حضور مباريات بعد.",
+    noGoalsAssists: "لا توجد أهداف أو تمريرات حاسمة مسجلة.",
+    noMatchSummaries: "لا توجد ملخصات مباريات بعد.",
+    noSubstitutions: "لا توجد تبديلات مسجلة لهذا اللاعب.",
+    noCardsInjuries: "لا توجد بطاقات أو إصابات في المباريات.",
+    noTrainingSummaries: "لا توجد ملخصات تدريب بعد.",
+    noTrainingAttendance: "لا يوجد حضور تدريب بعد.",
+    noTrainingEvaluations: "لا توجد تقييمات تدريب بعد.",
+    noMeasurements: "لا توجد قياسات بعد.",
+    noInjuries: "لا يوجد سجل إصابات.",
+    noSkillAssessments: "لا توجد تقييمات مهارية بعد.",
+    noRankingHistory: "لا يوجد سجل ترتيب بعد.",
+    noCoachRatings: "لا توجد تقييمات مدرب بعد.",
+    noSubscriptions: "لا توجد اشتراكات دفع.",
+    noInvoices: "لا توجد فواتير.",
+    noTransactions: "لا توجد معاملات دفع.",
+    approved: "مقبول",
+    rejected: "مرفوض",
+    submitted: "تم التسليم",
+    notSubmitted: "لم يتم التسليم",
+    fullNameRequired: "الاسم الكامل مطلوب.",
+    updateError: "تعذر تحديث اللاعب.",
+    usernameCannotChange: "لا يمكن تغيير اسم المستخدم.",
+    passwordKeepCurrent: "اتركه فارغًا للإبقاء على كلمة المرور الحالية",
+    chooseFoot: "اختر القدم",
+    chooseGender: "اختر النوع",
+    chooseLevel: "اختر المستوى",
+    chooseRelation: "اختر صلة القرابة",
+    chooseBranch: "اختر الفرع",
+    close: "إغلاق",
+    saveChanges: "حفظ التغييرات",
+    goal: "هدف",
+    assist: "تمريرة حاسمة",
+    subbedIn: "دخل بديلًا",
+    subbedOff: "خرج بديلًا",
+    labels: {
+      fullName: "الاسم الكامل",
+      playerCode: "كود اللاعب",
+      dateOfBirth: "تاريخ الميلاد",
+      gender: "النوع",
+      nationality: "الجنسية",
+      branch: "الفرع",
+      currentGroup: "المجموعة الحالية",
+      dateJoined: "تاريخ الانضمام",
+      profileCompleted: "اكتمل الملف في",
+      profileStatus: "حالة الملف",
+      active: "نشط",
+      notes: "الملاحظات",
+      mainPosition: "المركز الأساسي",
+      secondaryPositions: "المراكز الثانوية",
+      preferredFoot: "القدم المفضلة",
+      currentTeam: "الفريق الحالي",
+      shirtNumber: "رقم القميص",
+      playingStyle: "أسلوب اللعب",
+      yearsExperience: "سنوات الخبرة",
+      previousClub: "النادي / الأكاديمية السابقة",
+      playerPhone: "هاتف اللاعب",
+      accountPhone: "هاتف الحساب",
+      address: "العنوان",
+      guardianName: "اسم ولي الأمر",
+      guardianPhone: "هاتف ولي الأمر",
+      guardianRelation: "صلة ولي الأمر",
+      linkedParentAccount: "حساب ولي الأمر المرتبط",
+      parentUsername: "اسم مستخدم ولي الأمر",
+      parentPhone: "هاتف ولي الأمر",
+      parentAddress: "عنوان ولي الأمر",
+      username: "اسم المستخدم",
+      loginPhone: "هاتف تسجيل الدخول",
+      accountActive: "الحساب نشط",
+      accountVerified: "الحساب موثق",
+      createdAt: "تاريخ الإنشاء",
+      updatedAt: "تاريخ التحديث",
+      height: "الطول",
+      weight: "الوزن",
+      bmi: "مؤشر كتلة الجسم",
+      sprintSpeed: "سرعة العدو",
+      acceleration: "التسارع",
+      stamina: "التحمل",
+      strength: "القوة",
+      agility: "الرشاقة",
+      balance: "التوازن",
+      jumpHeight: "ارتفاع القفز",
+      flexibility: "المرونة",
+      group: "المجموعة",
+      joined: "انضم في",
+      left: "غادر في",
+      assignment: "التكليف",
+      target: "الهدف",
+      coach: "المدرب",
+      opened: "تم الفتح",
+      due: "الاستحقاق",
+      playerStatus: "حالة اللاعب",
+      files: "الملفات",
+      date: "التاريخ",
+      opponent: "المنافس",
+      overall: "الإجمالي",
+      status: "الحالة",
+      minute: "الدقيقة",
+      contribution: "المساهمة",
+      rating: "التقييم",
+      direction: "الاتجاه",
+      reason: "السبب",
+      type: "النوع",
+      sessions: "الحصص",
+      attendance: "الحضور",
+      absence: "الغياب",
+      rate: "النسبة",
+      focus: "التركيز",
+      arrival: "الوصول",
+      sessionStatus: "حالة الحصة",
+      technical: "فني",
+      tactical: "تكتيكي",
+      physical: "بدني",
+      mental: "ذهني",
+      endurance: "التحمل",
+      strengths: "نقاط القوة",
+      improvements: "نقاط التحسين",
+      injuryDate: "تاريخ الإصابة",
+      recovery: "التعافي",
+      ballControl: "التحكم بالكرة",
+      firstTouch: "اللمسة الأولى",
+      passing: "التمرير",
+      shooting: "التسديد",
+      dribbling: "المراوغة",
+      crossing: "العرضيات",
+      heading: "الرأسيات",
+      tackling: "الافتكاك",
+      positioning: "التمركز",
+      decisionMaking: "اتخاذ القرار",
+      teamwork: "العمل الجماعي",
+      gameReading: "قراءة اللعب",
+      period: "الفترة",
+      rank: "الترتيب",
+      score: "النتيجة",
+      trend: "الاتجاه",
+      potential: "الإمكانيات",
+      recommendedPosition: "المركز المقترح",
+      weaknesses: "نقاط الضعف",
+      developmentPlan: "خطة التطوير",
+      plan: "الخطة",
+      amount: "المبلغ",
+      currency: "العملة",
+      starts: "البداية",
+      ends: "النهاية",
+      paidAt: "تم الدفع في",
+      provider: "المزود",
+      reference: "المرجع",
+      birthDate: "تاريخ الميلاد",
+      heightCm: "الطول (سم)",
+      weightKg: "الوزن (كجم)",
+      dateJoinedAcademy: "تاريخ الانضمام للأكاديمية",
+      phone: "الهاتف",
+      position: "المركز",
+      password: "كلمة المرور",
+      level: "المستوى",
+    },
+    foot: { right: "اليمنى", left: "اليسرى", both: "كلتاهما" },
+    genderOptions: { male: "ذكر", female: "أنثى", other: "آخر" },
+    guardianRelations: {
+      father: "الأب",
+      mother: "الأم",
+      paternal_uncle: "العم",
+      maternal_uncle: "الخال",
+      paternal_aunt: "العمة",
+      maternal_aunt: "الخالة",
+      grandfather: "الجد",
+      grandmother: "الجدة",
+      older_brother: "الأخ الأكبر",
+      older_sister: "الأخت الكبرى",
+      legal_guardian: "ولي قانوني",
+      other: "آخر",
+    },
+  },
+} as const;
 
-const compact = (value: unknown) =>
-  value === null || value === undefined || value === "" ? "--" : String(value);
+type PlayerDetailCopy = (typeof copy)[keyof typeof copy];
 
-const formatValue = (value: unknown): string => {
-  if (value === null || value === undefined || value === "") return "--";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+const compact = (value: unknown, t: PlayerDetailCopy) =>
+  value === null || value === undefined || value === ""
+    ? t.empty
+    : String(value);
+
+const formatValue = (value: unknown, t: PlayerDetailCopy): string => {
+  if (value === null || value === undefined || value === "") return t.empty;
+  if (typeof value === "boolean") return value ? t.yes : t.no;
   if (Array.isArray(value)) {
-    if (!value.length) return "--";
-    return value.map((item: unknown) => formatValue(item)).join(", ");
+    if (!value.length) return t.empty;
+    return value.map((item: unknown) => formatValue(item, t)).join(", ");
   }
   if (typeof value === "object") return JSON.stringify(value);
   const text = String(value);
@@ -80,49 +519,30 @@ const formatValue = (value: unknown): string => {
   return text;
 };
 
-const hasMeasurementValue = (value: unknown) =>
-  value !== null && value !== undefined && value !== "";
-
-const numberValue = (value: unknown) => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+const formatListValue = (value: unknown, t: PlayerDetailCopy): string => {
+  if (Array.isArray(value))
+    return value.length
+      ? value.map((item) => formatValue(item, t)).join(", ")
+      : t.empty;
+  if (typeof value !== "string") return formatValue(value, t);
+  try {
+    const parsed = JSON.parse(value);
+    return formatListValue(parsed, t);
+  } catch {
+    return formatValue(value, t);
   }
-  return null;
 };
 
-const calculateBmi = (heightCm: unknown, weightKg: unknown) => {
-  const height = numberValue(heightCm);
-  const weight = numberValue(weightKg);
-  if (!height || !weight) return null;
-  const heightM = height / 100;
-  return Number((weight / (heightM * heightM)).toFixed(2));
-};
-
-const ageFrom = (date: string | null | undefined) => {
-  if (!date) return "--";
+const ageFrom = (date: string | null | undefined, t: PlayerDetailCopy) => {
+  if (!date) return t.empty;
   const birth = new Date(date);
-  if (Number.isNaN(birth.getTime())) return "--";
+  if (Number.isNaN(birth.getTime())) return t.empty;
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
-  return age >= 0 ? `${age}` : "--";
-};
-
-const goalixExperienceFrom = (date: unknown) => {
-  if (!date) return "--";
-  const joined = new Date(String(date));
-  if (Number.isNaN(joined.getTime())) return "--";
-  const today = new Date();
-  let years = today.getFullYear() - joined.getFullYear();
-  const monthDiff = today.getMonth() - joined.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < joined.getDate())) {
-    years -= 1;
-  }
-  if (years <= 0) return "Less than 1 year";
-  return years === 1 ? "1 year" : `${years} years`;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate()))
+    age -= 1;
+  return age >= 0 ? `${age}` : t.empty;
 };
 
 function StatCard({
@@ -147,13 +567,21 @@ function StatCard({
   );
 }
 
-function DetailGrid({ rows }: { rows: Array<[string, unknown]> }) {
+function DetailGrid({
+  rows,
+  t,
+}: {
+  rows: Array<[string, unknown]>;
+  t: PlayerDetailCopy;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map(([label, value]) => (
         <div key={label} className="rounded-md border border-border/60 p-3">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 break-words text-sm font-medium">{formatValue(value)}</p>
+          <p className="mt-1 break-words text-sm font-medium">
+            {formatValue(value, t)}
+          </p>
         </div>
       ))}
     </div>
@@ -164,13 +592,23 @@ function RecordsTable({
   rows,
   columns,
   empty,
+  t,
 }: {
   rows: AnyRecord[];
-  columns: Array<{ key: string; label: string; render?: (row: AnyRecord) => ReactNode }>;
+  columns: Array<{
+    key: string;
+    label: string;
+    render?: (row: AnyRecord) => ReactNode;
+  }>;
   empty: string;
+  t: PlayerDetailCopy;
 }) {
   if (!rows.length) {
-    return <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">{empty}</p>;
+    return (
+      <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
+        {empty}
+      </p>
+    );
   }
 
   return (
@@ -187,10 +625,15 @@ function RecordsTable({
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={String(row.id ?? `${row.player_id ?? "row"}-${index}`)} className="border-t border-border/60">
+            <tr
+              key={String(row.id ?? `${row.player_id ?? "row"}-${index}`)}
+              className="border-t border-border/60"
+            >
               {columns.map((column) => (
                 <td key={column.key} className="px-3 py-2 align-top">
-                  {column.render ? column.render(row) : formatValue(row[column.key])}
+                  {column.render
+                    ? column.render(row)
+                    : formatValue(row[column.key], t)}
                 </td>
               ))}
             </tr>
@@ -201,16 +644,16 @@ function RecordsTable({
   );
 }
 
-const assignmentStatusMeta = (status: unknown) => {
+const assignmentStatusMeta = (status: unknown, t: PlayerDetailCopy) => {
   switch (status) {
     case "approved":
-      return { label: "Approved", variant: "success" as const };
+      return { label: t.approved, variant: "success" as const };
     case "rejected":
-      return { label: "Rejected", variant: "destructive" as const };
+      return { label: t.rejected, variant: "destructive" as const };
     case "submitted":
-      return { label: "Submitted", variant: "info" as const };
+      return { label: t.submitted, variant: "info" as const };
     default:
-      return { label: "Not submitted", variant: "warning" as const };
+      return { label: t.notSubmitted, variant: "warning" as const };
   }
 };
 
@@ -249,11 +692,13 @@ const editFormFromPlayer = (
   fullName: String(player.full_name ?? ""),
   birthDate: String(player.date_of_birth ?? "").slice(0, 10),
   heightCm:
-    latestMeasurement?.height_cm === null || latestMeasurement?.height_cm === undefined
+    latestMeasurement?.height_cm === null ||
+    latestMeasurement?.height_cm === undefined
       ? ""
       : String(latestMeasurement.height_cm),
   weightKg:
-    latestMeasurement?.weight_kg === null || latestMeasurement?.weight_kg === undefined
+    latestMeasurement?.weight_kg === null ||
+    latestMeasurement?.weight_kg === undefined
       ? ""
       : String(latestMeasurement.weight_kg),
   preferredFoot: String(player.preferred_foot ?? ""),
@@ -281,6 +726,8 @@ export function ManagedPlayerDetailPage({
 }) {
   const params = useParams<{ playerId: string }>();
   const router = useRouter();
+  const language = useDashboardLanguage();
+  const t = copy[language];
   const playerId = explicitPlayerId ?? String(params.playerId || "");
   const { data, isLoading, error } = useGetManagedPlayerDetailQuery(
     { role, id: playerId },
@@ -300,15 +747,20 @@ export function ManagedPlayerDetailPage({
   const attendanceRate = useMemo(() => {
     const total = Number(attendanceTotals?.total || 0);
     if (!total) return 0;
-    const attended = Number(attendanceTotals?.present || 0) + Number(attendanceTotals?.late || 0);
+    const attended =
+      Number(attendanceTotals?.present || 0) +
+      Number(attendanceTotals?.late || 0);
     return Math.round((attended / total) * 100);
   }, [attendanceTotals]);
-  const latestMeasurement = data?.summary.latestMeasurement ?? data?.measurements?.[0] ?? null;
+  const latestMeasurement =
+    data?.summary.latestMeasurement ?? data?.measurements?.[0] ?? null;
 
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">Loading player profile...</CardContent>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          {t.loadingProfile}
+        </CardContent>
       </Card>
     );
   }
@@ -316,12 +768,18 @@ export function ManagedPlayerDetailPage({
   if (error || !data || !player) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" className="gap-2" onClick={() => router.push("/coach/players")}>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => router.push("/coach/players")}
+        >
           <ArrowLeft className="h-4 w-4" />
-          Back to players
+          {t.backToPlayers}
         </Button>
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">Player not found.</CardContent>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            {t.playerNotFound}
+          </CardContent>
         </Card>
       </div>
     );
@@ -337,7 +795,8 @@ export function ManagedPlayerDetailPage({
   const baselineHeight = latestMeasurementValue("height_cm");
   const baselineWeight = latestMeasurementValue("weight_kg");
   const baselineBmi =
-    latestMeasurementValue("bmi") ?? calculateBmi(baselineHeight, baselineWeight);
+    latestMeasurementValue("bmi") ??
+    calculateBmi(baselineHeight, baselineWeight);
   const linkedParent = player.linked_parent ?? null;
   const matchInjuries = (data.incidents as unknown as AnyRecord[]).filter(
     (incident) => incident.incident_type === "injury",
@@ -354,13 +813,15 @@ export function ManagedPlayerDetailPage({
   const handleSaveEdit = async () => {
     setEditError("");
     if (!editForm.fullName.trim()) {
-      setEditError("Full name is required.");
+      setEditError(t.fullNameRequired);
       return;
     }
     const level = ["A", "B", "C", "D", "F"].includes(editForm.level)
       ? (editForm.level as "A" | "B" | "C" | "D" | "F")
       : undefined;
-    const preferredFoot = ["left", "right", "both"].includes(editForm.preferredFoot)
+    const preferredFoot = ["left", "right", "both"].includes(
+      editForm.preferredFoot,
+    )
       ? (editForm.preferredFoot as "left" | "right" | "both")
       : undefined;
     const gender = ["male", "female", "other"].includes(editForm.gender)
@@ -393,7 +854,7 @@ export function ManagedPlayerDetailPage({
       setEditOpen(false);
     } catch (err) {
       const apiError = err as { data?: { error?: { message?: string } } };
-      setEditError(apiError.data?.error?.message || "Could not update player.");
+      setEditError(apiError.data?.error?.message || t.updateError);
     }
   };
 
@@ -401,10 +862,16 @@ export function ManagedPlayerDetailPage({
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title={player.full_name}
-        description={`${compact(player.position)} - ${compact(player.group_name)} - ${compact(player.branch_name)}`}
+        description={`${compact(player.position, t)} - ${compact(player.group_name, t)} - ${compact(player.branch_name, t)}`}
         breadcrumbs={[
-          { label: "Dashboard", href: role === "admin" ? "/admin/dashboard" : "/coach/home" },
-          { label: "Players", href: role === "admin" ? "/admin/players" : "/coach/players" },
+          {
+            label: t.dashboard,
+            href: role === "admin" ? "/admin/dashboard" : "/coach/home",
+          },
+          {
+            label: t.players,
+            href: role === "admin" ? "/admin/players" : "/coach/players",
+          },
           { label: player.full_name },
         ]}
         actions={
@@ -419,25 +886,31 @@ export function ManagedPlayerDetailPage({
                 }}
               >
                 <Pencil className="h-4 w-4" />
-                Edit Player
+                {t.editPlayer}
               </Button>
             )}
             {role === "coach" && player.profile_status !== "complete" && (
               <Button
                 className="gap-2"
-                onClick={() => router.push(`/coach/players?complete=${player.id}`)}
+                onClick={() =>
+                  router.push(`/coach/players?complete=${player.id}`)
+                }
               >
                 <ShieldAlert className="h-4 w-4" />
-                Complete profile
+                {t.completeProfile}
               </Button>
             )}
             <Button
               variant="outline"
               className="gap-2"
-              onClick={() => router.push(role === "admin" ? "/admin/players" : "/coach/players")}
+              onClick={() =>
+                router.push(
+                  role === "admin" ? "/admin/players" : "/coach/players",
+                )
+              }
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              {t.back}
             </Button>
           </div>
         }
@@ -453,42 +926,65 @@ export function ManagedPlayerDetailPage({
                 </AvatarFallback>
               </Avatar>
               <h2 className="mt-4 text-xl font-semibold">{player.full_name}</h2>
-              <p className="text-sm text-muted-foreground">{compact(player.player_code)}</p>
+              <p className="text-sm text-muted-foreground">
+                {compact(player.player_code, t)}
+              </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>
-                  {player.profile_status === "complete" ? "Complete profile" : "Incomplete profile"}
+                <Badge
+                  variant={
+                    player.profile_status === "complete" ? "success" : "warning"
+                  }
+                >
+                  {player.profile_status === "complete"
+                    ? t.completeProfileBadge
+                    : t.incompleteProfileBadge}
                 </Badge>
-                <Badge variant="outline">{compact(player.level)}</Badge>
+                <Badge variant="outline">{compact(player.level, t)}</Badge>
               </div>
             </div>
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Age</span>
-                <span className="font-medium">{ageFrom(player.date_of_birth)} years</span>
+                <span className="text-muted-foreground">{t.age}</span>
+                <span className="font-medium">
+                  {ageFrom(player.date_of_birth, t)} {t.years}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Preferred foot</span>
-                <span className="font-medium capitalize">{compact(player.preferred_foot)}</span>
+                <span className="text-muted-foreground">{t.preferredFoot}</span>
+                <span className="font-medium capitalize">
+                  {compact(player.preferred_foot, t)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Phone</span>
-                <span className="font-medium">{compact(player.phone ?? player.account_phone)}</span>
+                <span className="text-muted-foreground">{t.phone}</span>
+                <span className="font-medium">
+                  {compact(player.phone ?? player.account_phone, t)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Guardian</span>
-                <span className="font-medium">{compact(player.guardian_name)}</span>
+                <span className="text-muted-foreground">{t.guardian}</span>
+                <span className="font-medium">
+                  {compact(player.guardian_name, t)}
+                </span>
               </div>
             </div>
             {data.attendanceQr?.qrCodeDataUrl && (
               <div className="mt-6 rounded-md border border-border/60 bg-background/40 p-3 text-center">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Player QR Code</p>
-                <img
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t.playerQrCode}
+                </p>
+                <Image
                   src={data.attendanceQr.qrCodeDataUrl}
                   alt={`${player.full_name} QR code`}
+                  width={176}
+                  height={176}
+                  unoptimized
                   className="mx-auto mt-3 h-44 w-44 rounded-md bg-white p-2"
                 />
                 <p className="mt-2 break-all text-xs text-muted-foreground">
-                  {data.attendanceQr.playerCode || data.attendanceQr.username || player.id}
+                  {data.attendanceQr.playerCode ||
+                    data.attendanceQr.username ||
+                    player.id}
                 </p>
               </div>
             )}
@@ -496,23 +992,51 @@ export function ManagedPlayerDetailPage({
         </Card>
 
         <div className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Matches" value={matchTotals?.matches_played ?? 0} icon={<Trophy className="h-5 w-5" />} />
-          <StatCard label="Minutes" value={matchTotals?.minutes_played ?? 0} icon={<Activity className="h-5 w-5" />} />
-          <StatCard label="Goals" value={matchTotals?.goals ?? 0} icon={<Target className="h-5 w-5" />} />
-          <StatCard label="Assists" value={matchTotals?.assists ?? 0} icon={<Star className="h-5 w-5" />} />
+          <StatCard
+            label={t.matches}
+            value={matchTotals?.matches_played ?? 0}
+            icon={<Trophy className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.minutes}
+            value={matchTotals?.minutes_played ?? 0}
+            icon={<Activity className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.goals}
+            value={matchTotals?.goals ?? 0}
+            icon={<Target className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.assists}
+            value={matchTotals?.assists ?? 0}
+            icon={<Star className="h-5 w-5" />}
+          />
           <Card className="border-border/50 bg-card sm:col-span-2 xl:col-span-4">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Training attendance</p>
-                <p className="text-sm text-muted-foreground">{attendanceRate}%</p>
+                <p className="text-sm font-medium">{t.trainingAttendance}</p>
+                <p className="text-sm text-muted-foreground">
+                  {attendanceRate}%
+                </p>
               </div>
               <Progress value={attendanceRate} className="mt-3 h-2" />
               <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-5">
-                <span>Total {attendanceTotals?.total ?? 0}</span>
-                <span>Present {attendanceTotals?.present ?? 0}</span>
-                <span>Late {attendanceTotals?.late ?? 0}</span>
-                <span>Absent {attendanceTotals?.absent ?? 0}</span>
-                <span>Injured {attendanceTotals?.injured ?? 0}</span>
+                <span>
+                  {t.total} {attendanceTotals?.total ?? 0}
+                </span>
+                <span>
+                  {t.present} {attendanceTotals?.present ?? 0}
+                </span>
+                <span>
+                  {t.late} {attendanceTotals?.late ?? 0}
+                </span>
+                <span>
+                  {t.absent} {attendanceTotals?.absent ?? 0}
+                </span>
+                <span>
+                  {t.injured} {attendanceTotals?.injured ?? 0}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -521,167 +1045,228 @@ export function ManagedPlayerDetailPage({
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="matches">Matches</TabsTrigger>
-          <TabsTrigger value="training">Training</TabsTrigger>
-          <TabsTrigger value="medical">Medical</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="overview">{t.overview}</TabsTrigger>
+          <TabsTrigger value="matches">{t.matches}</TabsTrigger>
+          <TabsTrigger value="training">{t.training}</TabsTrigger>
+          <TabsTrigger value="medical">{t.medical}</TabsTrigger>
+          <TabsTrigger value="development">{t.development}</TabsTrigger>
+          <TabsTrigger value="payments">{t.payments}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><User className="h-4 w-4" /> Identity</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="h-4 w-4" /> {t.identity}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
+                t={t}
                 rows={[
-                  ["Full name", player.full_name],
-                  ["Player code", player.player_code],
-                  ["Date of birth", player.date_of_birth],
-                  ["Gender", player.gender],
-                  ["Nationality", player.nationality],
-                  ["Branch", player.branch_name],
-                  ["Current group", player.group_name],
-                  ["Date joined", player.date_joined],
-                  ["Profile completed", player.profile_completed_at],
-                  ["Profile status", player.profile_status],
-                  ["Active", player.is_active],
-                  ["Notes", player.notes],
+                  [t.labels.fullName, player.full_name],
+                  [t.labels.playerCode, player.player_code],
+                  [t.labels.dateOfBirth, player.date_of_birth],
+                  [t.labels.gender, player.gender],
+                  [t.labels.nationality, player.nationality],
+                  [t.labels.branch, player.branch_name],
+                  [t.labels.currentGroup, player.group_name],
+                  [t.labels.dateJoined, player.date_joined],
+                  [t.labels.profileCompleted, player.profile_completed_at],
+                  [t.labels.profileStatus, player.profile_status],
+                  [t.labels.active, player.is_active],
+                  [t.labels.notes, player.notes],
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Football Profile</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.footballProfile}</CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
+                t={t}
                 rows={[
-                  ["Main position", player.position],
-                  ["Preferred foot", player.preferred_foot],
-                  ["Goalix experience", goalixExperienceFrom(player.date_joined)],
-                ]}
-              />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4" /> Contact and Guardian</CardTitle></CardHeader>
-            <CardContent>
-              <DetailGrid
-                rows={[
-                  ["Player phone", player.phone],
-                  ...(player.account_phone && player.account_phone !== player.phone
-                    ? [["Account phone", player.account_phone] as [string, unknown]]
-                    : []),
-                  ["Address", player.address],
-                  ["Guardian name", player.guardian_name],
-                  ["Guardian phone", player.guardian_phone],
+                  [t.labels.mainPosition, player.position],
                   [
-                    "Guardian relation",
-                    guardianRelationLabels[String(player.guardian_relation ?? "")] ??
-                      player.guardian_relation,
+                    t.labels.secondaryPositions,
+                    formatListValue(player.secondary_positions, t),
                   ],
-                  ["Linked parent account", linkedParent?.name],
-                  ["Parent username", linkedParent?.username],
-                  ["Parent phone", linkedParent?.phone],
-                  ["Parent address", linkedParent?.address],
+                  [t.labels.preferredFoot, player.preferred_foot],
+                  [t.labels.currentTeam, player.current_team],
+                  [t.labels.shirtNumber, player.shirt_number],
+                  [t.labels.playingStyle, player.playing_style],
+                  [t.labels.yearsExperience, player.years_experience],
+                  [t.labels.previousClub, player.previous_club_academy],
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Account and Status</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="h-4 w-4" /> {t.contactGuardian}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
+                t={t}
                 rows={[
-                  ["Username", player.username],
-                  ["Login phone", player.account_phone],
-                  ["Account active", player.account_is_active],
-                  ["Account verified", player.account_is_verified],
-                  ["Created at", player.created_at],
-                  ["Updated at", player.updated_at],
+                  [t.labels.playerPhone, player.phone],
+                  ...(player.account_phone &&
+                  player.account_phone !== player.phone
+                    ? [
+                        [t.labels.accountPhone, player.account_phone] as [
+                          string,
+                          unknown,
+                        ],
+                      ]
+                    : []),
+                  [t.labels.address, player.address],
+                  [t.labels.guardianName, player.guardian_name],
+                  [t.labels.guardianPhone, player.guardian_phone],
+                  [
+                    t.labels.guardianRelation,
+                    t.guardianRelations[
+                      String(
+                        player.guardian_relation ?? "",
+                      ) as keyof typeof t.guardianRelations
+                    ] ?? player.guardian_relation,
+                  ],
+                  [t.labels.linkedParentAccount, linkedParent?.name],
+                  [t.labels.parentUsername, linkedParent?.username],
+                  [t.labels.parentPhone, linkedParent?.phone],
+                  [t.labels.parentAddress, linkedParent?.address],
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Physical Baseline</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.accountStatus}</CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
+                t={t}
                 rows={[
-                  ["Height (cm)", baselineHeight],
-                  ["Weight (kg)", baselineWeight],
-                  ["BMI", baselineBmi],
-                  ["Sprint (s)", latestMeasurementValue("sprint_speed")],
-                  ["Endurance (/10)", latestMeasurementValue("stamina")],
-                  ["Flexibility (/10)", latestMeasurementValue("flexibility")],
+                  [t.labels.username, player.username],
+                  [t.labels.loginPhone, player.account_phone],
+                  [t.labels.accountActive, player.account_is_active],
+                  [t.labels.accountVerified, player.account_is_verified],
+                  [t.labels.createdAt, player.created_at],
+                  [t.labels.updatedAt, player.updated_at],
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Group Assignments</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.physicalBaseline}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DetailGrid
+                t={t}
+                rows={[
+                  [t.labels.height, latestValue("height_cm")],
+                  [t.labels.weight, latestValue("weight_kg")],
+                  [t.labels.bmi, latestValue("bmi")],
+                  [t.labels.sprintSpeed, latestValue("sprint_speed")],
+                  [t.labels.acceleration, latestValue("acceleration")],
+                  [t.labels.stamina, latestValue("stamina")],
+                  [t.labels.strength, latestValue("strength")],
+                  [t.labels.agility, latestValue("agility")],
+                  [t.labels.balance, latestValue("balance")],
+                  [t.labels.jumpHeight, latestValue("jump_height_cm")],
+                  [t.labels.flexibility, latestValue("flexibility")],
+                ]}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t.groupAssignments}</CardTitle>
+            </CardHeader>
             <CardContent>
               <RecordsTable
                 rows={data.groups}
-                empty="No group assignment history."
+                empty={t.noGroupHistory}
+                t={t}
                 columns={[
-                  { key: "group_name", label: "Group" },
-                  { key: "branch_name", label: "Branch" },
-                  { key: "joined_at", label: "Joined" },
-                  { key: "left_at", label: "Left" },
+                  { key: "group_name", label: t.labels.group },
+                  { key: "branch_name", label: t.labels.branch },
+                  { key: "joined_at", label: t.labels.joined },
+                  { key: "left_at", label: t.labels.left },
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Player Assignments</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.playerAssignments}</CardTitle>
+            </CardHeader>
             <CardContent>
               <RecordsTable
                 rows={(data.playerAssignments || []) as unknown as AnyRecord[]}
-                empty="No player assignments found."
+                empty={t.noPlayerAssignments}
+                t={t}
                 columns={[
-                  { key: "title", label: "Assignment" },
+                  { key: "title", label: t.labels.assignment },
                   {
                     key: "groups",
-                    label: "Target",
+                    label: t.labels.target,
                     render: (row) => {
-                      const groups = Array.isArray(row.groups) ? row.groups : [];
+                      const groups = Array.isArray(row.groups)
+                        ? row.groups
+                        : [];
                       return groups.length
                         ? groups
-                            .map((group) =>
-                              `${formatValue((group as AnyRecord).name)}${
-                                (group as AnyRecord).branchName
-                                  ? ` - ${formatValue((group as AnyRecord).branchName)}`
-                                  : ""
-                              }`,
+                            .map(
+                              (group) =>
+                                `${formatValue((group as AnyRecord).name, t)}${
+                                  (group as AnyRecord).branchName
+                                    ? ` - ${formatValue((group as AnyRecord).branchName, t)}`
+                                    : ""
+                                }`,
                             )
                             .join(", ")
-                        : "--";
+                        : t.empty;
                     },
                   },
-                  { key: "coachName", label: "Coach" },
-                  { key: "openAt", label: "Opened" },
-                  { key: "dueAt", label: "Due" },
+                  { key: "coachName", label: t.labels.coach },
+                  { key: "openAt", label: t.labels.opened },
+                  { key: "dueAt", label: t.labels.due },
                   {
                     key: "playerStatus",
-                    label: "Player status",
+                    label: t.labels.playerStatus,
                     render: (row) => {
-                      const meta = assignmentStatusMeta(row.playerStatus);
+                      const meta = assignmentStatusMeta(row.playerStatus, t);
                       return <Badge variant={meta.variant}>{meta.label}</Badge>;
                     },
                   },
-                  { key: "submittedAt", label: "Submitted" },
-                  { key: "filesCount", label: "Files" },
+                  { key: "submittedAt", label: t.submitted },
+                  { key: "filesCount", label: t.labels.files },
                 ]}
               />
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Custom Profile</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.customProfile}</CardTitle>
+            </CardHeader>
             <CardContent>
               {data.customProfile.length ? (
-                <DetailGrid rows={data.customProfile.map((row) => [`${compact(row.category_name)} - ${row.label}`, row.value])} />
+                <DetailGrid
+                  t={t}
+                  rows={data.customProfile.map((row) => [
+                    `${compact(row.category_name, t)} - ${row.label}`,
+                    row.value,
+                  ])}
+                />
               ) : (
-                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">No custom profile data.</p>
+                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
+                  {t.noCustomProfile}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -690,80 +1275,87 @@ export function ManagedPlayerDetailPage({
         <TabsContent value="matches" className="space-y-4">
           <RecordsTable
             rows={data.matchStats}
-            empty="No match stats yet."
+            empty={t.noMatchStats}
+            t={t}
             columns={[
-              { key: "match_date", label: "Date" },
-              { key: "opponent_name", label: "Opponent" },
-              { key: "minutes_played", label: "Minutes" },
-              { key: "goals", label: "Goals" },
-              { key: "assists", label: "Assists" },
-              { key: "performance_rating", label: "Overall" },
-              { key: "match_status", label: "Status" },
+              { key: "match_date", label: t.labels.date },
+              { key: "opponent_name", label: t.labels.opponent },
+              { key: "minutes_played", label: t.minutes },
+              { key: "goals", label: t.goals },
+              { key: "assists", label: t.assists },
+              { key: "performance_rating", label: t.labels.overall },
+              { key: "match_status", label: t.labels.status },
             ]}
           />
           <RecordsTable
             rows={data.matchAttendance}
-            empty="No match attendance yet."
+            empty={t.noMatchAttendance}
+            t={t}
             columns={[
-              { key: "match_date", label: "Date" },
-              { key: "opponent_name", label: "Opponent" },
-              { key: "status", label: "Status" },
-              { key: "notes", label: "Notes" },
+              { key: "match_date", label: t.labels.date },
+              { key: "opponent_name", label: t.labels.opponent },
+              { key: "status", label: t.labels.status },
+              { key: "notes", label: t.labels.notes },
             ]}
           />
           <RecordsTable
             rows={data.goals as unknown as AnyRecord[]}
-            empty="No goals or assists recorded."
+            empty={t.noGoalsAssists}
+            t={t}
             columns={[
-              { key: "match_date", label: "Date" },
-              { key: "opponent_name", label: "Opponent" },
-              { key: "minute", label: "Minute" },
+              { key: "match_date", label: t.labels.date },
+              { key: "opponent_name", label: t.labels.opponent },
+              { key: "minute", label: t.labels.minute },
               {
                 key: "goal_role",
-                label: "Contribution",
+                label: t.labels.contribution,
                 render: (row) =>
-                  row.scorer_player_id === player.id ? "Goal" : "Assist",
+                  row.scorer_player_id === player.id ? t.goal : t.assist,
               },
-              { key: "notes", label: "Notes" },
+              { key: "notes", label: t.labels.notes },
             ]}
           />
           <RecordsTable
             rows={data.matchSummaries}
-            empty="No match summaries yet."
+            empty={t.noMatchSummaries}
+            t={t}
             columns={[
-              { key: "recorded_at", label: "Date" },
-              { key: "group_name", label: "Group" },
-              { key: "matches_played", label: "Matches" },
-              { key: "minutes_played", label: "Minutes" },
-              { key: "goals", label: "Goals" },
-              { key: "assists", label: "Assists" },
-              { key: "match_rating", label: "Rating" },
+              { key: "recorded_at", label: t.labels.date },
+              { key: "group_name", label: t.labels.group },
+              { key: "matches_played", label: t.matches },
+              { key: "minutes_played", label: t.minutes },
+              { key: "goals", label: t.goals },
+              { key: "assists", label: t.assists },
+              { key: "match_rating", label: t.labels.rating },
             ]}
           />
           <RecordsTable
             rows={data.substitutions as unknown as AnyRecord[]}
-            empty="No substitutions recorded for this player."
+            empty={t.noSubstitutions}
+            t={t}
             columns={[
-              { key: "match_date", label: "Date" },
-              { key: "opponent_name", label: "Opponent" },
-              { key: "minute", label: "Minute" },
+              { key: "match_date", label: t.labels.date },
+              { key: "opponent_name", label: t.labels.opponent },
+              { key: "minute", label: t.labels.minute },
               {
                 key: "direction",
-                label: "Direction",
-                render: (row) => (row.in_player_id === player.id ? "Subbed in" : "Subbed off"),
+                label: t.labels.direction,
+                render: (row) =>
+                  row.in_player_id === player.id ? t.subbedIn : t.subbedOff,
               },
-              { key: "reason", label: "Reason" },
+              { key: "reason", label: t.labels.reason },
             ]}
           />
           <RecordsTable
             rows={data.incidents as unknown as AnyRecord[]}
-            empty="No cards or injuries in matches."
+            empty={t.noCardsInjuries}
+            t={t}
             columns={[
-              { key: "match_date", label: "Date" },
-              { key: "opponent_name", label: "Opponent" },
-              { key: "incident_type", label: "Type" },
-              { key: "minute", label: "Minute" },
-              { key: "notes", label: "Notes" },
+              { key: "match_date", label: t.labels.date },
+              { key: "opponent_name", label: t.labels.opponent },
+              { key: "incident_type", label: t.labels.type },
+              { key: "minute", label: t.labels.minute },
+              { key: "notes", label: t.labels.notes },
             ]}
           />
         </TabsContent>
@@ -771,195 +1363,216 @@ export function ManagedPlayerDetailPage({
         <TabsContent value="training" className="space-y-4">
           <RecordsTable
             rows={data.trainingSummaries}
-            empty="No training summaries yet."
+            empty={t.noTrainingSummaries}
+            t={t}
             columns={[
-              { key: "recorded_at", label: "Date" },
-              { key: "group_name", label: "Group" },
-              { key: "training_sessions_count", label: "Sessions" },
-              { key: "attendance_count", label: "Attendance" },
-              { key: "absence_count", label: "Absence" },
-              { key: "attendance_rate", label: "Rate" },
-              { key: "training_performance_rating", label: "Rating" },
+              { key: "recorded_at", label: t.labels.date },
+              { key: "group_name", label: t.labels.group },
+              { key: "training_sessions_count", label: t.labels.sessions },
+              { key: "attendance_count", label: t.labels.attendance },
+              { key: "absence_count", label: t.labels.absence },
+              { key: "attendance_rate", label: t.labels.rate },
+              { key: "training_performance_rating", label: t.labels.rating },
             ]}
           />
           <RecordsTable
             rows={data.trainingAttendance}
-            empty="No training attendance yet."
+            empty={t.noTrainingAttendance}
+            t={t}
             columns={[
-              { key: "start_datetime", label: "Date" },
-              { key: "title", label: "Training" },
-              { key: "training_focus", label: "Focus" },
-              { key: "status", label: "Attendance" },
-              { key: "arrival_time", label: "Arrival" },
-              { key: "event_status", label: "Session status" },
+              { key: "start_datetime", label: t.labels.date },
+              { key: "title", label: t.training },
+              { key: "training_focus", label: t.labels.focus },
+              { key: "status", label: t.labels.attendance },
+              { key: "arrival_time", label: t.labels.arrival },
+              { key: "event_status", label: t.labels.sessionStatus },
             ]}
           />
           <RecordsTable
             rows={data.trainingEvaluations}
-            empty="No training evaluations yet."
+            empty={t.noTrainingEvaluations}
+            t={t}
             columns={[
-              { key: "start_datetime", label: "Date" },
-              { key: "title", label: "Training" },
-              { key: "overall_rating", label: "Overall" },
-              { key: "technical_rating", label: "Technical" },
-              { key: "tactical_rating", label: "Tactical" },
-              { key: "physical_rating", label: "Physical" },
-              { key: "mental_rating", label: "Mental" },
-              { key: "endurance_rating", label: "Endurance" },
-              { key: "strength_rating", label: "Strength" },
-              { key: "agility_rating", label: "Agility" },
-              { key: "coach_name", label: "Coach" },
-              { key: "strengths", label: "Strengths" },
-              { key: "improvement_areas", label: "Improvements" },
+              { key: "start_datetime", label: t.labels.date },
+              { key: "title", label: t.training },
+              { key: "overall_rating", label: t.labels.overall },
+              { key: "technical_rating", label: t.labels.technical },
+              { key: "tactical_rating", label: t.labels.tactical },
+              { key: "physical_rating", label: t.labels.physical },
+              { key: "mental_rating", label: t.labels.mental },
+              { key: "endurance_rating", label: t.labels.endurance },
+              { key: "strength_rating", label: t.labels.strength },
+              { key: "agility_rating", label: t.labels.agility },
+              { key: "coach_name", label: t.labels.coach },
+              { key: "strengths", label: t.labels.strengths },
+              { key: "improvement_areas", label: t.labels.improvements },
             ]}
           />
         </TabsContent>
 
         <TabsContent value="medical" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><HeartPulse className="h-4 w-4" /> Medical Summary</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <HeartPulse className="h-4 w-4" /> {t.healthProfile}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
-                rows={[
-                  ["Has injury record", hasInjuryHistory ? "Yes" : "No"],
-                  ["Current injury status", currentInjuryStatus],
-                  ["Injury records", data.injuries.length],
-                  ["Match injuries", matchInjuries.length],
-                  ["Medical notes", data.healthProfile?.medical_notes],
-                  ["Fitness status", data.healthProfile?.fitness_status],
-                  ["Allergies", data.healthProfile?.allergies],
-                  ["Chronic problems", data.healthProfile?.chronic_problems],
-                ]}
+                t={t}
+                rows={Object.entries(data.healthProfile ?? {})}
               />
             </CardContent>
           </Card>
 
           <RecordsTable
-            rows={matchInjuries}
-            empty="No match injuries recorded for this player."
+            rows={data.measurements}
+            empty={t.noMeasurements}
+            t={t}
             columns={[
-              { key: "match_date", label: "Match date" },
-              { key: "opponent_name", label: "Match" },
-              { key: "minute", label: "Minute" },
-              { key: "body_part", label: "Injury" },
-              { key: "notes", label: "Notes" },
+              { key: "measured_at", label: t.labels.date },
+              { key: "height_cm", label: t.labels.height },
+              { key: "weight_kg", label: t.labels.weight },
+              { key: "bmi", label: t.labels.bmi },
+              { key: "sprint_speed", label: t.labels.sprintSpeed },
+              { key: "notes", label: t.labels.notes },
             ]}
           />
 
           <RecordsTable
             rows={data.injuries}
-            empty="No injury history."
+            empty={t.noInjuries}
+            t={t}
             columns={[
-              { key: "injury_date", label: "Injury date" },
-              { key: "injury_type", label: "Type" },
-              { key: "body_part", label: "Body part" },
-              { key: "severity", label: "Severity" },
-              { key: "recovery_date", label: "Recovery" },
-              { key: "notes", label: "Notes" },
+              { key: "injury_date", label: t.labels.injuryDate },
+              { key: "injury_type", label: t.labels.type },
+              { key: "recovery_date", label: t.labels.recovery },
+              { key: "notes", label: t.labels.notes },
             ]}
           />
+        </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldAlert className="h-4 w-4" />
-                Injury Risk AI
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {injuryRisk ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={injuryRiskVariant(injuryPrediction?.risk_level)}>
-                      {injuryPrediction?.risk_level || "No level"}
-                    </Badge>
-                    <span className="text-sm font-medium">
-                      Risk {injuryPrediction?.risk_percentage ?? "--"}%
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatValue(injuryRisk.created_at)}
-                    </span>
-                  </div>
-                  <DetailGrid
-                    rows={[
-                      ["Recommendation", injuryPrediction?.recommendation],
-                      ["Alert flag", injuryPrediction?.alert_flag],
-                      ["Model version", injuryRisk.model_version],
-                      ["Attendance rate", injuryInput?.attendance_rate],
-                      ["Training sessions/week", injuryInput?.training_sessions_per_week],
-                      ["Match minutes last week", injuryInput?.match_minutes_last_week],
-                      ["Fatigue rating", injuryInput?.fatigue_rating],
-                      ["Previous injury input", injuryInput?.previous_injury],
-                      ["Pain/discomfort input", injuryInput?.pain_or_discomfort],
-                    ]}
-                  />
-                </>
-              ) : (
-                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
-                  No injury risk model output yet for this player.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="development" className="space-y-4">
+          <RecordsTable
+            rows={data.skillAssessments}
+            empty={t.noSkillAssessments}
+            t={t}
+            columns={[
+              { key: "assessed_at", label: t.labels.date },
+              { key: "group_name", label: t.labels.group },
+              { key: "ball_control", label: t.labels.ballControl },
+              { key: "first_touch", label: t.labels.firstTouch },
+              { key: "passing", label: t.labels.passing },
+              { key: "shooting", label: t.labels.shooting },
+              { key: "dribbling", label: t.labels.dribbling },
+              { key: "crossing", label: t.labels.crossing },
+              { key: "heading", label: t.labels.heading },
+              { key: "tackling", label: t.labels.tackling },
+              { key: "positioning", label: t.labels.positioning },
+              { key: "decision_making", label: t.labels.decisionMaking },
+              { key: "teamwork", label: t.labels.teamwork },
+              { key: "game_reading", label: t.labels.gameReading },
+            ]}
+          />
+          <RecordsTable
+            rows={data.rankings}
+            empty={t.noRankingHistory}
+            t={t}
+            columns={[
+              { key: "period", label: t.labels.period },
+              { key: "group_name", label: t.labels.group },
+              { key: "rank", label: t.labels.rank },
+              { key: "total_score", label: t.labels.score },
+              { key: "trend", label: t.labels.trend },
+            ]}
+          />
+          <RecordsTable
+            rows={data.coachRatings}
+            empty={t.noCoachRatings}
+            t={t}
+            columns={[
+              { key: "eval_date", label: t.labels.date },
+              { key: "coach_name", label: t.labels.coach },
+              { key: "group_name", label: t.labels.group },
+              { key: "score", label: t.labels.score },
+              { key: "potential_rating", label: t.labels.potential },
+              {
+                key: "recommended_position",
+                label: t.labels.recommendedPosition,
+              },
+              { key: "strengths", label: t.labels.strengths },
+              { key: "weaknesses", label: t.labels.weaknesses },
+              { key: "development_plan", label: t.labels.developmentPlan },
+              { key: "notes", label: t.labels.notes },
+            ]}
+          />
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4">
           <RecordsTable
             rows={data.payments.subscriptions}
-            empty="No payment subscriptions."
+            empty={t.noSubscriptions}
+            t={t}
             columns={[
-              { key: "plan", label: "Plan" },
-              { key: "amount", label: "Amount" },
-              { key: "currency", label: "Currency" },
-              { key: "starts_at", label: "Starts" },
-              { key: "ends_at", label: "Ends" },
-              { key: "status", label: "Status" },
+              { key: "plan", label: t.labels.plan },
+              { key: "amount", label: t.labels.amount },
+              { key: "currency", label: t.labels.currency },
+              { key: "starts_at", label: t.labels.starts },
+              { key: "ends_at", label: t.labels.ends },
+              { key: "status", label: t.labels.status },
             ]}
           />
           <RecordsTable
             rows={data.payments.invoices}
-            empty="No invoices."
+            empty={t.noInvoices}
+            t={t}
             columns={[
-              { key: "due_date", label: "Due" },
-              { key: "amount", label: "Amount" },
-              { key: "status", label: "Status" },
-              { key: "paid_at", label: "Paid at" },
+              { key: "due_date", label: t.labels.due },
+              { key: "amount", label: t.labels.amount },
+              { key: "status", label: t.labels.status },
+              { key: "paid_at", label: t.labels.paidAt },
             ]}
           />
           <RecordsTable
             rows={data.payments.transactions}
-            empty="No payment transactions."
+            empty={t.noTransactions}
+            t={t}
             columns={[
-              { key: "created_at", label: "Date" },
-              { key: "amount", label: "Amount" },
-              { key: "currency", label: "Currency" },
-              { key: "status", label: "Status" },
-              { key: "provider", label: "Provider" },
-              { key: "reference", label: "Reference" },
+              { key: "created_at", label: t.labels.date },
+              { key: "amount", label: t.labels.amount },
+              { key: "currency", label: t.labels.currency },
+              { key: "status", label: t.labels.status },
+              { key: "provider", label: t.labels.provider },
+              { key: "reference", label: t.labels.reference },
             ]}
           />
         </TabsContent>
-
       </Tabs>
       {role === "admin" && (
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Player</DialogTitle>
+              <DialogTitle>{t.editPlayer}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-username">Username</Label>
-                <Input id="edit-username" value={String(player.username ?? "")} readOnly />
-                <p className="text-xs text-muted-foreground">Username cannot be changed.</p>
+                <Label htmlFor="edit-username">{t.labels.username}</Label>
+                <Input
+                  id="edit-username"
+                  value={String(player.username ?? "")}
+                  readOnly
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.usernameCannotChange}
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-password">Password</Label>
+                <Label htmlFor="edit-password">{t.labels.password}</Label>
                 <Input
                   id="edit-password"
                   type="password"
                   value={editForm.password}
-                  placeholder="Leave empty to keep current password"
+                  placeholder={t.passwordKeepCurrent}
                   onChange={(event) =>
                     setEditForm((current) => ({
                       ...current,
@@ -969,17 +1582,17 @@ export function ManagedPlayerDetailPage({
                 />
               </div>
               {[
-                ["fullName", "Full name", "text"],
-                ["birthDate", "Birth date", "date"],
-                ["heightCm", "Height (cm)", "number"],
-                ["weightKg", "Weight (kg)", "number"],
-                ["dateJoined", "Date Joined Academy", "date"],
-                ["nationality", "Nationality", "text"],
-                ["phone", "Phone", "text"],
-                ["position", "Position", "text"],
-                ["address", "Address", "text"],
-                ["guardianName", "Guardian name", "text"],
-                ["guardianPhone", "Guardian phone", "text"],
+                ["fullName", t.labels.fullName, "text"],
+                ["birthDate", t.labels.birthDate, "date"],
+                ["heightCm", t.labels.heightCm, "number"],
+                ["weightKg", t.labels.weightKg, "number"],
+                ["dateJoined", t.labels.dateJoinedAcademy, "date"],
+                ["nationality", t.labels.nationality, "text"],
+                ["phone", t.labels.phone, "text"],
+                ["position", t.labels.position, "text"],
+                ["address", t.labels.address, "text"],
+                ["guardianName", t.labels.guardianName, "text"],
+                ["guardianPhone", t.labels.guardianPhone, "text"],
               ].map(([key, label, type]) => (
                 <div key={key} className="space-y-2">
                   <Label htmlFor={`edit-${key}`}>{label}</Label>
@@ -997,25 +1610,30 @@ export function ManagedPlayerDetailPage({
                 </div>
               ))}
               <div className="space-y-2">
-                <Label htmlFor="edit-preferredFoot">Preferred Foot</Label>
+                <Label htmlFor="edit-preferredFoot">
+                  {t.labels.preferredFoot}
+                </Label>
                 <Select
                   value={editForm.preferredFoot}
                   onValueChange={(value) =>
-                    setEditForm((current) => ({ ...current, preferredFoot: value }))
+                    setEditForm((current) => ({
+                      ...current,
+                      preferredFoot: value,
+                    }))
                   }
                 >
                   <SelectTrigger id="edit-preferredFoot">
-                    <SelectValue placeholder="Choose foot" />
+                    <SelectValue placeholder={t.chooseFoot} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="right">Right</SelectItem>
-                    <SelectItem value="left">Left</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
+                    <SelectItem value="right">{t.foot.right}</SelectItem>
+                    <SelectItem value="left">{t.foot.left}</SelectItem>
+                    <SelectItem value="both">{t.foot.both}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-gender">Gender</Label>
+                <Label htmlFor="edit-gender">{t.labels.gender}</Label>
                 <Select
                   value={editForm.gender}
                   onValueChange={(value) =>
@@ -1023,17 +1641,21 @@ export function ManagedPlayerDetailPage({
                   }
                 >
                   <SelectTrigger id="edit-gender">
-                    <SelectValue placeholder="Choose gender" />
+                    <SelectValue placeholder={t.chooseGender} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="male">{t.genderOptions.male}</SelectItem>
+                    <SelectItem value="female">
+                      {t.genderOptions.female}
+                    </SelectItem>
+                    <SelectItem value="other">
+                      {t.genderOptions.other}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-level">Level</Label>
+                <Label htmlFor="edit-level">{t.labels.level}</Label>
                 <Select
                   value={editForm.level}
                   onValueChange={(value) =>
@@ -1041,7 +1663,7 @@ export function ManagedPlayerDetailPage({
                   }
                 >
                   <SelectTrigger id="edit-level">
-                    <SelectValue placeholder="Choose level" />
+                    <SelectValue placeholder={t.chooseLevel} />
                   </SelectTrigger>
                   <SelectContent>
                     {["A", "B", "C", "D", "F"].map((level) => (
@@ -1053,27 +1675,34 @@ export function ManagedPlayerDetailPage({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-guardianRelation">Guardian relation</Label>
+                <Label htmlFor="edit-guardianRelation">
+                  {t.labels.guardianRelation}
+                </Label>
                 <Select
                   value={editForm.guardianRelation}
                   onValueChange={(value) =>
-                    setEditForm((current) => ({ ...current, guardianRelation: value }))
+                    setEditForm((current) => ({
+                      ...current,
+                      guardianRelation: value,
+                    }))
                   }
                 >
                   <SelectTrigger id="edit-guardianRelation">
-                    <SelectValue placeholder="Choose relation" />
+                    <SelectValue placeholder={t.chooseRelation} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(guardianRelationLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
+                    {Object.entries(t.guardianRelations).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="edit-branchId">Branch</Label>
+                <Label htmlFor="edit-branchId">{t.labels.branch}</Label>
                 <Select
                   value={editForm.branchId}
                   onValueChange={(value) =>
@@ -1081,7 +1710,7 @@ export function ManagedPlayerDetailPage({
                   }
                 >
                   <SelectTrigger id="edit-branchId">
-                    <SelectValue placeholder="Choose branch" />
+                    <SelectValue placeholder={t.chooseBranch} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((branch) => (
@@ -1093,7 +1722,7 @@ export function ManagedPlayerDetailPage({
                 </Select>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="edit-notes">Notes</Label>
+                <Label htmlFor="edit-notes">{t.labels.notes}</Label>
                 <Input
                   id="edit-notes"
                   value={editForm.notes}
@@ -1108,16 +1737,24 @@ export function ManagedPlayerDetailPage({
             </div>
             {editError && <p className="text-sm text-red-400">{editError}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                Close
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+              >
+                {t.close}
               </Button>
-              <Button type="button" disabled={updateState.isLoading} onClick={handleSaveEdit}>
+              <Button
+                type="button"
+                disabled={updateState.isLoading}
+                onClick={handleSaveEdit}
+              >
                 {updateState.isLoading ? (
                   <Activity className="h-4 w-4 animate-spin" />
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                Save Changes
+                {t.saveChanges}
               </Button>
             </DialogFooter>
           </DialogContent>

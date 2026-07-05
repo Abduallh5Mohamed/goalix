@@ -43,7 +43,252 @@ import {
   useUpdateAdminMatchStatusMutation,
   type Match,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
+
+const copy = {
+  en: {
+    title: "Matches Management",
+    description: "Create, schedule, update, and control official match information.",
+    dashboard: "Dashboard",
+    matches: "Matches",
+    addMatch: "Add Match",
+    createMatch: "Create Match",
+    createDescription:
+      "Add the match details now. Target groups or birthdays can be configured later from match configuration.",
+    coach: "Coach",
+    selectCoach: "Select coach for this match",
+    opponent: "Opponent",
+    friendlyQuestion: "Friendly?",
+    friendly: "Friendly",
+    notFriendly: "Not friendly",
+    notFriendlyOfficial: "Not Friendly (Official)",
+    trainingMatch: "Training Match",
+    venueType: "Venue Type",
+    home: "Home",
+    away: "Away",
+    neutral: "Neutral",
+    date: "Date",
+    time: "Time",
+    locationStadium: "Location / Stadium",
+    location: "Location",
+    referee: "Referee",
+    organizerNotes: "Organizer Notes",
+    selectCoachError: "Select the coach who will manage this match.",
+    invalidKickoff: "Choose a valid match date and time.",
+    pastKickoff:
+      "Choose a future match date and time. Past matches cannot be created here.",
+    createError: "Could not create match. Please check the fields and try again.",
+    deleteMatchForever: "Delete Match Forever",
+    deleteDescriptionStart:
+      "This permanently removes the match, calendar event, squads, tactics, attendance, and match stats. Type",
+    toConfirm: "to confirm.",
+    confirmation: "Confirmation",
+    typeToConfirm: "Type",
+    confirmPermanentDeletion: "to confirm permanent deletion.",
+    deleteError: "Could not permanently delete match.",
+    cancel: "Cancel",
+    deleteForever: "Delete Forever",
+    postponeMatch: "Postpone Match",
+    postponeDescription:
+      "Choose the new kick-off. The match, calendar, coach view, player view, and notifications will all use this new time.",
+    newDate: "New date",
+    newTime: "New time",
+    leaveEmptyLocation: "Leave empty if not confirmed",
+    reason: "Reason",
+    reasonPlaceholder: "Weather, opponent request, pitch availability...",
+    chooseNewDateTime: "Choose the new date and time.",
+    postponeError: "Could not postpone match.",
+    savePostponement: "Save Postponement",
+    matchesCalendar: "Matches Calendar",
+    finishedArchive: "Finished Matches Archive",
+    finished: "finished",
+    played: "played",
+    toBeConfirmed: "To be confirmed",
+    noFinishedMatches: "No finished matches yet.",
+    loadingFinishedMatches: "Loading finished matches...",
+    loadingMatchDetails: "Loading match details...",
+    score: "Score",
+    groups: "Groups",
+    noGroup: "No group",
+    venue: "Venue",
+    notRecorded: "Not recorded",
+    finishedAt: "Finished at",
+    autoFinished: "Auto finished",
+    planTactics: "Plan & Tactics",
+    formation: "Formation",
+    notSaved: "Not saved",
+    noTacticalNotes: "No tactical notes recorded.",
+    matchNotes: "Match Notes",
+    noOrganizerNotes: "No organizer notes.",
+    noPostMatchNotes: "No post-match notes.",
+    squadInstructions: "Squad & Instructions",
+    noInstruction: "No instruction",
+    noSquad: "No squad saved.",
+    attendance: "Attendance",
+    noAttendance: "No attendance recorded.",
+    player: "Player",
+    minutes: "Min",
+    goalsShort: "G",
+    assistsShort: "A",
+    cards: "Cards",
+    rating: "Rating",
+    notes: "Notes",
+    yellowShort: "Y",
+    redShort: "R",
+    noPlayerStats: "No player stats recorded.",
+    incidents: "Incidents",
+    noNotes: "No notes",
+    noIncidents: "No incidents recorded.",
+    selectFinishedPrompt: "Select a finished match to view its saved details.",
+    finishedInfo:
+      "Finished matches will appear here after the match ends or three hours pass from kick-off.",
+    calendarTable: "Matches Calendar Table",
+    match: "Match",
+    status: "Status",
+    actions: "Actions",
+    noLocation: "No location",
+    noMatches: "No matches scheduled.",
+    loadingMatches: "Loading matches...",
+    allMatches: "All Matches",
+    postponedTo: "Postponed to",
+    at: "at",
+    finishedLocked: "Finished match. Postpone and cancel are locked.",
+    cancelledLocked: "Cancelled match. Only permanent deletion is available.",
+    postponeToNewDate: "Postpone to new date",
+    finishNow: "Finish now",
+    cancelMatch: "Cancel match",
+    statusLabels: {
+      scheduled: "Scheduled",
+      postponed: "Postponed",
+      cancelled: "Cancelled",
+      finished: "Finished",
+      completed: "Completed",
+      in_progress: "In progress",
+    },
+  },
+  ar: {
+    title: "إدارة المباريات",
+    description: "أنشئ وجدول وحدّث وتحكم في بيانات المباريات الرسمية.",
+    dashboard: "لوحة التحكم",
+    matches: "المباريات",
+    addMatch: "إضافة مباراة",
+    createMatch: "إنشاء مباراة",
+    createDescription:
+      "أضف تفاصيل المباراة الآن. يمكن ضبط المجموعات أو سنوات الميلاد لاحقًا من إعدادات المباراة.",
+    coach: "المدرب",
+    selectCoach: "اختر المدرب المسؤول عن المباراة",
+    opponent: "المنافس",
+    friendlyQuestion: "ودية؟",
+    friendly: "ودية",
+    notFriendly: "غير ودية",
+    notFriendlyOfficial: "غير ودية (رسمية)",
+    trainingMatch: "مباراة تدريبية",
+    venueType: "نوع الملعب",
+    home: "على أرضنا",
+    away: "خارج الأرض",
+    neutral: "ملعب محايد",
+    date: "التاريخ",
+    time: "الوقت",
+    locationStadium: "الموقع / الملعب",
+    location: "الموقع",
+    referee: "الحكم",
+    organizerNotes: "ملاحظات المنظم",
+    selectCoachError: "اختر المدرب الذي سيدير هذه المباراة.",
+    invalidKickoff: "اختر تاريخ ووقت مباراة صحيحين.",
+    pastKickoff: "اختر تاريخ ووقت مستقبليين. لا يمكن إنشاء مباريات ماضية هنا.",
+    createError: "تعذر إنشاء المباراة. راجع الحقول وحاول مرة أخرى.",
+    deleteMatchForever: "حذف المباراة نهائيًا",
+    deleteDescriptionStart:
+      "سيؤدي هذا إلى حذف المباراة وحدث التقويم والتشكيلات والخطط والحضور وإحصائيات المباراة نهائيًا. اكتب",
+    toConfirm: "للتأكيد.",
+    confirmation: "التأكيد",
+    typeToConfirm: "اكتب",
+    confirmPermanentDeletion: "لتأكيد الحذف النهائي.",
+    deleteError: "تعذر حذف المباراة نهائيًا.",
+    cancel: "إلغاء",
+    deleteForever: "حذف نهائي",
+    postponeMatch: "تأجيل المباراة",
+    postponeDescription:
+      "اختر موعد الانطلاق الجديد. ستستخدم المباراة والتقويم ولوحة المدرب ولوحة اللاعب والإشعارات هذا الموعد الجديد.",
+    newDate: "التاريخ الجديد",
+    newTime: "الوقت الجديد",
+    leaveEmptyLocation: "اتركه فارغًا إذا لم يتم التأكيد",
+    reason: "السبب",
+    reasonPlaceholder: "الطقس، طلب المنافس، توفر الملعب...",
+    chooseNewDateTime: "اختر التاريخ والوقت الجديدين.",
+    postponeError: "تعذر تأجيل المباراة.",
+    savePostponement: "حفظ التأجيل",
+    matchesCalendar: "تقويم المباريات",
+    finishedArchive: "أرشيف المباريات المنتهية",
+    finished: "منتهية",
+    played: "لُعبت",
+    toBeConfirmed: "سيتم التأكيد",
+    noFinishedMatches: "لا توجد مباريات منتهية بعد.",
+    loadingFinishedMatches: "جاري تحميل المباريات المنتهية...",
+    loadingMatchDetails: "جاري تحميل تفاصيل المباراة...",
+    score: "النتيجة",
+    groups: "المجموعات",
+    noGroup: "لا توجد مجموعة",
+    venue: "الملعب",
+    notRecorded: "غير مسجل",
+    finishedAt: "انتهت في",
+    autoFinished: "انتهت تلقائيًا",
+    planTactics: "الخطة والتكتيك",
+    formation: "التشكيل",
+    notSaved: "غير محفوظ",
+    noTacticalNotes: "لا توجد ملاحظات تكتيكية مسجلة.",
+    matchNotes: "ملاحظات المباراة",
+    noOrganizerNotes: "لا توجد ملاحظات من المنظم.",
+    noPostMatchNotes: "لا توجد ملاحظات بعد المباراة.",
+    squadInstructions: "القائمة والتعليمات",
+    noInstruction: "لا توجد تعليمات",
+    noSquad: "لا توجد قائمة محفوظة.",
+    attendance: "الحضور",
+    noAttendance: "لا يوجد حضور مسجل.",
+    player: "اللاعب",
+    minutes: "الدقائق",
+    goalsShort: "أهداف",
+    assistsShort: "تمريرات",
+    cards: "البطاقات",
+    rating: "التقييم",
+    notes: "الملاحظات",
+    yellowShort: "صفراء",
+    redShort: "حمراء",
+    noPlayerStats: "لا توجد إحصائيات لاعبين مسجلة.",
+    incidents: "الأحداث",
+    noNotes: "لا توجد ملاحظات",
+    noIncidents: "لا توجد أحداث مسجلة.",
+    selectFinishedPrompt: "اختر مباراة منتهية لعرض تفاصيلها المحفوظة.",
+    finishedInfo:
+      "ستظهر المباريات المنتهية هنا بعد انتهاء المباراة أو مرور ثلاث ساعات من موعد الانطلاق.",
+    calendarTable: "جدول تقويم المباريات",
+    match: "المباراة",
+    status: "الحالة",
+    actions: "الإجراءات",
+    noLocation: "لا يوجد موقع",
+    noMatches: "لا توجد مباريات مجدولة.",
+    loadingMatches: "جاري تحميل المباريات...",
+    allMatches: "كل المباريات",
+    postponedTo: "مؤجلة إلى",
+    at: "في",
+    finishedLocked: "المباراة منتهية. التأجيل والإلغاء مغلقان.",
+    cancelledLocked: "المباراة ملغاة. المتاح فقط هو الحذف النهائي.",
+    postponeToNewDate: "تأجيل إلى موعد جديد",
+    finishNow: "إنهاء الآن",
+    cancelMatch: "إلغاء المباراة",
+    statusLabels: {
+      scheduled: "مجدولة",
+      postponed: "مؤجلة",
+      cancelled: "ملغاة",
+      finished: "منتهية",
+      completed: "مكتملة",
+      in_progress: "قيد اللعب",
+    },
+  },
+} as const;
+
+type AdminMatchesCopy = (typeof copy)[keyof typeof copy];
 
 const getApiMessage = (error: unknown, fallback: string) => {
   const apiError = error as {
@@ -67,8 +312,10 @@ const isFinishedMatch = (match: Match) =>
   match.status === "completed" ||
   match.match_status === "finished";
 
-const matchFriendlyLabel = (matchType: Match["match_type"]) =>
-  matchType === "friendly" ? "Friendly" : "Not friendly";
+const matchFriendlyLabel = (
+  matchType: Match["match_type"],
+  t: AdminMatchesCopy,
+) => (matchType === "friendly" ? t.friendly : t.notFriendly);
 
 const inputDateValue = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -81,16 +328,22 @@ const selectedKickoff = (date: string, time: string) => {
   return Number.isFinite(kickoff.getTime()) ? kickoff : null;
 };
 
-const validateFutureKickoff = (date: string, time: string) => {
+const validateFutureKickoff = (
+  date: string,
+  time: string,
+  t: AdminMatchesCopy,
+) => {
   const kickoff = selectedKickoff(date, time);
-  if (!kickoff) return "Choose a valid match date and time.";
+  if (!kickoff) return t.invalidKickoff;
   if (kickoff <= new Date()) {
-    return "Choose a future match date and time. Past matches cannot be created here.";
+    return t.pastKickoff;
   }
   return "";
 };
 
 export default function AdminMatchesPage() {
+  const language = useDashboardLanguage();
+  const t = copy[language];
   const { data: matchesRes, isLoading, refetch: refetchMatches } = useGetAdminMatchesQuery(
     {
       limit: 100,
@@ -146,10 +399,10 @@ export default function AdminMatchesPage() {
     };
 
     if (!selectedCoachId) {
-      setFormError("Select the coach who will manage this match.");
+      setFormError(t.selectCoachError);
       return;
     }
-    const kickoffError = validateFutureKickoff(form.matchDate, form.matchTime);
+    const kickoffError = validateFutureKickoff(form.matchDate, form.matchTime, t);
     if (kickoffError) {
       setFormError(kickoffError);
       return;
@@ -177,7 +430,7 @@ export default function AdminMatchesPage() {
       setFormError(
         getApiMessage(
           error,
-          "Could not create match. Please check the fields and try again.",
+          t.createError,
         ),
       );
     }
@@ -189,7 +442,7 @@ export default function AdminMatchesPage() {
     setDeleteError("");
 
     if (deleteConfirm.trim() !== expected) {
-      setDeleteError(`Type "${expected}" to confirm permanent deletion.`);
+      setDeleteError(`${t.typeToConfirm} "${expected}" ${t.confirmPermanentDeletion}`);
       return;
     }
 
@@ -199,7 +452,7 @@ export default function AdminMatchesPage() {
       setDeleteConfirm("");
     } catch (error) {
       setDeleteError(
-        getApiMessage(error, "Could not permanently delete match."),
+        getApiMessage(error, t.deleteError),
       );
     }
   };
@@ -219,12 +472,13 @@ export default function AdminMatchesPage() {
     if (!postponeMatchRow) return;
     setPostponeError("");
     if (!postponeForm.matchDate || !postponeForm.matchTime) {
-      setPostponeError("Choose the new date and time.");
+      setPostponeError(t.chooseNewDateTime);
       return;
     }
     const kickoffError = validateFutureKickoff(
       postponeForm.matchDate,
       postponeForm.matchTime,
+      t,
     );
     if (kickoffError) {
       setPostponeError(kickoffError);
@@ -248,7 +502,7 @@ export default function AdminMatchesPage() {
         reason: "",
       });
     } catch (error) {
-      setPostponeError(getApiMessage(error, "Could not postpone match."));
+      setPostponeError(getApiMessage(error, t.postponeError));
     }
   };
 
@@ -295,25 +549,33 @@ export default function AdminMatchesPage() {
         date: match.match_date,
         type: "match",
         status: match.status,
-        subtitle: `${formatTime12(match.match_time)} - ${match.groups?.map((group) => group.name).join(", ") || match.team_name || "No group"}`,
+        subtitle: `${formatTime12(match.match_time)} - ${match.groups?.map((group) => group.name).join(", ") || match.team_name || t.noGroup}`,
       })),
-    [matches],
+    [matches, t.noGroup],
   );
   const deleteExpected = `delete match forever ${deleteMatchRow?.opponent_name ?? ""}`;
+  const statusLabel = (status: string) =>
+    t.statusLabels[status as keyof typeof t.statusLabels] ?? status.replace(/_/g, " ");
+  const venueLabel = (venue: string | null | undefined) => {
+    if (venue === "home") return t.home;
+    if (venue === "away") return t.away;
+    if (venue === "neutral") return t.neutral;
+    return venue || t.notRecorded;
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={language === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        title="Matches Management"
-        description="Create, schedule, update, and control official match information."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Matches" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.matches },
         ]}
         actions={
           <Button className="gap-2" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add Match
+            {t.addMatch}
           </Button>
         }
       />
@@ -321,16 +583,15 @@ export default function AdminMatchesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Create Match</DialogTitle>
+            <DialogTitle>{t.createMatch}</DialogTitle>
             <DialogDescription>
-              Add the match details now. Target groups or birthdays can be
-              configured later from match configuration.
+              {t.createDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={submitMatch}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Coach</Label>
+                <Label>{t.coach}</Label>
                 <Select
                   value={selectedCoachId}
                   onValueChange={(value) =>
@@ -341,7 +602,7 @@ export default function AdminMatchesPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select coach for this match" />
+                    <SelectValue placeholder={t.selectCoach} />
                   </SelectTrigger>
                   <SelectContent>
                     {coaches.map((coach) => (
@@ -353,7 +614,7 @@ export default function AdminMatchesPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Opponent</Label>
+                <Label>{t.opponent}</Label>
                 <Input
                   value={form.opponentName}
                   onChange={(e) =>
@@ -363,7 +624,7 @@ export default function AdminMatchesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Friendly?</Label>
+                <Label>{t.friendlyQuestion}</Label>
                 <Select
                   value={form.matchType}
                   onValueChange={(value) =>
@@ -374,18 +635,18 @@ export default function AdminMatchesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="friendly">Friendly</SelectItem>
+                    <SelectItem value="friendly">{t.friendly}</SelectItem>
                     <SelectItem value="official">
-                      Not Friendly (Official)
+                      {t.notFriendlyOfficial}
                     </SelectItem>
                     <SelectItem value="training_match">
-                      Training Match
+                      {t.trainingMatch}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Venue Type</Label>
+                <Label>{t.venueType}</Label>
                 <Select
                   value={form.venueType}
                   onValueChange={(value) =>
@@ -396,14 +657,14 @@ export default function AdminMatchesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="home">Home</SelectItem>
-                    <SelectItem value="away">Away</SelectItem>
-                    <SelectItem value="neutral">Neutral</SelectItem>
+                    <SelectItem value="home">{t.home}</SelectItem>
+                    <SelectItem value="away">{t.away}</SelectItem>
+                    <SelectItem value="neutral">{t.neutral}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>{t.date}</Label>
                 <Input
                   type="date"
                   min={todayInput}
@@ -415,7 +676,7 @@ export default function AdminMatchesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Time</Label>
+                <Label>{t.time}</Label>
                 <Input
                   type="time"
                   value={form.matchTime}
@@ -426,7 +687,7 @@ export default function AdminMatchesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Location / Stadium</Label>
+                <Label>{t.locationStadium}</Label>
                 <Input
                   value={form.location}
                   onChange={(e) =>
@@ -436,7 +697,7 @@ export default function AdminMatchesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Referee</Label>
+                <Label>{t.referee}</Label>
                 <Input
                   value={form.refereeName}
                   onChange={(e) =>
@@ -446,7 +707,7 @@ export default function AdminMatchesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Organizer Notes</Label>
+              <Label>{t.organizerNotes}</Label>
               <Textarea
                 value={form.organizerNotes}
                 onChange={(e) =>
@@ -473,7 +734,7 @@ export default function AdminMatchesPage() {
                 className="gap-2"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create Match
+                {t.createMatch}
               </Button>
             </DialogFooter>
           </form>
@@ -489,18 +750,17 @@ export default function AdminMatchesPage() {
             <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle>Delete Match Forever</DialogTitle>
+            <DialogTitle>{t.deleteMatchForever}</DialogTitle>
             <DialogDescription>
-              This permanently removes the match, calendar event, squads,
-              tactics, attendance, and match stats. Type{" "}
+              {t.deleteDescriptionStart}{" "}
               <span className="font-semibold text-foreground">
                 {deleteExpected}
               </span>{" "}
-              to confirm.
+              {t.toConfirm}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="delete-match-confirm">Confirmation</Label>
+            <Label htmlFor="delete-match-confirm">{t.confirmation}</Label>
             <Input
               id="delete-match-confirm"
               value={deleteConfirm}
@@ -515,7 +775,7 @@ export default function AdminMatchesPage() {
               variant="outline"
               onClick={() => setDeleteMatchRow(null)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -527,7 +787,7 @@ export default function AdminMatchesPage() {
               className="gap-2"
             >
               {deletingMatch && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Forever
+              {t.deleteForever}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -539,15 +799,14 @@ export default function AdminMatchesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Postpone Match</DialogTitle>
+            <DialogTitle>{t.postponeMatch}</DialogTitle>
             <DialogDescription>
-              Choose the new kick-off. The match, calendar, coach view, player
-              view, and notifications will all use this new time.
+              {t.postponeDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>New date</Label>
+              <Label>{t.newDate}</Label>
               <Input
                 type="date"
                 min={todayInput}
@@ -561,7 +820,7 @@ export default function AdminMatchesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>New time</Label>
+              <Label>{t.newTime}</Label>
               <Input
                 type="time"
                 value={postponeForm.matchTime}
@@ -574,7 +833,7 @@ export default function AdminMatchesPage() {
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Location</Label>
+              <Label>{t.location}</Label>
               <Input
                 value={postponeForm.location}
                 onChange={(event) =>
@@ -583,11 +842,11 @@ export default function AdminMatchesPage() {
                     location: event.target.value,
                   }))
                 }
-                placeholder="Leave empty if not confirmed"
+                placeholder={t.leaveEmptyLocation}
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Reason</Label>
+              <Label>{t.reason}</Label>
               <Textarea
                 value={postponeForm.reason}
                 onChange={(event) =>
@@ -596,7 +855,7 @@ export default function AdminMatchesPage() {
                     reason: event.target.value,
                   }))
                 }
-                placeholder="Weather, opponent request, pitch availability..."
+                placeholder={t.reasonPlaceholder}
               />
             </div>
           </div>
@@ -611,7 +870,7 @@ export default function AdminMatchesPage() {
               variant="outline"
               onClick={() => setPostponeMatchRow(null)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -620,17 +879,17 @@ export default function AdminMatchesPage() {
               onClick={handlePostponeMatch}
             >
               {postponingMatch && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save Postponement
+              {t.savePostponement}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <MonthCalendar title="Matches Calendar" items={calendarItems} />
+      <MonthCalendar title={t.matchesCalendar} items={calendarItems} />
 
       <Card className="border-border/50 bg-card">
         <CardHeader>
-          <CardTitle className="text-base">Finished Matches Archive</CardTitle>
+          <CardTitle className="text-base">{t.finishedArchive}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
@@ -654,22 +913,22 @@ export default function AdminMatchesPage() {
                         {formatTime12(match.match_time)}
                       </p>
                     </div>
-                    <Badge variant="success">finished</Badge>
+                    <Badge variant="success">{t.finished}</Badge>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {match.location || "To be confirmed"}
+                    {match.location || t.toBeConfirmed}
                   </p>
                 </button>
               ))}
               {!finishedMatches.length && !isLoading && (
                 <p className="rounded-md border border-border/50 px-3 py-8 text-center text-sm text-muted-foreground">
-                  No finished matches yet.
+                  {t.noFinishedMatches}
                 </p>
               )}
               {isLoading && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading finished matches...
+                  {t.loadingFinishedMatches}
                 </p>
               )}
             </div>
@@ -678,7 +937,7 @@ export default function AdminMatchesPage() {
               {loadingFinishedMatch && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading match details...
+                  {t.loadingMatchDetails}
                 </p>
               )}
               {selectedFinishedMatch && !loadingFinishedMatch && (
@@ -690,18 +949,18 @@ export default function AdminMatchesPage() {
                           {selectedFinishedMatch.opponent_name}
                         </h3>
                         <Badge variant="outline">
-                          {matchFriendlyLabel(selectedFinishedMatch.match_type)}
+                          {matchFriendlyLabel(selectedFinishedMatch.match_type, t)}
                         </Badge>
-                        <Badge variant="success">played</Badge>
+                        <Badge variant="success">{t.played}</Badge>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {formatDate(selectedFinishedMatch.match_date)} ·{" "}
                         {formatTime12(selectedFinishedMatch.match_time)} ·{" "}
-                        {selectedFinishedMatch.location || "To be confirmed"}
+                        {selectedFinishedMatch.location || t.toBeConfirmed}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/20 px-4 py-2 text-center">
-                      <p className="text-xs text-muted-foreground">Score</p>
+                      <p className="text-xs text-muted-foreground">{t.score}</p>
                       <p className="text-2xl font-semibold">
                         {selectedFinishedMatch.our_score ?? "-"} :{" "}
                         {selectedFinishedMatch.opponent_score ?? "-"}
@@ -711,77 +970,77 @@ export default function AdminMatchesPage() {
 
                   <div className="grid gap-3 md:grid-cols-4">
                     <div className="rounded-md bg-muted/10 p-3">
-                      <p className="text-xs text-muted-foreground">Groups</p>
+                      <p className="text-xs text-muted-foreground">{t.groups}</p>
                       <p className="mt-1 text-sm font-medium">
                         {selectedFinishedMatch.groups
                           ?.map((group) => group.name)
                           .join(", ") ||
                           selectedFinishedMatch.team_name ||
-                          "No group"}
+                          t.noGroup}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/10 p-3">
-                      <p className="text-xs text-muted-foreground">Venue</p>
+                      <p className="text-xs text-muted-foreground">{t.venue}</p>
                       <p className="mt-1 text-sm font-medium">
-                        {selectedFinishedMatch.venue_type}
+                        {venueLabel(selectedFinishedMatch.venue_type)}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/10 p-3">
-                      <p className="text-xs text-muted-foreground">Referee</p>
+                      <p className="text-xs text-muted-foreground">{t.referee}</p>
                       <p className="mt-1 text-sm font-medium">
-                        {selectedFinishedMatch.referee_name || "Not recorded"}
+                        {selectedFinishedMatch.referee_name || t.notRecorded}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/10 p-3">
                       <p className="text-xs text-muted-foreground">
-                        Finished at
+                        {t.finishedAt}
                       </p>
                       <p className="mt-1 text-sm font-medium">
                         {selectedFinishedMatch.finished_at
                           ? `${formatDate(selectedFinishedMatch.finished_at)} · ${formatTime12(selectedFinishedMatch.finished_at)}`
-                          : "Auto finished"}
+                          : t.autoFinished}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-md border border-border/40 p-4">
-                      <p className="font-medium">Plan & Tactics</p>
+                      <p className="font-medium">{t.planTactics}</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <div>
                           <p className="text-xs text-muted-foreground">
-                            Formation
+                            {t.formation}
                           </p>
                           <p className="font-medium">
                             {selectedFinishedMatch.tactics?.formation ||
-                              "Not saved"}
+                              t.notSaved}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Coach</p>
+                          <p className="text-xs text-muted-foreground">{t.coach}</p>
                           <p className="font-medium">
                             {selectedFinishedMatch.tactics?.coach_name ||
-                              "Not recorded"}
+                              t.notRecorded}
                           </p>
                         </div>
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
                         {selectedFinishedMatch.tactics?.tactical_notes ||
                           selectedFinishedMatch.match_notes ||
-                          "No tactical notes recorded."}
+                          t.noTacticalNotes}
                       </p>
                     </div>
 
                     <div className="rounded-md border border-border/40 p-4">
-                      <p className="font-medium">Match Notes</p>
+                      <p className="font-medium">{t.matchNotes}</p>
                       <div className="mt-3 space-y-3 text-sm text-muted-foreground">
                         <p className="whitespace-pre-wrap">
                           {selectedFinishedMatch.organizer_notes ||
-                            "No organizer notes."}
+                            t.noOrganizerNotes}
                         </p>
                         <p className="whitespace-pre-wrap">
                           {selectedFinishedMatch.match_notes ||
-                            "No post-match notes."}
+                            t.noPostMatchNotes}
                         </p>
                       </div>
                     </div>
@@ -789,7 +1048,7 @@ export default function AdminMatchesPage() {
 
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-md border border-border/40 p-4">
-                      <p className="font-medium">Squad & Instructions</p>
+                      <p className="font-medium">{t.squadInstructions}</p>
                       <div className="mt-3 space-y-2">
                         {selectedFinishedMatch.squad?.map((player) => (
                           <div
@@ -801,7 +1060,7 @@ export default function AdminMatchesPage() {
                                 {player.player_name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {player.player_instruction || "No instruction"}
+                                {player.player_instruction || t.noInstruction}
                               </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -818,14 +1077,14 @@ export default function AdminMatchesPage() {
                         ))}
                         {!selectedFinishedMatch.squad?.length && (
                           <p className="text-sm text-muted-foreground">
-                            No squad saved.
+                            {t.noSquad}
                           </p>
                         )}
                       </div>
                     </div>
 
                     <div className="rounded-md border border-border/40 p-4">
-                      <p className="font-medium">Attendance</p>
+                      <p className="font-medium">{t.attendance}</p>
                       <div className="mt-3 space-y-2">
                         {selectedFinishedMatch.attendance?.map((record) => (
                           <div
@@ -847,7 +1106,7 @@ export default function AdminMatchesPage() {
                         ))}
                         {!selectedFinishedMatch.attendance?.length && (
                           <p className="text-sm text-muted-foreground">
-                            No attendance recorded.
+                            {t.noAttendance}
                           </p>
                         )}
                       </div>
@@ -858,13 +1117,13 @@ export default function AdminMatchesPage() {
                     <table className="w-full min-w-[760px] text-sm">
                       <thead>
                         <tr className="border-b border-border/40 text-left text-xs uppercase text-muted-foreground">
-                          <th className="px-3 py-3 font-medium">Player</th>
-                          <th className="px-3 py-3 font-medium">Min</th>
-                          <th className="px-3 py-3 font-medium">G</th>
-                          <th className="px-3 py-3 font-medium">A</th>
-                          <th className="px-3 py-3 font-medium">Cards</th>
-                          <th className="px-3 py-3 font-medium">Rating</th>
-                          <th className="px-3 py-3 font-medium">Notes</th>
+                          <th className="px-3 py-3 font-medium">{t.player}</th>
+                          <th className="px-3 py-3 font-medium">{t.minutes}</th>
+                          <th className="px-3 py-3 font-medium">{t.goalsShort}</th>
+                          <th className="px-3 py-3 font-medium">{t.assistsShort}</th>
+                          <th className="px-3 py-3 font-medium">{t.cards}</th>
+                          <th className="px-3 py-3 font-medium">{t.rating}</th>
+                          <th className="px-3 py-3 font-medium">{t.notes}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -882,7 +1141,7 @@ export default function AdminMatchesPage() {
                             <td className="px-3 py-3">{stat.goals}</td>
                             <td className="px-3 py-3">{stat.assists}</td>
                             <td className="px-3 py-3">
-                              {stat.yellow_cards}Y / {stat.red_cards}R
+                              {stat.yellow_cards} {t.yellowShort} / {stat.red_cards} {t.redShort}
                             </td>
                             <td className="px-3 py-3">
                               {stat.performance_rating ?? "-"}
@@ -898,7 +1157,7 @@ export default function AdminMatchesPage() {
                               colSpan={7}
                               className="px-3 py-6 text-center text-muted-foreground"
                             >
-                              No player stats recorded.
+                              {t.noPlayerStats}
                             </td>
                           </tr>
                         )}
@@ -907,7 +1166,7 @@ export default function AdminMatchesPage() {
                   </div>
 
                   <div className="rounded-md border border-border/40 p-4">
-                    <p className="font-medium">Incidents</p>
+                    <p className="font-medium">{t.incidents}</p>
                     <div className="mt-3 space-y-2">
                       {selectedFinishedMatch.incidents?.map((incident) => (
                         <div
@@ -926,13 +1185,13 @@ export default function AdminMatchesPage() {
                             </p>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {incident.notes || "No notes"}
+                            {incident.notes || t.noNotes}
                           </p>
                         </div>
                       ))}
                       {!selectedFinishedMatch.incidents?.length && (
                         <p className="text-sm text-muted-foreground">
-                          No incidents recorded.
+                          {t.noIncidents}
                         </p>
                       )}
                     </div>
@@ -944,13 +1203,12 @@ export default function AdminMatchesPage() {
                 Boolean(finishedMatches.length) && (
                   <p className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
                     <Eye className="h-4 w-4" />
-                    Select a finished match to view its saved details.
+                    {t.selectFinishedPrompt}
                   </p>
                 )}
               {!finishedMatches.length && !isLoading && (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Finished matches will appear here after the match ends or
-                  three hours pass from kick-off.
+                  {t.finishedInfo}
                 </p>
               )}
             </div>
@@ -960,20 +1218,20 @@ export default function AdminMatchesPage() {
 
       <Card className="border-border/50 bg-card">
         <CardHeader>
-          <CardTitle className="text-base">Matches Calendar Table</CardTitle>
+          <CardTitle className="text-base">{t.calendarTable}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b border-border/50 text-left text-xs uppercase text-muted-foreground">
-                  <th className="px-3 py-3 font-medium">Date</th>
-                  <th className="px-3 py-3 font-medium">Time</th>
-                  <th className="px-3 py-3 font-medium">Match</th>
-                  <th className="px-3 py-3 font-medium">Groups</th>
-                  <th className="px-3 py-3 font-medium">Location</th>
-                  <th className="px-3 py-3 font-medium">Status</th>
-                  <th className="px-3 py-3 font-medium">Actions</th>
+                  <th className="px-3 py-3 font-medium">{t.date}</th>
+                  <th className="px-3 py-3 font-medium">{t.time}</th>
+                  <th className="px-3 py-3 font-medium">{t.match}</th>
+                  <th className="px-3 py-3 font-medium">{t.groups}</th>
+                  <th className="px-3 py-3 font-medium">{t.location}</th>
+                  <th className="px-3 py-3 font-medium">{t.status}</th>
+                  <th className="px-3 py-3 font-medium">{t.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -993,16 +1251,16 @@ export default function AdminMatchesPage() {
                         {match.opponent_name}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {matchFriendlyLabel(match.match_type)}
+                        {matchFriendlyLabel(match.match_type, t)}
                       </div>
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">
                       {match.groups?.map((g) => g.name).join(", ") ||
                         match.team_name ||
-                        "No group"}
+                        t.noGroup}
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">
-                      {match.location || "No location"}
+                      {match.location || t.noLocation}
                     </td>
                     <td className="px-3 py-3">
                       <Badge
@@ -1014,7 +1272,7 @@ export default function AdminMatchesPage() {
                               : "secondary"
                         }
                       >
-                        {isFinishedMatch(match) ? "finished" : match.status}
+                        {isFinishedMatch(match) ? t.finished : statusLabel(match.status)}
                       </Badge>
                     </td>
                     <td className="px-3 py-3">
@@ -1030,7 +1288,7 @@ export default function AdminMatchesPage() {
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        Delete forever
+                        {t.deleteForever}
                       </Button>
                     </td>
                   </tr>
@@ -1041,7 +1299,7 @@ export default function AdminMatchesPage() {
                       colSpan={7}
                       className="px-3 py-8 text-center text-muted-foreground"
                     >
-                      No matches scheduled.
+                      {t.noMatches}
                     </td>
                   </tr>
                 )}
@@ -1051,7 +1309,7 @@ export default function AdminMatchesPage() {
                       colSpan={7}
                       className="px-3 py-8 text-center text-muted-foreground"
                     >
-                      Loading matches...
+                      {t.loadingMatches}
                     </td>
                   </tr>
                 )}
@@ -1064,12 +1322,12 @@ export default function AdminMatchesPage() {
       <div className="space-y-6">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">All Matches</CardTitle>
+            <CardTitle className="text-base">{t.allMatches}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {isLoading && (
               <p className="text-sm text-muted-foreground">
-                Loading matches...
+                {t.loadingMatches}
               </p>
             )}
             {matches.map((match) => (
@@ -1085,7 +1343,7 @@ export default function AdminMatchesPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold">{match.opponent_name}</h3>
                       <Badge variant="outline">
-                        {matchFriendlyLabel(match.match_type)}
+                        {matchFriendlyLabel(match.match_type, t)}
                       </Badge>
                       <Badge
                         variant={
@@ -1096,7 +1354,7 @@ export default function AdminMatchesPage() {
                               : "secondary"
                         }
                       >
-                        {isFinishedMatch(match) ? "finished" : match.status}
+                        {isFinishedMatch(match) ? t.finished : statusLabel(match.status)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -1105,7 +1363,7 @@ export default function AdminMatchesPage() {
                     </p>
                     {match.status === "postponed" && (
                       <p className="mt-1 text-xs font-medium text-amber-200">
-                        Postponed to {formatDate(match.match_date)} at{" "}
+                        {t.postponedTo} {formatDate(match.match_date)} {t.at}{" "}
                         {formatTime12(match.match_time)}
                       </p>
                     )}
@@ -1118,11 +1376,11 @@ export default function AdminMatchesPage() {
                 <div className="flex flex-wrap gap-2">
                   {isFinishedMatch(match) ? (
                     <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-                      Finished match. Postpone and cancel are locked.
+                      {t.finishedLocked}
                     </div>
                   ) : match.status === "cancelled" ? (
                     <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-                      Cancelled match. Only permanent deletion is available.
+                      {t.cancelledLocked}
                     </div>
                   ) : (
                     <>
@@ -1131,7 +1389,7 @@ export default function AdminMatchesPage() {
                         variant="outline"
                         onClick={() => openPostponeDialog(match)}
                       >
-                        Postpone to new date
+                        {t.postponeToNewDate}
                       </Button>
                       <Button
                         size="sm"
@@ -1140,7 +1398,7 @@ export default function AdminMatchesPage() {
                           updateStatus({ id: match.id, status: "finished" })
                         }
                       >
-                        Finish now
+                        {t.finishNow}
                       </Button>
                       <Button
                         size="sm"
@@ -1149,7 +1407,7 @@ export default function AdminMatchesPage() {
                           updateStatus({ id: match.id, status: "cancelled" })
                         }
                       >
-                        Cancel match
+                        {t.cancelMatch}
                       </Button>
                     </>
                   )}
@@ -1164,14 +1422,14 @@ export default function AdminMatchesPage() {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete forever
+                    {t.deleteForever}
                   </Button>
                 </div>
               </div>
             ))}
             {!matches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No matches scheduled.
+                {t.noMatches}
               </p>
             )}
           </CardContent>

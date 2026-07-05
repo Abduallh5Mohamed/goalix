@@ -22,29 +22,142 @@ import {
   useGetDashboardQuery,
 } from "@/lib/store/api/dashboardApi";
 import { useCurrentUser } from "@/lib/auth/auth-context";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 type IconType = React.ComponentType<{ className?: string }>;
+type DashboardLanguage = "en" | "ar";
 
-const formatNumber = (value: number | string | null | undefined) =>
-  new Intl.NumberFormat("en-US").format(Number(value || 0));
+const adminDashboardCopy = {
+  en: {
+    loading: "Loading academy dashboard from database...",
+    errorTitle: "Dashboard data could not load",
+    errorDescription: "Check the backend session and the admin dashboard API.",
+    retry: "Retry",
+    eyebrow: "Admin dashboard",
+    welcome: (name: string) => `Welcome back, ${name}`,
+    adminFallback: "Admin",
+    description: "Live academy overview from your database.",
+    refresh: "Refresh",
+    activePlayers: "Active Players",
+    activePlayersHelper: "Current player profiles",
+    coaches: "Coaches",
+    coachesHelper: "Active coach profiles",
+    subscriptions: "Subscriptions",
+    subscriptionsHelper: "Active payment plans",
+    overdue: "Overdue",
+    overdueHelper: "Invoices needing action",
+    monthlyRevenue: "Monthly Revenue",
+    monthlyRevenueHelper: "Paid invoices this month",
+    attendance: "Attendance",
+    attendanceHelper: "Last 30 days",
+    attendanceTrend: "Attendance Trend",
+    revenueTrend: "Revenue Trend",
+    liveData: "Live data",
+    latest: "Latest",
+    noTrend: "No trend data yet",
+    thisWeekMatches: "This Week Matches",
+    thisWeekDescription: "Matches scheduled across the current week.",
+    currentWeek: "Current week",
+    playedMatch: "Played match",
+    noPlayedMatch: "No played match",
+    matchFallback: "Match",
+    vs: "vs",
+    topPlayers: "Top Players",
+    score: "Score",
+    noRanking: "No ranking snapshots yet.",
+    recentAlerts: "Recent Alerts",
+    read: "Read",
+    new: "New",
+    noAlerts: "No recent alerts.",
+  },
+  ar: {
+    loading: "جاري تحميل لوحة الأكاديمية من قاعدة البيانات...",
+    errorTitle: "تعذر تحميل بيانات لوحة التحكم",
+    errorDescription: "تحقق من جلسة الباك إند وواجهة لوحة تحكم الأدمن.",
+    retry: "إعادة المحاولة",
+    eyebrow: "لوحة الأدمن",
+    welcome: (name: string) => `أهلا بعودتك، ${name}`,
+    adminFallback: "الأدمن",
+    description: "نظرة مباشرة على الأكاديمية من قاعدة البيانات.",
+    refresh: "تحديث",
+    activePlayers: "اللاعبون النشطون",
+    activePlayersHelper: "ملفات اللاعبين الحالية",
+    coaches: "المدربون",
+    coachesHelper: "ملفات المدربين النشطة",
+    subscriptions: "الاشتراكات",
+    subscriptionsHelper: "خطط الدفع النشطة",
+    overdue: "المتأخرات",
+    overdueHelper: "فواتير تحتاج إجراء",
+    monthlyRevenue: "إيراد الشهر",
+    monthlyRevenueHelper: "الفواتير المدفوعة هذا الشهر",
+    attendance: "الحضور",
+    attendanceHelper: "آخر 30 يوم",
+    attendanceTrend: "اتجاه الحضور",
+    revenueTrend: "اتجاه الإيرادات",
+    liveData: "بيانات مباشرة",
+    latest: "الأحدث",
+    noTrend: "لا توجد بيانات اتجاه بعد",
+    thisWeekMatches: "مباريات هذا الأسبوع",
+    thisWeekDescription: "المباريات المجدولة خلال الأسبوع الحالي.",
+    currentWeek: "الأسبوع الحالي",
+    playedMatch: "مباراة ملعوبة",
+    noPlayedMatch: "لا توجد مباراة ملعوبة",
+    matchFallback: "مباراة",
+    vs: "ضد",
+    topPlayers: "أفضل اللاعبين",
+    score: "النقاط",
+    noRanking: "لا توجد لقطات ترتيب بعد.",
+    recentAlerts: "آخر التنبيهات",
+    read: "مقروء",
+    new: "جديد",
+    noAlerts: "لا توجد تنبيهات حديثة.",
+  },
+} as const;
 
-const formatCurrency = (value: number | string | null | undefined) =>
-  new Intl.NumberFormat("en-US", {
+type AdminDashboardCopy = (typeof adminDashboardCopy)[DashboardLanguage];
+
+const localeFor = (language: DashboardLanguage) =>
+  language === "ar" ? "ar-EG" : "en-US";
+
+const formatNumber = (
+  value: number | string | null | undefined,
+  language: DashboardLanguage,
+) => new Intl.NumberFormat(localeFor(language)).format(Number(value || 0));
+
+const formatCurrency = (
+  value: number | string | null | undefined,
+  language: DashboardLanguage,
+) =>
+  new Intl.NumberFormat(localeFor(language), {
     style: "currency",
     currency: "EGP",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("en-US", {
+const formatDateTime = (value: string, language: DashboardLanguage) =>
+  new Intl.DateTimeFormat(localeFor(language), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
 
-const formatVenue = (value: string | null | undefined) =>
-  value ? value.replace(/_/g, " ") : "Match";
+const formatVenue = (
+  value: string | null | undefined,
+  language: DashboardLanguage,
+  copy: AdminDashboardCopy,
+) => {
+  if (!value) return copy.matchFallback;
+  if (language === "ar") {
+    const labels: Record<string, string> = {
+      home: "على أرضنا",
+      away: "خارج الأرض",
+      neutral: "محايد",
+    };
+    return labels[value.toLowerCase()] ?? value.replace(/_/g, " ");
+  }
+  return value.replace(/_/g, " ");
+};
 
 function Panel({
   children,
@@ -103,12 +216,16 @@ function KpiCard({
 function TrendChart({
   title,
   points,
+  language,
+  copy,
   valueSuffix = "",
   valuePrefix = "",
   color = "#b6ff00",
 }: {
   title: string;
   points: ChartPoint[];
+  language: DashboardLanguage;
+  copy: AdminDashboardCopy;
   valueSuffix?: string;
   valuePrefix?: string;
   color?: string;
@@ -116,17 +233,20 @@ function TrendChart({
   const values = points.map((point) => Number(point.value || 0));
   const max = Math.max(...values, 1);
   const chartPoints = points.map((point, index) => {
-    const x = points.length <= 1 ? 260 : 42 + (index * 430) / (points.length - 1);
+    const x =
+      points.length <= 1 ? 260 : 42 + (index * 430) / (points.length - 1);
     const y = 188 - (Number(point.value || 0) / max) * 142;
     return { ...point, x, y };
   });
-  const polyline = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const polyline = chartPoints
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
 
   return (
     <Panel className="p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <Badge variant="outline">Live data</Badge>
+        <Badge variant="outline">{copy.liveData}</Badge>
       </div>
       <div className="h-[260px]">
         <svg viewBox="0 0 520 235" className="h-full w-full">
@@ -172,16 +292,28 @@ function TrendChart({
                 rx="9"
                 fill="rgba(255,255,255,0.08)"
               />
-              <text x="405" y="38" fill="#edf7ff" fontSize="13" fontWeight="800">
-                Latest: {valuePrefix}
-                {formatNumber(values[values.length - 1] || 0)}
+              <text
+                x="405"
+                y="38"
+                fill="#edf7ff"
+                fontSize="13"
+                fontWeight="800"
+              >
+                {copy.latest}: {valuePrefix}
+                {formatNumber(values[values.length - 1] || 0, language)}
                 {valueSuffix}
               </text>
             </>
           )}
           {chartPoints.length === 0 && (
-            <text x="260" y="118" fill="#8fa0b7" fontSize="14" textAnchor="middle">
-              No trend data yet
+            <text
+              x="260"
+              y="118"
+              fill="#8fa0b7"
+              fontSize="14"
+              textAnchor="middle"
+            >
+              {copy.noTrend}
             </text>
           )}
         </svg>
@@ -190,17 +322,27 @@ function TrendChart({
   );
 }
 
-function WeeklyMatches({ days }: { days: WeeklyMatchDay[] }) {
+function WeeklyMatches({
+  days,
+  language,
+  copy,
+}: {
+  days: WeeklyMatchDay[];
+  language: DashboardLanguage;
+  copy: AdminDashboardCopy;
+}) {
   return (
     <Panel className="p-5">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">This Week Matches</h2>
+          <h2 className="text-xl font-semibold text-white">
+            {copy.thisWeekMatches}
+          </h2>
           <p className="mt-1 text-sm text-slate-400">
-            Matches scheduled across the current week.
+            {copy.thisWeekDescription}
           </p>
         </div>
-        <Badge variant="outline">Current week</Badge>
+        <Badge variant="outline">{copy.currentWeek}</Badge>
       </div>
 
       <div className="grid gap-3 md:grid-cols-7">
@@ -225,7 +367,9 @@ function WeeklyMatches({ days }: { days: WeeklyMatchDay[] }) {
                       ? "border-lime-300 bg-lime-300 text-[#06111f]"
                       : "border-transparent bg-transparent"
                   }`}
-                  aria-label={hasPlayedMatch ? "Played match" : "No played match"}
+                  aria-label={
+                    hasPlayedMatch ? copy.playedMatch : copy.noPlayedMatch
+                  }
                 >
                   {hasPlayedMatch && <Check className="h-4 w-4" />}
                 </span>
@@ -238,10 +382,11 @@ function WeeklyMatches({ days }: { days: WeeklyMatchDay[] }) {
                     className="rounded-xl border border-white/10 bg-[#06111f]/60 p-2"
                   >
                     <p className="truncate text-sm font-semibold text-white">
-                      vs {match.opponentName}
+                      {copy.vs} {match.opponentName}
                     </p>
                     <p className="mt-1 text-xs capitalize text-slate-400">
-                      {match.matchTime || "--:--"} | {formatVenue(match.venueType)}
+                      {match.matchTime || "--:--"} |{" "}
+                      {formatVenue(match.venueType, language, copy)}
                     </p>
                     {match.played &&
                       match.ourScore !== null &&
@@ -253,9 +398,7 @@ function WeeklyMatches({ days }: { days: WeeklyMatchDay[] }) {
                   </div>
                 ))}
 
-                {day.matches.length === 0 && (
-                  <div className="h-9" />
-                )}
+                {day.matches.length === 0 && <div className="h-9" />}
               </div>
             </div>
           );
@@ -266,8 +409,11 @@ function WeeklyMatches({ days }: { days: WeeklyMatchDay[] }) {
 }
 
 export default function AdminDashboardPage() {
+  const language = useDashboardLanguage();
+  const t = adminDashboardCopy[language];
   const { user } = useCurrentUser();
-  const { data, isLoading, isFetching, isError, refetch } = useGetDashboardQuery();
+  const { data, isLoading, isFetching, isError, refetch } =
+    useGetDashboardQuery();
 
   const kpis = data?.kpis;
   const attendanceTrend = data?.attendanceTrend ?? [];
@@ -281,7 +427,7 @@ export default function AdminDashboardPage() {
       <div className="grid min-h-[420px] place-items-center">
         <div className="flex items-center gap-3 text-slate-300">
           <Loader2 className="h-5 w-5 animate-spin text-lime-300" />
-          Loading academy dashboard from database...
+          {t.loading}
         </div>
       </div>
     );
@@ -295,16 +441,16 @@ export default function AdminDashboardPage() {
             <AlertCircle className="mt-1 h-5 w-5 text-red-300" />
             <div>
               <h1 className="text-xl font-semibold text-white">
-                Dashboard data could not load
+                {t.errorTitle}
               </h1>
               <p className="mt-1 text-sm text-slate-400">
-                Check the backend session and the admin dashboard API.
+                {t.errorDescription}
               </p>
             </div>
           </div>
           <Button type="button" variant="outline" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4" />
-            Retry
+            {t.retry}
           </Button>
         </div>
       </Panel>
@@ -316,84 +462,91 @@ export default function AdminDashboardPage() {
       <section className="grid gap-5 xl:grid-cols-[1fr_auto]">
         <div>
           <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-lime-300">
-            Admin dashboard
+            {t.eyebrow}
           </p>
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal text-white md:text-6xl">
-            Welcome back, {user?.fullName || "Admin"}
+            {t.welcome(user?.fullName || t.adminFallback)}
           </h1>
-          <p className="mt-2 text-lg text-slate-300">
-            Live academy overview from your database.
-          </p>
+          <p className="mt-2 text-lg text-slate-300">{t.description}</p>
         </div>
-        <RefreshButton onRefresh={refetch} isRefreshing={isFetching} />
+        <Button type="button" variant="outline" onClick={() => refetch()}>
+          <RefreshCw
+            className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+          />
+          {t.refresh}
+        </Button>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <KpiCard
           icon={Users}
-          label="Active Players"
-          value={formatNumber(kpis.totalPlayers)}
-          helper="Current player profiles"
+          label={t.activePlayers}
+          value={formatNumber(kpis.totalPlayers, language)}
+          helper={t.activePlayersHelper}
           tone="lime"
         />
         <KpiCard
           icon={UserCheck}
-          label="Coaches"
-          value={formatNumber(kpis.totalCoaches)}
-          helper="Active coach profiles"
+          label={t.coaches}
+          value={formatNumber(kpis.totalCoaches, language)}
+          helper={t.coachesHelper}
           tone="cyan"
         />
         <KpiCard
           icon={CreditCard}
-          label="Subscriptions"
-          value={formatNumber(kpis.activeSubscriptions)}
-          helper="Active payment plans"
+          label={t.subscriptions}
+          value={formatNumber(kpis.activeSubscriptions, language)}
+          helper={t.subscriptionsHelper}
           tone="lime"
         />
         <KpiCard
           icon={AlertCircle}
-          label="Overdue"
-          value={formatNumber(kpis.overduePayments)}
-          helper="Invoices needing action"
+          label={t.overdue}
+          value={formatNumber(kpis.overduePayments, language)}
+          helper={t.overdueHelper}
           tone={kpis.overduePayments > 0 ? "red" : "lime"}
         />
         <KpiCard
           icon={DollarSign}
-          label="Monthly Revenue"
-          value={formatCurrency(kpis.monthlyRevenue)}
-          helper="Paid invoices this month"
+          label={t.monthlyRevenue}
+          value={formatCurrency(kpis.monthlyRevenue, language)}
+          helper={t.monthlyRevenueHelper}
           tone="amber"
         />
         <KpiCard
           icon={CalendarCheck2}
-          label="Attendance"
-          value={`${formatNumber(kpis.avgAttendanceRate)}%`}
-          helper="Last 30 days"
+          label={t.attendance}
+          value={`${formatNumber(kpis.avgAttendanceRate, language)}%`}
+          helper={t.attendanceHelper}
           tone="cyan"
         />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <TrendChart
-          title="Attendance Trend"
+          title={t.attendanceTrend}
           points={attendanceTrend}
+          language={language}
+          copy={t}
           valueSuffix="%"
           color="#b6ff00"
         />
         <TrendChart
-          title="Revenue Trend"
+          title={t.revenueTrend}
           points={revenueTrend}
+          language={language}
+          copy={t}
           valuePrefix="EGP "
           color="#00d8ff"
         />
       </div>
 
-      <WeeklyMatches days={weeklyMatches} />
+      <WeeklyMatches days={weeklyMatches} language={language} copy={t} />
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Panel className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Top Players</h2>
+            <h2 className="text-xl font-semibold text-white">{t.topPlayers}</h2>
             <Medal className="h-5 w-5 text-lime-300" />
           </div>
           <div className="space-y-3">
@@ -413,15 +566,15 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-display text-2xl font-bold text-white">
-                    {formatNumber(player.totalScore)}
+                    {formatNumber(player.totalScore, language)}
                   </p>
-                  <p className="text-xs text-slate-400">Score</p>
+                  <p className="text-xs text-slate-400">{t.score}</p>
                 </div>
               </div>
             ))}
             {topPlayers.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[#2a4460] p-6 text-center text-sm text-slate-400">
-                No ranking snapshots yet.
+                {t.noRanking}
               </div>
             )}
           </div>
@@ -429,7 +582,9 @@ export default function AdminDashboardPage() {
 
         <Panel className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Recent Alerts</h2>
+            <h2 className="text-xl font-semibold text-white">
+              {t.recentAlerts}
+            </h2>
             <Bell className="h-5 w-5 text-cyan-300" />
           </div>
           <div className="space-y-3">
@@ -441,7 +596,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-white">{alert.title}</p>
                   <Badge variant={alert.isRead ? "secondary" : "info"}>
-                    {alert.isRead ? "Read" : "New"}
+                    {alert.isRead ? t.read : t.new}
                   </Badge>
                 </div>
                 <p className="mt-2 line-clamp-2 text-sm text-slate-400">
@@ -449,13 +604,13 @@ export default function AdminDashboardPage() {
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                   <span>{alert.type}</span>
-                  <span>{formatDateTime(alert.createdAt)}</span>
+                  <span>{formatDateTime(alert.createdAt, language)}</span>
                 </div>
               </div>
             ))}
             {recentAlerts.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[#2a4460] p-6 text-center text-sm text-slate-400">
-                No recent alerts.
+                {t.noAlerts}
               </div>
             )}
           </div>

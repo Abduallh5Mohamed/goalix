@@ -32,6 +32,7 @@ import type {
   PlayerAttendanceRecord,
   PlayerEvaluationRecord,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { cn, formatDate, formatTime12 } from "@/lib/utils";
 
 const numberValue = (value: unknown) => {
@@ -122,6 +123,32 @@ const evaluationFields: Array<{
   { key: "agility_rating", label: "Agility" },
 ];
 
+const playerTrainingCopy = {
+  en: {
+    title: "My Training",
+    description:
+      "Your upcoming sessions, training plans, attendance, and coach evaluations.",
+    home: "Home",
+    training: "Training",
+    loading: "Loading your training data...",
+    trainingEvaluation: "Training evaluation",
+    coachEvaluation: "Coach Evaluation",
+    overall: "Overall",
+    noEvaluation: "No player-visible training evaluation has been published yet.",
+  },
+  ar: {
+    title: "تدريبي",
+    description: "حصصك القادمة وخطط التدريب والحضور وتقييمات المدرب.",
+    home: "الرئيسية",
+    training: "التدريب",
+    loading: "جاري تحميل بيانات التدريب...",
+    trainingEvaluation: "تقييم التدريب",
+    coachEvaluation: "تقييم المدرب",
+    overall: "الإجمالي",
+    noEvaluation: "لا يوجد تقييم تدريب منشور للاعب حتى الآن.",
+  },
+} as const;
+
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
@@ -152,7 +179,13 @@ function DetailBlock({
   );
 }
 
-function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) {
+function EvaluationCard({
+  evaluation,
+  copy,
+}: {
+  evaluation: PlayerEvaluationRecord;
+  copy: (typeof playerTrainingCopy)[keyof typeof playerTrainingCopy];
+}) {
   const visibleRatings = evaluationFields.filter(
     (field) => evaluation[field.key] !== null && evaluation[field.key] !== undefined,
   );
@@ -163,9 +196,9 @@ function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) 
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-white">
-                {evaluation.title || "Training evaluation"}
+                {evaluation.title || copy.trainingEvaluation}
               </h3>
-              <Badge variant="info">Coach Evaluation</Badge>
+              <Badge variant="info">{copy.coachEvaluation}</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-400">
               {safeDate(evaluation.start_datetime)}
@@ -175,7 +208,7 @@ function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) 
             <p className="text-xl font-semibold">
               {formatRating(evaluation.overall_rating)}
             </p>
-            <p className="text-xs text-cyan-200/80">Overall</p>
+            <p className="text-xs text-cyan-200/80">{copy.overall}</p>
           </div>
         </div>
 
@@ -244,6 +277,8 @@ function EvaluationCard({ evaluation }: { evaluation: PlayerEvaluationRecord }) 
 }
 
 export default function PlayerTrainingPage() {
+  const language = useDashboardLanguage();
+  const copy = playerTrainingCopy[language];
   const nowMs = useSyncExternalStore(
     subscribePlayerTrainingClock,
     getPlayerTrainingClockSnapshot,
@@ -283,11 +318,11 @@ export default function PlayerTrainingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Training"
-        description="Your upcoming sessions, training plans, attendance, and coach evaluations."
+        title={copy.title}
+        description={copy.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Training" },
+          { label: copy.home, href: "/player/home" },
+          { label: copy.training },
         ]}
       />
 
@@ -295,7 +330,7 @@ export default function PlayerTrainingPage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading your training data...
+            {copy.loading}
           </CardContent>
         </Card>
       ) : (
@@ -454,9 +489,9 @@ export default function PlayerTrainingPage() {
               </CardHeader>
               <CardContent>
                 {latestEvaluation ? (
-                  <EvaluationCard evaluation={latestEvaluation} />
+                  <EvaluationCard evaluation={latestEvaluation} copy={copy} />
                 ) : (
-                  <EmptyState text="No player-visible training evaluation has been published yet." />
+                  <EmptyState text={copy.noEvaluation} />
                 )}
               </CardContent>
             </Card>

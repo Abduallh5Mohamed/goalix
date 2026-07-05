@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DashboardBrand } from "@/components/layout/DashboardBrand";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { toggleSidebarCollapse, setMobileSidebarOpen } from "@/lib/store/slices/uiSlice";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -99,6 +100,7 @@ function NavItem({ label, href, icon, children, collapsed, onOpenChildren }: Nav
 }
 
 export function AdminSidebar() {
+  const language = useDashboardLanguage();
   const dispatch = useAppDispatch();
   const { sidebarCollapsed, mobileSidebarOpen } = useAppSelector((s) => s.ui);
   const navItems = NAV_ITEMS.admin;
@@ -214,7 +216,9 @@ export function AdminSidebar() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-lime-300/80">
                 Goalix Academy
               </p>
-              <p className="mt-1 text-[11px] text-slate-500">Sports operations v1.0</p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {language === "ar" ? "عمليات رياضية v1.0" : "Sports operations v1.0"}
+              </p>
             </div>
           )}
         </div>

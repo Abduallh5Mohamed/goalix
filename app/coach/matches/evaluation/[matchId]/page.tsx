@@ -26,7 +26,9 @@ import type {
   MatchEvaluationCandidate,
   MatchPlayerStats,
 } from "@/lib/store/api/calendarApi";
-import { formatDate } from "@/lib/utils";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
+
+type DashboardLanguage = "en" | "ar";
 
 type RatingOption = {
   label: "Poor" | "Good" | "Very Good" | "Excellent";
@@ -131,6 +133,210 @@ const textFields = [
   ["coachNotes", "Coach Notes"],
 ] as const;
 
+const evaluationCopy = {
+  en: {
+    title: "Match Evaluations",
+    description: "Post-match player ratings and performance details.",
+    breadcrumbs: {
+      home: "Home",
+      matches: "Matches",
+      evaluation: "Evaluation",
+    },
+    loading: "Loading match...",
+    saveError: "Could not save match evaluations.",
+    publishError: "Could not publish match evaluations.",
+    requestError: "Could not send evaluation edit request.",
+    publishedNotice: "Match evaluations are published and visible to players.",
+    draftNotice:
+      "Match evaluations are saved as a draft. Publish when you want players to see them.",
+    requestPendingNotice: "Edit request sent. Waiting for admin approval.",
+    editWindowOpen: (value: string) => `Evaluations are open until ${value}.`,
+    noAttendanceNotice:
+      "No match attendance was saved, so the evaluation is showing the available match squad or target players.",
+    finishMatchNotice: "Finish the match before saving final evaluations.",
+    emptyPlayers:
+      "No squad, target players, or attended players are available for this match evaluation.",
+    overallScore: "Overall /10",
+    selectRating: "Select rating",
+    noPosition: "No position",
+    minutes: "min",
+    goals: "Goals",
+    assists: "Assists",
+    requestPending: "Request Pending",
+    requestEditAccess: "Request Edit Access",
+    save: "Save",
+    publish: "Publish",
+    ratingLabels: {
+      Poor: "Poor",
+      Good: "Good",
+      "Very Good": "Very Good",
+      Excellent: "Excellent",
+    },
+    matchStatus: {
+      finished: "finished",
+      completed: "completed",
+      scheduled: "scheduled",
+      cancelled: "cancelled",
+      active: "active",
+      live: "live",
+    },
+    evaluationStatus: {
+      locked: "locked",
+      reopened: "reopened",
+      editable: "editable",
+    },
+    standardFields: {
+      passAccuracyPercentage: "Pass Accuracy %",
+      keyPasses: "Key Passes",
+      shotsOnTarget: "Shots on Target",
+      defensiveTackles: "Defensive Tackles",
+      interceptions: "Interceptions",
+      duelsWon: "Duels",
+      possessionLosses: "Possession Losses",
+      technicalRating: "Technical /10",
+      tacticalRating: "Tactical /10",
+      physicalRating: "Physical /10",
+      fatigueRating: "Fatigue /10",
+      mentalityRating: "Mentality /10",
+      decisionMakingRating: "Decision Making /10",
+      workRateRating: "Work Rate /10",
+      positioningRating: "Positioning /10",
+    },
+    goalkeeperFields: {
+      saves: "Saves",
+      passAccuracyPercentage: "Distribution Accuracy %",
+      keyPasses: "Fast Restarts",
+      defensiveTackles: "Crosses Claimed",
+      interceptions: "Sweeper Actions",
+      duelsWon: "1v1 / Aerial Duels",
+      possessionLosses: "Handling Errors",
+      technicalRating: "Shot Stopping /10",
+      tacticalRating: "Positioning /10",
+      physicalRating: "Diving & Agility /10",
+      fatigueRating: "Fatigue /10",
+      mentalityRating: "Concentration /10",
+      decisionMakingRating: "Decision Making /10",
+      workRateRating: "Communication / Command /10",
+      positioningRating: "Set Position /10",
+    },
+    textFields: {
+      strengths: "Strengths",
+      weaknesses: "Weaknesses",
+      improvementPlan: "Improvement Plan",
+      coachNotes: "Coach Notes",
+    },
+  },
+  ar: {
+    title: "تقييمات المباراة",
+    description: "درجات اللاعبين وتفاصيل الأداء بعد المباراة.",
+    breadcrumbs: {
+      home: "الرئيسية",
+      matches: "المباريات",
+      evaluation: "التقييم",
+    },
+    loading: "جاري تحميل المباراة...",
+    saveError: "تعذر حفظ تقييمات المباراة.",
+    publishError: "تعذر نشر تقييمات المباراة.",
+    requestError: "تعذر إرسال طلب فتح التعديل.",
+    publishedNotice: "تم نشر تقييمات المباراة وهي ظاهرة للاعبين.",
+    draftNotice: "تم حفظ تقييمات المباراة كمسودة. انشرها عندما تريد إظهارها للاعبين.",
+    requestPendingNotice: "تم إرسال طلب التعديل. بانتظار موافقة الإدارة.",
+    editWindowOpen: (value: string) => `التقييمات مفتوحة حتى ${value}.`,
+    noAttendanceNotice:
+      "لم يتم حفظ حضور المباراة، لذلك يعرض التقييم قائمة المباراة أو اللاعبين المستهدفين المتاحين.",
+    finishMatchNotice: "أنهِ المباراة قبل حفظ التقييمات النهائية.",
+    emptyPlayers:
+      "لا يوجد لاعبو قائمة أو لاعبون مستهدفون أو حاضرون متاحون لهذا التقييم.",
+    overallScore: "التقييم العام /10",
+    selectRating: "اختر التقييم",
+    noPosition: "بدون مركز",
+    minutes: "دقيقة",
+    goals: "أهداف",
+    assists: "تمريرات حاسمة",
+    requestPending: "الطلب قيد المراجعة",
+    requestEditAccess: "طلب فتح التعديل",
+    save: "حفظ",
+    publish: "نشر",
+    ratingLabels: {
+      Poor: "ضعيف",
+      Good: "جيد",
+      "Very Good": "جيد جدًا",
+      Excellent: "ممتاز",
+    },
+    matchStatus: {
+      finished: "منتهية",
+      completed: "مكتملة",
+      scheduled: "مجدولة",
+      cancelled: "ملغاة",
+      active: "نشطة",
+      live: "مباشرة",
+    },
+    evaluationStatus: {
+      locked: "مقفلة",
+      reopened: "مفتوحة مجددًا",
+      editable: "قابلة للتعديل",
+    },
+    standardFields: {
+      passAccuracyPercentage: "دقة التمرير %",
+      keyPasses: "تمريرات مفتاحية",
+      shotsOnTarget: "تسديدات على المرمى",
+      defensiveTackles: "افتكاكات دفاعية",
+      interceptions: "اعتراضات",
+      duelsWon: "التحامات",
+      possessionLosses: "فقدان الاستحواذ",
+      technicalRating: "فني /10",
+      tacticalRating: "تكتيكي /10",
+      physicalRating: "بدني /10",
+      fatigueRating: "الإجهاد /10",
+      mentalityRating: "ذهني /10",
+      decisionMakingRating: "اتخاذ القرار /10",
+      workRateRating: "معدل العمل /10",
+      positioningRating: "التمركز /10",
+    },
+    goalkeeperFields: {
+      saves: "تصديات",
+      passAccuracyPercentage: "دقة التوزيع %",
+      keyPasses: "بدايات سريعة",
+      defensiveTackles: "التعامل مع العرضيات",
+      interceptions: "خروج كحارس حر",
+      duelsWon: "التحامات فردية وهوائية",
+      possessionLosses: "أخطاء الإمساك",
+      technicalRating: "إيقاف التسديدات /10",
+      tacticalRating: "التمركز /10",
+      physicalRating: "المرونة والرشاقة /10",
+      fatigueRating: "الإجهاد /10",
+      mentalityRating: "التركيز /10",
+      decisionMakingRating: "اتخاذ القرار /10",
+      workRateRating: "التواصل والقيادة /10",
+      positioningRating: "وضعية الاستعداد /10",
+    },
+    textFields: {
+      strengths: "نقاط القوة",
+      weaknesses: "نقاط الضعف",
+      improvementPlan: "خطة التحسين",
+      coachNotes: "ملاحظات المدرب",
+    },
+  },
+} as const;
+
+type EvaluationCopy = (typeof evaluationCopy)[DashboardLanguage];
+
+const localizedRecordValue = (
+  labels: Record<string, string>,
+  value?: string | null,
+) => labels[String(value ?? "").toLowerCase()] ?? String(value ?? "");
+
+const optionDisplayLabel = (
+  field: OptionField,
+  copy: EvaluationCopy,
+  isGoalkeeper: boolean,
+) => {
+  const labels = (isGoalkeeper
+    ? copy.goalkeeperFields
+    : copy.standardFields) as Record<string, string>;
+  return labels[field.key] ?? field.label;
+};
+
 const camelToSnake = (value: string) =>
   value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 
@@ -184,6 +390,9 @@ const optionStatValue = (
 };
 
 export default function MatchEvaluationPage() {
+  const language = useDashboardLanguage();
+  const t = evaluationCopy[language];
+  const locale = language === "ar" ? "ar-EG" : "en-US";
   const params = useParams<{ matchId: string }>();
   const matchId = params.matchId;
   const { data: match, isLoading } = useGetCoachMatchQuery(matchId);
@@ -351,7 +560,7 @@ export default function MatchEvaluationPage() {
       setSavedDraft(true);
       setDrafts({});
     } catch {
-      setPageError("Could not save match evaluations.");
+      setPageError(t.saveError);
     }
   };
 
@@ -368,7 +577,7 @@ export default function MatchEvaluationPage() {
       setSavedDraft(false);
       setDrafts({});
     } catch {
-      setPageError("Could not publish match evaluations.");
+      setPageError(t.publishError);
     }
   };
 
@@ -378,26 +587,26 @@ export default function MatchEvaluationPage() {
     try {
       await requestEdit({ matchId }).unwrap();
     } catch {
-      setPageError("Could not send evaluation edit request.");
+      setPageError(t.requestError);
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Match Evaluations"
-        description="Post-match player ratings and performance details."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches", href: "/coach/matches" },
-          { label: "Evaluation" },
+          { label: t.breadcrumbs.home, href: "/coach/home" },
+          { label: t.breadcrumbs.matches, href: "/coach/matches" },
+          { label: t.breadcrumbs.evaluation },
         ]}
       />
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading match...
+          {t.loading}
         </div>
       )}
 
@@ -407,7 +616,9 @@ export default function MatchEvaluationPage() {
             <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(match.match_date)}
+                  {new Date(match.match_date).toLocaleDateString(locale, {
+                    dateStyle: "medium",
+                  })}
                 </p>
                 <h2 className="text-xl font-semibold">
                   GOALIX {match.our_score ?? 0} - {match.opponent_score ?? 0}{" "}
@@ -418,7 +629,7 @@ export default function MatchEvaluationPage() {
                 <Badge
                   variant={match.match_status === "finished" ? "success" : "warning"}
                 >
-                  {match.match_status}
+                  {localizedRecordValue(t.matchStatus, match.match_status)}
                 </Badge>
                 <Badge
                   variant={
@@ -430,10 +641,10 @@ export default function MatchEvaluationPage() {
                   }
                 >
                   {evaluationsLocked
-                    ? "locked"
+                    ? t.evaluationStatus.locked
                     : editWindowActive
-                      ? "reopened"
-                      : "editable"}
+                      ? t.evaluationStatus.reopened
+                      : t.evaluationStatus.editable}
                 </Badge>
               </div>
             </CardContent>
@@ -448,43 +659,45 @@ export default function MatchEvaluationPage() {
           {evaluationsLocked && (
             <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
               <CheckCircle2 className="h-4 w-4" />
-              Match evaluations are published and visible to players.
+              {t.publishedNotice}
             </div>
           )}
 
           {savedDraft && !evaluationsLocked && (
             <div className="flex items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
               <CheckCircle2 className="h-4 w-4" />
-              Match evaluations are saved as a draft. Publish when you want players to see them.
+              {t.draftNotice}
             </div>
           )}
 
           {editRequest?.status === "pending" && (
             <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
               <Clock className="h-4 w-4" />
-              Edit request sent. Waiting for admin approval.
+              {t.requestPendingNotice}
             </div>
           )}
 
           {editWindowActive && match.evaluation_edit_unlocked_until && (
             <div className="flex items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
               <Clock className="h-4 w-4" />
-              Evaluations are open until{" "}
-              {new Date(match.evaluation_edit_unlocked_until).toLocaleString()}.
+              {t.editWindowOpen(
+                new Date(match.evaluation_edit_unlocked_until).toLocaleString(
+                  locale,
+                ),
+              )}
             </div>
           )}
 
           {matchFinished && !match.attendance?.length && evaluationPlayers.length > 0 && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-              No match attendance was saved, so the evaluation is showing the
-              available match squad or target players.
+              {t.noAttendanceNotice}
             </div>
           )}
 
           {!matchFinished && (
             <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
               <LockKeyhole className="h-4 w-4" />
-              Finish the match before saving final evaluations.
+              {t.finishMatchNotice}
             </div>
           )}
 
@@ -492,8 +705,9 @@ export default function MatchEvaluationPage() {
             {evaluationPlayers.map((player) => {
               const stat = statsByPlayer.get(player.player_id);
               const draft = drafts[player.player_id] ?? {};
-              const playerPosition = player.effective_position ?? "No position";
-              const activeOptionFields = isGoalkeeperPosition(player.effective_position)
+              const isGoalkeeper = isGoalkeeperPosition(player.effective_position);
+              const playerPosition = player.effective_position ?? t.noPosition;
+              const activeOptionFields = isGoalkeeper
                 ? goalkeeperOptionFields
                 : optionFields;
 
@@ -510,10 +724,10 @@ export default function MatchEvaluationPage() {
                       </span>
                       <span className="flex flex-wrap gap-2">
                         <Badge variant="outline">
-                          {stat?.minutes_played ?? 0} min
+                          {stat?.minutes_played ?? 0} {t.minutes}
                         </Badge>
                         <Badge variant="secondary">
-                          Goals {stat?.goals ?? 0} | Assists{" "}
+                          {t.goals} {stat?.goals ?? 0} | {t.assists}{" "}
                           {stat?.assists ?? 0}
                         </Badge>
                       </span>
@@ -522,7 +736,7 @@ export default function MatchEvaluationPage() {
                   <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                       <div className="space-y-1">
-                        <Label>Overall /10</Label>
+                        <Label>{t.overallScore}</Label>
                         <Input
                           type="number"
                           min={0}
@@ -541,7 +755,9 @@ export default function MatchEvaluationPage() {
                       </div>
                       {activeOptionFields.map((field) => (
                         <div key={field.key} className="space-y-1">
-                          <Label>{field.label}</Label>
+                          <Label>
+                            {optionDisplayLabel(field, t, isGoalkeeper)}
+                          </Label>
                           <Select
                             disabled={evaluationsLocked}
                             value={optionStatValue(stat, field, draft)}
@@ -550,7 +766,7 @@ export default function MatchEvaluationPage() {
                             }
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select rating" />
+                              <SelectValue placeholder={t.selectRating} />
                             </SelectTrigger>
                             <SelectContent>
                               {field.options.map((option) => (
@@ -558,7 +774,7 @@ export default function MatchEvaluationPage() {
                                   key={`${field.key}-${option.label}`}
                                   value={String(option.value)}
                                 >
-                                  {option.label} ({option.range})
+                                  {t.ratingLabels[option.label]} ({option.range})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -567,9 +783,9 @@ export default function MatchEvaluationPage() {
                       ))}
                     </div>
                     <div className="grid gap-3 lg:grid-cols-2">
-                      {textFields.map(([key, label]) => (
+                      {textFields.map(([key]) => (
                         <div key={key} className="space-y-1">
-                          <Label>{label}</Label>
+                          <Label>{t.textFields[key]}</Label>
                           <Textarea
                             disabled={evaluationsLocked}
                             value={rawStatValue(stat, key, draft)}
@@ -593,8 +809,7 @@ export default function MatchEvaluationPage() {
           {!evaluationPlayers.length && (
             <Card className="border-border/50 bg-card">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No squad, target players, or attended players are available for
-                this match evaluation.
+                {t.emptyPlayers}
               </CardContent>
             </Card>
           )}
@@ -620,8 +835,8 @@ export default function MatchEvaluationPage() {
                   <Send className="h-4 w-4" />
                 )}
                 {editRequest?.status === "pending"
-                  ? "Request Pending"
-                  : "Request Edit Access"}
+                  ? t.requestPending
+                  : t.requestEditAccess}
               </Button>
             ) : (
               <>
@@ -637,7 +852,7 @@ export default function MatchEvaluationPage() {
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save
+                  {t.save}
                 </Button>
                 <Button
                   type="button"
@@ -650,7 +865,7 @@ export default function MatchEvaluationPage() {
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
-                  Publish
+                  {t.publish}
                 </Button>
               </>
             )}

@@ -21,6 +21,7 @@ import {
   useRevokeAdminRoleFromUserMutation,
   useUpdateAdminRoleMutation,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   AlertCircle,
   CheckCircle,
@@ -198,20 +199,245 @@ const getApiErrorMessage = (err: unknown, fallback: string) => {
   return fallback;
 };
 
-const validatePassword = (password: string) => {
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter.";
-  if (!/[0-9]/.test(password)) return "Password must contain at least one digit.";
-  if (!/[^A-Za-z0-9]/.test(password)) return "Password must contain at least one special character.";
+const rolesCopy = {
+  en: {
+    passwordMin: "Password must be at least 8 characters.",
+    passwordUppercase: "Password must contain at least one uppercase letter.",
+    passwordDigit: "Password must contain at least one digit.",
+    passwordSpecial: "Password must contain at least one special character.",
+    usernameMin: "Username must be at least 3 characters.",
+    usernameMax: "Username must be 60 characters or less.",
+    usernamePattern: "Username may only contain letters, numbers, dots, underscores, and hyphens.",
+    accountRoleHelp: "Roles settings is for admin/staff access only. Coaches are assigned from /admin/coaches/assign, parents from /admin/parents, and players from /admin/players.",
+    roleEditingEnabled: "Role editing enabled.",
+    roleEditingDisabled: "Role editing disabled.",
+    roleNameCodeRequired: "Role name and code are required.",
+    roleCreated: "Role created.",
+    createRoleError: "Could not create role.",
+    editableCopyName: "Custom",
+    editableCopyDescription: "Editable copy of {role}.",
+    editableCopyCreated: "Editable custom role created. You can now change permissions and save.",
+    editableCopyError: "Could not create editable copy.",
+    selectRoleError: "Select a role before adding a user.",
+    protectedRoleError: "This is a protected system role and cannot be assigned from this screen.",
+    roleAssignError: "This role cannot be assigned from this screen.",
+    requiredUserFields: "Name, phone, username, and password are required.",
+    userCreated: "User created. Login from {path} using username \"{username}\".",
+    createUserError: "Could not create user.",
+    validRoleRequired: "Role name and valid code are required.",
+    roleSaved: "Role saved.",
+    saveRoleError: "Could not save role.",
+    roleDeleted: "Role deleted.",
+    deleteRoleError: "Could not delete role.",
+    incompatibleUserRole: "{user} uses {role} login, but {help}",
+    roleRemoved: "Role removed from user.",
+    roleAssigned: "Role assigned to user.",
+    updateUserRoleError: "Could not update user role.",
+    loadError: "Access control data could not load.",
+    pageTitle: "Roles & Permissions",
+    pageDescription: "Manage academy roles and permission grants.",
+    dashboard: "Dashboard",
+    settings: "Settings",
+    newCustomRole: "New Custom Role",
+    operationsManager: "Operations Manager",
+    code: "Code",
+    operationsManagerCode: "operations_manager",
+    addRole: "Add Role",
+    roles: "Roles",
+    system: "System",
+    custom: "Custom",
+    users: "users",
+    permissions: "permissions",
+    noRoles: "No roles found.",
+    selectRole: "Select Role",
+    active: "Active",
+    inactive: "Inactive",
+    editingOff: "Editing Off",
+    editingOn: "Editing On",
+    name: "Name",
+    description: "Description",
+    roleActive: "Role Active",
+    editLockedHelp: "Editing is currently disabled for this custom role. Enable editing to change permissions.",
+    systemRoleHelp: "System roles are read-only. Create an editable custom copy to add or remove permissions.",
+    enableEditing: "Enable Editing",
+    makeEditableCopy: "Make Editable Copy",
+    editableHelp: "This custom role is editable. Disable editing when you want to protect it from accidental changes.",
+    disableEditing: "Disable Editing",
+    noDashboardAccess: "This role does not include admin dashboard access. Users can still hold it, but admin pages will remain hidden until this role grants dashboard access.",
+    addUserTitle: "Add User to This Role",
+    addUserDescription: "Create an admin/staff account and assign only {role}. Coaches, parents, and players are managed from their dedicated pages.",
+    login: "Login",
+    protectedRoleAssignHelp: "This protected system role cannot be assigned here. Create a custom role or use a lower-privilege system role.",
+    loginTypeAdjusted: "Login type was adjusted automatically.",
+    loginType: "Login Type",
+    staffAdminLogin: "Staff / Admin Login",
+    emailOptional: "Email (optional)",
+    emailPlaceholder: "optional@example.com",
+    phone: "Phone",
+    phonePlaceholder: "+201000000000",
+    username: "Username",
+    usernamePlaceholder: "ahmed.hassan",
+    password: "Password",
+    passwordPlaceholder: "At least 8 chars, uppercase, number, symbol",
+    passwordHelp: "Required: 8+ chars, uppercase letter, number, and symbol.",
+    address: "Address",
+    addressPlaceholder: "City, street, area",
+    jobTitle: "Job Title",
+    department: "Department",
+    departmentPlaceholder: "Administration",
+    notes: "Notes",
+    notesPlaceholder: "Internal notes for this user",
+    addUserAssign: "Add User & Assign Role",
+    assignedUsers: "Assigned Users",
+    assignedUsersDescription: "Grant or revoke this role for admin/staff users only. Coach, player, and parent access is managed from their dedicated pages.",
+    assigned: "assigned",
+    searchUsersPlaceholder: "Search users by name, email, username, or role",
+    noLoginLabel: "No login label",
+    selfProtected: "self protected",
+    needsAdminLogin: "needs admin login",
+    assignedStatus: "Assigned",
+    notAssignedStatus: "Not assigned",
+    noUsersMatch: "No users match this search.",
+    editable: "Editable",
+    editingDisabled: "Editing disabled",
+    readOnlySystemRole: "Read-only system role",
+    permissionGrantTitle: "Click to grant or remove this permission",
+    editFirstTitle: "Editing is disabled for this custom role. Enable editing first.",
+    makeCopyFirstTitle: "System role permissions are read-only. Make an editable copy first.",
+    noPermissions: "No permissions found.",
+    saveDeleteEditOff: "Save/Delete are disabled because editing is off for this custom role.",
+    saveDeleteSystem: "Save/Delete are disabled because this is a system role.",
+    saveRole: "Save Role",
+    deleteRole: "Delete Role",
+  },
+  ar: {
+    passwordMin: "كلمة المرور يجب ألا تقل عن 8 أحرف.",
+    passwordUppercase: "كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل.",
+    passwordDigit: "كلمة المرور يجب أن تحتوي على رقم واحد على الأقل.",
+    passwordSpecial: "كلمة المرور يجب أن تحتوي على رمز خاص واحد على الأقل.",
+    usernameMin: "اسم المستخدم يجب ألا يقل عن 3 أحرف.",
+    usernameMax: "اسم المستخدم يجب ألا يزيد عن 60 حرفًا.",
+    usernamePattern: "اسم المستخدم يمكن أن يحتوي على حروف وأرقام ونقاط وشرطات سفلية وشرطات فقط.",
+    accountRoleHelp: "إعدادات الصلاحيات مخصصة لحسابات الإدارة والموظفين فقط. يتم تعيين المدربين من /admin/coaches/assign، والأولياء من /admin/parents، واللاعبين من /admin/players.",
+    roleEditingEnabled: "تم تفعيل تعديل الدور.",
+    roleEditingDisabled: "تم تعطيل تعديل الدور.",
+    roleNameCodeRequired: "اسم الدور والكود مطلوبان.",
+    roleCreated: "تم إنشاء الدور.",
+    createRoleError: "تعذر إنشاء الدور.",
+    editableCopyName: "نسخة مخصصة",
+    editableCopyDescription: "نسخة قابلة للتعديل من {role}.",
+    editableCopyCreated: "تم إنشاء دور مخصص قابل للتعديل. يمكنك الآن تعديل الصلاحيات والحفظ.",
+    editableCopyError: "تعذر إنشاء نسخة قابلة للتعديل.",
+    selectRoleError: "اختر دورًا قبل إضافة مستخدم.",
+    protectedRoleError: "هذا دور نظام محمي ولا يمكن تعيينه من هذه الشاشة.",
+    roleAssignError: "لا يمكن تعيين هذا الدور من هذه الشاشة.",
+    requiredUserFields: "الاسم والهاتف واسم المستخدم وكلمة المرور مطلوبة.",
+    userCreated: "تم إنشاء المستخدم. سجّل الدخول من {path} باسم المستخدم \"{username}\".",
+    createUserError: "تعذر إنشاء المستخدم.",
+    validRoleRequired: "اسم الدور وكود صحيح مطلوبان.",
+    roleSaved: "تم حفظ الدور.",
+    saveRoleError: "تعذر حفظ الدور.",
+    roleDeleted: "تم حذف الدور.",
+    deleteRoleError: "تعذر حذف الدور.",
+    incompatibleUserRole: "{user} يستخدم تسجيل دخول {role}، لكن {help}",
+    roleRemoved: "تمت إزالة الدور من المستخدم.",
+    roleAssigned: "تم تعيين الدور للمستخدم.",
+    updateUserRoleError: "تعذر تحديث دور المستخدم.",
+    loadError: "تعذر تحميل بيانات التحكم في الوصول.",
+    pageTitle: "الأدوار والصلاحيات",
+    pageDescription: "إدارة أدوار الأكاديمية ومنح الصلاحيات.",
+    dashboard: "لوحة التحكم",
+    settings: "الإعدادات",
+    newCustomRole: "دور مخصص جديد",
+    operationsManager: "مدير العمليات",
+    code: "الكود",
+    operationsManagerCode: "operations_manager",
+    addRole: "إضافة دور",
+    roles: "الأدوار",
+    system: "نظام",
+    custom: "مخصص",
+    users: "مستخدمين",
+    permissions: "صلاحيات",
+    noRoles: "لا توجد أدوار.",
+    selectRole: "اختر دورًا",
+    active: "نشط",
+    inactive: "غير نشط",
+    editingOff: "التعديل متوقف",
+    editingOn: "التعديل مفعل",
+    name: "الاسم",
+    description: "الوصف",
+    roleActive: "الدور نشط",
+    editLockedHelp: "التعديل معطل حاليًا لهذا الدور المخصص. فعّل التعديل لتغيير الصلاحيات.",
+    systemRoleHelp: "أدوار النظام للقراءة فقط. أنشئ نسخة مخصصة قابلة للتعديل لإضافة أو إزالة الصلاحيات.",
+    enableEditing: "تفعيل التعديل",
+    makeEditableCopy: "إنشاء نسخة قابلة للتعديل",
+    editableHelp: "هذا الدور المخصص قابل للتعديل. عطّل التعديل عندما تريد حمايته من التغييرات غير المقصودة.",
+    disableEditing: "تعطيل التعديل",
+    noDashboardAccess: "هذا الدور لا يتضمن صلاحية دخول لوحة الإدارة. يمكن للمستخدمين الاحتفاظ به، لكن صفحات الإدارة ستظل مخفية حتى يمنح الدور صلاحية الدخول.",
+    addUserTitle: "إضافة مستخدم لهذا الدور",
+    addUserDescription: "أنشئ حساب إدارة/موظف وعيّنه فقط على {role}. تتم إدارة المدربين والأولياء واللاعبين من صفحاتهم المخصصة.",
+    login: "تسجيل الدخول",
+    protectedRoleAssignHelp: "لا يمكن تعيين هذا الدور النظامي المحمي هنا. أنشئ دورًا مخصصًا أو استخدم دور نظام بصلاحيات أقل.",
+    loginTypeAdjusted: "تم ضبط نوع تسجيل الدخول تلقائيًا.",
+    loginType: "نوع تسجيل الدخول",
+    staffAdminLogin: "تسجيل دخول موظف / إدارة",
+    emailOptional: "البريد الإلكتروني (اختياري)",
+    emailPlaceholder: "optional@example.com",
+    phone: "الهاتف",
+    phonePlaceholder: "+201000000000",
+    username: "اسم المستخدم",
+    usernamePlaceholder: "ahmed.hassan",
+    password: "كلمة المرور",
+    passwordPlaceholder: "8 أحرف على الأقل، حرف كبير، رقم، رمز",
+    passwordHelp: "المطلوب: 8+ أحرف، حرف كبير، رقم، ورمز.",
+    address: "العنوان",
+    addressPlaceholder: "المدينة، الشارع، المنطقة",
+    jobTitle: "المسمى الوظيفي",
+    department: "القسم",
+    departmentPlaceholder: "الإدارة",
+    notes: "ملاحظات",
+    notesPlaceholder: "ملاحظات داخلية لهذا المستخدم",
+    addUserAssign: "إضافة مستخدم وتعيين الدور",
+    assignedUsers: "المستخدمون المعينون",
+    assignedUsersDescription: "امنح أو اسحب هذا الدور لمستخدمي الإدارة/الموظفين فقط. تتم إدارة صلاحيات المدربين واللاعبين والأولياء من صفحاتهم المخصصة.",
+    assigned: "معين",
+    searchUsersPlaceholder: "ابحث بالاسم أو البريد أو اسم المستخدم أو الدور",
+    noLoginLabel: "لا يوجد تعريف دخول",
+    selfProtected: "محمي لأنه حسابك",
+    needsAdminLogin: "يحتاج تسجيل دخول إداري",
+    assignedStatus: "معين",
+    notAssignedStatus: "غير معين",
+    noUsersMatch: "لا يوجد مستخدمون مطابقون للبحث.",
+    editable: "قابل للتعديل",
+    editingDisabled: "التعديل معطل",
+    readOnlySystemRole: "دور نظام للقراءة فقط",
+    permissionGrantTitle: "اضغط لمنح أو إزالة هذه الصلاحية",
+    editFirstTitle: "التعديل معطل لهذا الدور المخصص. فعّل التعديل أولًا.",
+    makeCopyFirstTitle: "صلاحيات دور النظام للقراءة فقط. أنشئ نسخة قابلة للتعديل أولًا.",
+    noPermissions: "لا توجد صلاحيات.",
+    saveDeleteEditOff: "الحفظ/الحذف معطلان لأن التعديل متوقف لهذا الدور المخصص.",
+    saveDeleteSystem: "الحفظ/الحذف معطلان لأن هذا دور نظام.",
+    saveRole: "حفظ الدور",
+    deleteRole: "حذف الدور",
+  },
+} as const;
+
+type RolesCopy = (typeof rolesCopy)[keyof typeof rolesCopy];
+
+const validatePassword = (password: string, t: RolesCopy) => {
+  if (password.length < 8) return t.passwordMin;
+  if (!/[A-Z]/.test(password)) return t.passwordUppercase;
+  if (!/[0-9]/.test(password)) return t.passwordDigit;
+  if (!/[^A-Za-z0-9]/.test(password)) return t.passwordSpecial;
   return "";
 };
 
-const validateUsername = (username: string) => {
+const validateUsername = (username: string, t: RolesCopy) => {
   const value = username.trim();
-  if (value.length < 3) return "Username must be at least 3 characters.";
-  if (value.length > 60) return "Username must be 60 characters or less.";
+  if (value.length < 3) return t.usernameMin;
+  if (value.length > 60) return t.usernameMax;
   if (!/^[a-zA-Z0-9._-]+$/.test(value)) {
-    return "Username may only contain letters, numbers, dots, underscores, and hyphens.";
+    return t.usernamePattern;
   }
   return "";
 };
@@ -220,6 +446,8 @@ const displayUserName = (user: AdminAccessUser) =>
   user.fullName || user.email || user.username || user.phone || user.role;
 
 export default function RolesPage() {
+  const language = useDashboardLanguage();
+  const t = rolesCopy[language];
   const { data, isLoading, isError } = useGetAdminAccessControlQuery();
   const { data: currentUser } = useGetCurrentUserQuery();
   const [createRole, { isLoading: creating }] = useCreateAdminRoleMutation();
@@ -294,8 +522,7 @@ export default function RolesPage() {
   );
   const canAccessAdminDashboard = hasAdminPortalPermissions;
   const recommendedAccountRole: NewAccessUserDraft["accountRole"] = "admin";
-  const accountRoleHelp =
-    "Roles settings is for admin/staff access only. Coaches are assigned from /admin/coaches/assign, parents from /admin/parents, and players from /admin/players.";
+  const accountRoleHelp = t.accountRoleHelp;
   const isAccountRoleAllowed = useCallback((accountRole: NewAccessUserDraft["accountRole"]) => {
     return accountRole === "admin";
   }, []);
@@ -383,7 +610,7 @@ export default function RolesPage() {
       const next = new Set(current);
       if (next.has(selectedRole.id)) {
         next.delete(selectedRole.id);
-        setMessage("Role editing enabled.");
+        setMessage(t.roleEditingEnabled);
       } else {
         next.add(selectedRole.id);
         setRoleEdits((edits) => {
@@ -391,7 +618,7 @@ export default function RolesPage() {
           delete clean[selectedRole.id];
           return clean;
         });
-        setMessage("Role editing disabled.");
+        setMessage(t.roleEditingDisabled);
       }
       persistEditLocks(next);
       return next;
@@ -403,7 +630,7 @@ export default function RolesPage() {
     setError("");
     const code = toRoleCode(newRole.code || newRole.name);
     if (!newRole.name.trim() || !code) {
-      setError("Role name and code are required.");
+      setError(t.roleNameCodeRequired);
       return;
     }
 
@@ -417,9 +644,9 @@ export default function RolesPage() {
       }).unwrap();
       setNewRole({ name: "", code: "" });
       setSelectedRoleId(created.id);
-      setMessage("Role created.");
+      setMessage(t.roleCreated);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not create role."));
+      setError(getApiErrorMessage(err, t.createRoleError));
     }
   };
 
@@ -430,16 +657,18 @@ export default function RolesPage() {
 
     try {
       const created = await createRole({
-        name: `${selectedRole.name} Custom`,
+        name: `${selectedRole.name} ${t.editableCopyName}`,
         code: editableCopyCode(selectedRole),
-        description: selectedRole.description || `Editable copy of ${selectedRole.name}.`,
+        description:
+          selectedRole.description ||
+          t.editableCopyDescription.replace("{role}", selectedRole.name),
         isActive: true,
         permissionIds: Array.from(rolePermissionIds(selectedRole)),
       }).unwrap();
       setSelectedRoleId(created.id);
-      setMessage("Editable custom role created. You can now change permissions and save.");
+      setMessage(t.editableCopyCreated);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not create editable copy."));
+      setError(getApiErrorMessage(err, t.editableCopyError));
     }
   };
 
@@ -448,14 +677,14 @@ export default function RolesPage() {
     setError("");
 
     if (!selectedRole) {
-      setError("Select a role before adding a user.");
+      setError(t.selectRoleError);
       return;
     }
     if (!selectedRoleCanAssignUsers) {
       setError(
         selectedRoleProtected
-          ? "This is a protected system role and cannot be assigned from this screen."
-          : "This role cannot be assigned from this screen.",
+          ? t.protectedRoleError
+          : t.roleAssignError,
       );
       return;
     }
@@ -469,15 +698,15 @@ export default function RolesPage() {
       !newUser.username.trim() ||
       !newUser.password
     ) {
-      setError("Name, phone, username, and password are required.");
+      setError(t.requiredUserFields);
       return;
     }
-    const usernameError = validateUsername(newUser.username);
+    const usernameError = validateUsername(newUser.username, t);
     if (usernameError) {
       setError(usernameError);
       return;
     }
-    const passwordError = validatePassword(newUser.password);
+    const passwordError = validatePassword(newUser.password, t);
     if (passwordError) {
       setError(passwordError);
       return;
@@ -501,10 +730,12 @@ export default function RolesPage() {
       const createdLoginPath = "/admin-login";
       setNewUser(emptyAccessUserDraft);
       setMessage(
-        `User created. Login from ${createdLoginPath} using username "${createdUsername}".`,
+        t.userCreated
+          .replace("{path}", createdLoginPath)
+          .replace("{username}", createdUsername),
       );
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not create user."));
+      setError(getApiErrorMessage(err, t.createUserError));
     }
   };
 
@@ -514,7 +745,7 @@ export default function RolesPage() {
     setError("");
     const code = toRoleCode(draft.code);
     if (!draft.name.trim() || !code) {
-      setError("Role name and valid code are required.");
+      setError(t.validRoleRequired);
       return;
     }
 
@@ -534,9 +765,9 @@ export default function RolesPage() {
         delete next[selectedRole.id];
         return next;
       });
-      setMessage("Role saved.");
+      setMessage(t.roleSaved);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not save role."));
+      setError(getApiErrorMessage(err, t.saveRoleError));
     }
   };
 
@@ -554,9 +785,9 @@ export default function RolesPage() {
         delete next[selectedRole.id];
         return next;
       });
-      setMessage("Role deleted.");
+      setMessage(t.roleDeleted);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not delete role."));
+      setError(getApiErrorMessage(err, t.deleteRoleError));
     }
   };
 
@@ -567,8 +798,8 @@ export default function RolesPage() {
     if (!selectedRoleCanAssignUsers) {
       setError(
         selectedRoleProtected
-          ? "This is a protected system role and cannot be assigned from this screen."
-          : "This role cannot be assigned from this screen.",
+          ? t.protectedRoleError
+          : t.roleAssignError,
       );
       return;
     }
@@ -579,7 +810,10 @@ export default function RolesPage() {
       isAccountRoleAllowed(user.role as NewAccessUserDraft["accountRole"]);
     if (!assigned && !compatibleAccountRole) {
       setError(
-        `${displayUserName(user)} uses ${user.role} login, but ${accountRoleHelp}`,
+        t.incompatibleUserRole
+          .replace("{user}", displayUserName(user))
+          .replace("{role}", user.role)
+          .replace("{help}", accountRoleHelp),
       );
       return;
     }
@@ -587,13 +821,13 @@ export default function RolesPage() {
     try {
       if (assigned) {
         await revokeRole({ roleId: selectedRole.id, userId: user.id }).unwrap();
-        setMessage("Role removed from user.");
+        setMessage(t.roleRemoved);
       } else {
         await assignRole({ roleId: selectedRole.id, userId: user.id }).unwrap();
-        setMessage("Role assigned to user.");
+        setMessage(t.roleAssigned);
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not update user role."));
+      setError(getApiErrorMessage(err, t.updateUserRoleError));
     }
   };
 
@@ -604,7 +838,7 @@ export default function RolesPage() {
       <Card className="border-destructive/40 bg-destructive/10">
         <CardContent className="flex items-center gap-3 p-5 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          Access control data could not load.
+          {t.loadError}
         </CardContent>
       </Card>
     );
@@ -613,19 +847,19 @@ export default function RolesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Roles & Permissions"
-        description="Manage academy roles and permission grants."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Settings" },
-          { label: "Roles & Permissions" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.settings },
+          { label: t.pageTitle },
         ]}
       />
 
       <Card className="border-border/50 bg-card">
         <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_220px_auto]">
           <div className="space-y-2">
-            <Label>New Custom Role</Label>
+            <Label>{t.newCustomRole}</Label>
             <Input
               value={newRole.name}
               onChange={(event) =>
@@ -635,11 +869,11 @@ export default function RolesPage() {
                   code: current.code || toRoleCode(event.target.value),
                 }))
               }
-              placeholder="Operations Manager"
+              placeholder={t.operationsManager}
             />
           </div>
           <div className="space-y-2">
-            <Label>Code</Label>
+            <Label>{t.code}</Label>
             <Input
               value={newRole.code}
               onChange={(event) =>
@@ -648,7 +882,7 @@ export default function RolesPage() {
                   code: toRoleCode(event.target.value),
                 }))
               }
-              placeholder="operations_manager"
+              placeholder={t.operationsManagerCode}
             />
           </div>
           <Button
@@ -658,7 +892,7 @@ export default function RolesPage() {
             disabled={creating}
           >
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add Role
+            {t.addRole}
           </Button>
         </CardContent>
       </Card>
@@ -666,7 +900,7 @@ export default function RolesPage() {
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Roles</CardTitle>
+            <CardTitle className="text-base">{t.roles}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {roles.map((role) => (
@@ -690,18 +924,18 @@ export default function RolesPage() {
                     <p className="truncate text-xs text-muted-foreground">{role.code}</p>
                   </div>
                   <Badge variant={role.isSystem ? "secondary" : "info"}>
-                    {role.isSystem ? "System" : "Custom"}
+                    {role.isSystem ? t.system : t.custom}
                   </Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{role.userCount} users</span>
-                  <span>{role.permissionAssignments.length} permissions</span>
+                  <span>{role.userCount} {t.users}</span>
+                  <span>{role.permissionAssignments.length} {t.permissions}</span>
                 </div>
               </button>
             ))}
             {!roles.length && (
               <div className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                No roles found.
+                {t.noRoles}
               </div>
             )}
           </CardContent>
@@ -713,17 +947,17 @@ export default function RolesPage() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Shield className="h-4 w-4 text-lime-300" />
-                  {selectedRole?.name ?? "Select Role"}
+                  {selectedRole?.name ?? t.selectRole}
                 </CardTitle>
               </div>
               {selectedRole && (
                 <div className="flex flex-wrap justify-end gap-2">
                   <Badge variant={selectedRole.isActive ? "success" : "secondary"}>
-                    {selectedRole.isActive ? "Active" : "Inactive"}
+                    {selectedRole.isActive ? t.active : t.inactive}
                   </Badge>
                   {roleIsCustom && (
                     <Badge variant={selectedRoleEditLocked ? "secondary" : "success"}>
-                      {selectedRoleEditLocked ? "Editing Off" : "Editing On"}
+                      {selectedRoleEditLocked ? t.editingOff : t.editingOn}
                     </Badge>
                   )}
                   <Badge variant="outline">
@@ -736,7 +970,7 @@ export default function RolesPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Name</Label>
+                    <Label>{t.name}</Label>
                     <Input
                       value={draft.name}
                       disabled={!editable}
@@ -744,7 +978,7 @@ export default function RolesPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Code</Label>
+                    <Label>{t.code}</Label>
                     <Input
                       value={draft.code}
                       disabled={!editable}
@@ -753,7 +987,7 @@ export default function RolesPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Description</Label>
+                  <Label>{t.description}</Label>
                   <Textarea
                     value={draft.description}
                     disabled={!editable}
@@ -761,7 +995,7 @@ export default function RolesPage() {
                   />
                 </div>
                 <label className="flex items-center justify-between gap-4 rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-                  <span>Role Active</span>
+                  <span>{t.roleActive}</span>
                   <input
                     type="checkbox"
                     disabled={!editable}
@@ -773,8 +1007,8 @@ export default function RolesPage() {
                   <div className="flex flex-col gap-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300 sm:flex-row sm:items-center sm:justify-between">
                     <span>
                       {selectedRoleEditLocked
-                        ? "Editing is currently disabled for this custom role. Enable editing to change permissions."
-                        : "System roles are read-only. Create an editable custom copy to add or remove permissions."}
+                        ? t.editLockedHelp
+                        : t.systemRoleHelp}
                     </span>
                     {selectedRoleEditLocked ? (
                       <Button
@@ -783,7 +1017,7 @@ export default function RolesPage() {
                         onClick={handleToggleSelectedRoleEditLock}
                         className="shrink-0 gap-1.5"
                       >
-                        Enable Editing
+                        {t.enableEditing}
                       </Button>
                     ) : (
                       <Button
@@ -794,7 +1028,7 @@ export default function RolesPage() {
                         className="shrink-0 gap-1.5"
                       >
                         {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                        Make Editable Copy
+                        {t.makeEditableCopy}
                       </Button>
                     )}
                   </div>
@@ -802,7 +1036,7 @@ export default function RolesPage() {
                 {editable && (
                   <div className="flex flex-col gap-3 rounded-lg border border-sky-400/20 bg-sky-400/10 p-3 text-sm text-sky-200 sm:flex-row sm:items-center sm:justify-between">
                     <span>
-                      This custom role is editable. Disable editing when you want to protect it from accidental changes.
+                      {t.editableHelp}
                     </span>
                     <Button
                       type="button"
@@ -811,15 +1045,13 @@ export default function RolesPage() {
                       onClick={handleToggleSelectedRoleEditLock}
                       className="shrink-0"
                     >
-                      Disable Editing
+                      {t.disableEditing}
                     </Button>
                   </div>
                 )}
                 {!canAccessAdminDashboard && (
                   <div className="rounded-lg border border-sky-400/20 bg-sky-400/10 p-3 text-sm text-sky-200">
-                    This role does not include admin dashboard access. Users can still
-                    hold it, but admin pages will remain hidden until this role grants
-                    dashboard access.
+                    {t.noDashboardAccess}
                   </div>
                 )}
               </CardContent>
@@ -832,29 +1064,29 @@ export default function RolesPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <UserPlus className="h-4 w-4 text-lime-300" />
-                    Add User to This Role
+                    {t.addUserTitle}
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Create an admin/staff account and assign only{" "}
-                    <span className="font-medium text-foreground">{selectedRole.name}</span>.
-                    Coaches, parents, and players are managed from their dedicated pages.
+                    {t.addUserDescription.split("{role}")[0]}
+                    <span className="font-medium text-foreground">{selectedRole.name}</span>
+                    {t.addUserDescription.split("{role}")[1]}
                   </p>
                 </div>
                 <Badge variant="secondary">
-                  Login: {newUserLoginPath}
+                  {t.login}: {newUserLoginPath}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!selectedRoleCanAssignUsers && (
                   <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
                     {selectedRoleProtected
-                      ? "This protected system role cannot be assigned here. Create a custom role or use a lower-privilege system role."
-                      : "This role cannot be assigned from this screen."}
+                      ? t.protectedRoleAssignHelp
+                      : t.roleAssignError}
                   </div>
                 )}
                 {!isAccountRoleAllowed(newUser.accountRole) && (
                   <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
-                    Login type was adjusted automatically. {accountRoleHelp}
+                    {t.loginTypeAdjusted} {accountRoleHelp}
                   </div>
                 )}
                 {message && (
@@ -869,7 +1101,7 @@ export default function RolesPage() {
                 )}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Name</Label>
+                    <Label>{t.name}</Label>
                     <Input
                       value={newUser.fullName}
                       onChange={(event) =>
@@ -878,20 +1110,20 @@ export default function RolesPage() {
                           fullName: event.target.value,
                         }))
                       }
-                      placeholder="Ahmed Hassan"
+                      placeholder={language === "ar" ? "أحمد حسن" : "Ahmed Hassan"}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Login Type</Label>
+                    <Label>{t.loginType}</Label>
                     <div className="flex h-10 items-center rounded-md border border-input bg-muted/20 px-3 text-sm">
-                      Staff / Admin Login
+                      {t.staffAdminLogin}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {accountRoleHelp}
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Email (optional)</Label>
+                    <Label>{t.emailOptional}</Label>
                     <Input
                       type="email"
                       value={newUser.email}
@@ -901,11 +1133,11 @@ export default function RolesPage() {
                           email: event.target.value,
                         }))
                       }
-                      placeholder="optional@example.com"
+                      placeholder={t.emailPlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Phone</Label>
+                    <Label>{t.phone}</Label>
                     <Input
                       value={newUser.phone}
                       onChange={(event) =>
@@ -914,11 +1146,11 @@ export default function RolesPage() {
                           phone: event.target.value,
                         }))
                       }
-                      placeholder="+201000000000"
+                      placeholder={t.phonePlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Username</Label>
+                    <Label>{t.username}</Label>
                     <Input
                       value={newUser.username}
                       onChange={(event) =>
@@ -927,11 +1159,11 @@ export default function RolesPage() {
                           username: event.target.value,
                         }))
                       }
-                      placeholder="ahmed.hassan"
+                      placeholder={t.usernamePlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Password</Label>
+                    <Label>{t.password}</Label>
                     <Input
                       type="password"
                       value={newUser.password}
@@ -941,14 +1173,14 @@ export default function RolesPage() {
                           password: event.target.value,
                         }))
                       }
-                      placeholder="At least 8 chars, uppercase, number, symbol"
+                      placeholder={t.passwordPlaceholder}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Required: 8+ chars, uppercase letter, number, and symbol.
+                      {t.passwordHelp}
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Address</Label>
+                    <Label>{t.address}</Label>
                     <Input
                       value={newUser.address}
                       onChange={(event) =>
@@ -957,11 +1189,11 @@ export default function RolesPage() {
                           address: event.target.value,
                         }))
                       }
-                      placeholder="City, street, area"
+                      placeholder={t.addressPlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Job Title</Label>
+                    <Label>{t.jobTitle}</Label>
                     <Input
                       value={newUser.jobTitle}
                       onChange={(event) =>
@@ -970,11 +1202,11 @@ export default function RolesPage() {
                           jobTitle: event.target.value,
                         }))
                       }
-                      placeholder="Operations Manager"
+                      placeholder={t.operationsManager}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Department</Label>
+                    <Label>{t.department}</Label>
                     <Input
                       value={newUser.department}
                       onChange={(event) =>
@@ -983,11 +1215,11 @@ export default function RolesPage() {
                           department: event.target.value,
                         }))
                       }
-                      placeholder="Administration"
+                      placeholder={t.departmentPlaceholder}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Notes</Label>
+                    <Label>{t.notes}</Label>
                     <Textarea
                       value={newUser.notes}
                       onChange={(event) =>
@@ -996,7 +1228,7 @@ export default function RolesPage() {
                           notes: event.target.value,
                         }))
                       }
-                      placeholder="Internal notes for this user"
+                      placeholder={t.notesPlaceholder}
                     />
                   </div>
                 </div>
@@ -1011,7 +1243,7 @@ export default function RolesPage() {
                   ) : (
                     <UserPlus className="h-4 w-4" />
                   )}
-                  Add User & Assign Role
+                  {t.addUserAssign}
                 </Button>
               </CardContent>
             </Card>
@@ -1023,21 +1255,20 @@ export default function RolesPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Users className="h-4 w-4 text-lime-300" />
-                    Assigned Users
+                    {t.assignedUsers}
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Grant or revoke this role for admin/staff users only. Coach,
-                    player, and parent access is managed from their dedicated pages.
+                    {t.assignedUsersDescription}
                   </p>
                 </div>
-                <Badge variant="outline">{selectedRoleUserIds.size} assigned</Badge>
+                <Badge variant="outline">{selectedRoleUserIds.size} {t.assigned}</Badge>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="relative">
                   <Input
                     value={userSearch}
                     onChange={(event) => setUserSearch(event.target.value)}
-                    placeholder="Search users by name, email, username, or role"
+                    placeholder={t.searchUsersPlaceholder}
                     className="pl-9"
                   />
                   <UserPlus className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1072,27 +1303,27 @@ export default function RolesPage() {
                             {displayUserName(user)}
                           </span>
                           <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{user.email || user.username || user.phone || "No login label"}</span>
+                            <span>{user.email || user.username || user.phone || t.noLoginLabel}</span>
                             <Badge variant="secondary" className="rounded-md text-[10px]">
                               {user.role}
                             </Badge>
-                            {isSelf && <span>self protected</span>}
+                            {isSelf && <span>{t.selfProtected}</span>}
                             {!assigned && !compatibleAccountRole && (
                               <span>
-                                needs {recommendedAccountRole} login
+                                {recommendedAccountRole === "admin" ? t.needsAdminLogin : `${t.needsAdminLogin}: ${recommendedAccountRole}`}
                               </span>
                             )}
                           </span>
                         </span>
                         <Badge variant={assigned ? "success" : "outline"}>
-                          {assigned ? "Assigned" : "Not assigned"}
+                          {assigned ? t.assignedStatus : t.notAssignedStatus}
                         </Badge>
                       </button>
                     );
                   })}
                   {!filteredUsers.length && (
                     <div className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                      No users match this search.
+                      {t.noUsersMatch}
                     </div>
                   )}
                 </div>
@@ -1103,12 +1334,12 @@ export default function RolesPage() {
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="text-base">Permissions</CardTitle>
+                <CardTitle className="text-base">{t.permissions}</CardTitle>
                 {editable ? (
-                  <Badge variant="success">Editable</Badge>
+                  <Badge variant="success">{t.editable}</Badge>
                 ) : (
                   <Badge variant="secondary">
-                    {selectedRoleEditLocked ? "Editing disabled" : "Read-only system role"}
+                    {selectedRoleEditLocked ? t.editingDisabled : t.readOnlySystemRole}
                   </Badge>
                 )}
               </div>
@@ -1134,10 +1365,10 @@ export default function RolesPage() {
                         } ${editable ? "cursor-pointer hover:border-lime-300/70 hover:bg-lime-300/15" : "cursor-not-allowed opacity-70"}`}
                         title={
                           editable
-                            ? "Click to grant or remove this permission"
+                            ? t.permissionGrantTitle
                             : selectedRoleEditLocked
-                              ? "Editing is disabled for this custom role. Enable editing first."
-                              : "System role permissions are read-only. Make an editable copy first."
+                              ? t.editFirstTitle
+                              : t.makeCopyFirstTitle
                         }
                       >
                         <input
@@ -1160,7 +1391,7 @@ export default function RolesPage() {
               ))}
               {!permissionGroups.length && (
                 <div className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                  No permissions found.
+                  {t.noPermissions}
                 </div>
               )}
             </CardContent>
@@ -1170,8 +1401,8 @@ export default function RolesPage() {
             {!editable && selectedRole && (
               <span className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-300">
                 {selectedRoleEditLocked
-                  ? "Save/Delete are disabled because editing is off for this custom role."
-                  : "Save/Delete are disabled because this is a system role."}
+                  ? t.saveDeleteEditOff
+                  : t.saveDeleteSystem}
               </span>
             )}
             <Button
@@ -1181,7 +1412,7 @@ export default function RolesPage() {
               disabled={!editable || saving}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Role
+              {t.saveRole}
             </Button>
             <Button
               type="button"
@@ -1191,7 +1422,7 @@ export default function RolesPage() {
               disabled={!editable || deleting || Boolean(selectedRole?.userCount)}
             >
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Delete Role
+              {t.deleteRole}
             </Button>
             {message && (
               <span className="flex items-center gap-1 text-sm text-emerald-400">

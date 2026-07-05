@@ -6,7 +6,7 @@ This runbook keeps the current product behavior, roles, permissions, and workflo
 
 - Target: Docker on a VPS or VM.
 - Entry point: `docker-compose.prod.yml`.
-- Public edge: `nginx` load balances `api-1` and `api-2`.
+- Public edge: `nginx` serves the Next.js frontend and load balances `api-1` and `api-2` for `/api`, `/uploads`, and `/socket.io`.
 - Background processing: `worker-1` and `worker-2` run BullMQ outside the API process.
 - Realtime: Socket.IO uses sticky load balancing plus the Redis adapter, so events can move between API instances.
 
@@ -20,6 +20,7 @@ Required production environment:
 - `COOKIE_SECRET`
 - `TOTP_ENCRYPTION_KEY`
 - `CSRF_SECRET`
+- `QR_ATTENDANCE_SECRET`
 - `MFA_ENFORCED_ROLES=admin,coach`
 - `CORS_ORIGINS=https://your-real-app-domain.example`
 
@@ -37,6 +38,7 @@ Recommended database/runtime guards:
 Background automations:
 
 - In production, keep `BULLMQ_WORKERS_ENABLED=false` in API containers.
+- Keep `REDIS_REQUIRED=true` and `QUEUE_REDIS_FAILURE_MODE=throw` in production so queue loss is visible instead of silently skipped.
 - Prefer enabling `BACKGROUND_AUTOMATIONS_ENABLED=true` and `INJURY_RISK_AUTOMATION_ENABLED=true` on worker containers only.
 - Automations use Redis locks, so duplicate worker/API instances should not run the same scheduled task at the same time.
 - `NOTIFICATION_CLEANUP_ENABLED=true` archives old notification data according to `NOTIFICATION_RETENTION_MONTHS`, then removes it from hot storage.
@@ -49,6 +51,20 @@ For S3-compatible upload storage:
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - Optional: `S3_ENDPOINT`, `S3_REGION`
+
+For metrics:
+
+- `METRICS_ENABLED=true`
+- `METRICS_TOKEN`
+- Scrape `GET /metrics` with `Authorization: Bearer <METRICS_TOKEN>`.
+
+## Backups
+
+- Install PostgreSQL client tools on the host or backup runner.
+- Set `DATABASE_URL` and `BACKUP_DIR`.
+- Run `npm run backup:db` from `golx-backend`.
+- Store both the `.dump` and `.sha256` files outside the application server.
+- Restore drills should use `pg_restore --clean --if-exists --no-owner --dbname <target_db> <dump_file>`.
 
 ## Health Checks
 

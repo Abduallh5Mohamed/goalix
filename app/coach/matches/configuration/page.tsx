@@ -31,6 +31,7 @@ import {
   useUpsertMatchTacticsMutation,
 } from "@/lib/store/api/calendarApi";
 import { useGetCoachBirthdaysQuery } from "@/lib/store/api/coachApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { FORMATIONS, getFormationSlots } from "@/lib/football/formations";
 import { formatDate, localDateTimeTimestamp } from "@/lib/utils";
 
@@ -40,7 +41,7 @@ const FormationPreview3D = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex min-h-[420px] items-center justify-center rounded-[28px] border border-[var(--gx-border)] bg-[var(--gx-card)] text-sm font-semibold text-[var(--gx-muted)]">
-        Loading tactical preview...
+        ...
       </div>
     ),
   }
@@ -123,7 +124,8 @@ const playerMainPosition = (
 
 const playerDisplayPosition = (
   player: Pick<CoachPlayer, "position" | "customProfile">,
-) => playerMainPosition(player) || "No main position";
+  fallback: string,
+) => playerMainPosition(player) || fallback;
 
 const isHighInjuryRisk = (record?: InjuryRiskPredictionRecord) => {
   const prediction = record?.prediction;
@@ -133,7 +135,7 @@ const isHighInjuryRisk = (record?: InjuryRiskPredictionRecord) => {
   );
 };
 
-function InjuryRiskBadge({ record }: { record?: InjuryRiskPredictionRecord }) {
+function InjuryRiskBadge({ record, label }: { record?: InjuryRiskPredictionRecord; label: string }) {
   if (!isHighInjuryRisk(record)) return null;
   return (
     <Badge
@@ -141,7 +143,7 @@ function InjuryRiskBadge({ record }: { record?: InjuryRiskPredictionRecord }) {
       className="inline-flex w-fit items-center gap-1 rounded-md text-[11px]"
     >
       <AlertTriangle className="h-3 w-3" />
-      High injury risk
+      {label}
     </Badge>
   );
 }
@@ -197,7 +199,104 @@ const getApiMessage = (error: unknown, fallback: string) => {
   );
 };
 
+const matchConfigurationCopy = {
+  en: {
+    selectedGroup: "Selected group",
+    selectedBirthday: "Selected birthday",
+    noMainPosition: "No main position",
+    highRisk: "high",
+    highInjuryRisk: "High injury risk",
+    highRiskConfirm: "{player} has a high injury risk ({percentage}). Are you sure you want to use this player as {role} despite the injury risk?",
+    substituteRole: "a substitute",
+    squadRiskConfirm: "The Injury Risk model marked these players as high risk: {names}. Are you sure you want to save them in the match squad?",
+    saved: "Configuration saved.",
+    saveError: "Could not save match configuration.",
+    pageTitle: "Matches Configuration",
+    pageDescription: "Configure match target, lineup, substitutes, player instructions, and tactical shape.",
+    home: "Home",
+    matches: "Matches",
+    configuration: "Configuration",
+    matchSetup: "Match Setup",
+    loadingMatches: "Loading matches...",
+    noConfigurableMatches: "No configurable matches are available.",
+    match: "Match",
+    selectMatch: "Select match",
+    friendly: "Friendly",
+    notFriendly: "Not friendly",
+    targetType: "Target Type",
+    group: "Group",
+    birthday: "Birthday",
+    selectGroup: "Select group",
+    selectBirthday: "Select birthday",
+    formation: "Formation",
+    tacticalNotes: "Tactical Notes",
+    tacticalPlaceholder: "Pressing plan, build-up notes, set-piece reminders...",
+    saveConfiguration: "Save Configuration",
+    startingLineup: "Starting Lineup",
+    availablePlayers: "{count} available players",
+    selectPlayer: "Select player",
+    playerInstruction: "Player instruction",
+    substitutes: "Substitutes",
+    selected: "{count} selected",
+    add: "Add",
+    remove: "Remove",
+    matchBench: "Match Bench",
+    removePlayer: "Remove {name}",
+    substituteInstruction: "Substitute instruction",
+    noSubstitutes: "No substitutes selected.",
+    noCompletePlayers: "No complete players found for this target.",
+  },
+  ar: {
+    selectedGroup: "المجموعة المختارة",
+    selectedBirthday: "سنة الميلاد المختارة",
+    noMainPosition: "لا يوجد مركز رئيسي",
+    highRisk: "مرتفع",
+    highInjuryRisk: "مخاطر إصابة مرتفعة",
+    highRiskConfirm: "{player} لديه خطر إصابة مرتفع ({percentage}). هل تريد استخدامه في مركز {role} رغم خطر الإصابة؟",
+    substituteRole: "بديل",
+    squadRiskConfirm: "نموذج مخاطر الإصابة وضع هؤلاء اللاعبين ضمن الخطر المرتفع: {names}. هل تريد حفظهم في قائمة المباراة؟",
+    saved: "تم حفظ الإعدادات.",
+    saveError: "تعذر حفظ إعداد المباراة.",
+    pageTitle: "إعداد المباراة",
+    pageDescription: "اضبط هدف المباراة والتشكيل والبدلاء وتعليمات اللاعبين والشكل التكتيكي.",
+    home: "الرئيسية",
+    matches: "المباريات",
+    configuration: "الإعداد",
+    matchSetup: "إعداد المباراة",
+    loadingMatches: "جاري تحميل المباريات...",
+    noConfigurableMatches: "لا توجد مباريات متاحة للإعداد.",
+    match: "المباراة",
+    selectMatch: "اختر مباراة",
+    friendly: "ودية",
+    notFriendly: "غير ودية",
+    targetType: "نوع الهدف",
+    group: "مجموعة",
+    birthday: "سنة ميلاد",
+    selectGroup: "اختر مجموعة",
+    selectBirthday: "اختر سنة ميلاد",
+    formation: "التشكيل",
+    tacticalNotes: "ملاحظات تكتيكية",
+    tacticalPlaceholder: "خطة الضغط، ملاحظات البناء، تذكيرات الكرات الثابتة...",
+    saveConfiguration: "حفظ الإعداد",
+    startingLineup: "التشكيل الأساسي",
+    availablePlayers: "{count} لاعب متاح",
+    selectPlayer: "اختر لاعبًا",
+    playerInstruction: "تعليمات اللاعب",
+    substitutes: "البدلاء",
+    selected: "{count} محدد",
+    add: "إضافة",
+    remove: "إزالة",
+    matchBench: "دكة المباراة",
+    removePlayer: "إزالة {name}",
+    substituteInstruction: "تعليمات البديل",
+    noSubstitutes: "لا يوجد بدلاء محددون.",
+    noCompletePlayers: "لا يوجد لاعبون مكتملون لهذا الهدف.",
+  },
+} as const;
+
 export default function CoachMatchConfigurationPage() {
+  const language = useDashboardLanguage();
+  const t = matchConfigurationCopy[language];
   const { data: matchesRes, isLoading: loadingMatches } =
     useGetCoachMatchesQuery();
   const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
@@ -227,11 +326,11 @@ export default function CoachMatchConfigurationPage() {
             : [
                 {
                   id: match.team_id,
-                  name: match.team_name ?? "Selected group",
+                  name: match.team_name ?? t.selectedGroup,
                 },
               ],
       })),
-    [matchesRes?.data],
+    [matchesRes?.data, t.selectedGroup],
   );
   const acceptedRequestMatches: Match[] = useMemo(
     () => [
@@ -268,7 +367,7 @@ export default function CoachMatchConfigurationPage() {
               ? [
                   {
                     id: request.selected_group_id,
-                    name: request.selected_group_name ?? "Selected group",
+                    name: request.selected_group_name ?? t.selectedGroup,
                   },
                 ]
               : [],
@@ -277,7 +376,7 @@ export default function CoachMatchConfigurationPage() {
                   {
                     id: request.selected_birth_year_id,
                     label:
-                      request.selected_birth_year_name ?? "Selected birthday",
+                      request.selected_birth_year_name ?? t.selectedBirthday,
                     fromYear: 0,
                     toYear: 9999,
                   },
@@ -286,7 +385,7 @@ export default function CoachMatchConfigurationPage() {
           };
         }),
     ],
-    [adminRequestsRes?.data, nowMs],
+    [adminRequestsRes?.data, nowMs, t.selectedBirthday, t.selectedGroup],
   );
   const matchOptions = useMemo(
     () =>
@@ -499,9 +598,12 @@ export default function CoachMatchConfigurationPage() {
     const percentage =
       risk?.prediction?.risk_percentage !== undefined
         ? `${risk.prediction.risk_percentage}%`
-        : "high";
+        : t.highRisk;
     const confirmed = window.confirm(
-      `${player.full_name} has a high injury risk (${percentage}). Are you sure you want to use this player as ${role} despite the injury risk?`,
+      t.highRiskConfirm
+        .replace("{player}", player.full_name)
+        .replace("{percentage}", percentage)
+        .replace("{role}", role),
     );
     if (confirmed) {
       setAcknowledgedRiskPlayerIds((prev) => new Set(prev).add(player.id));
@@ -512,7 +614,7 @@ export default function CoachMatchConfigurationPage() {
   const toggleReserve = (playerId: string) => {
     const player = targetPlayers.find((item) => item.id === playerId);
     const adding = !activeReserveIds.includes(playerId);
-    if (adding && player && !confirmHighRiskPlayer(player, "a substitute")) {
+    if (adding && player && !confirmHighRiskPlayer(player, t.substituteRole)) {
       return;
     }
     setReserveIds((prev) => {
@@ -568,7 +670,7 @@ export default function CoachMatchConfigurationPage() {
     if (highRiskPlayers.length) {
       const names = highRiskPlayers.map((player) => player.full_name).join(", ");
       const confirmed = window.confirm(
-        `The Injury Risk model marked these players as high risk: ${names}. Are you sure you want to save them in the match squad?`,
+        t.squadRiskConfirm.replace("{names}", names),
       );
       if (!confirmed) return;
       setAcknowledgedRiskPlayerIds((prev) => {
@@ -601,43 +703,43 @@ export default function CoachMatchConfigurationPage() {
           players: [...starters, ...reserves],
         }).unwrap();
       }
-      setStatus("Configuration saved.");
+      setStatus(t.saved);
     } catch (err) {
-      setError(getApiMessage(err, "Could not save match configuration."));
+      setError(getApiMessage(err, t.saveError));
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Matches Configuration"
-        description="Configure match target, lineup, substitutes, player instructions, and tactical shape."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches", href: "/coach/matches" },
-          { label: "Configuration" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.matches, href: "/coach/matches" },
+          { label: t.configuration },
         ]}
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Match Setup</CardTitle>
+            <CardTitle className="text-base">{t.matchSetup}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingMatches && (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading matches...
+                {t.loadingMatches}
               </p>
             )}
             {!loadingMatches && !matchOptions.length && (
               <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                No configurable matches are available.
+                {t.noConfigurableMatches}
               </p>
             )}
             <div className="space-y-2">
-              <Label>Match</Label>
+              <Label>{t.match}</Label>
               <Select
                 value={selectedMatch?.id ?? ""}
                 disabled={!matchOptions.length}
@@ -667,22 +769,22 @@ export default function CoachMatchConfigurationPage() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select match" />
+                  <SelectValue placeholder={t.selectMatch} />
                 </SelectTrigger>
                 <SelectContent>
                   {matchOptions.map((match) => (
                     <SelectItem key={match.id} value={match.id}>
                       {match.opponent_name} - {formatDate(match.match_date)} -{" "}
                       {match.match_type === "friendly"
-                        ? "Friendly"
-                        : "Not friendly"}
+                        ? t.friendly
+                        : t.notFriendly}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Target Type</Label>
+              <Label>{t.targetType}</Label>
               <Select
                 value={effectiveTargetMode}
                 disabled={!selectedMatch}
@@ -699,14 +801,14 @@ export default function CoachMatchConfigurationPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="group">Group</SelectItem>
-                  <SelectItem value="birthday">Birthday</SelectItem>
+                  <SelectItem value="group">{t.group}</SelectItem>
+                  <SelectItem value="birthday">{t.birthday}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>
-                {effectiveTargetMode === "group" ? "Group" : "Birthday"}
+                {effectiveTargetMode === "group" ? t.group : t.birthday}
               </Label>
               <Select
                 value={effectiveTargetId}
@@ -723,8 +825,8 @@ export default function CoachMatchConfigurationPage() {
                   <SelectValue
                     placeholder={
                       effectiveTargetMode === "group"
-                        ? "Select group"
-                        : "Select birthday"
+                        ? t.selectGroup
+                        : t.selectBirthday
                     }
                   />
                 </SelectTrigger>
@@ -741,7 +843,7 @@ export default function CoachMatchConfigurationPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Formation</Label>
+              <Label>{t.formation}</Label>
               <Select
                 value={activeFormation}
                 disabled={!selectedMatch}
@@ -771,11 +873,11 @@ export default function CoachMatchConfigurationPage() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Tactical Notes</Label>
+              <Label>{t.tacticalNotes}</Label>
               <Textarea
                 value={activeTacticalNotes}
                 onChange={(event) => setTacticalNotes(event.target.value)}
-                placeholder="Pressing plan, build-up notes, set-piece reminders..."
+                placeholder={t.tacticalPlaceholder}
                 disabled={!selectedMatch}
               />
             </div>
@@ -801,7 +903,7 @@ export default function CoachMatchConfigurationPage() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Configuration
+              {t.saveConfiguration}
             </Button>
           </CardContent>
         </Card>
@@ -819,9 +921,9 @@ export default function CoachMatchConfigurationPage() {
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle className="text-base">Starting Lineup</CardTitle>
+                <CardTitle className="text-base">{t.startingLineup}</CardTitle>
                 <Badge variant="secondary">
-                  {targetPlayers.length} available players
+                  {t.availablePlayers.replace("{count}", String(targetPlayers.length))}
                 </Badge>
               </div>
             </CardHeader>
@@ -858,7 +960,7 @@ export default function CoachMatchConfigurationPage() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select player" />
+                        <SelectValue placeholder={t.selectPlayer} />
                       </SelectTrigger>
                       <SelectContent>
                         {available.map((player) => {
@@ -867,9 +969,9 @@ export default function CoachMatchConfigurationPage() {
                             <SelectItem key={player.id} value={player.id}>
                               <span className="flex w-full items-center justify-between gap-3">
                                 <span className="min-w-0 truncate">
-                                  {player.full_name} - {playerDisplayPosition(player)}
+                                  {player.full_name} - {playerDisplayPosition(player, t.noMainPosition)}
                                 </span>
-                                <InjuryRiskBadge record={risk} />
+                                <InjuryRiskBadge record={risk} label={t.highInjuryRisk} />
                               </span>
                             </SelectItem>
                           );
@@ -881,7 +983,7 @@ export default function CoachMatchConfigurationPage() {
                       onChange={(event) =>
                         updateSlot(slot.id, { instruction: event.target.value })
                       }
-                      placeholder="Player instruction"
+                      placeholder={t.playerInstruction}
                     />
                   </div>
                 );
@@ -892,9 +994,12 @@ export default function CoachMatchConfigurationPage() {
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle className="text-base">Substitutes</CardTitle>
+                <CardTitle className="text-base">{t.substitutes}</CardTitle>
                 <Badge variant="secondary">
-                  {activeReserveIds.filter((id) => targetPlayerIds.has(id)).length} selected
+                  {t.selected.replace(
+                    "{count}",
+                    String(activeReserveIds.filter((id) => targetPlayerIds.has(id)).length),
+                  )}
                 </Badge>
               </div>
             </CardHeader>
@@ -914,11 +1019,12 @@ export default function CoachMatchConfigurationPage() {
                             {player.full_name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {playerDisplayPosition(player)} - {player.level}
+                            {playerDisplayPosition(player, t.noMainPosition)} - {player.level}
                           </p>
                           <div className="mt-2">
                             <InjuryRiskBadge
                               record={injuryRiskByPlayerId.get(player.id)}
+                              label={t.highInjuryRisk}
                             />
                           </div>
                         </div>
@@ -934,7 +1040,7 @@ export default function CoachMatchConfigurationPage() {
                           ) : (
                             <UserPlus className="h-4 w-4" />
                           )}
-                          {active ? "Remove" : "Add"}
+                          {active ? t.remove : t.add}
                         </Button>
                       </div>
                     );
@@ -942,7 +1048,7 @@ export default function CoachMatchConfigurationPage() {
               </div>
               <div className="space-y-3 rounded-md border border-border/50 bg-muted/10 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Label>Match Bench</Label>
+                  <Label>{t.matchBench}</Label>
                   <Badge variant="outline">{activeReserveIds.length}</Badge>
                 </div>
                 {activeReserveIds.map((playerId) => {
@@ -959,6 +1065,7 @@ export default function CoachMatchConfigurationPage() {
                           </p>
                           <InjuryRiskBadge
                             record={injuryRiskByPlayerId.get(player.id)}
+                            label={t.highInjuryRisk}
                           />
                         </div>
                         <Button
@@ -966,7 +1073,7 @@ export default function CoachMatchConfigurationPage() {
                           size="icon"
                           variant="ghost"
                           onClick={() => toggleReserve(playerId)}
-                          aria-label={`Remove ${player.full_name}`}
+                          aria-label={t.removePlayer.replace("{name}", player.full_name)}
                         >
                           <UserMinus className="h-4 w-4" />
                         </Button>
@@ -982,20 +1089,20 @@ export default function CoachMatchConfigurationPage() {
                             };
                           })
                         }
-                        placeholder="Substitute instruction"
+                        placeholder={t.substituteInstruction}
                       />
                     </div>
                   );
                 })}
                 {!activeReserveIds.filter((id) => targetPlayerIds.has(id)).length && (
                   <p className="py-6 text-center text-sm text-muted-foreground">
-                    No substitutes selected.
+                    {t.noSubstitutes}
                   </p>
                 )}
               </div>
               {!targetPlayers.length && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  No complete players found for this target.
+                  {t.noCompletePlayers}
                 </p>
               )}
             </CardContent>

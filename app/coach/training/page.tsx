@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGetCoachCalendarEventsQuery } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 let trainingClockSnapshot = 0;
@@ -24,8 +25,58 @@ const subscribeTrainingClock = (onStoreChange: () => void) => {
 const getTrainingClockSnapshot = () => trainingClockSnapshot;
 const getServerTrainingClockSnapshot = () => 0;
 
+const trainingCopy = {
+  en: {
+    title: "Training",
+    description: "All scheduled and completed training sessions.",
+    home: "Home",
+    refresh: "Refresh",
+    create: "Create Training",
+    sessions: "Training Sessions",
+    loading: "Loading trainings...",
+    loadError:
+      "Could not load backend training data. Make sure the backend is running and your coach session is valid.",
+    completed: "completed",
+    open: "open",
+    group: (count: number) => `${count} group${count === 1 ? "" : "s"}`,
+    birthYear: (count: number) =>
+      `${count} birth year${count === 1 ? "" : "s"}`,
+    player: (count: number) => `${count} player${count === 1 ? "" : "s"}`,
+    noTarget: "No target snapshot",
+    opens: (time: string) => `Opens ${time}`,
+    openTraining: "Open Training",
+    viewDetails: "View Details",
+    empty:
+      "No backend training sessions are visible for this coach yet. Create a training event and target one of this coach's assigned groups, birth years, or players.",
+  },
+  ar: {
+    title: "التدريب",
+    description: "كل الحصص التدريبية المجدولة والمكتملة.",
+    home: "الرئيسية",
+    refresh: "تحديث",
+    create: "إنشاء تدريب",
+    sessions: "حصص التدريب",
+    loading: "جاري تحميل التدريبات...",
+    loadError:
+      "تعذر تحميل بيانات التدريب من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
+    completed: "مكتمل",
+    open: "مفتوح",
+    group: (count: number) => `${count} مجموعة`,
+    birthYear: (count: number) => `${count} سنة ميلاد`,
+    player: (count: number) => `${count} لاعب`,
+    noTarget: "لا توجد أهداف محددة",
+    opens: (time: string) => `يفتح ${time}`,
+    openTraining: "فتح التدريب",
+    viewDetails: "عرض التفاصيل",
+    empty:
+      "لا توجد حصص تدريب ظاهرة لهذا المدرب حتى الآن. أنشئ حدث تدريب واستهدف مجموعة أو سنة ميلاد أو لاعبين من نطاق المدرب.",
+  },
+} as const;
+
 export default function CoachTrainingListPage() {
-  const { data, isLoading, isError, isFetching, refetch } =
+  const language = useDashboardLanguage();
+  const t = trainingCopy[language];
+  const { data, isLoading, isError, refetch } =
     useGetCoachCalendarEventsQuery();
   const nowMs = useSyncExternalStore(
     subscribeTrainingClock,
@@ -47,18 +98,23 @@ export default function CoachTrainingListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Training"
-        description="All scheduled and completed training sessions."
-        breadcrumbs={[{ label: "Home", href: "/coach/home" }, { label: "Training" }]}
+        title={t.title}
+        description={t.description}
+        breadcrumbs={[
+          { label: t.home, href: "/coach/home" },
+          { label: t.title },
+        ]}
       />
 
       <div className="flex justify-end">
         <div className="flex flex-wrap gap-2">
-          <RefreshButton onRefresh={refetch} isRefreshing={isFetching} />
+          <Button variant="outline" onClick={() => refetch()}>
+            {t.refresh}
+          </Button>
           <Button asChild className="gap-2">
             <Link href="/coach/training/create">
               <Plus className="h-4 w-4" />
-              Create Training
+              {t.create}
             </Link>
           </Button>
         </div>
@@ -66,19 +122,19 @@ export default function CoachTrainingListPage() {
 
       <Card className="border-border/50 bg-card">
         <CardHeader>
-          <CardTitle className="text-base">Training Sessions</CardTitle>
+          <CardTitle className="text-base">{t.sessions}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading trainings...
+              {t.loading}
             </div>
           )}
 
           {isError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-              Could not load backend training data. Make sure the backend is running and your coach session is valid.
+              {t.loadError}
             </div>
           )}
 
@@ -95,15 +151,11 @@ export default function CoachTrainingListPage() {
             const isUpcoming = event.status === "scheduled" && nowMs < startMs;
             const focus = event.training?.training_focus?.replaceAll("_", " ");
             const targetText = [
-              event.groups?.length
-                ? `${event.groups.length} group${event.groups.length === 1 ? "" : "s"}`
-                : "",
+              event.groups?.length ? t.group(event.groups.length) : "",
               event.birth_years?.length
-                ? `${event.birth_years.length} birth year${event.birth_years.length === 1 ? "" : "s"}`
+                ? t.birthYear(event.birth_years.length)
                 : "",
-              event.players?.length
-                ? `${event.players.length} player${event.players.length === 1 ? "" : "s"}`
-                : "",
+              event.players?.length ? t.player(event.players.length) : "",
             ]
               .filter(Boolean)
               .join(" - ");
@@ -130,7 +182,11 @@ export default function CoachTrainingListPage() {
                               : "secondary"
                       }
                     >
-                      {isCompleted ? "completed" : isOpen ? "open" : event.status}
+                      {isCompleted
+                        ? t.completed
+                        : isOpen
+                          ? t.open
+                          : event.status}
                     </Badge>
                     {focus && <Badge variant="outline">{focus}</Badge>}
                   </div>
@@ -140,12 +196,12 @@ export default function CoachTrainingListPage() {
                     {event.location ? ` - ${event.location}` : ""}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {targetText || "No target snapshot"}
+                    {targetText || t.noTarget}
                   </p>
                 </div>
                 {isUpcoming ? (
                   <Button size="sm" variant="outline" disabled>
-                    Opens {formatTime12(event.start_datetime)}
+                    {t.opens(formatTime12(event.start_datetime))}
                   </Button>
                 ) : (
                   <Button
@@ -154,7 +210,7 @@ export default function CoachTrainingListPage() {
                     variant={isOpen ? "default" : "outline"}
                   >
                     <Link href={`/coach/training/${event.id}`}>
-                      {isOpen ? "Open Training" : "View Details"}
+                      {isOpen ? t.openTraining : t.viewDetails}
                     </Link>
                   </Button>
                 )}
@@ -164,7 +220,7 @@ export default function CoachTrainingListPage() {
 
           {!trainings.length && !isLoading && (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No backend training sessions are visible for this coach yet. Create a training event and target one of this coach&apos;s assigned groups, birth years, or players.
+              {t.empty}
             </div>
           )}
         </CardContent>

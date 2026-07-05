@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const { Client } = require("pg");
+const { generate: generateTotp } = require("otplib");
 
 const BASE_URL = process.env.E2E_API_URL || "http://127.0.0.1:3000";
 const PASSWORD = process.env.E2E_PASSWORD;
@@ -29,20 +30,56 @@ function rowsOf(data) {
   return [];
 }
 
-function cookieFrom(response) {
-  const raw = response.headers.get("set-cookie") || "";
-  const match = raw.match(/accessToken=([^;]+)/);
-  if (!match) throw new Error("Login response did not set accessToken cookie");
-  return `accessToken=${match[1]}`;
+function cookieMap(cookie = "") {
+  return Object.fromEntries(
+    cookie
+      .split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const index = part.indexOf("=");
+        return index === -1 ? [part, ""] : [part.slice(0, index), part.slice(index + 1)];
+      }),
+  );
+}
+
+function serializeCookies(cookies) {
+  return Object.entries(cookies)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+}
+
+function mergeResponseCookies(cookie, response) {
+  const merged = cookieMap(cookie);
+  const rawCookies = typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie().join(", ")
+    : response.headers.get("set-cookie") || "";
+
+  for (const name of ["accessToken", "refreshToken", "csrfToken"]) {
+    const match = rawCookies.match(new RegExp(`${name}=([^;]+)`));
+    if (match) merged[name] = match[1];
+  }
+
+  return serializeCookies(merged);
+}
+
+function csrfFromCookie(cookie) {
+  return cookieMap(cookie).csrfToken || null;
 }
 
 async function request(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const csrfToken = ["POST", "PUT", "PATCH", "DELETE"].includes(method) && options.cookie
+    ? csrfFromCookie(options.cookie)
+    : null;
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.cookie ? { Cookie: options.cookie } : {}),
+      ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
       ...(options.headers || {}),
     },
   });
@@ -53,7 +90,44 @@ async function request(path, options = {}) {
   } catch {
     body = text;
   }
-  return { response, body };
+  return { response, body, cookie: mergeResponseCookies(options.cookie || "", response) };
+}
+
+async function ensureCsrfCookie(cookie) {
+  const { response, body, cookie: nextCookie } = await request("/api/v1/csrf-token", { cookie });
+  assert(response.status === 200, `CSRF bootstrap returned ${response.status}: ${JSON.stringify(body)}`);
+  let mergedCookie = nextCookie;
+  if (!csrfFromCookie(mergedCookie) && body?.data?.csrfToken) {
+    const cookies = cookieMap(mergedCookie);
+    cookies.csrfToken = body.data.csrfToken;
+    mergedCookie = serializeCookies(cookies);
+  }
+  assert(csrfFromCookie(mergedCookie), "CSRF bootstrap did not provide csrfToken");
+  return mergedCookie;
+}
+
+async function setupMfaIfRequired(name, cookie, loginBody) {
+  if (!loginBody?.data?.mfaSetupRequired) return cookie;
+
+  let nextCookie = await ensureCsrfCookie(cookie);
+  const setup = await request("/api/v1/auth/2fa/setup", {
+    method: "POST",
+    cookie: nextCookie,
+  });
+  assert(setup.response.status === 200, `${name} MFA setup returned ${setup.response.status}: ${JSON.stringify(setup.body)}`);
+  const secret = setup.body?.data?.secret;
+  assert(secret, `${name} MFA setup did not return a TOTP secret`);
+
+  nextCookie = setup.cookie || nextCookie;
+  const token = await generateTotp({ secret });
+  const verified = await request("/api/v1/auth/2fa/verify-setup", {
+    method: "POST",
+    cookie: nextCookie,
+    body: JSON.stringify({ token }),
+  });
+  assert(verified.response.status === 200, `${name} MFA verify setup returned ${verified.response.status}: ${JSON.stringify(verified.body)}`);
+  record(`${name} MFA setup`, true, "enabled");
+  return verified.cookie || nextCookie;
 }
 
 async function login(name, path, payload, expectedRole) {
@@ -64,7 +138,9 @@ async function login(name, path, payload, expectedRole) {
   assert(response.status === 200, `${name} login returned ${response.status}: ${JSON.stringify(body)}`);
   assert(body?.success === true, `${name} login did not return success`);
   assert(body?.data?.user?.role === expectedRole, `${name} role mismatch`);
-  const cookie = cookieFrom(response);
+  let cookie = mergeResponseCookies("", response);
+  assert(cookieMap(cookie).accessToken, "Login response did not set accessToken cookie");
+  cookie = await setupMfaIfRequired(name, cookie, body);
   record(`${name} login`, true, expectedRole);
   return { cookie, user: body.data.user };
 }

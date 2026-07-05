@@ -9,6 +9,7 @@ import {
   useGetPlayerMeasurementsQuery,
   type PlayerMeasurement,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 
 type MeasurementWithExtras = PlayerMeasurement &
   Record<string, string | number | null | undefined>;
@@ -62,6 +63,49 @@ const getDiff = (curr: number | null, prev: number | null) => {
   };
 };
 
+const measurementsCopy = {
+  en: {
+    title: "My Measurements",
+    description: "Track your physical development from backend coach measurements.",
+    home: "Home",
+    profile: "Profile",
+    measurements: "Measurements",
+    loading: "Loading measurements...",
+    progress: "Progress",
+    noData: "No coach measurements have been recorded yet.",
+    history: "Measurement History",
+    month: "Month",
+    notes: "Notes",
+    metrics: {
+      height: "Height",
+      weight: "Weight",
+      sprintSpeed: "Sprint Speed",
+      endurance: "Endurance",
+      flexibility: "Flexibility",
+    },
+  },
+  ar: {
+    title: "قياساتي",
+    description: "تابع تطورك البدني من قياسات المدرب المسجلة في الباك إند.",
+    home: "الرئيسية",
+    profile: "الملف الشخصي",
+    measurements: "القياسات",
+    loading: "جاري تحميل القياسات...",
+    progress: "التقدم",
+    noData: "لم يتم تسجيل قياسات من المدرب حتى الآن.",
+    history: "سجل القياسات",
+    month: "الشهر",
+    notes: "ملاحظات",
+    metrics: {
+      height: "الطول",
+      weight: "الوزن",
+      sprintSpeed: "سرعة الجري",
+      endurance: "التحمل",
+      flexibility: "المرونة",
+    },
+  },
+} as const;
+
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
@@ -71,6 +115,8 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export default function PlayerMeasurementsPage() {
+  const language = useDashboardLanguage();
+  const t = measurementsCopy[language];
   const profileQuery = useGetPlayerProfileQuery();
   const playerId = profileQuery.data?.id;
   const measurementsQuery = useGetPlayerMeasurementsQuery(
@@ -111,21 +157,21 @@ export default function PlayerMeasurementsPage() {
 
   const metrics = [
     {
-      label: "Height",
+      label: t.metrics.height,
       keys: ["height_cm", "heightCm", "height"],
       unit: "cm",
       color: "text-cyan-200",
       chartColor: "#2d9ad5",
     },
     {
-      label: "Weight",
+      label: t.metrics.weight,
       keys: ["weight_kg", "weightKg", "weight"],
       unit: "kg",
       color: "text-lime-200",
       chartColor: "#7bea28",
     },
     {
-      label: "Sprint Speed",
+      label: t.metrics.sprintSpeed,
       keys: ["sprint_speed", "sprintSpeed"],
       unit: "s",
       color: "text-amber-200",
@@ -133,14 +179,14 @@ export default function PlayerMeasurementsPage() {
       inverseBetter: true,
     },
     {
-      label: "Endurance",
+      label: t.metrics.endurance,
       keys: ["endurance", "stamina"],
       unit: "/10",
       color: "text-violet-200",
       chartColor: "#2ee8c9",
     },
     {
-      label: "Flexibility",
+      label: t.metrics.flexibility,
       keys: ["flexibility"],
       unit: "/10",
       color: "text-emerald-200",
@@ -162,12 +208,12 @@ export default function PlayerMeasurementsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Measurements"
-        description="Track your physical development from backend coach measurements."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Profile", href: "/player/profile" },
-          { label: "Measurements" },
+          { label: t.home, href: "/player/home" },
+          { label: t.profile, href: "/player/profile" },
+          { label: t.measurements },
         ]}
       />
 
@@ -175,7 +221,7 @@ export default function PlayerMeasurementsPage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading measurements...
+            {t.loading}
           </CardContent>
         </Card>
       ) : measurements.length ? (
@@ -220,7 +266,7 @@ export default function PlayerMeasurementsPage() {
               >
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">
-                    {chart.label} Progress
+                    {chart.label} {t.progress}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -243,7 +289,7 @@ export default function PlayerMeasurementsPage() {
           <Card className="border-white/10 bg-white/[0.045] shadow-none">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">
-                Measurement History
+                {t.history}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -251,13 +297,13 @@ export default function PlayerMeasurementsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/10 text-left text-slate-400">
-                      <th className="pb-3 pr-4">Month</th>
+                      <th className="pb-3 pr-4">{t.month}</th>
                       {metrics.map((metric) => (
                         <th key={metric.label} className="pb-3 pr-4">
                           {metric.label}
                         </th>
                       ))}
-                      <th className="pb-3">Notes</th>
+                      <th className="pb-3">{t.notes}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -292,7 +338,7 @@ export default function PlayerMeasurementsPage() {
           </Card>
         </>
       ) : (
-        <EmptyState text="No backend measurements have been recorded for you yet." />
+        <EmptyState text={t.noData} />
       )}
     </div>
   );

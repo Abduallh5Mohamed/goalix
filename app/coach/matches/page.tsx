@@ -24,6 +24,7 @@ import {
   useGetCoachMatchesQuery,
 } from "@/lib/store/api/calendarApi";
 import { useGetCoachBirthdaysQuery } from "@/lib/store/api/coachApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12, localDateTimeTimestamp } from "@/lib/utils";
 
 let clockSnapshot = 0;
@@ -42,8 +43,7 @@ const getServerMatchClockSnapshot = () => 0;
 const matchStartTimestamp = (match?: {
   match_date: string;
   match_time: string;
-}) =>
-  match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0;
+}) => (match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0);
 
 const MATCH_AUTO_FINISH_HOURS = 3;
 const closedMatchStatuses = new Set(["cancelled", "finished", "completed"]);
@@ -57,19 +57,27 @@ const matchAutoFinishTimestamp = (match?: {
 };
 
 const isClosedMatch = (
-  match: { status: string; match_status: string; match_date: string; match_time: string },
+  match: {
+    status: string;
+    match_status: string;
+    match_date: string;
+    match_time: string;
+  },
   nowMs: number,
 ) =>
   closedMatchStatuses.has(match.status) ||
   closedMatchStatuses.has(match.match_status) ||
-  (match.match_status === "scheduled" && matchAutoFinishTimestamp(match) <= nowMs);
+  (match.match_status === "scheduled" &&
+    matchAutoFinishTimestamp(match) <= nowMs);
 
 const matchDayOpenMinutes = (match?: Match) => {
   const raw =
     match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ??
     match?.academy_settings?.match_day_open_minutes_before_kickoff;
   const minutes = Number(raw);
-  return Number.isFinite(minutes) ? Math.max(0, Math.min(240, Math.round(minutes))) : 5;
+  return Number.isFinite(minutes)
+    ? Math.max(0, Math.min(240, Math.round(minutes)))
+    : 5;
 };
 
 const getApiMessage = (error: unknown, fallback: string) => {
@@ -89,7 +97,154 @@ const getApiMessage = (error: unknown, fallback: string) => {
   );
 };
 
+type DashboardLanguage = "en" | "ar";
+
+const matchLabels: Record<DashboardLanguage, Record<string, string>> = {
+  en: {
+    accepted: "Accepted",
+    birthday: "Birthday",
+    cancelled: "Cancelled",
+    completed: "Completed",
+    expired: "Expired",
+    finished: "Finished",
+    friendly: "Friendly",
+    group: "Group",
+    pending: "Pending",
+    scheduled: "Scheduled",
+    starter: "Starter",
+    substitute: "Substitute",
+  },
+  ar: {
+    accepted: "مقبول",
+    birthday: "سنة الميلاد",
+    cancelled: "ملغي",
+    completed: "مكتمل",
+    expired: "منتهي",
+    finished: "منتهي",
+    friendly: "ودية",
+    group: "مجموعة",
+    pending: "معلق",
+    scheduled: "مجدول",
+    starter: "أساسي",
+    substitute: "بديل",
+  },
+};
+
+const coachMatchesCopy = {
+  en: {
+    pageTitle: "Matches",
+    pageDescription:
+      "View admin-scheduled matches and manage squad, tactics, attendance, and evaluations.",
+    home: "Home",
+    matches: "Matches",
+    refresh: "Refresh",
+    upcomingMatches: "Upcoming Matches",
+    backendError:
+      "Could not load backend matches. Make sure the backend is running and your coach session is valid.",
+    loading: "Loading...",
+    noMatches:
+      "No backend matches are assigned to this coach yet. Admin-created matches must target one of this coach's assigned groups or birth years.",
+    selectedGroup: "Selected group",
+    selectedBirthYear: "Selected birthday",
+    acceptRequestError: "Could not accept match request.",
+    matchDetails: "Match Details",
+    friendly: "Friendly",
+    notFriendly: "Not friendly",
+    savedConfiguration: "Saved Configuration",
+    configured: "configured",
+    notConfigured: "not configured",
+    formation: "Formation",
+    squad: "Squad",
+    playersCount: (count: number) => `${count} players`,
+    tacticalNotes: "Tactical notes",
+    noNotes: "No notes.",
+    configurationHint:
+      "Open configuration to choose the target, lineup, substitutes, positions, and tactical notes.",
+    squadPreview: "Squad Preview",
+    morePlayers: (count: number) => `+${count} more players`,
+    noSquad: "No squad saved yet.",
+    matchDayOperations: "Match Day Operations",
+    operationsHint: (minutes: number) =>
+      `Operations open ${minutes} minutes before kick-off after configuration is saved.`,
+    matchFinished: "Match finished",
+    editConfiguration: "Edit Configuration",
+    openMatchDay: "Open Match Day",
+    waitingWindow: "Waiting for match window",
+    configureFirst: "Configure first",
+    selectMatch: "Select a match to manage technical details.",
+    adminRequests: "Admin Match Requests",
+    expires: "expires",
+    group: "Group",
+    birthday: "Birthday",
+    selectGroup: "Select group",
+    selectBirthday: "Select birthday",
+    accept: "Accept",
+    noRequests: "No admin match requests.",
+  },
+  ar: {
+    pageTitle: "المباريات",
+    pageDescription:
+      "راجع المباريات المجدولة من الإدارة وتحكم في القائمة، الخطط، الحضور، والتقييمات.",
+    home: "الرئيسية",
+    matches: "المباريات",
+    refresh: "تحديث",
+    upcomingMatches: "المباريات القادمة",
+    backendError:
+      "تعذر تحميل مباريات الباك إند. تأكد أن الخادم يعمل وأن جلسة المدرب صالحة.",
+    loading: "جاري التحميل...",
+    noMatches:
+      "لا توجد مباريات من الباك إند معينة لهذا المدرب بعد. مباريات الإدارة يجب أن تستهدف مجموعة أو سنة ميلاد معينة لهذا المدرب.",
+    selectedGroup: "المجموعة المحددة",
+    selectedBirthYear: "سنة الميلاد المحددة",
+    acceptRequestError: "تعذر قبول طلب المباراة.",
+    matchDetails: "تفاصيل المباراة",
+    friendly: "ودية",
+    notFriendly: "ليست ودية",
+    savedConfiguration: "الإعدادات المحفوظة",
+    configured: "تم الإعداد",
+    notConfigured: "لم يتم الإعداد",
+    formation: "الخطة",
+    squad: "القائمة",
+    playersCount: (count: number) => `${count} لاعبين`,
+    tacticalNotes: "ملاحظات تكتيكية",
+    noNotes: "لا توجد ملاحظات.",
+    configurationHint:
+      "افتح الإعدادات لاختيار الهدف، التشكيل، البدلاء، المراكز، والملاحظات التكتيكية.",
+    squadPreview: "معاينة القائمة",
+    morePlayers: (count: number) => `+${count} لاعبين آخرين`,
+    noSquad: "لم يتم حفظ قائمة بعد.",
+    matchDayOperations: "عمليات يوم المباراة",
+    operationsHint: (minutes: number) =>
+      `تفتح العمليات قبل بداية المباراة بـ ${minutes} دقيقة بعد حفظ الإعدادات.`,
+    matchFinished: "المباراة انتهت",
+    editConfiguration: "تعديل الإعدادات",
+    openMatchDay: "فتح يوم المباراة",
+    waitingWindow: "في انتظار نافذة المباراة",
+    configureFirst: "أكمل الإعداد أولا",
+    selectMatch: "اختر مباراة لإدارة التفاصيل الفنية.",
+    adminRequests: "طلبات مباريات الإدارة",
+    expires: "ينتهي",
+    group: "مجموعة",
+    birthday: "سنة الميلاد",
+    selectGroup: "اختر مجموعة",
+    selectBirthday: "اختر سنة الميلاد",
+    accept: "قبول",
+    noRequests: "لا توجد طلبات مباريات من الإدارة.",
+  },
+} as const;
+
+const formatMatchLabel = (
+  value: string | null | undefined,
+  language: DashboardLanguage,
+) => {
+  if (!value) return "";
+  const key = value.toLowerCase().replace(/\s+/g, "_");
+  return matchLabels[language][key] ?? value.replace(/_/g, " ");
+};
+
 export default function CoachMatchesPage() {
+  const language = useDashboardLanguage();
+  const t = coachMatchesCopy[language];
   const {
     data: matchesRes,
     isLoading,
@@ -121,46 +276,46 @@ export default function CoachMatchesPage() {
               match_time: request.match_time,
             }) <= nowMs;
           return {
-          id: request.created_match_id!,
-          event_id: null,
-          team_id: request.selected_group_id,
-          age_group_id: null,
-          opponent_name: request.opponent_name,
-          match_type: request.match_type,
-          match_date: request.match_date,
-          match_time: request.match_time,
-          location: request.location,
-          venue_type: request.venue_type,
-          referee_name: request.referee_name,
-          status: closed ? ("completed" as const) : ("scheduled" as const),
-          match_status: closed ? "finished" : "scheduled",
-          organizer_notes: request.organizer_notes,
-          match_notes: null,
-          our_score: null,
-          opponent_score: null,
-          groups: request.selected_group_id
-            ? [
-                {
-                  id: request.selected_group_id,
-                  name: request.selected_group_name ?? "Selected group",
-                },
-              ]
-            : [],
-          birth_years: request.selected_birth_year_id
-            ? [
-                {
-                  id: request.selected_birth_year_id,
-                  label:
-                    request.selected_birth_year_name ?? "Selected birthday",
-                  fromYear: 0,
-                  toYear: 9999,
-                },
-              ]
-            : [],
+            id: request.created_match_id!,
+            event_id: null,
+            team_id: request.selected_group_id,
+            age_group_id: null,
+            opponent_name: request.opponent_name,
+            match_type: request.match_type,
+            match_date: request.match_date,
+            match_time: request.match_time,
+            location: request.location,
+            venue_type: request.venue_type,
+            referee_name: request.referee_name,
+            status: closed ? ("completed" as const) : ("scheduled" as const),
+            match_status: closed ? "finished" : "scheduled",
+            organizer_notes: request.organizer_notes,
+            match_notes: null,
+            our_score: null,
+            opponent_score: null,
+            groups: request.selected_group_id
+              ? [
+                  {
+                    id: request.selected_group_id,
+                    name: request.selected_group_name ?? t.selectedGroup,
+                  },
+                ]
+              : [],
+            birth_years: request.selected_birth_year_id
+              ? [
+                  {
+                    id: request.selected_birth_year_id,
+                    label:
+                      request.selected_birth_year_name ?? t.selectedBirthYear,
+                    fromYear: 0,
+                    toYear: 9999,
+                  },
+                ]
+              : [],
           };
         }),
     ],
-    [adminRequestsRes?.data, nowMs],
+    [adminRequestsRes?.data, nowMs, t.selectedBirthYear, t.selectedGroup],
   );
   const matches = useMemo(
     () => [
@@ -173,10 +328,7 @@ export default function CoachMatchesPage() {
     [acceptedRequestMatches, matchesRes?.data],
   );
   const activeMatches = useMemo(
-    () =>
-      matches.filter(
-        (item) => !isClosedMatch(item, nowMs),
-      ),
+    () => matches.filter((item) => !isClosedMatch(item, nowMs)),
     [matches, nowMs],
   );
   const [selectedId, setSelectedId] = useState<string>("");
@@ -208,8 +360,7 @@ export default function CoachMatchesPage() {
   const configurationReady = Boolean(match?.tactics && match.squad?.length);
   const matchStartMs = matchStartTimestamp(match);
   const safeMatchDayOpenMinutes = matchDayOpenMinutes(match);
-  const matchDayUnlockMs =
-    matchStartMs - safeMatchDayOpenMinutes * 60 * 1000;
+  const matchDayUnlockMs = matchStartMs - safeMatchDayOpenMinutes * 60 * 1000;
   const matchClosed = match ? isClosedMatch(match, nowMs) : false;
   const matchDayOpen = Boolean(
     match &&
@@ -236,9 +387,7 @@ export default function CoachMatchesPage() {
         [requestId]: { mode: "group", value: "" },
       }));
     } catch (error) {
-      setAdminRequestError(
-        getApiMessage(error, "Could not accept match request."),
-      );
+      setAdminRequestError(getApiMessage(error, t.acceptRequestError));
     }
   };
 
@@ -268,35 +417,34 @@ export default function CoachMatchesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Matches"
-        description="View admin-scheduled matches and manage squad, tactics, attendance, and evaluations."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Matches" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.matches },
         ]}
         actions={
-          <RefreshButton
-            onRefresh={refreshPageData}
-            isRefreshing={isRefreshing}
-          />
+          <Button variant="outline" onClick={() => refetchMatches()}>
+            {t.refresh}
+          </Button>
         }
       />
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Upcoming Matches</CardTitle>
+            <CardTitle className="text-base">{t.upcomingMatches}</CardTitle>
           </CardHeader>
-            <CardContent className="space-y-2">
+          <CardContent className="space-y-2">
             {matchesError && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-                Could not load backend matches. Make sure the backend is running and your coach session is valid.
+                {t.backendError}
               </div>
             )}
             {isLoading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
+                {t.loading}
               </div>
             )}
             {activeMatches.map((item) => (
@@ -307,7 +455,9 @@ export default function CoachMatchesPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium">{item.opponent_name}</p>
-                  <Badge variant="outline">{item.status}</Badge>
+                  <Badge variant="outline">
+                    {formatMatchLabel(item.status, language)}
+                  </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatDate(item.match_date)} ·{" "}
@@ -317,7 +467,7 @@ export default function CoachMatchesPage() {
             ))}
             {!activeMatches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No backend matches are assigned to this coach yet. Admin-created matches must target one of this coach&apos;s assigned groups or birth years.
+                {t.noMatches}
               </p>
             )}
           </CardContent>
@@ -326,7 +476,7 @@ export default function CoachMatchesPage() {
         <div className="space-y-6">
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Match Details</CardTitle>
+              <CardTitle className="text-base">{t.matchDetails}</CardTitle>
             </CardHeader>
             <CardContent>
               {match ? (
@@ -338,10 +488,12 @@ export default function CoachMatchesPage() {
                       </h2>
                       <Badge>
                         {match.match_type === "friendly"
-                          ? "Friendly"
-                          : "Not friendly"}
+                          ? t.friendly
+                          : t.notFriendly}
                       </Badge>
-                      <Badge variant="secondary">{match.venue_type}</Badge>
+                      <Badge variant="secondary">
+                        {formatMatchLabel(match.venue_type, language)}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {formatDate(match.match_date)} ·{" "}
@@ -351,11 +503,11 @@ export default function CoachMatchesPage() {
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-md border border-border/50 p-4">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-medium">Saved Configuration</p>
+                        <p className="font-medium">{t.savedConfiguration}</p>
                         <Badge
                           variant={configurationReady ? "success" : "warning"}
                         >
-                          {configurationReady ? "configured" : "not configured"}
+                          {configurationReady ? t.configured : t.notConfigured}
                         </Badge>
                       </div>
                       {configurationReady ? (
@@ -363,7 +515,7 @@ export default function CoachMatchesPage() {
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div>
                               <p className="text-xs text-muted-foreground">
-                                Formation
+                                {t.formation}
                               </p>
                               <p className="font-medium">
                                 {match.tactics?.formation}
@@ -371,32 +523,31 @@ export default function CoachMatchesPage() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">
-                                Squad
+                                {t.squad}
                               </p>
                               <p className="font-medium">
-                                {match.squad?.length ?? 0} players
+                                {t.playersCount(match.squad?.length ?? 0)}
                               </p>
                             </div>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">
-                              Tactical notes
+                              {t.tacticalNotes}
                             </p>
                             <p className="mt-1 whitespace-pre-wrap text-sm">
-                              {match.tactics?.tactical_notes || "No notes."}
+                              {match.tactics?.tactical_notes || t.noNotes}
                             </p>
                           </div>
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          Open configuration to choose the target, lineup,
-                          substitutes, positions, and tactical notes.
+                          {t.configurationHint}
                         </p>
                       )}
                     </div>
 
                     <div className="rounded-md border border-border/50 p-4">
-                      <p className="mb-3 font-medium">Squad Preview</p>
+                      <p className="mb-3 font-medium">{t.squadPreview}</p>
                       {match.squad?.length ? (
                         <div className="space-y-2">
                           {match.squad.slice(0, 8).map((item) => (
@@ -409,7 +560,7 @@ export default function CoachMatchesPage() {
                               </span>
                               <div className="flex flex-wrap gap-2">
                                 <Badge variant="outline">
-                                  {item.squad_role}
+                                  {formatMatchLabel(item.squad_role, language)}
                                 </Badge>
                                 {item.position && (
                                   <Badge variant="secondary">
@@ -421,13 +572,13 @@ export default function CoachMatchesPage() {
                           ))}
                           {(match.squad?.length ?? 0) > 8 && (
                             <p className="text-xs text-muted-foreground">
-                              +{(match.squad?.length ?? 0) - 8} more players
+                              {t.morePlayers((match.squad?.length ?? 0) - 8)}
                             </p>
                           )}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          No squad saved yet.
+                          {t.noSquad}
                         </p>
                       )}
                     </div>
@@ -436,35 +587,34 @@ export default function CoachMatchesPage() {
                   <div className="rounded-md border border-border/50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-medium">Match Day Operations</p>
+                        <p className="font-medium">{t.matchDayOperations}</p>
                         <p className="text-xs text-muted-foreground">
-                          Operations open {safeMatchDayOpenMinutes} minutes before
-                          kick-off after configuration is saved.
+                          {t.operationsHint(safeMatchDayOpenMinutes)}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {matchClosed ? (
-                          <Badge variant="success">Match finished</Badge>
+                          <Badge variant="success">{t.matchFinished}</Badge>
                         ) : (
                           <Button asChild variant="outline">
                             <Link
                               href={`/coach/matches/configuration?matchId=${match.id}`}
                             >
-                              Edit Configuration
+                              {t.editConfiguration}
                             </Link>
                           </Button>
                         )}
                         {matchDayOpen ? (
                           <Button asChild>
                             <Link href={`/coach/matches/match-day/${match.id}`}>
-                              Open Match Day
+                              {t.openMatchDay}
                             </Link>
                           </Button>
                         ) : (
                           <Badge variant="secondary">
                             {configurationReady
-                              ? "Waiting for match window"
-                              : "Configure first"}
+                              ? t.waitingWindow
+                              : t.configureFirst}
                           </Badge>
                         )}
                       </div>
@@ -473,7 +623,7 @@ export default function CoachMatchesPage() {
                 </div>
               ) : (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Select a match to manage technical details.
+                  {t.selectMatch}
                 </p>
               )}
             </CardContent>
@@ -481,7 +631,7 @@ export default function CoachMatchesPage() {
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
-              <CardTitle className="text-base">Admin Match Requests</CardTitle>
+              <CardTitle className="text-base">{t.adminRequests}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {adminRequestError && (
@@ -504,7 +654,7 @@ export default function CoachMatchesPage() {
                         <p className="font-medium">{item.opponent_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(item.match_date)} ·{" "}
-                          {formatTime12(item.match_time)} · expires{" "}
+                          {formatTime12(item.match_time)} · {t.expires}{" "}
                           {formatDate(item.expires_at)}
                         </p>
                       </div>
@@ -517,7 +667,7 @@ export default function CoachMatchesPage() {
                               : "secondary"
                         }
                       >
-                        {item.status}
+                        {formatMatchLabel(item.status, language)}
                       </Badge>
                     </div>
                     {item.status === "pending" && (
@@ -538,8 +688,10 @@ export default function CoachMatchesPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="group">Group</SelectItem>
-                            <SelectItem value="birthday">Birthday</SelectItem>
+                            <SelectItem value="group">{t.group}</SelectItem>
+                            <SelectItem value="birthday">
+                              {t.birthday}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <Select
@@ -555,8 +707,8 @@ export default function CoachMatchesPage() {
                             <SelectValue
                               placeholder={
                                 target.mode === "group"
-                                  ? "Select group"
-                                  : "Select birthday"
+                                  ? t.selectGroup
+                                  : t.selectBirthday
                               }
                             />
                           </SelectTrigger>
@@ -585,7 +737,7 @@ export default function CoachMatchesPage() {
                           disabled={!target.value || acceptingAdminRequest}
                           onClick={() => acceptRequest(item.id)}
                         >
-                          Accept
+                          {t.accept}
                         </Button>
                       </div>
                     )}
@@ -594,7 +746,7 @@ export default function CoachMatchesPage() {
               })}
               {!adminRequests.length && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  No admin match requests.
+                  {t.noRequests}
                 </p>
               )}
             </CardContent>

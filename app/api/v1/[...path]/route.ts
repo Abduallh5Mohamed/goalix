@@ -1,6 +1,7 @@
 import * as http from "node:http";
 import * as https from "node:https";
 import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { NextRequest } from "next/server";
 
 type ApiRouteContext = {
@@ -100,7 +101,6 @@ function pickAgent(agents: http.Agent[] | https.Agent[]) {
 function getApiUrl() {
   return (
     process.env.GOALIX_INTERNAL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
     "http://127.0.0.1:3000"
   ).replace(/\/$/, "");
 }
@@ -119,6 +119,16 @@ function copyRequestHeaders(
   headers.host = target.host;
   headers["x-forwarded-host"] = request.headers.get("host") || "";
   headers["x-forwarded-proto"] = request.nextUrl.protocol.replace(":", "");
+  const existingForwardedFor = request.headers.get("x-forwarded-for");
+  const requestIp =
+    request.headers.get("x-real-ip") ||
+    request.headers.get("cf-connecting-ip") ||
+    (request as unknown as { ip?: string }).ip;
+  if (existingForwardedFor && requestIp) {
+    headers["x-forwarded-for"] = `${existingForwardedFor}, ${requestIp}`;
+  } else if (existingForwardedFor || requestIp) {
+    headers["x-forwarded-for"] = existingForwardedFor || requestIp;
+  }
   return headers;
 }
 
@@ -146,7 +156,7 @@ function copyResponseHeaders(upstream: http.IncomingMessage) {
 function requestUpstream(
   target: URL,
   request: NextRequest,
-  body: ArrayBuffer | undefined,
+  body: ReadableStream<Uint8Array> | null | undefined,
 ) {
   const transport = target.protocol === "https:" ? https : http;
   const agent =
@@ -187,8 +197,14 @@ function requestUpstream(
     });
     upstreamRequest.once("error", reject);
 
-    if (body?.byteLength) {
-      upstreamRequest.end(Buffer.from(body));
+    if (body) {
+      const readableBody = Readable.fromWeb(
+        body as unknown as NodeReadableStream<Uint8Array>,
+      );
+      readableBody.once("error", (streamError) => {
+        upstreamRequest.destroy(streamError);
+      });
+      readableBody.pipe(upstreamRequest);
     } else {
       upstreamRequest.end();
     }
@@ -219,7 +235,7 @@ async function proxyApiRequest(
     return await requestUpstream(
       target,
       request,
-      hasBody ? await request.arrayBuffer() : undefined,
+      hasBody ? request.body : undefined,
     );
   } catch (error) {
     proxyFailureCount += 1;

@@ -4,31 +4,10 @@ import { useEffect } from "react";
 import { Provider } from "react-redux";
 import { store } from "./store";
 import { authInitialized, loginSuccess, logout } from "./slices/authSlice";
-import type { UserRole } from "@/lib/types";
 import { hasAuthSessionMarker } from "@/lib/auth/session";
 import { refreshAuthSession } from "@/lib/auth/refreshSession";
 import { resetApiState } from "./resetApiState";
-
-function mapApiUser(apiUser: Record<string, unknown>) {
-  return {
-    id: apiUser.id as string,
-    email: (apiUser.email as string) ?? "",
-    username: (apiUser.username as string) ?? undefined,
-    fullName:
-      (apiUser.full_name as string) ??
-      (apiUser.fullName as string) ??
-      (apiUser.username as string) ??
-      (apiUser.email as string),
-    role: apiUser.role as UserRole,
-    avatarUrl: (apiUser.avatar_url as string) ?? "",
-    phone: (apiUser.phone as string) ?? "",
-    linkedPlayerId:
-      (apiUser.linkedPlayerId as string | null) ??
-      (apiUser.linked_player_id as string | null) ??
-      null,
-    createdAt: (apiUser.created_at as string) ?? new Date().toISOString(),
-  };
-}
+import { mapApiUser } from "@/lib/auth/mapApiUser";
 
 /** Rehydrates auth state from the httpOnly refresh cookie only. */
 function SessionRefresher() {

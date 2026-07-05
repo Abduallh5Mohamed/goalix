@@ -23,7 +23,63 @@ import {
   useHardDeleteAdminMatchMutation,
   type Match,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
+
+const archiveCopy = {
+  en: {
+    title: "Finished Matches",
+    description:
+      "Review played matches with saved tactics, squad, attendance, incidents, and player stats.",
+    dashboard: "Dashboard",
+    matches: "Matches",
+    archive: "Archive",
+    deleteForever: "Delete Forever",
+    deleteTitle: "Delete Finished Match Forever",
+    deleteDescription:
+      "This permanently removes the match, calendar event, squad, tactics, attendance, incidents, goals, substitutions, and player stats. Type",
+    toConfirm: "to confirm.",
+    confirmation: "Confirmation",
+    cancel: "Cancel",
+    deleting: "Deleting...",
+    confirmDelete: "Delete Forever",
+    deleteExpected: (name: string) => `delete match forever ${name}`,
+    typeToConfirm: (expected: string) => `Type "${expected}" to confirm permanent deletion.`,
+    deleteFailed: "Could not permanently delete this match.",
+    deleteSolution:
+      "Solution: remove or detach any remaining linked records, then try Delete Forever again.",
+    finished: "finished",
+    toBeConfirmed: "To be confirmed",
+    loading: "Loading finished matches...",
+    empty: "No finished matches yet.",
+    deleteMatch: (name: string) => `Delete ${name} forever`,
+  },
+  ar: {
+    title: "المباريات المنتهية",
+    description: "راجع المباريات الملعوبة بالتكتيك والقائمة والحضور والأحداث والإحصائيات.",
+    dashboard: "لوحة التحكم",
+    matches: "المباريات",
+    archive: "الأرشيف",
+    deleteForever: "حذف نهائي",
+    deleteTitle: "حذف المباراة المنتهية نهائيًا",
+    deleteDescription:
+      "سيتم حذف المباراة وحدث التقويم والقائمة والتكتيك والحضور والأحداث والأهداف والتبديلات وإحصائيات اللاعبين نهائيًا. اكتب",
+    toConfirm: "للتأكيد.",
+    confirmation: "التأكيد",
+    cancel: "إلغاء",
+    deleting: "جاري الحذف...",
+    confirmDelete: "حذف نهائي",
+    deleteExpected: (name: string) => `حذف المباراة نهائيا ${name}`,
+    typeToConfirm: (expected: string) => `اكتب "${expected}" لتأكيد الحذف النهائي.`,
+    deleteFailed: "تعذر حذف هذه المباراة نهائيًا.",
+    deleteSolution: "الحل: احذف أو افصل أي سجلات مرتبطة متبقية، ثم جرّب الحذف النهائي مرة أخرى.",
+    finished: "منتهية",
+    toBeConfirmed: "سيتم التأكيد",
+    loading: "جاري تحميل المباريات المنتهية...",
+    empty: "لا توجد مباريات منتهية حتى الآن.",
+    deleteMatch: (name: string) => `حذف ${name} نهائيًا`,
+  },
+} as const;
 
 const getApiMessage = (error: unknown, fallback: string) => {
   const apiError = error as {
@@ -43,6 +99,8 @@ const getApiMessage = (error: unknown, fallback: string) => {
 };
 
 export default function AdminMatchArchivePage() {
+  const language = useDashboardLanguage();
+  const t = archiveCopy[language];
   const { data: matchesRes, isLoading } = useGetAdminMatchesQuery({
     limit: 100,
   });
@@ -72,7 +130,7 @@ export default function AdminMatchArchivePage() {
     activeId,
     { skip: !activeId },
   );
-  const deleteExpected = `delete match forever ${deleteMatchRow?.opponent_name ?? ""}`;
+  const deleteExpected = t.deleteExpected(deleteMatchRow?.opponent_name ?? "");
 
   const openDeleteDialog = (item: Match) => {
     setDeleteError("");
@@ -90,7 +148,7 @@ export default function AdminMatchArchivePage() {
   const handleHardDeleteMatch = async () => {
     if (!deleteMatchRow) return;
     if (deleteConfirm.trim() !== deleteExpected) {
-      setDeleteError(`Type "${deleteExpected}" to confirm permanent deletion.`);
+      setDeleteError(t.typeToConfirm(deleteExpected));
       return;
     }
 
@@ -105,10 +163,10 @@ export default function AdminMatchArchivePage() {
     } catch (error) {
       const message = getApiMessage(
         error,
-        "Could not permanently delete this match.",
+        t.deleteFailed,
       );
       setDeleteError(
-        `${message}\nSolution: remove or detach any remaining linked records, then try Delete Forever again.`,
+        `${message}\n${t.deleteSolution}`,
       );
     }
   };
@@ -116,12 +174,12 @@ export default function AdminMatchArchivePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Finished Matches"
-        description="Review played matches with saved tactics, squad, attendance, incidents, and player stats."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Matches", href: "/admin/matches" },
-          { label: "Archive" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.matches, href: "/admin/matches" },
+          { label: t.archive },
         ]}
         actions={
           <Button
@@ -132,7 +190,7 @@ export default function AdminMatchArchivePage() {
             onClick={() => activeMatch && openDeleteDialog(activeMatch)}
           >
             <Trash2 className="h-4 w-4" />
-            Delete Forever
+            {t.deleteForever}
           </Button>
         }
       />
@@ -146,19 +204,17 @@ export default function AdminMatchArchivePage() {
             <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle>Delete Finished Match Forever</DialogTitle>
+            <DialogTitle>{t.deleteTitle}</DialogTitle>
             <DialogDescription>
-              This permanently removes the match, calendar event, squad,
-              tactics, attendance, incidents, goals, substitutions, and player
-              stats. Type{" "}
+              {t.deleteDescription}{" "}
               <span className="font-semibold text-foreground">
                 {deleteExpected}
               </span>{" "}
-              to confirm.
+              {t.toConfirm}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="archive-delete-match-confirm">Confirmation</Label>
+            <Label htmlFor="archive-delete-match-confirm">{t.confirmation}</Label>
             <Input
               id="archive-delete-match-confirm"
               value={deleteConfirm}
@@ -179,7 +235,7 @@ export default function AdminMatchArchivePage() {
               onClick={closeDeleteDialog}
               disabled={deletingMatch}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -195,7 +251,7 @@ export default function AdminMatchArchivePage() {
               ) : (
                 <Trash2 className="h-4 w-4" />
               )}
-              Delete Forever
+              {t.confirmDelete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -226,18 +282,18 @@ export default function AdminMatchArchivePage() {
                         {formatTime12(item.match_time)}
                       </p>
                     </div>
-                    <Badge variant="success">finished</Badge>
+                    <Badge variant="success">{t.finished}</Badge>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {item.location || "To be confirmed"}
+                    {item.location || t.toBeConfirmed}
                   </p>
                 </button>
                 <button
                   type="button"
                   className="grid w-11 shrink-0 place-items-center border-l border-inherit text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200"
                   onClick={() => openDeleteDialog(item)}
-                  title={`Delete ${item.opponent_name} forever`}
-                  aria-label={`Delete ${item.opponent_name} forever`}
+                  title={t.deleteMatch(item.opponent_name)}
+                  aria-label={t.deleteMatch(item.opponent_name)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -246,12 +302,12 @@ export default function AdminMatchArchivePage() {
             {isLoading && (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading finished matches...
+                {t.loading}
               </p>
             )}
             {!finishedMatches.length && !isLoading && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No finished matches yet.
+                {t.empty}
               </p>
             )}
           </CardContent>

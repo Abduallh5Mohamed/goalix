@@ -36,6 +36,7 @@ import {
   useHardDeleteAdminMatchMutation,
   useHardDeleteAdminTrainingEventMutation,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 const eventTypes = [
@@ -66,7 +67,124 @@ const getApiMessage = (error: unknown, fallback: string) => {
   );
 };
 
+const calendarCopy = {
+  en: {
+    eventTypes: {
+      training: "Training",
+      match: "Match",
+      fitness_test: "Fitness test",
+      meeting: "Meeting",
+      rest_day: "Rest day",
+      tournament: "Tournament",
+      medical_check: "Medical check",
+      assessment_day: "Assessment day",
+    } satisfies Record<(typeof eventTypes)[number], string>,
+    statuses: {
+      scheduled: "Scheduled",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      finished: "Finished",
+    },
+    pageTitle: "Main Calendar",
+    pageDescription: "Academy-wide calendar events across groups.",
+    dashboard: "Dashboard",
+    calendar: "Calendar",
+    addEvent: "Add Event",
+    createCalendarEvent: "Create Calendar Event",
+    title: "Title",
+    type: "Type",
+    starts: "Starts",
+    ends: "Ends",
+    group: "Group",
+    coachesOnlyOrGroup: "Coaches only or select group",
+    coachesOnly: "Coaches only",
+    location: "Location",
+    notes: "Notes",
+    create: "Create",
+    deleteTrainingTitle: "Delete Training Forever",
+    deleteTrainingDescription: "This permanently removes the training event, targets, attendance, evaluations, notifications, and affected injury-risk outputs. Type {phrase} to confirm.",
+    deleteMatchTitle: "Delete Match Forever",
+    deleteMatchDescription: "This permanently removes the match, calendar event, squad, tactics, attendance, incidents, goals, substitutions, and player stats. Type {phrase} to confirm.",
+    confirmation: "Confirmation",
+    cancel: "Cancel",
+    deleteForever: "Delete Forever",
+    deleteForeverLower: "Delete forever",
+    academyCalendar: "Academy Calendar",
+    loadingEvents: "Loading events...",
+    noGroup: "No group",
+    noEvents: "No events yet.",
+    trainingPhrase: "delete training forever {title}",
+    matchPhrase: "delete match forever {title}",
+    confirmPhrase: "Type \"{phrase}\" to confirm permanent deletion.",
+    trainingDeleteError: "Could not permanently delete training.",
+    matchDeleteError: "Could not permanently delete this match.",
+    matchDeleteSolution: "{message}\nSolution: remove or detach any remaining linked records, then try Delete Forever again.",
+  },
+  ar: {
+    eventTypes: {
+      training: "تدريب",
+      match: "مباراة",
+      fitness_test: "اختبار لياقة",
+      meeting: "اجتماع",
+      rest_day: "يوم راحة",
+      tournament: "بطولة",
+      medical_check: "فحص طبي",
+      assessment_day: "يوم تقييم",
+    } satisfies Record<(typeof eventTypes)[number], string>,
+    statuses: {
+      scheduled: "مجدول",
+      completed: "مكتمل",
+      cancelled: "ملغي",
+      finished: "منتهي",
+    },
+    pageTitle: "التقويم الرئيسي",
+    pageDescription: "أحداث تقويم الأكاديمية عبر كل المجموعات.",
+    dashboard: "لوحة التحكم",
+    calendar: "التقويم",
+    addEvent: "إضافة حدث",
+    createCalendarEvent: "إنشاء حدث في التقويم",
+    title: "العنوان",
+    type: "النوع",
+    starts: "البداية",
+    ends: "النهاية",
+    group: "المجموعة",
+    coachesOnlyOrGroup: "للمدربين فقط أو اختر مجموعة",
+    coachesOnly: "للمدربين فقط",
+    location: "المكان",
+    notes: "ملاحظات",
+    create: "إنشاء",
+    deleteTrainingTitle: "حذف التدريب نهائيًا",
+    deleteTrainingDescription: "هذا يحذف حدث التدريب والأهداف والحضور والتقييمات والإشعارات ونتائج مخاطر الإصابة المتأثرة نهائيًا. اكتب {phrase} للتأكيد.",
+    deleteMatchTitle: "حذف المباراة نهائيًا",
+    deleteMatchDescription: "هذا يحذف المباراة وحدث التقويم والقائمة والتكتيك والحضور والأحداث والأهداف والتبديلات وإحصائيات اللاعبين نهائيًا. اكتب {phrase} للتأكيد.",
+    confirmation: "التأكيد",
+    cancel: "إلغاء",
+    deleteForever: "حذف نهائي",
+    deleteForeverLower: "حذف نهائي",
+    academyCalendar: "تقويم الأكاديمية",
+    loadingEvents: "جاري تحميل الأحداث...",
+    noGroup: "لا توجد مجموعة",
+    noEvents: "لا توجد أحداث حتى الآن.",
+    trainingPhrase: "حذف التدريب نهائيًا {title}",
+    matchPhrase: "حذف المباراة نهائيًا {title}",
+    confirmPhrase: "اكتب \"{phrase}\" لتأكيد الحذف النهائي.",
+    trainingDeleteError: "تعذر حذف التدريب نهائيًا.",
+    matchDeleteError: "تعذر حذف هذه المباراة نهائيًا.",
+    matchDeleteSolution: "{message}\nالحل: احذف أو افصل أي سجلات مرتبطة متبقية، ثم حاول الحذف النهائي مرة أخرى.",
+  },
+} as const;
+
+type CalendarCopy = (typeof calendarCopy)[keyof typeof calendarCopy];
+
+const eventTypeLabel = (type: string, t: CalendarCopy) =>
+  type in t.eventTypes ? t.eventTypes[type as keyof typeof t.eventTypes] : type.replaceAll("_", " ");
+
+const statusLabel = (status: string, t: CalendarCopy) =>
+  status in t.statuses ? t.statuses[status as keyof typeof t.statuses] : status;
+
 export default function AdminCalendarPage() {
+  const language = useDashboardLanguage();
+  const t = calendarCopy[language];
   const { data, isLoading } = useGetAdminCalendarEventsQuery({ limit: 100 });
   const { data: matchesRes, isLoading: loadingMatches } =
     useGetAdminMatchesQuery({ limit: 100 });
@@ -122,11 +240,11 @@ export default function AdminCalendarPage() {
 
   const handleHardDeleteTraining = async () => {
     if (!deleteTrainingRow) return;
-    const expected = `delete training forever ${deleteTrainingRow.title}`;
+    const expected = t.trainingPhrase.replace("{title}", deleteTrainingRow.title);
     setDeleteError("");
 
     if (deleteConfirm.trim() !== expected) {
-      setDeleteError(`Type "${expected}" to confirm permanent deletion.`);
+      setDeleteError(t.confirmPhrase.replace("{phrase}", expected));
       return;
     }
 
@@ -136,18 +254,18 @@ export default function AdminCalendarPage() {
       setDeleteConfirm("");
     } catch (error) {
       setDeleteError(
-        getApiMessage(error, "Could not permanently delete training."),
+        getApiMessage(error, t.trainingDeleteError),
       );
     }
   };
 
   const handleHardDeleteMatch = async () => {
     if (!deleteMatchRow) return;
-    const expected = `delete match forever ${deleteMatchRow.opponent_name}`;
+    const expected = t.matchPhrase.replace("{title}", deleteMatchRow.opponent_name);
     setDeleteError("");
 
     if (deleteConfirm.trim() !== expected) {
-      setDeleteError(`Type "${expected}" to confirm permanent deletion.`);
+      setDeleteError(t.confirmPhrase.replace("{phrase}", expected));
       return;
     }
 
@@ -158,18 +276,18 @@ export default function AdminCalendarPage() {
     } catch (error) {
       const message = getApiMessage(
         error,
-        "Could not permanently delete this match.",
+        t.matchDeleteError,
       );
       setDeleteError(
-        `${message}\nSolution: remove or detach any remaining linked records, then try Delete Forever again.`,
+        t.matchDeleteSolution.replace("{message}", message),
       );
     }
   };
 
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const matches = useMemo(() => matchesRes?.data ?? [], [matchesRes?.data]);
-  const deleteExpected = `delete training forever ${deleteTrainingRow?.title ?? ""}`;
-  const deleteMatchExpected = `delete match forever ${deleteMatchRow?.opponent_name ?? ""}`;
+  const deleteExpected = t.trainingPhrase.replace("{title}", deleteTrainingRow?.title ?? "");
+  const deleteMatchExpected = t.matchPhrase.replace("{title}", deleteMatchRow?.opponent_name ?? "");
   const matchByEventId = useMemo(
     () =>
       new Map(
@@ -187,7 +305,7 @@ export default function AdminCalendarPage() {
         date: event.start_datetime,
         type: event.event_type,
         status: event.status,
-        subtitle: `${event.event_type.replaceAll("_", " ")}${event.location ? ` - ${event.location}` : ""}`,
+        subtitle: `${eventTypeLabel(event.event_type, t)}${event.location ? ` - ${event.location}` : ""}`,
       })),
       ...matches.map((match) => ({
         id: match.id,
@@ -195,25 +313,25 @@ export default function AdminCalendarPage() {
         date: match.match_date,
         type: "match",
         status: match.status,
-        subtitle: `${formatTime12(match.match_time)} - ${match.groups?.map((group) => group.name).join(", ") || match.team_name || "No group"}`,
+        subtitle: `${formatTime12(match.match_time)} - ${match.groups?.map((group) => group.name).join(", ") || match.team_name || t.noGroup}`,
       })),
     ],
-    [events, matches],
+    [events, matches, t],
   );
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Main Calendar"
-        description="Academy-wide calendar events across groups."
+        title={t.pageTitle}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Calendar" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.calendar },
         ]}
         actions={
           <Button className="gap-2" onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Add Event
+            {t.addEvent}
           </Button>
         }
       />
@@ -221,12 +339,12 @@ export default function AdminCalendarPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Calendar Event</DialogTitle>
+            <DialogTitle>{t.createCalendarEvent}</DialogTitle>
           </DialogHeader>
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>{t.title}</Label>
                 <Input
                   value={form.title}
                   onChange={(e) =>
@@ -236,7 +354,7 @@ export default function AdminCalendarPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Type</Label>
+                <Label>{t.type}</Label>
                 <Select
                   value={form.eventType}
                   onValueChange={(value) =>
@@ -249,14 +367,14 @@ export default function AdminCalendarPage() {
                   <SelectContent>
                     {eventTypes.map((type) => (
                       <SelectItem key={type} value={type}>
-                        {type.replaceAll("_", " ")}
+                        {eventTypeLabel(type, t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Starts</Label>
+                <Label>{t.starts}</Label>
                 <Input
                   type="datetime-local"
                   value={form.startDatetime}
@@ -267,7 +385,7 @@ export default function AdminCalendarPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Ends</Label>
+                <Label>{t.ends}</Label>
                 <Input
                   type="datetime-local"
                   value={form.endDatetime}
@@ -278,7 +396,7 @@ export default function AdminCalendarPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Group</Label>
+                <Label>{t.group}</Label>
                 <Select
                   value={form.groupId}
                   onValueChange={(value) =>
@@ -286,7 +404,7 @@ export default function AdminCalendarPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Coaches only or select group" />
+                    <SelectValue placeholder={t.coachesOnlyOrGroup} />
                   </SelectTrigger>
                   <SelectContent>
                     {groups.map((group) => (
@@ -298,7 +416,7 @@ export default function AdminCalendarPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Location</Label>
+                <Label>{t.location}</Label>
                 <Input
                   value={form.location}
                   onChange={(e) =>
@@ -308,7 +426,7 @@ export default function AdminCalendarPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t.notes}</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) =>
@@ -319,7 +437,7 @@ export default function AdminCalendarPage() {
             <DialogFooter>
               <Button type="submit" disabled={isCreating} className="gap-2">
                 {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create
+                {t.create}
               </Button>
             </DialogFooter>
           </form>
@@ -341,18 +459,17 @@ export default function AdminCalendarPage() {
             <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle>Delete Training Forever</DialogTitle>
+            <DialogTitle>{t.deleteTrainingTitle}</DialogTitle>
             <DialogDescription>
-              This permanently removes the training event, targets, attendance,
-              evaluations, notifications, and affected injury-risk outputs. Type{" "}
+              {t.deleteTrainingDescription.split("{phrase}")[0]}
               <span className="font-semibold text-foreground">
                 {deleteExpected}
               </span>{" "}
-              to confirm.
+              {t.deleteTrainingDescription.split("{phrase}")[1]}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="delete-training-confirm">Confirmation</Label>
+            <Label htmlFor="delete-training-confirm">{t.confirmation}</Label>
             <Input
               id="delete-training-confirm"
               value={deleteConfirm}
@@ -371,7 +488,7 @@ export default function AdminCalendarPage() {
                 setDeleteError("");
               }}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -383,7 +500,7 @@ export default function AdminCalendarPage() {
               className="gap-2"
             >
               {deletingTraining && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Forever
+              {t.deleteForever}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -404,19 +521,17 @@ export default function AdminCalendarPage() {
             <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-300">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <DialogTitle>Delete Match Forever</DialogTitle>
+            <DialogTitle>{t.deleteMatchTitle}</DialogTitle>
             <DialogDescription>
-              This permanently removes the match, calendar event, squad,
-              tactics, attendance, incidents, goals, substitutions, and player
-              stats. Type{" "}
+              {t.deleteMatchDescription.split("{phrase}")[0]}
               <span className="font-semibold text-foreground">
                 {deleteMatchExpected}
               </span>{" "}
-              to confirm.
+              {t.deleteMatchDescription.split("{phrase}")[1]}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="calendar-delete-match-confirm">Confirmation</Label>
+            <Label htmlFor="calendar-delete-match-confirm">{t.confirmation}</Label>
             <Input
               id="calendar-delete-match-confirm"
               value={deleteConfirm}
@@ -441,7 +556,7 @@ export default function AdminCalendarPage() {
                 setDeleteError("");
               }}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               type="button"
@@ -454,19 +569,19 @@ export default function AdminCalendarPage() {
               className="gap-2"
             >
               {deletingMatch && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Forever
+              {t.deleteForever}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <MonthCalendar title="Academy Calendar" items={calendarItems} />
+      <MonthCalendar title={t.academyCalendar} items={calendarItems} />
 
       {isLoading || loadingMatches ? (
         <Card>
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading events...
+            {t.loadingEvents}
           </CardContent>
         </Card>
       ) : (
@@ -488,7 +603,7 @@ export default function AdminCalendarPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold">{event.title}</h3>
                       <Badge variant="outline">
-                        {event.event_type.replaceAll("_", " ")}
+                        {eventTypeLabel(event.event_type, t)}
                       </Badge>
                       <Badge
                         variant={
@@ -497,7 +612,7 @@ export default function AdminCalendarPage() {
                             : "secondary"
                         }
                       >
-                        {event.status}
+                        {statusLabel(event.status, t)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -508,7 +623,7 @@ export default function AdminCalendarPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {event.groups?.length
                         ? event.groups.map((group) => group.name).join(", ")
-                        : "Coaches only"}
+                        : t.coachesOnly}
                     </p>
                   </div>
                 </div>
@@ -525,7 +640,7 @@ export default function AdminCalendarPage() {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete forever
+                    {t.deleteForeverLower}
                   </Button>
                 )}
                 {linkedMatch && (
@@ -541,7 +656,7 @@ export default function AdminCalendarPage() {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete forever
+                    {t.deleteForeverLower}
                   </Button>
                 )}
               </CardContent>
@@ -551,7 +666,7 @@ export default function AdminCalendarPage() {
           {!events.length && (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                No events yet.
+                {t.noEvents}
               </CardContent>
             </Card>
           )}

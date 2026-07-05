@@ -21,6 +21,7 @@ import {
   useGetCoachGroupQuery,
   useGetCoachGroupsQuery,
 } from "@/lib/store/api/coachApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { getInitials } from "@/lib/utils";
 import {
   Activity,
@@ -45,13 +46,12 @@ type ScoreKey = Exclude<keyof EvalScores, "notes">;
 
 const categories: {
   key: ScoreKey;
-  label: string;
   icon: ElementType;
 }[] = [
-  { key: "technical", label: "Technical", icon: Target },
-  { key: "tactical", label: "Tactical", icon: Route },
-  { key: "physical", label: "Physical", icon: Activity },
-  { key: "mental", label: "Mental", icon: Brain },
+  { key: "technical", icon: Target },
+  { key: "tactical", icon: Route },
+  { key: "physical", icon: Activity },
+  { key: "mental", icon: Brain },
 ];
 
 const emptyScores: EvalScores = {
@@ -62,7 +62,76 @@ const emptyScores: EvalScores = {
   notes: "",
 };
 
+const evaluationCopy = {
+  en: {
+    title: "New Evaluation",
+    description: "Create a player evaluation",
+    home: "Home",
+    evaluations: "Evaluations",
+    new: "New",
+    groupsError: "Could not load your assigned groups.",
+    group: "Group",
+    loadingGroups: "Loading groups...",
+    selectGroup: "Select group",
+    player: "Player",
+    loadingPlayers: "Loading players...",
+    selectPlayer: "Select player",
+    noGroups: "No groups assigned yet.",
+    age: "Age",
+    level: "Level",
+    currentScore: "Current Score",
+    categoryLabels: {
+      technical: "Technical",
+      tactical: "Tactical",
+      physical: "Physical",
+      mental: "Mental",
+    } satisfies Record<ScoreKey, string>,
+    overallScore: "Overall Score",
+    averageHint: "Average of all 4 categories",
+    coachNotes: "Coach Notes",
+    notesPlaceholder: "Write detailed observations about the player's performance...",
+    saveError: "Could not submit evaluation. Scores must be between 0 and 10.",
+    saving: "Saving...",
+    saved: "Saved",
+    submit: "Submit Evaluation",
+  },
+  ar: {
+    title: "تقييم جديد",
+    description: "إنشاء تقييم للاعب",
+    home: "الرئيسية",
+    evaluations: "التقييمات",
+    new: "جديد",
+    groupsError: "تعذر تحميل المجموعات المعينة لك.",
+    group: "المجموعة",
+    loadingGroups: "جاري تحميل المجموعات...",
+    selectGroup: "اختر مجموعة",
+    player: "اللاعب",
+    loadingPlayers: "جاري تحميل اللاعبين...",
+    selectPlayer: "اختر لاعب",
+    noGroups: "لا توجد مجموعات معينة بعد.",
+    age: "العمر",
+    level: "المستوى",
+    currentScore: "النقاط الحالية",
+    categoryLabels: {
+      technical: "فني",
+      tactical: "تكتيكي",
+      physical: "بدني",
+      mental: "ذهني",
+    } satisfies Record<ScoreKey, string>,
+    overallScore: "التقييم العام",
+    averageHint: "متوسط الفئات الأربع",
+    coachNotes: "ملاحظات المدرب",
+    notesPlaceholder: "اكتب ملاحظات تفصيلية عن أداء اللاعب...",
+    saveError: "تعذر إرسال التقييم. يجب أن تكون الدرجات بين 0 و10.",
+    saving: "جاري الحفظ...",
+    saved: "تم الحفظ",
+    submit: "إرسال التقييم",
+  },
+} as const;
+
 export default function CoachNewEvaluationPage() {
+  const language = useDashboardLanguage();
+  const t = evaluationCopy[language];
   const { data: groups = [], isLoading: loadingGroups, isError: groupsError } =
     useGetCoachGroupsQuery();
   const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -122,26 +191,26 @@ export default function CoachNewEvaluationPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="New Evaluation"
-        description="Create a player evaluation"
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Evaluations" },
-          { label: "New" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.evaluations },
+          { label: t.new },
         ]}
       />
 
       {groupsError && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="p-4 text-sm text-red-300">
-            Could not load your assigned groups.
+            {t.groupsError}
           </CardContent>
         </Card>
       )}
 
       <div className="flex flex-wrap gap-4">
         <div className="w-full sm:w-64">
-          <Label className="mb-2 block text-sm">Group</Label>
+          <Label className="mb-2 block text-sm">{t.group}</Label>
           <Select
             value={selectedGroup}
             onValueChange={(value) => {
@@ -152,7 +221,7 @@ export default function CoachNewEvaluationPage() {
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={loadingGroups ? "Loading groups..." : "Select group"}
+                placeholder={loadingGroups ? t.loadingGroups : t.selectGroup}
               />
             </SelectTrigger>
             <SelectContent>
@@ -165,7 +234,7 @@ export default function CoachNewEvaluationPage() {
           </Select>
         </div>
         <div className="w-full sm:w-64">
-          <Label className="mb-2 block text-sm">Player</Label>
+          <Label className="mb-2 block text-sm">{t.player}</Label>
           <Select
             value={activePlayerId}
             onValueChange={setSelectedPlayer}
@@ -173,7 +242,7 @@ export default function CoachNewEvaluationPage() {
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={loadingPlayers ? "Loading players..." : "Select player"}
+                placeholder={loadingPlayers ? t.loadingPlayers : t.selectPlayer}
               />
             </SelectTrigger>
             <SelectContent>
@@ -190,7 +259,7 @@ export default function CoachNewEvaluationPage() {
       {!loadingGroups && groups.length === 0 && (
         <Card className="border-border/50 bg-card">
           <CardContent className="p-8 text-center text-muted-foreground">
-            No groups assigned yet.
+            {t.noGroups}
           </CardContent>
         </Card>
       )}
@@ -209,12 +278,12 @@ export default function CoachNewEvaluationPage() {
                   {selectedPlayerRecord.fullName}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {selectedPlayerRecord.position} - Age {selectedPlayerRecord.age} - Level{" "}
+                  {selectedPlayerRecord.position} - {t.age} {selectedPlayerRecord.age} - {t.level}{" "}
                   {selectedPlayerRecord.level}
                 </p>
               </div>
               <div className="ml-auto text-right">
-                <p className="text-sm text-muted-foreground">Current Score</p>
+                <p className="text-sm text-muted-foreground">{t.currentScore}</p>
                 <p className="text-2xl font-bold text-primary">
                   {selectedPlayerRecord.performanceScore}
                 </p>
@@ -228,7 +297,7 @@ export default function CoachNewEvaluationPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <category.icon className="h-4 w-4 text-primary" />
-                    {category.label}
+                    {t.categoryLabels[category.key]}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -257,26 +326,26 @@ export default function CoachNewEvaluationPage() {
               <div className="flex items-center gap-3">
                 <Star className="h-8 w-8 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Overall Score</p>
+                  <p className="text-sm text-muted-foreground">{t.overallScore}</p>
                   <p className="text-3xl font-bold text-primary">
                     {overall === null ? "--" : overall.toFixed(1)}
                   </p>
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
-                Average of all 4 categories
+                {t.averageHint}
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-border/50 bg-card">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Coach Notes</CardTitle>
+              <CardTitle className="text-sm">{t.coachNotes}</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
                 className="min-h-[120px]"
-                placeholder="Write detailed observations about the player's performance..."
+                placeholder={t.notesPlaceholder}
                 value={scores.notes}
                 onChange={(event) =>
                   setScores((prev) => ({ ...prev, notes: event.target.value }))
@@ -287,7 +356,7 @@ export default function CoachNewEvaluationPage() {
 
           {saveError && (
             <p className="text-sm text-red-400">
-              Could not submit evaluation. Scores must be between 0 and 10.
+              {t.saveError}
             </p>
           )}
 
@@ -301,17 +370,17 @@ export default function CoachNewEvaluationPage() {
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Saving...
+                  {t.saving}
                 </>
               ) : saved ? (
                 <>
                   <CheckCircle2 className="mr-2 h-5 w-5" />
-                  Saved
+                  {t.saved}
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-5 w-5" />
-                  Submit Evaluation
+                  {t.submit}
                 </>
               )}
             </Button>

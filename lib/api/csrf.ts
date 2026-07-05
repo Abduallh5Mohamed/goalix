@@ -1,7 +1,7 @@
 import { getApiBaseUrl } from "@/lib/api/baseUrl";
 
-const CSRF_COOKIE_NAME = "csrfToken";
-const CSRF_HEADER_NAME = "X-CSRF-Token";
+export const CSRF_COOKIE_NAME = "csrfToken";
+export const CSRF_HEADER_NAME = "X-CSRF-Token";
 
 let csrfRefreshPromise: Promise<string> | null = null;
 

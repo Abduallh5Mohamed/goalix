@@ -67,6 +67,8 @@ exports.seed = async function (knex) {
     await knex('coach_performance_scores').delete();
     await knex('player_profiles').delete();
     await knex('coach_profiles').delete();
+    await knex('group_birth_years').delete();
+    await knex('group_labels').delete();
     await knex('academy_schedules').delete();
     await knex('academy_groups').delete();
     await knex('academy_birth_years').delete();
@@ -122,24 +124,44 @@ exports.seed = async function (knex) {
 
     // ── 5. BIRTH YEARS ───────────────────────────────────────────────────────
     await knex('academy_birth_years').insert([
-        { id: IDs.by1, branch_id: IDs.b1, year: 2012, label: 'Heliopolis 2012' },
-        { id: IDs.by2, branch_id: IDs.b1, year: 2013, label: 'Heliopolis 2013' },
-        { id: IDs.by3, branch_id: IDs.b1, year: 2014, label: 'Heliopolis 2014' },
-        { id: IDs.by4, branch_id: IDs.b2, year: 2012, label: 'Maadi 2012' },
-        { id: IDs.by5, branch_id: IDs.b2, year: 2013, label: 'Maadi 2013' },
-        { id: IDs.by6, branch_id: IDs.b2, year: 2014, label: 'Maadi 2014' },
-        { id: IDs.by7, branch_id: IDs.b3, year: 2012, label: 'October 2012' },
-        { id: IDs.by8, branch_id: IDs.b3, year: 2013, label: 'October 2013' },
+        { id: IDs.by1, branch_id: IDs.b1, from_year: 2012, to_year: 2012, label: 'Heliopolis 2012', normalized_label: 'heliopolis 2012' },
+        { id: IDs.by2, branch_id: IDs.b1, from_year: 2013, to_year: 2013, label: 'Heliopolis 2013', normalized_label: 'heliopolis 2013' },
+        { id: IDs.by3, branch_id: IDs.b1, from_year: 2014, to_year: 2014, label: 'Heliopolis 2014', normalized_label: 'heliopolis 2014' },
+        { id: IDs.by4, branch_id: IDs.b2, from_year: 2012, to_year: 2012, label: 'Maadi 2012', normalized_label: 'maadi 2012' },
+        { id: IDs.by5, branch_id: IDs.b2, from_year: 2013, to_year: 2013, label: 'Maadi 2013', normalized_label: 'maadi 2013' },
+        { id: IDs.by6, branch_id: IDs.b2, from_year: 2014, to_year: 2014, label: 'Maadi 2014', normalized_label: 'maadi 2014' },
+        { id: IDs.by7, branch_id: IDs.b3, from_year: 2012, to_year: 2012, label: 'October 2012', normalized_label: 'october 2012' },
+        { id: IDs.by8, branch_id: IDs.b3, from_year: 2013, to_year: 2013, label: 'October 2013', normalized_label: 'october 2013' },
     ]);
 
     // ── 6. GROUPS ────────────────────────────────────────────────────────────
     await knex('academy_groups').insert([
-        { id: IDs.g1, birth_year_id: IDs.by1, name: 'Heliopolis 2012 - A', max_players: 18 },
-        { id: IDs.g2, birth_year_id: IDs.by2, name: 'Heliopolis 2013 - A', max_players: 18 },
-        { id: IDs.g3, birth_year_id: IDs.by4, name: 'Maadi 2012 - A', max_players: 18 },
-        { id: IDs.g4, birth_year_id: IDs.by5, name: 'Maadi 2013 - A', max_players: 18 },
-        { id: IDs.g5, birth_year_id: IDs.by7, name: 'October 2012 - A', max_players: 18 },
-        { id: IDs.g6, birth_year_id: IDs.by8, name: 'October 2013 - A', max_players: 18 },
+        { id: IDs.g1, branch_id: IDs.b1, name: 'Heliopolis 2012 - A', max_players: 18 },
+        { id: IDs.g2, branch_id: IDs.b1, name: 'Heliopolis 2013 - A', max_players: 18 },
+        { id: IDs.g3, branch_id: IDs.b2, name: 'Maadi 2012 - A', max_players: 18 },
+        { id: IDs.g4, branch_id: IDs.b2, name: 'Maadi 2013 - A', max_players: 18 },
+        { id: IDs.g5, branch_id: IDs.b3, name: 'October 2012 - A', max_players: 18 },
+        { id: IDs.g6, branch_id: IDs.b3, name: 'October 2013 - A', max_players: 18 },
+    ]);
+
+    // ── 6b. GROUP LABELS ──────────────────────────────────────────────────────
+    await knex('group_labels').insert([
+        { group_id: IDs.g1, normalized_label: 'heliopolis 2012' },
+        { group_id: IDs.g2, normalized_label: 'heliopolis 2013' },
+        { group_id: IDs.g3, normalized_label: 'maadi 2012' },
+        { group_id: IDs.g4, normalized_label: 'maadi 2013' },
+        { group_id: IDs.g5, normalized_label: 'october 2012' },
+        { group_id: IDs.g6, normalized_label: 'october 2013' },
+    ]);
+
+    // ── 6c. GROUP BIRTH YEARS ─────────────────────────────────────────────────
+    await knex('group_birth_years').insert([
+        { group_id: IDs.g1, birth_year_id: IDs.by1 },
+        { group_id: IDs.g2, birth_year_id: IDs.by2 },
+        { group_id: IDs.g3, birth_year_id: IDs.by4 },
+        { group_id: IDs.g4, birth_year_id: IDs.by5 },
+        { group_id: IDs.g5, birth_year_id: IDs.by7 },
+        { group_id: IDs.g6, birth_year_id: IDs.by8 },
     ]);
 
     // ── 7. COACH AUTH USERS ──────────────────────────────────────────────────
@@ -151,10 +173,58 @@ exports.seed = async function (knex) {
 
     // ── 8. COACH PROFILES ────────────────────────────────────────────────────
     await knex('coach_profiles').insert([
-        { id: IDs.coachProfile1, user_id: IDs.coach1, academy_id: IDs.academy, full_name: 'Omar Mostafa', specialization: 'Technical Skills' },
-        { id: IDs.coachProfile2, user_id: IDs.coachUser2, academy_id: IDs.academy, full_name: 'Kareem El-Sayed', specialization: 'Tactical Training' },
-        { id: IDs.coachProfile3, user_id: IDs.coachUser3, academy_id: IDs.academy, full_name: 'Tamer Adel', specialization: 'Physical Conditioning' },
-        { id: IDs.coachProfile4, user_id: IDs.coachUser4, academy_id: IDs.academy, full_name: 'Mohamed Nabil', specialization: 'Goalkeeping' },
+        {
+            id: IDs.coachProfile1,
+            user_id: IDs.coach1,
+            academy_id: IDs.academy,
+            branch_id: IDs.b1,
+            full_name: 'Omar Mostafa',
+            first_name: 'Omar',
+            last_name: 'Mostafa',
+            email: 'coach1@goalix.com',
+            phone: '+201010000001',
+            role: 'head_coach',
+            specialization: 'Technical Skills',
+        },
+        {
+            id: IDs.coachProfile2,
+            user_id: IDs.coachUser2,
+            academy_id: IDs.academy,
+            branch_id: IDs.b2,
+            full_name: 'Kareem El-Sayed',
+            first_name: 'Kareem',
+            last_name: 'El-Sayed',
+            email: 'coach2@goalix.com',
+            phone: '+201010000002',
+            role: 'head_coach',
+            specialization: 'Tactical Training',
+        },
+        {
+            id: IDs.coachProfile3,
+            user_id: IDs.coachUser3,
+            academy_id: IDs.academy,
+            branch_id: IDs.b2,
+            full_name: 'Tamer Adel',
+            first_name: 'Tamer',
+            last_name: 'Adel',
+            email: 'coach3@goalix.com',
+            phone: '+201010000003',
+            role: 'head_coach',
+            specialization: 'Physical Conditioning',
+        },
+        {
+            id: IDs.coachProfile4,
+            user_id: IDs.coachUser4,
+            academy_id: IDs.academy,
+            branch_id: IDs.b3,
+            full_name: 'Mohamed Nabil',
+            first_name: 'Mohamed',
+            last_name: 'Nabil',
+            email: 'coach4@goalix.com',
+            phone: '+201010000004',
+            role: 'head_coach',
+            specialization: 'Goalkeeping',
+        },
     ]);
 
     // ── 9. COACH GROUP ASSIGNMENTS ───────────────────────────────────────────

@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { Activity, BrainCircuit, Database, Loader2, Trophy, Users } from "lucide-react";
+import {
+  Activity,
+  BrainCircuit,
+  Database,
+  Loader2,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +18,7 @@ import {
   type RankingSystemInput,
   useGetCoachRankingSystemInputsQuery,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { cn, formatDate } from "@/lib/utils";
 
 const baseFields: Array<{
@@ -87,7 +95,13 @@ const weeklyScoreProfile = {
 
 const predictionProfile = {
   title: "Prediction Module",
-  inputs: ["match_score", "coach_score", "attendance_score", "weekly_ai_score", "position"],
+  inputs: [
+    "match_score",
+    "coach_score",
+    "attendance_score",
+    "weekly_ai_score",
+    "position",
+  ],
   modifiers: ["Model Random Forest Regressor"],
   output: "predicted_next_score",
 };
@@ -134,6 +148,96 @@ const compactMetricLabels: Record<string, string> = {
   distribution_accuracy: "Dist %",
   handling_errors: "Errors",
 };
+
+const rankingCopy = {
+  en: {
+    title: "Ranking System",
+    description:
+      "Weekly model inputs, calculated scores, and Ranking Model API response.",
+    home: "Home",
+    refresh: "Refresh",
+    loadError: "Could not load weekly ranking inputs.",
+    retry: "Retry",
+    loading: "Loading weekly ranking inputs...",
+    weeklyPackages: "Weekly Packages",
+    weeklyPackagesDetail: "One package per player per week",
+    baseInputsReady: "Base Inputs Ready",
+    baseInputsDetail:
+      "Technical, tactical, physical, mentality, decision, work rate, positioning",
+    roleInputsReady: "Role Inputs Ready",
+    roleInputsDetail: "Position-specific match inputs available",
+    dailyAiReady: "Daily AI Ready",
+    dailyAiDetail: "Weekly daily_ai_score packages from player daily fields",
+    finalScores: "Final Scores",
+    finalScoresDetail: "weekly_score, grade, trend, rank",
+    mlPredictions: "ML Predictions",
+    mlPredictionsDetail: "predicted_next_score from Ranking Model",
+    playersWeeks: "Players / Weeks",
+    playersWeeksDetail: "Players and weeks represented",
+    weeklyModelInputs: "Weekly Model Inputs",
+    showing: (start: number, end: number, total: number) =>
+      `Showing ${start}-${end} of ${total}`,
+    grades: "Grades",
+    prev: "Prev",
+    next: "Next",
+    inputs: "Inputs",
+    modelRule: "Model Rule",
+    output: "Output",
+    profileTitles: {
+      "Attack Position": "Attack Position",
+      "Midfield Position": "Midfield Position",
+      "Defense Position": "Defense Position",
+      "Goalkeeper Position": "Goalkeeper Position",
+      "Daily AI Score Module": "Daily AI Score Module",
+      "Weekly Score Formula": "Weekly Score Formula",
+      "Prediction Module": "Prediction Module",
+    },
+  },
+  ar: {
+    title: "نظام الترتيب",
+    description:
+      "مدخلات النموذج الأسبوعية، الدرجات المحسوبة، واستجابة Ranking Model API.",
+    home: "الرئيسية",
+    refresh: "تحديث",
+    loadError: "تعذر تحميل مدخلات الترتيب الأسبوعية.",
+    retry: "إعادة المحاولة",
+    loading: "جاري تحميل مدخلات الترتيب الأسبوعية...",
+    weeklyPackages: "حزم الأسبوع",
+    weeklyPackagesDetail: "حزمة واحدة لكل لاعب في كل أسبوع",
+    baseInputsReady: "المدخلات الأساسية جاهزة",
+    baseInputsDetail: "فني، تكتيكي، بدني، ذهني، قرار، معدل عمل، تمركز",
+    roleInputsReady: "مدخلات الدور جاهزة",
+    roleInputsDetail: "مدخلات مباراة حسب مركز اللاعب متاحة",
+    dailyAiReady: "الذكاء اليومي جاهز",
+    dailyAiDetail: "حزم weekly daily_ai_score من حقول اللاعب اليومية",
+    finalScores: "الدرجات النهائية",
+    finalScoresDetail: "weekly_score، الدرجة، الاتجاه، الترتيب",
+    mlPredictions: "توقعات النموذج",
+    mlPredictionsDetail: "predicted_next_score من نموذج الترتيب",
+    playersWeeks: "اللاعبون / الأسابيع",
+    playersWeeksDetail: "اللاعبون والأسابيع الممثلة",
+    weeklyModelInputs: "مدخلات النموذج الأسبوعية",
+    showing: (start: number, end: number, total: number) =>
+      `عرض ${start}-${end} من ${total}`,
+    grades: "الدرجات",
+    prev: "السابق",
+    next: "التالي",
+    inputs: "المدخلات",
+    modelRule: "قاعدة النموذج",
+    output: "المخرج",
+    profileTitles: {
+      "Attack Position": "مركز الهجوم",
+      "Midfield Position": "مركز الوسط",
+      "Defense Position": "مركز الدفاع",
+      "Goalkeeper Position": "مركز حارس المرمى",
+      "Daily AI Score Module": "وحدة درجة الذكاء اليومية",
+      "Weekly Score Formula": "معادلة الدرجة الأسبوعية",
+      "Prediction Module": "وحدة التوقع",
+    },
+  },
+} as const;
+
+type RankingCopy = (typeof rankingCopy)[keyof typeof rankingCopy];
 
 type ModelProfile = {
   title: string;
@@ -266,17 +370,23 @@ function MetricCard({
 
 function RoleProfileCard({
   profile,
+  copy,
 }: {
   profile: ModelProfile;
+  copy: RankingCopy;
 }) {
+  const profileTitles = copy.profileTitles as Record<string, string>;
+
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{profile.title}</CardTitle>
+        <CardTitle className="text-sm">
+          {profileTitles[profile.title] ?? profile.title}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-xs">
         <div>
-          <p className="mb-1 text-muted-foreground">Inputs</p>
+          <p className="mb-1 text-muted-foreground">{copy.inputs}</p>
           <div className="flex flex-wrap gap-1.5">
             {profile.inputs.map((input) => (
               <Badge key={input} variant="secondary">
@@ -286,7 +396,7 @@ function RoleProfileCard({
           </div>
         </div>
         <div>
-          <p className="mb-1 text-muted-foreground">Model Rule</p>
+          <p className="mb-1 text-muted-foreground">{copy.modelRule}</p>
           <div className="flex flex-wrap gap-1.5">
             {profile.modifiers.map((modifier) => (
               <Badge key={modifier} variant="outline">
@@ -296,7 +406,8 @@ function RoleProfileCard({
           </div>
         </div>
         <p className="text-muted-foreground">
-          Output <span className="font-medium text-foreground">{profile.output}</span>
+          {copy.output}{" "}
+          <span className="font-medium text-foreground">{profile.output}</span>
         </p>
       </CardContent>
     </Card>
@@ -374,18 +485,21 @@ function GradeBadge({ grade }: { grade: RankingSystemInput["grade"] }) {
 }
 
 export default function CoachRankingSystemPage() {
+  const language = useDashboardLanguage();
+  const t = rankingCopy[language];
   const { data, isLoading, isError, refetch } =
     useGetCoachRankingSystemInputsQuery({ limit: 100 });
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
-    15,
-  );
+  const [pageSize, setPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(15);
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const baseReadyRows = rows.filter(hasBaseInputs);
   const roleReadyRows = rows.filter(hasRoleInputs);
   const dailyReadyRows = rows.filter(hasDailyInputs);
   const weeklyScoreRows = rows.filter(hasWeeklyScore);
-  const predictionReadyRows = rows.filter((row) => row.prediction_status === "ready");
+  const predictionReadyRows = rows.filter(
+    (row) => row.prediction_status === "ready",
+  );
   const playerCount = new Set(rows.map((row) => row.player_id)).size;
   const weekCount = new Set(rows.map((row) => row.week_start)).size;
   const totalRows = data?.pagination.total ?? rows.length;
@@ -402,23 +516,26 @@ export default function CoachRankingSystemPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Ranking System"
-        description="Weekly model inputs, calculated scores, and Ranking Model API response."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Ranking System" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.title },
         ]}
         actions={
-          <RefreshButton onRefresh={refetch} />
+          <Button variant="outline" className="gap-2" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
+            {t.refresh}
+          </Button>
         }
       />
 
       {isError && (
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-destructive">
-            <span>Could not load weekly ranking inputs.</span>
+            <span>{t.loadError}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Retry
+              {t.retry}
             </Button>
           </CardContent>
         </Card>
@@ -428,82 +545,84 @@ export default function CoachRankingSystemPage() {
         <Card className="border-border/50 bg-card">
           <CardContent className="flex items-center gap-2 p-5 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading weekly ranking inputs...
+            {t.loading}
           </CardContent>
         </Card>
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <MetricCard
-              label="Weekly Packages"
+              label={t.weeklyPackages}
               value={String(totalRows)}
-              detail="One package per player per week"
+              detail={t.weeklyPackagesDetail}
               icon={Database}
             />
             <MetricCard
-              label="Base Inputs Ready"
+              label={t.baseInputsReady}
               value={String(baseReadyRows.length)}
-              detail="Technical, tactical, physical, mentality, decision, work rate, positioning"
+              detail={t.baseInputsDetail}
               icon={Activity}
             />
             <MetricCard
-              label="Role Inputs Ready"
+              label={t.roleInputsReady}
               value={String(roleReadyRows.length)}
-              detail="Position-specific match inputs available"
+              detail={t.roleInputsDetail}
               icon={Trophy}
             />
             <MetricCard
-              label="Daily AI Ready"
+              label={t.dailyAiReady}
               value={String(dailyReadyRows.length)}
-              detail="Weekly daily_ai_score packages from player daily fields"
+              detail={t.dailyAiDetail}
               icon={BrainCircuit}
             />
             <MetricCard
-              label="Final Scores"
+              label={t.finalScores}
               value={String(weeklyScoreRows.length)}
-              detail="weekly_score, grade, trend, rank"
+              detail={t.finalScoresDetail}
               icon={Trophy}
             />
             <MetricCard
-              label="ML Predictions"
+              label={t.mlPredictions}
               value={String(predictionReadyRows.length)}
-              detail="predicted_next_score from Ranking Model"
+              detail={t.mlPredictionsDetail}
               icon={BrainCircuit}
             />
             <MetricCard
-              label="Players / Weeks"
+              label={t.playersWeeks}
               value={`${playerCount} / ${weekCount}`}
-              detail="Players and weeks represented"
+              detail={t.playersWeeksDetail}
               icon={Users}
             />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-4">
             {Object.values(roleProfiles).map((profile) => (
-              <RoleProfileCard key={profile.title} profile={profile} />
+              <RoleProfileCard key={profile.title} profile={profile} copy={t} />
             ))}
           </section>
           <section>
-            <RoleProfileCard profile={dailyAiProfile} />
+            <RoleProfileCard profile={dailyAiProfile} copy={t} />
           </section>
           <section className="grid gap-4 xl:grid-cols-2">
-            <RoleProfileCard profile={weeklyScoreProfile} />
-            <RoleProfileCard profile={predictionProfile} />
+            <RoleProfileCard profile={weeklyScoreProfile} copy={t} />
+            <RoleProfileCard profile={predictionProfile} copy={t} />
           </section>
 
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                  <CardTitle className="text-base">Weekly Model Inputs</CardTitle>
+                  <CardTitle className="text-base">
+                    {t.weeklyModelInputs}
+                  </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Showing {visibleStart}-{visibleEnd} of {totalRows}
+                    {t.showing(visibleStart, visibleEnd, totalRows)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/40 px-2 py-1">
                     <span className="mr-1 text-xs text-muted-foreground">
-                      Grades
+                      {t.grades}
                     </span>
                     {gradeLegend.map(([grade, label]) => (
                       <Badge
@@ -543,7 +662,7 @@ export default function CoachRankingSystemPage() {
                     disabled={effectivePage === 0}
                     onClick={() => setPage((value) => Math.max(0, value - 1))}
                   >
-                    Prev
+                    {t.prev}
                   </Button>
                   <span className="min-w-20 text-center text-xs text-muted-foreground">
                     {effectivePage + 1} / {totalPages}
@@ -557,7 +676,7 @@ export default function CoachRankingSystemPage() {
                       setPage((value) => Math.min(totalPages - 1, value + 1))
                     }
                   >
-                    Next
+                    {t.next}
                   </Button>
                 </div>
               </div>
@@ -685,11 +804,15 @@ export default function CoachRankingSystemPage() {
                       ];
                       const stateBadges = [
                         {
-                          label: hasBaseInputs(row) ? "base ready" : "base partial",
+                          label: hasBaseInputs(row)
+                            ? "base ready"
+                            : "base partial",
                           ready: hasBaseInputs(row),
                         },
                         {
-                          label: hasRoleInputs(row) ? "role ready" : "role partial",
+                          label: hasRoleInputs(row)
+                            ? "role ready"
+                            : "role partial",
                           ready: hasRoleInputs(row),
                         },
                         {
@@ -708,119 +831,122 @@ export default function CoachRankingSystemPage() {
                       ];
 
                       return (
-                      <tr
-                        key={row.id}
-                        className={cn(
-                          "align-top",
-                          rowIndex % 2 === 1 && "bg-muted/[0.035]",
-                        )}
-                      >
-                        <td className="border-b border-r border-border/30 px-3 py-3">
-                          <div className="truncate font-medium">
-                            {row.player_name || "Player"}
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {row.position && (
-                              <Badge variant="secondary">{row.position}</Badge>
-                            )}
-                            <Badge variant="outline">
-                              {roleLabels[row.role_family]}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-muted-foreground">
-                          <div className="font-medium text-foreground">
-                            {formatDate(row.week_start)}
-                          </div>
-                          <div className="mt-1 text-xs">
-                            to {formatDate(row.week_end)}
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <MetricStack items={sourceItems} toneMode="count" />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {hasAnyBaseInput(row) ? (
-                            <MetricStack
-                              items={baseItems}
-                              columns={2}
-                              emptyText="No input"
-                            />
-                          ) : (
-                            <span className="block text-xs text-muted-foreground">
-                              No base input yet
-                            </span>
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "align-top",
+                            rowIndex % 2 === 1 && "bg-muted/[0.035]",
                           )}
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {row.match_evaluation_count > 0 && roleValues(row).length ? (
-                            <MetricStack
-                              items={displayInputValues(roleValues(row))}
-                              columns={2}
-                              emptyText="No input"
-                            />
-                          ) : (
-                            <span className="block text-xs text-muted-foreground">
-                              No match input yet
-                            </span>
-                          )}
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {hasDailyInputs(row) ? (
-                            <MetricStack items={dailyItems} columns={2} />
-                          ) : (
-                            <span className="block text-xs text-muted-foreground">
-                              No daily input yet
-                            </span>
-                          )}
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <ScoreValue value={row.match_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.coach_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.attendance_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.weekly_ai_score} />
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <ScoreValue value={row.weekly_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-center">
-                          <GradeBadge grade={row.grade} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-center">
-                          <div className="font-mono text-sm font-semibold tabular-nums">
-                            #{row.rank}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {row.trend}
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.predicted_next_score} />
-                          {row.model_error && (
-                            <p className="mt-1 text-xs text-destructive">
-                              {row.model_error}
-                            </p>
-                          )}
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <div className="flex flex-col items-start gap-1.5">
-                            {stateBadges.map((state) => (
-                              <Badge
-                                key={state.label}
-                                variant={state.ready ? "success" : "warning"}
-                              >
-                                {state.label}
+                        >
+                          <td className="border-b border-r border-border/30 px-3 py-3">
+                            <div className="truncate font-medium">
+                              {row.player_name || "Player"}
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {row.position && (
+                                <Badge variant="secondary">
+                                  {row.position}
+                                </Badge>
+                              )}
+                              <Badge variant="outline">
+                                {roleLabels[row.role_family]}
                               </Badge>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-muted-foreground">
+                            <div className="font-medium text-foreground">
+                              {formatDate(row.week_start)}
+                            </div>
+                            <div className="mt-1 text-xs">
+                              to {formatDate(row.week_end)}
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <MetricStack items={sourceItems} toneMode="count" />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {hasAnyBaseInput(row) ? (
+                              <MetricStack
+                                items={baseItems}
+                                columns={2}
+                                emptyText="No input"
+                              />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No base input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {row.match_evaluation_count > 0 &&
+                            roleValues(row).length ? (
+                              <MetricStack
+                                items={displayInputValues(roleValues(row))}
+                                columns={2}
+                                emptyText="No input"
+                              />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No match input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {hasDailyInputs(row) ? (
+                              <MetricStack items={dailyItems} columns={2} />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No daily input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <ScoreValue value={row.match_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.coach_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.attendance_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.weekly_ai_score} />
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <ScoreValue value={row.weekly_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-center">
+                            <GradeBadge grade={row.grade} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-center">
+                            <div className="font-mono text-sm font-semibold tabular-nums">
+                              #{row.rank}
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {row.trend}
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.predicted_next_score} />
+                            {row.model_error && (
+                              <p className="mt-1 text-xs text-destructive">
+                                {row.model_error}
+                              </p>
+                            )}
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <div className="flex flex-col items-start gap-1.5">
+                              {stateBadges.map((state) => (
+                                <Badge
+                                  key={state.label}
+                                  variant={state.ready ? "success" : "warning"}
+                                >
+                                  {state.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
                     {!rows.length && (

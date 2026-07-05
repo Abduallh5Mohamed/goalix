@@ -47,22 +47,198 @@ import {
   useGetCoachBirthdaysQuery,
 } from "@/lib/store/api/coachApi";
 import { useCoachPermissions } from "@/lib/hooks/useCoachPermissions";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { getInitials } from "@/lib/utils";
 
 const GUARDIAN_RELATIONS = [
-  { value: "father", label: "Father" },
-  { value: "mother", label: "Mother" },
-  { value: "paternal_uncle", label: "Paternal Uncle" },
-  { value: "maternal_uncle", label: "Maternal Uncle" },
-  { value: "paternal_aunt", label: "Paternal Aunt" },
-  { value: "maternal_aunt", label: "Maternal Aunt" },
-  { value: "grandfather", label: "Grandfather" },
-  { value: "grandmother", label: "Grandmother" },
-  { value: "older_brother", label: "Older Brother" },
-  { value: "older_sister", label: "Older Sister" },
-  { value: "legal_guardian", label: "Legal Guardian" },
-  { value: "other", label: "Other" },
-];
+  "father",
+  "mother",
+  "paternal_uncle",
+  "maternal_uncle",
+  "paternal_aunt",
+  "maternal_aunt",
+  "grandfather",
+  "grandmother",
+  "older_brother",
+  "older_sister",
+  "legal_guardian",
+  "other",
+] as const;
+
+const copy = {
+  en: {
+    players: "Players",
+    pageDescription: "Create a basic player first, then complete the profile before football operations.",
+    home: "Home",
+    addPlayer: "Add Player",
+    search: "Search",
+    searchPlaceholder: "Search name, position, guardian...",
+    status: "Status",
+    allPlayers: "All players",
+    complete: "Complete",
+    incomplete: "Incomplete",
+    filterByCustomField: "Filter by custom field",
+    chooseField: "Choose field",
+    value: "Value",
+    chooseOption: "Choose option",
+    searchCustomValue: "Search custom value",
+    chooseCustomFieldFirst: "Choose a custom field first",
+    clear: "Clear",
+    shown: "shown",
+    filteringHint: "Filtering scans your assigned birthdays and groups only.",
+    noOptionsThisField: "This field has no options yet.",
+    selectOption: "Select option",
+    noOptionsConfigured: "No options configured.",
+    addBasicPlayerInfo: "Add Basic Player Info",
+    addBasicDescription: "Create the required player basics before completing custom profile fields.",
+    name: "Name",
+    birthDate: "Birth Date",
+    age: "Age",
+    autoCalculated: "Auto calculated",
+    branch: "Branch",
+    selectBranch: "Select branch",
+    branchHint: "The player will be matched automatically to an assigned birthday by birth date.",
+    heightCm: "Height (cm)",
+    weightKg: "Weight (kg)",
+    preferredFoot: "Preferred Foot",
+    chooseFoot: "Choose foot",
+    right: "Right",
+    left: "Left",
+    dateJoinedAcademy: "Date Joined Academy",
+    gender: "Gender",
+    chooseGender: "Choose gender",
+    male: "Male",
+    female: "Female",
+    other: "Other",
+    nationality: "Nationality",
+    phoneNumber: "Phone Number",
+    username: "Username",
+    password: "Password",
+    guardianPhone: "Guardian Phone",
+    guardianRelation: "Guardian Relation",
+    chooseRelation: "Choose relation",
+    guardianName: "Guardian Name",
+    address: "Address",
+    saveBasicInfo: "Save Basic Info",
+    completePlayerCustomProfile: "Complete Player Custom Profile",
+    completeDescription: "Fill required custom fields before this player becomes ready for football operations.",
+    loadingCustomProfileFields: "Loading custom profile fields...",
+    noCustomFields: "No custom fields configured yet. The player can be completed once the profile structure is added.",
+    completeProfile: "Complete Profile",
+    completeProfileAction: "Complete profile",
+    loadingPlayers: "Loading players...",
+    mainPositionNotSet: "Main position not set",
+    noGuardianPhone: "No guardian phone",
+    permissionRequired: "Profile completion requires player management permission",
+    readyForOperations: "Ready for operations",
+    noPlayersAssigned: "No players in your assigned birthdays.",
+    noAssignmentsError: "Your coach account has not been assigned yet.",
+    fillBasicsError: "Fill all required player basics.",
+    invalidMeasurementError: "Height and weight must be valid positive numbers.",
+    createError: "Could not create player.",
+    completeError: "Could not complete player profile.",
+    guardianRelations: {
+      father: "Father",
+      mother: "Mother",
+      paternal_uncle: "Paternal Uncle",
+      maternal_uncle: "Maternal Uncle",
+      paternal_aunt: "Paternal Aunt",
+      maternal_aunt: "Maternal Aunt",
+      grandfather: "Grandfather",
+      grandmother: "Grandmother",
+      older_brother: "Older Brother",
+      older_sister: "Older Sister",
+      legal_guardian: "Legal Guardian",
+      other: "Other",
+    },
+  },
+  ar: {
+    players: "اللاعبون",
+    pageDescription: "أنشئ بيانات اللاعب الأساسية أولًا، ثم أكمل الملف قبل عمليات كرة القدم.",
+    home: "الرئيسية",
+    addPlayer: "إضافة لاعب",
+    search: "البحث",
+    searchPlaceholder: "ابحث بالاسم أو المركز أو ولي الأمر...",
+    status: "الحالة",
+    allPlayers: "كل اللاعبين",
+    complete: "مكتمل",
+    incomplete: "غير مكتمل",
+    filterByCustomField: "فلترة بحقل مخصص",
+    chooseField: "اختر الحقل",
+    value: "القيمة",
+    chooseOption: "اختر خيارًا",
+    searchCustomValue: "ابحث عن قيمة مخصصة",
+    chooseCustomFieldFirst: "اختر حقلًا مخصصًا أولًا",
+    clear: "مسح",
+    shown: "ظاهر",
+    filteringHint: "الفلترة تبحث داخل سنوات الميلاد والمجموعات المعينة لك فقط.",
+    noOptionsThisField: "هذا الحقل لا يحتوي على خيارات بعد.",
+    selectOption: "اختر خيارًا",
+    noOptionsConfigured: "لا توجد خيارات مهيأة.",
+    addBasicPlayerInfo: "إضافة بيانات اللاعب الأساسية",
+    addBasicDescription: "أنشئ البيانات الأساسية المطلوبة قبل إكمال حقول الملف المخصص.",
+    name: "الاسم",
+    birthDate: "تاريخ الميلاد",
+    age: "العمر",
+    autoCalculated: "يُحسب تلقائيًا",
+    branch: "الفرع",
+    selectBranch: "اختر الفرع",
+    branchHint: "سيتم مطابقة اللاعب تلقائيًا مع سنة ميلاد معينة حسب تاريخ الميلاد.",
+    heightCm: "الطول (سم)",
+    weightKg: "الوزن (كجم)",
+    preferredFoot: "القدم المفضلة",
+    chooseFoot: "اختر القدم",
+    right: "اليمنى",
+    left: "اليسرى",
+    dateJoinedAcademy: "تاريخ الانضمام للأكاديمية",
+    gender: "النوع",
+    chooseGender: "اختر النوع",
+    male: "ذكر",
+    female: "أنثى",
+    other: "آخر",
+    nationality: "الجنسية",
+    phoneNumber: "رقم الهاتف",
+    username: "اسم المستخدم",
+    password: "كلمة المرور",
+    guardianPhone: "هاتف ولي الأمر",
+    guardianRelation: "صلة ولي الأمر",
+    chooseRelation: "اختر الصلة",
+    guardianName: "اسم ولي الأمر",
+    address: "العنوان",
+    saveBasicInfo: "حفظ البيانات الأساسية",
+    completePlayerCustomProfile: "إكمال ملف اللاعب المخصص",
+    completeDescription: "املأ الحقول المخصصة المطلوبة قبل أن يصبح اللاعب جاهزًا لعمليات كرة القدم.",
+    loadingCustomProfileFields: "جاري تحميل حقول الملف المخصص...",
+    noCustomFields: "لا توجد حقول مخصصة مهيأة بعد. يمكن إكمال اللاعب بعد إضافة بنية الملف.",
+    completeProfile: "إكمال الملف",
+    completeProfileAction: "إكمال الملف",
+    loadingPlayers: "جاري تحميل اللاعبين...",
+    mainPositionNotSet: "المركز الأساسي غير محدد",
+    noGuardianPhone: "لا يوجد هاتف ولي أمر",
+    permissionRequired: "إكمال الملف يتطلب صلاحية إدارة اللاعبين",
+    readyForOperations: "جاهز للعمليات",
+    noPlayersAssigned: "لا يوجد لاعبون في سنوات الميلاد المعينة لك.",
+    noAssignmentsError: "حساب المدرب الخاص بك لم يتم تعيينه بعد.",
+    fillBasicsError: "املأ كل بيانات اللاعب الأساسية المطلوبة.",
+    invalidMeasurementError: "الطول والوزن يجب أن يكونا أرقامًا موجبة صحيحة.",
+    createError: "تعذر إنشاء اللاعب.",
+    completeError: "تعذر إكمال ملف اللاعب.",
+    guardianRelations: {
+      father: "الأب",
+      mother: "الأم",
+      paternal_uncle: "العم",
+      maternal_uncle: "الخال",
+      paternal_aunt: "العمة",
+      maternal_aunt: "الخالة",
+      grandfather: "الجد",
+      grandmother: "الجدة",
+      older_brother: "الأخ الأكبر",
+      older_sister: "الأخت الكبرى",
+      legal_guardian: "ولي قانوني",
+      other: "آخر",
+    },
+  },
+} as const;
 
 type ApiErrorDetails = {
   data?: {
@@ -154,6 +330,8 @@ export default function CoachPlayersPage() {
 }
 
 function CoachPlayersContent() {
+  const language = useDashboardLanguage();
+  const t = copy[language];
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can, isLoading: loadingPermissions } = useCoachPermissions();
@@ -232,7 +410,7 @@ function CoachPlayersContent() {
     event.preventDefault();
     setCreateError("");
     if (!hasAssignments) {
-      setCreateError("Your coach account has not been assigned yet.");
+      setCreateError(t.noAssignmentsError);
       return;
     }
     const requiredValues = [
@@ -254,11 +432,11 @@ function CoachPlayersContent() {
       basic.guardianRelation,
     ];
     if (requiredValues.some((value) => !value)) {
-      setCreateError("Fill all required player basics.");
+      setCreateError(t.fillBasicsError);
       return;
     }
     if (Number(basic.heightCm) <= 0 || Number(basic.weightKg) <= 0) {
-      setCreateError("Height and weight must be valid positive numbers.");
+      setCreateError(t.invalidMeasurementError);
       return;
     }
 
@@ -271,7 +449,7 @@ function CoachPlayersContent() {
       setAddOpen(false);
       setBasic(emptyBasicForm());
     } catch (err) {
-      setCreateError(getApiErrorMessage(err, "Could not create player."));
+      setCreateError(getApiErrorMessage(err, t.createError));
     }
   };
 
@@ -293,7 +471,7 @@ function CoachPlayersContent() {
       router.replace("/coach/players");
     } catch (err) {
       setCompleteError(
-        getApiErrorMessage(err, "Could not complete player profile."),
+        getApiErrorMessage(err, t.completeError),
       );
     }
   };
@@ -414,7 +592,7 @@ function CoachPlayersContent() {
             onValueChange={(next) => setCustomValue(field.id, next)}
           >
             <SelectTrigger>
-              <SelectValue placeholder={field.placeholder ?? "Select option"} />
+              <SelectValue placeholder={field.placeholder ?? t.selectOption} />
             </SelectTrigger>
             <SelectContent>
               {field.options.map((option) => (
@@ -451,7 +629,7 @@ function CoachPlayersContent() {
             ))}
             {!field.options.length && (
               <p className="text-sm text-muted-foreground">
-                No options configured.
+                {t.noOptionsConfigured}
               </p>
             )}
           </div>
@@ -535,11 +713,11 @@ function CoachPlayersContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Players"
-        description="Create a basic player first, then complete the profile before football operations."
+        title={t.players}
+        description={t.pageDescription}
         breadcrumbs={[
-          { label: "Home", href: "/coach/home" },
-          { label: "Players" },
+          { label: t.home, href: "/coach/home" },
+          { label: t.players },
         ]}
         actions={
           canManagePlayers ? (
@@ -549,7 +727,7 @@ function CoachPlayersContent() {
               onClick={() => setAddOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              Add Player
+              {t.addPlayer}
             </Button>
           ) : undefined
         }
@@ -559,7 +737,7 @@ function CoachPlayersContent() {
         <CardContent className="space-y-4 p-4">
           <div className="grid gap-3 lg:grid-cols-[minmax(220px,1.2fr)_180px_minmax(220px,1fr)_minmax(220px,1fr)_auto]">
             <div className="space-y-2">
-              <Label>Search</Label>
+              <Label>{t.search}</Label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -568,12 +746,12 @@ function CoachPlayersContent() {
                   onChange={(e) =>
                     setFilter((p) => ({ ...p, search: e.target.value }))
                   }
-                  placeholder="Search name, position, guardian..."
+                  placeholder={t.searchPlaceholder}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t.status}</Label>
               <Select
                 value={filter.status}
                 onValueChange={(value) =>
@@ -584,14 +762,14 @@ function CoachPlayersContent() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All players</SelectItem>
-                  <SelectItem value="complete">Complete</SelectItem>
-                  <SelectItem value="incomplete">Incomplete</SelectItem>
+                  <SelectItem value="all">{t.allPlayers}</SelectItem>
+                  <SelectItem value="complete">{t.complete}</SelectItem>
+                  <SelectItem value="incomplete">{t.incomplete}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Filter by custom field</Label>
+              <Label>{t.filterByCustomField}</Label>
               <Select
                 value={filter.customFieldId}
                 onValueChange={(value) =>
@@ -602,9 +780,9 @@ function CoachPlayersContent() {
                     customOptionId: "",
                   }))
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose field" />
+                >
+                  <SelectTrigger>
+                  <SelectValue placeholder={t.chooseField} />
                 </SelectTrigger>
                 <SelectContent>
                   {filterFields.map((field) => (
@@ -616,7 +794,7 @@ function CoachPlayersContent() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Value</Label>
+              <Label>{t.value}</Label>
               {selectedFilterFieldUsesOptions ? (
                 <Select
                   value={filter.customOptionId}
@@ -629,7 +807,7 @@ function CoachPlayersContent() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose option" />
+                    <SelectValue placeholder={t.chooseOption} />
                   </SelectTrigger>
                   <SelectContent>
                     {selectedFilterField.options.map((option) => (
@@ -659,8 +837,8 @@ function CoachPlayersContent() {
                   }
                   placeholder={
                     selectedFilterField
-                      ? "Search custom value"
-                      : "Choose a custom field first"
+                      ? t.searchCustomValue
+                      : t.chooseCustomFieldFirst
                   }
                   disabled={!filter.customFieldId}
                 />
@@ -680,18 +858,18 @@ function CoachPlayersContent() {
                 })
               }
             >
-              Clear
+              {t.clear}
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary">{players.length} shown</Badge>
+            <Badge variant="secondary">{players.length} {t.shown}</Badge>
             <span>
-              Filtering scans your assigned birthdays and groups only.
+              {t.filteringHint}
             </span>
             {selectedFilterFieldUsesOptions &&
               !selectedFilterField.options.length && (
                 <span className="text-amber-300">
-                  This field has no options yet.
+                  {t.noOptionsThisField}
                 </span>
               )}
           </div>
@@ -706,10 +884,9 @@ function CoachPlayersContent() {
       >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Add Basic Player Info</DialogTitle>
+            <DialogTitle>{t.addBasicPlayerInfo}</DialogTitle>
             <DialogDescription>
-              Create the required player basics before completing custom profile
-              fields.
+              {t.addBasicDescription}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -718,7 +895,7 @@ function CoachPlayersContent() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label>{t.name}</Label>
                 <Input
                   value={basic.fullName}
                   onChange={(e) =>
@@ -728,7 +905,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Birth Date</Label>
+                <Label>{t.birthDate}</Label>
                 <Input
                   type="date"
                   value={basic.birthDate}
@@ -739,15 +916,15 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Age</Label>
+                <Label>{t.age}</Label>
                 <Input
                   value={calculateAge(basic.birthDate)}
                   readOnly
-                  placeholder="Auto calculated"
+                  placeholder={t.autoCalculated}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Branch</Label>
+                <Label>{t.branch}</Label>
                 <Select
                   value={basic.branchId}
                   onValueChange={(value) =>
@@ -755,7 +932,7 @@ function CoachPlayersContent() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select branch" />
+                    <SelectValue placeholder={t.selectBranch} />
                   </SelectTrigger>
                   <SelectContent>
                     {assignedBranches.map((branch) => (
@@ -766,12 +943,11 @@ function CoachPlayersContent() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  The player will be matched automatically to an assigned
-                  birthday by birth date.
+                  {t.branchHint}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Height (cm)</Label>
+                <Label>{t.heightCm}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -784,7 +960,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Weight (kg)</Label>
+                <Label>{t.weightKg}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -797,7 +973,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Preferred Foot</Label>
+                <Label>{t.preferredFoot}</Label>
                 <Select
                   value={basic.preferredFoot}
                   onValueChange={(value) =>
@@ -805,16 +981,16 @@ function CoachPlayersContent() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose foot" />
+                    <SelectValue placeholder={t.chooseFoot} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="right">Right</SelectItem>
-                    <SelectItem value="left">Left</SelectItem>
+                    <SelectItem value="right">{t.right}</SelectItem>
+                    <SelectItem value="left">{t.left}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Date Joined Academy</Label>
+                <Label>{t.dateJoinedAcademy}</Label>
                 <Input
                   type="date"
                   value={basic.dateJoined}
@@ -825,7 +1001,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Gender</Label>
+                <Label>{t.gender}</Label>
                 <Select
                   value={basic.gender}
                   onValueChange={(value) =>
@@ -833,17 +1009,17 @@ function CoachPlayersContent() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose gender" />
+                    <SelectValue placeholder={t.chooseGender} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="male">{t.male}</SelectItem>
+                    <SelectItem value="female">{t.female}</SelectItem>
+                    <SelectItem value="other">{t.other}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Nationality</Label>
+                <Label>{t.nationality}</Label>
                 <Input
                   value={basic.nationality}
                   onChange={(e) =>
@@ -853,7 +1029,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Phone Number</Label>
+                <Label>{t.phoneNumber}</Label>
                 <Input
                   value={basic.phone}
                   onChange={(e) =>
@@ -863,7 +1039,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Username</Label>
+                <Label>{t.username}</Label>
                 <Input
                   value={basic.username}
                   onChange={(e) =>
@@ -873,7 +1049,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Password</Label>
+                <Label>{t.password}</Label>
                 <Input
                   type="password"
                   value={basic.password}
@@ -884,7 +1060,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Guardian Phone</Label>
+                <Label>{t.guardianPhone}</Label>
                 <Input
                   value={basic.guardianPhone}
                   onChange={(e) =>
@@ -894,7 +1070,7 @@ function CoachPlayersContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Guardian Relation</Label>
+                <Label>{t.guardianRelation}</Label>
                 <Select
                   value={basic.guardianRelation}
                   onValueChange={(value) =>
@@ -902,12 +1078,12 @@ function CoachPlayersContent() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose relation" />
+                    <SelectValue placeholder={t.chooseRelation} />
                   </SelectTrigger>
                   <SelectContent>
                     {GUARDIAN_RELATIONS.map((relation) => (
-                      <SelectItem key={relation.value} value={relation.value}>
-                        {relation.label}
+                      <SelectItem key={relation} value={relation}>
+                        {t.guardianRelations[relation]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -915,7 +1091,7 @@ function CoachPlayersContent() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Guardian Name</Label>
+              <Label>{t.guardianName}</Label>
               <Input
                 value={basic.guardianName}
                 onChange={(e) =>
@@ -925,7 +1101,7 @@ function CoachPlayersContent() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Address</Label>
+              <Label>{t.address}</Label>
               <Input
                 value={basic.address}
                 onChange={(e) =>
@@ -948,7 +1124,7 @@ function CoachPlayersContent() {
                 className="gap-2"
               >
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save Basic Info
+                {t.saveBasicInfo}
               </Button>
             </DialogFooter>
           </form>
@@ -968,17 +1144,16 @@ function CoachPlayersContent() {
       >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Complete Player Custom Profile</DialogTitle>
+            <DialogTitle>{t.completePlayerCustomProfile}</DialogTitle>
             <DialogDescription>
-              Fill required custom fields before this player becomes ready for
-              football operations.
+              {t.completeDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleComplete}>
             {loadingCustomProfile ? (
               <div className="flex items-center gap-2 rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading custom profile fields...
+                {t.loadingCustomProfileFields}
               </div>
             ) : (
               <div className="max-h-[60vh] space-y-5 overflow-y-auto pr-1">
@@ -999,8 +1174,7 @@ function CoachPlayersContent() {
                 ))}
                 {!customProfile?.categories.length && (
                   <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
-                    No custom fields configured yet. The player can be completed
-                    once the profile structure is added.
+                    {t.noCustomFields}
                   </p>
                 )}
               </div>
@@ -1017,7 +1191,7 @@ function CoachPlayersContent() {
                 className="gap-2"
               >
                 {completing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Complete Profile
+                {t.completeProfile}
               </Button>
             </DialogFooter>
           </form>
@@ -1028,7 +1202,7 @@ function CoachPlayersContent() {
         <Card>
           <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading players...
+            {t.loadingPlayers}
           </CardContent>
         </Card>
       ) : (
@@ -1067,13 +1241,13 @@ function CoachPlayersContent() {
                           }
                         >
                           {player.profile_status === "complete"
-                            ? "Complete"
-                            : "Incomplete"}
+                            ? t.complete
+                            : t.incomplete}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {mainPosition || "Main position not set"} -{" "}
-                        {player.guardian_phone || "No guardian phone"}
+                        {mainPosition || t.mainPositionNotSet} -{" "}
+                        {player.guardian_phone || t.noGuardianPhone}
                       </p>
                     </div>
                   </div>
@@ -1090,18 +1264,18 @@ function CoachPlayersContent() {
                         }}
                       >
                         <ShieldAlert className="h-4 w-4" />
-                        Complete profile
+                        {t.completeProfileAction}
                       </Button>
                     ) : (
                       <span className="text-sm text-muted-foreground">
-                        Profile completion requires player management permission
+                        {t.permissionRequired}
                       </span>
                     )
                   ) : (
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2 text-sm text-emerald-400">
                         <UserCheck className="h-4 w-4" />
-                        Ready for operations
+                        {t.readyForOperations}
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -1113,7 +1287,7 @@ function CoachPlayersContent() {
           {!players.length && (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                No players in your assigned birthdays.
+                {t.noPlayersAssigned}
               </CardContent>
             </Card>
           )}

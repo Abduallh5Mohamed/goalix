@@ -21,6 +21,7 @@ import {
   useGetAdminRankingSystemInputsQuery,
   useGetGroupsQuery,
 } from "@/lib/store/api/adminApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import {
   buildMonthlyRankingRows,
   latestRankingMonthKey,
@@ -34,15 +35,85 @@ type RoleKey = Exclude<MonthlyRankingRow["roleFamily"], "unknown">;
 
 const roleCards: Array<{
   role: RoleKey;
-  title: string;
   icon: typeof Goal;
   className: string;
 }> = [
-  { role: "attack", title: "Best Attack", icon: Goal, className: "border-rose-400/35 bg-rose-500/10 text-rose-100" },
-  { role: "midfield", title: "Best Midfield", icon: Medal, className: "border-cyan-400/35 bg-cyan-500/10 text-cyan-100" },
-  { role: "defense", title: "Best Defense", icon: Shield, className: "border-emerald-400/35 bg-emerald-500/10 text-emerald-100" },
-  { role: "goalkeeper", title: "Best Goalkeeper", icon: User, className: "border-amber-400/35 bg-amber-500/10 text-amber-100" },
+  { role: "attack", icon: Goal, className: "border-rose-400/35 bg-rose-500/10 text-rose-100" },
+  { role: "midfield", icon: Medal, className: "border-cyan-400/35 bg-cyan-500/10 text-cyan-100" },
+  { role: "defense", icon: Shield, className: "border-emerald-400/35 bg-emerald-500/10 text-emerald-100" },
+  { role: "goalkeeper", icon: User, className: "border-amber-400/35 bg-amber-500/10 text-amber-100" },
 ];
+
+const monthlyCopy = {
+  en: {
+    failedLoad: "Failed to load rankings.",
+    retry: "Retry",
+    title: "Monthly Rankings",
+    description:
+      "Monthly ranking from each player's completed weekly Ranking System scores in the selected month.",
+    dashboard: "Dashboard",
+    rankings: "Rankings",
+    monthly: "Monthly",
+    filterByGroup: "Filter by group",
+    allGroups: "All Groups",
+    noCompletedWeeks: "No completed weeks",
+    month: "Month",
+    period: "Period",
+    to: "to",
+    weeksCounted: "Weeks counted",
+    roleLeader: "Monthly role leader",
+    noPlayerData: "No player data yet.",
+    points: "pts",
+    top10: (month: string) => `Top 10 Players - ${month} weekly average`,
+    score: "Score",
+    roleTitles: {
+      attack: "Best Attack",
+      midfield: "Best Midfield",
+      defense: "Best Defense",
+      goalkeeper: "Best Goalkeeper",
+    } satisfies Record<RoleKey, string>,
+    roleLabels: {
+      attack: "Attack",
+      midfield: "Midfield",
+      defense: "Defense",
+      goalkeeper: "Goalkeeper",
+    } satisfies Record<RoleKey, string>,
+  },
+  ar: {
+    failedLoad: "فشل تحميل الترتيب.",
+    retry: "إعادة المحاولة",
+    title: "الترتيب الشهري",
+    description:
+      "ترتيب شهري مبني على درجات نظام الترتيب الأسبوعية المكتملة لكل لاعب في الشهر المحدد.",
+    dashboard: "لوحة التحكم",
+    rankings: "الترتيبات",
+    monthly: "شهري",
+    filterByGroup: "تصفية حسب المجموعة",
+    allGroups: "كل المجموعات",
+    noCompletedWeeks: "لا توجد أسابيع مكتملة",
+    month: "الشهر",
+    period: "الفترة",
+    to: "إلى",
+    weeksCounted: "الأسابيع المحسوبة",
+    roleLeader: "متصدر الدور شهريا",
+    noPlayerData: "لا توجد بيانات لاعبين بعد.",
+    points: "نقطة",
+    top10: (month: string) => `أفضل 10 لاعبين - متوسط ${month} الأسبوعي`,
+    score: "النقاط",
+    roleTitles: {
+      attack: "أفضل مهاجم",
+      midfield: "أفضل وسط",
+      defense: "أفضل مدافع",
+      goalkeeper: "أفضل حارس",
+    } satisfies Record<RoleKey, string>,
+    roleLabels: {
+      attack: "هجوم",
+      midfield: "وسط",
+      defense: "دفاع",
+      goalkeeper: "حارس مرمى",
+    } satisfies Record<RoleKey, string>,
+  },
+} as const;
 
 const formatScore = (value: unknown) => {
   const numeric = numberValue(value);
@@ -51,6 +122,8 @@ const formatScore = (value: unknown) => {
 };
 
 export default function MonthlyRankingsPage() {
+  const language = useDashboardLanguage();
+  const t = monthlyCopy[language];
   const router = useRouter();
   const [selectedGroup, setSelectedGroup] = useState("all");
 
@@ -72,10 +145,10 @@ export default function MonthlyRankingsPage() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p className="text-muted-foreground">Failed to load rankings.</p>
+        <p className="text-muted-foreground">{t.failedLoad}</p>
         <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
           <RefreshCw className="h-4 w-4" />
-          Retry
+          {t.retry}
         </Button>
       </div>
     );
@@ -88,7 +161,7 @@ export default function MonthlyRankingsPage() {
   const monthlyWeekStarts = [...new Set(sorted.flatMap((row) => row.weekStarts))].sort();
   const monthlyWeeksLabel = monthlyWeekStarts.length
     ? rankingWeeksInMonthLabel(monthlyWeekStarts, latestMonth)
-    : "No completed weeks";
+    : t.noCompletedWeeks;
   const top10 = sorted.slice(0, 10);
   const roleLeader = (role: RoleKey) => sorted.find((row) => row.roleFamily === role);
   const medalColor = (rank: number) =>
@@ -97,20 +170,20 @@ export default function MonthlyRankingsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Monthly Rankings"
-        description="Monthly ranking from each player's completed weekly Ranking System scores in the selected month."
+        title={t.title}
+        description={t.description}
         breadcrumbs={[
-          { label: "Dashboard", href: "/admin/dashboard" },
-          { label: "Rankings" },
-          { label: "Monthly" },
+          { label: t.dashboard, href: "/admin/dashboard" },
+          { label: t.rankings },
+          { label: t.monthly },
         ]}
         actions={
           <Select value={selectedGroup} onValueChange={setSelectedGroup}>
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="Filter by group" />
+              <SelectValue placeholder={t.filterByGroup} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Groups</SelectItem>
+              <SelectItem value="all">{t.allGroups}</SelectItem>
               {(groups ?? []).map((group) => (
                 <SelectItem key={group.id} value={group.id}>
                   {group.name}
@@ -126,18 +199,18 @@ export default function MonthlyRankingsPage() {
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
-              Month
+              {t.month}
             </p>
             <p className="mt-2 text-2xl font-black">{monthRange.label}</p>
           </div>
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-            <p className="text-xs text-muted-foreground">Period</p>
+            <p className="text-xs text-muted-foreground">{t.period}</p>
             <p className="mt-2 font-semibold">
-              {monthRange.start ? `${monthRange.start} to ${monthRange.end}` : "-"}
+              {monthRange.start ? `${monthRange.start} ${t.to} ${monthRange.end}` : "-"}
             </p>
           </div>
           <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-            <p className="text-xs text-muted-foreground">Weeks counted</p>
+            <p className="text-xs text-muted-foreground">{t.weeksCounted}</p>
             <p className="mt-2 text-sm font-semibold">{monthlyWeeksLabel}</p>
           </div>
         </CardContent>
@@ -152,8 +225,8 @@ export default function MonthlyRankingsPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold">{config.title}</p>
-                    <p className="mt-1 text-xs text-current/75">Monthly role leader</p>
+                    <p className="text-sm font-bold">{t.roleTitles[config.role]}</p>
+                    <p className="mt-1 text-xs text-current/75">{t.roleLeader}</p>
                   </div>
                   <span className="rounded-md bg-black/15 p-2">
                     <Icon className="h-5 w-5" />
@@ -163,11 +236,11 @@ export default function MonthlyRankingsPage() {
                   <div className="mt-4">
                     <p className="truncate font-semibold">{leader.playerName}</p>
                     <p className="text-xs text-current/75">
-                      #{leader.rank} - {formatScore(leader.score)} pts - {rankingWeeksInMonthLabel(leader.weekStarts, leader.month)}
+                      #{leader.rank} - {formatScore(leader.score)} {t.points} - {rankingWeeksInMonthLabel(leader.weekStarts, leader.month)}
                     </p>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-current/75">No player data yet.</p>
+                  <p className="mt-4 text-sm text-current/75">{t.noPlayerData}</p>
                 )}
               </CardContent>
             </Card>
@@ -179,7 +252,7 @@ export default function MonthlyRankingsPage() {
         <Card className="border-border/50 bg-card">
           <CardHeader>
             <CardTitle className="text-base">
-              Top 10 Players - {monthRange.label} weekly average
+              {t.top10(monthRange.label)}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -187,7 +260,7 @@ export default function MonthlyRankingsPage() {
               labels={top10.map((ranking) => ranking.playerName)}
               datasets={[
                 {
-                  label: "Score",
+                  label: t.score,
                   data: top10.map((ranking) => ranking.score ?? 0),
                   backgroundColor: top10.map((_, i) =>
                     i === 0 ? "#b6ff00" : i === 1 ? "#7bea28" : i === 2 ? "#2ee8c9" : "#2d9ad5"
@@ -222,12 +295,18 @@ export default function MonthlyRankingsPage() {
             <div className="min-w-0 flex-1">
               <p className="font-medium">{ranking.playerName}</p>
               <p className="text-xs text-muted-foreground">
-                {[ranking.position, ranking.roleFamily, rankingWeeksInMonthLabel(ranking.weekStarts, ranking.month)].filter(Boolean).join(" - ")}
+                {[
+                  ranking.position,
+                  ranking.roleFamily === "unknown"
+                    ? null
+                    : t.roleLabels[ranking.roleFamily],
+                  rankingWeeksInMonthLabel(ranking.weekStarts, ranking.month),
+                ].filter(Boolean).join(" - ")}
               </p>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold">{formatScore(ranking.score)}</p>
-              <p className="text-[10px] text-muted-foreground">pts</p>
+              <p className="text-[10px] text-muted-foreground">{t.points}</p>
             </div>
           </div>
         ))}

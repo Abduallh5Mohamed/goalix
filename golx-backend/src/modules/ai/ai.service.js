@@ -1,7 +1,8 @@
 const eventBus = require('../../events/eventBus');
 const AI_EVENTS = require('./ai.events');
-const { NotFoundError } = require('../../shared/errors');
+const { ForbiddenError, NotFoundError } = require('../../shared/errors');
 const { auditAccessDenied } = require('../../shared/access-audit');
+const { canAccessAiInsight } = require('../../shared/access-policy');
 
 class AiService {
     constructor(aiRepository, aiQueue) {
@@ -10,8 +11,8 @@ class AiService {
     }
 
     async _assertAiPlayerOwnership(playerId, academyId, user, action) {
-        const owned = await this.repo.verifyPlayerOwnership(playerId, academyId);
-        if (!owned) {
+        const player = await this.repo.verifyPlayerOwnership(playerId, academyId);
+        if (!player) {
             await auditAccessDenied(this.repo.db, user, {
                 action: action || 'ai_player_access_denied',
                 entityType: 'player_profiles',
@@ -20,7 +21,33 @@ class AiService {
             });
             throw new NotFoundError('Player', playerId);
         }
-        return owned;
+
+        if (!user) return player;
+
+        let coachCanAccess = false;
+        let parentCanAccess = false;
+
+        if (user.role === 'coach') {
+            const coach = await this.repo.findCoachProfileByUserId(user.userId, academyId);
+            coachCanAccess = coach ? Boolean(await this.repo.coachCanAccessPlayer(coach.id, playerId)) : false;
+        }
+
+        if (user.role === 'parent') {
+            const child = await this.repo.findParentLinkedPlayer(user.userId, playerId, academyId);
+            parentCanAccess = Boolean(child && child.can_view_progress !== false);
+        }
+
+        if (canAccessAiInsight(user, player, { coachCanAccess, parentCanAccess })) {
+            return player;
+        }
+
+        await auditAccessDenied(this.repo.db, user, {
+            action: action || 'ai_player_access_denied',
+            entityType: 'player_profiles',
+            entityId: playerId,
+            reason: 'ai_policy_denied',
+        });
+        throw new ForbiddenError('You cannot access AI insights for this player');
     }
 
     // ─── Performance Score ──────────────────────────────────────────────
@@ -37,8 +64,26 @@ class AiService {
         return { message: 'Performance score calculation queued', playerId };
     }
 
-    async getAllScores(academyId, pagination) {
-        return this.repo.getAiScores(academyId, pagination);
+    async getAllScores(academyId, pagination, user = null) {
+        if (!user || user.role === 'admin') {
+            return this.repo.getAiScores(academyId, pagination);
+        }
+
+        if (user.role === 'coach') {
+            const coach = await this.repo.findCoachProfileByUserId(user.userId, academyId);
+            if (!coach) throw new ForbiddenError('Coach profile is not linked to this user');
+            return this.repo.getAiScoresForCoach(academyId, coach.id, pagination);
+        }
+
+        if (user.role === 'player') {
+            return this.repo.getAiScoresForPlayer(academyId, user.userId, pagination);
+        }
+
+        if (user.role === 'parent') {
+            return this.repo.getAiScoresForParent(academyId, user.userId, pagination);
+        }
+
+        throw new ForbiddenError('Unsupported role');
     }
 
     // Called by worker after AI processing

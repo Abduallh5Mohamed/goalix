@@ -21,6 +21,7 @@ import {
   useGetPlayerAttendanceQuery,
   type PlayerAttendanceRecord,
 } from "@/lib/store/api/calendarApi";
+import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatTime12 } from "@/lib/utils";
 
 type AttendanceStatus = PlayerAttendanceRecord["status"];
@@ -32,6 +33,66 @@ const attendanceLabels: Record<AttendanceStatus, string> = {
   excused: "Excused",
   injured: "Injured",
 };
+
+const attendanceCopy = {
+  en: {
+    title: "My Attendance",
+    description: "Your recorded training and match attendance from the academy database.",
+    home: "Home",
+    attendance: "Attendance",
+    loadError:
+      "Attendance data could not load from the backend. Please refresh when the server is available.",
+    loading: "Loading attendance from the database...",
+    match: "Match",
+    training: "Training",
+    autoAbsent: "Auto absent",
+    arrival: "Arrival",
+    noDate: "No date",
+    showingLatest: (shown: number, total: number) => `Showing latest ${shown} of ${total} records.`,
+    noRecords: "No records",
+    attended: "Attended",
+    attendedDescription: "Sessions and matches you attended.",
+    noAttended: "No attended records yet.",
+    missed: "Missed",
+    missedDescription: "Sessions and matches marked absent or injured.",
+    noMissed: "No missed records. Clean sheet.",
+    excusedTitle: "Excused",
+    excusedDescription: "Records marked with an accepted excuse.",
+    noExcused: "No excused records.",
+    status: attendanceLabels,
+  },
+  ar: {
+    title: "حضوري",
+    description: "سجل حضورك في التدريبات والمباريات من قاعدة بيانات الأكاديمية.",
+    home: "الرئيسية",
+    attendance: "الحضور",
+    loadError: "تعذر تحميل بيانات الحضور من الباك إند. حدّث الصفحة عندما يكون السيرفر متاحًا.",
+    loading: "جاري تحميل الحضور من قاعدة البيانات...",
+    match: "مباراة",
+    training: "تدريب",
+    autoAbsent: "غياب تلقائي",
+    arrival: "الوصول",
+    noDate: "لا يوجد تاريخ",
+    showingLatest: (shown: number, total: number) => `عرض آخر ${shown} من ${total} سجلات.`,
+    noRecords: "لا توجد سجلات",
+    attended: "حاضر",
+    attendedDescription: "الحصص والمباريات التي حضرتها.",
+    noAttended: "لا توجد سجلات حضور حتى الآن.",
+    missed: "فائت",
+    missedDescription: "الحصص والمباريات المسجلة غيابًا أو إصابة.",
+    noMissed: "لا توجد سجلات فائتة. ممتاز.",
+    excusedTitle: "بعذر",
+    excusedDescription: "السجلات التي تم قبول عذرها.",
+    noExcused: "لا توجد سجلات بعذر.",
+    status: {
+      present: "حاضر",
+      absent: "غائب",
+      late: "متأخر",
+      excused: "بعذر",
+      injured: "مصاب",
+    },
+  },
+} as const;
 
 const statusOrder: AttendanceStatus[] = [
   "present",
@@ -136,6 +197,7 @@ function AttendanceSummaryList({
   emptyText,
   icon: Icon,
   tone,
+  copy,
 }: {
   title: string;
   description: string;
@@ -143,6 +205,7 @@ function AttendanceSummaryList({
   emptyText: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "success" | "danger" | "warning";
+  copy: (typeof attendanceCopy)[keyof typeof attendanceCopy];
 }) {
   const toneClass =
     tone === "success"
@@ -179,12 +242,12 @@ function AttendanceSummaryList({
                       {recordTitle(record)}
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      {dateTime ? formatDate(dateTime) : "No date"}
+                      {dateTime ? formatDate(dateTime) : copy.noDate}
                     </p>
                   </div>
                 </div>
                 <Badge variant={statusVariant(record.status)}>
-                  {attendanceLabels[record.status] || titleCase(record.status)}
+                  {copy.status[record.status] || titleCase(record.status)}
                 </Badge>
               </div>
             );
@@ -194,7 +257,7 @@ function AttendanceSummaryList({
         )}
         {records.length > 8 && (
           <p className="text-xs text-slate-400">
-            Showing latest 8 of {records.length} records.
+            {copy.showingLatest(8, records.length)}
           </p>
         )}
       </CardContent>
@@ -202,7 +265,13 @@ function AttendanceSummaryList({
   );
 }
 
-function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
+function AttendanceRow({
+  record,
+  copy,
+}: {
+  record: PlayerAttendanceRecord;
+  copy: (typeof attendanceCopy)[keyof typeof attendanceCopy];
+}) {
   const dateTime = recordDateTime(record);
 
   return (
@@ -219,10 +288,10 @@ function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium text-white">{recordTitle(record)}</p>
             <Badge variant="outline">
-              {record.record_type === "match" ? "Match" : "Training"}
+              {record.record_type === "match" ? copy.match : copy.training}
             </Badge>
             {record.inferred_absence && (
-              <Badge variant="secondary">Auto absent</Badge>
+              <Badge variant="secondary">{copy.autoAbsent}</Badge>
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
@@ -245,7 +314,7 @@ function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
               </span>
             )}
             {record.arrival_time && (
-              <span>Arrival {formatTime12(record.arrival_time)}</span>
+              <span>{copy.arrival} {formatTime12(record.arrival_time)}</span>
             )}
           </div>
           {(record.notes || record.reason) && (
@@ -256,13 +325,15 @@ function AttendanceRow({ record }: { record: PlayerAttendanceRecord }) {
         </div>
       </div>
       <Badge variant={statusVariant(record.status)}>
-        {attendanceLabels[record.status] || titleCase(record.status)}
+        {copy.status[record.status] || titleCase(record.status)}
       </Badge>
     </div>
   );
 }
 
 export default function PlayerAttendancePage() {
+  const language = useDashboardLanguage();
+  const copy = attendanceCopy[language];
   const attendanceQuery = useGetPlayerAttendanceQuery({
     limit: 200,
   });
@@ -297,26 +368,25 @@ export default function PlayerAttendancePage() {
   const totalRows = attendanceQuery.data?.pagination.total ?? records.length;
 
   const chartData = statusOrder.map((status) => ({
-    label: attendanceLabels[status],
+    label: copy.status[status],
     value: statusCounts[status] || 0,
   }));
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Attendance"
-        description="Your recorded training and match attendance from the academy database."
+        title={copy.title}
+        description={copy.description}
         breadcrumbs={[
-          { label: "Home", href: "/player/home" },
-          { label: "Attendance" },
+          { label: copy.home, href: "/player/home" },
+          { label: copy.attendance },
         ]}
       />
 
       {attendanceQuery.isError && (
         <Card className="border-amber-400/30 bg-amber-500/10 shadow-none">
           <CardContent className="p-4 text-sm text-amber-100">
-            Attendance data could not load from the backend. Please refresh when
-            the server is available.
+            {copy.loadError}
           </CardContent>
         </Card>
       )}
@@ -325,7 +395,7 @@ export default function PlayerAttendancePage() {
         <Card className="border-white/10 bg-white/[0.045] shadow-none">
           <CardContent className="flex items-center gap-3 p-5 text-sm text-slate-300">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading attendance from the database...
+            {copy.loading}
           </CardContent>
         </Card>
       ) : (
@@ -353,8 +423,8 @@ export default function PlayerAttendancePage() {
               label="Latest Status"
               value={
                 latestRecord
-                  ? attendanceLabels[latestRecord.status] || titleCase(latestRecord.status)
-                  : "No records"
+                  ? copy.status[latestRecord.status] || titleCase(latestRecord.status)
+                  : copy.noRecords
               }
               detail={latestRecord ? recordTitle(latestRecord) : "Nothing recorded yet"}
               icon={CalendarCheck}
@@ -363,28 +433,31 @@ export default function PlayerAttendancePage() {
 
           <section className="grid gap-4 xl:grid-cols-3">
             <AttendanceSummaryList
-              title="Attended"
-              description="Sessions and matches you attended."
+              title={copy.attended}
+              description={copy.attendedDescription}
               records={attendedRecords}
-              emptyText="No attended records yet."
+              emptyText={copy.noAttended}
               icon={CheckCircle2}
               tone="success"
+              copy={copy}
             />
             <AttendanceSummaryList
-              title="Missed"
-              description="Sessions and matches marked absent or injured."
+              title={copy.missed}
+              description={copy.missedDescription}
               records={missedRecords}
-              emptyText="No missed records. Clean sheet."
+              emptyText={copy.noMissed}
               icon={XCircle}
               tone="danger"
+              copy={copy}
             />
             <AttendanceSummaryList
-              title="Excused"
-              description="Records marked with an accepted excuse."
+              title={copy.excusedTitle}
+              description={copy.excusedDescription}
               records={excusedRecords}
-              emptyText="No excused records."
+              emptyText={copy.noExcused}
               icon={CalendarCheck}
               tone="warning"
+              copy={copy}
             />
           </section>
 
@@ -423,7 +496,7 @@ export default function PlayerAttendancePage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {records.map((record) => (
-                  <AttendanceRow key={record.id} record={record} />
+                  <AttendanceRow key={record.id} record={record} copy={copy} />
                 ))}
                 {!records.length && (
                   <EmptyState text="No training or match attendance has been recorded for you yet." />
