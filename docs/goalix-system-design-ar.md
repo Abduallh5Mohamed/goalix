@@ -358,6 +358,11 @@ Controller -> Service -> Repository -> Database/Redis/Queue
 
 الأسماء الدقيقة قد تختلف حسب migrations، لكن الصورة المنطقية كالتالي.
 
+التصميم التفصيلي للنمو، connection pooling، الفهارس، الـ lifecycle، partitioning،
+الترقيات وHA موجود في:
+
+- `docs/database-architecture-long-term-ar.md`
+
 ### 7.1 Identity and Auth
 
 | Entity | Purpose |

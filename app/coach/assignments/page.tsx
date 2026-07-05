@@ -67,7 +67,10 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 const fileAccept =
   "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp";
 
-const adminStatusVariant: Record<CoachAssignment["status"], "secondary" | "info" | "warning" | "success" | "destructive"> = {
+const adminStatusVariant: Record<
+  CoachAssignment["status"],
+  "secondary" | "info" | "warning" | "success" | "destructive"
+> = {
   assigned: "secondary",
   in_progress: "info",
   submitted: "warning",
@@ -75,7 +78,10 @@ const adminStatusVariant: Record<CoachAssignment["status"], "secondary" | "info"
   cancelled: "destructive",
 };
 
-const playerStatusVariant: Record<CoachPlayerAssignment["status"], "secondary" | "success" | "destructive"> = {
+const playerStatusVariant: Record<
+  CoachPlayerAssignment["status"],
+  "secondary" | "success" | "destructive"
+> = {
   active: "success",
   closed: "secondary",
   cancelled: "destructive",
@@ -114,7 +120,8 @@ const copy = {
     needsRedo: "Needs Redo",
     noSubmissions: "No player submissions yet.",
     assignments: "Assignments",
-    pageDescription: "Admin tasks for you, player assignments from you, and the locked daily AI input assignment.",
+    pageDescription:
+      "Admin tasks for you, player assignments from you, and the locked daily AI input assignment.",
     home: "Home",
     refresh: "Refresh",
     adminAssignments: "Admin Assignments",
@@ -122,7 +129,8 @@ const copy = {
     retry: "Retry",
     searchAdminAssignments: "Search admin assignments...",
     noAdminAssignments: "No admin assignments",
-    noAdminAssignmentsDescription: "Admin requests for coach submissions will appear here.",
+    noAdminAssignmentsDescription:
+      "Admin requests for coach submissions will appear here.",
     dailyAiScoreAssignment: "Daily AI Score Assignment",
     lockedSystemDaily: "locked system daily",
     inputs: "Inputs",
@@ -149,13 +157,16 @@ const copy = {
     failedPlayerAssignments: "Failed to load player assignments.",
     searchPlayerAssignments: "Search player assignments...",
     noPlayerAssignments: "No player assignments",
-    noPlayerAssignmentsDescription: "Create assignments for your groups and track player submissions here.",
+    noPlayerAssignmentsDescription:
+      "Create assignments for your groups and track player submissions here.",
     submitAdminAssignment: "Submit Admin Assignment",
-    submitAdminAssignmentDescription: "Upload PDF, Word, or image files requested by admin.",
+    submitAdminAssignmentDescription:
+      "Upload PDF, Word, or image files requested by admin.",
     uploadFile: "Upload File",
     uploadingFile: "Uploading file...",
     uploaded: "Uploaded",
-    uploadFailed: "Upload failed. Accepted files: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.",
+    uploadFailed:
+      "Upload failed. Accepted files: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.",
     notes: "Notes",
     submitError: "Could not submit this assignment.",
     cancel: "Cancel",
@@ -164,17 +175,21 @@ const copy = {
     deleteAssignmentQuestion: "Delete player assignment?",
     deleteDescriptionPrefix: "This will remove",
     deleteDescriptionFallback: "this assignment",
-    deleteDescriptionSuffix: "from coach and player assignment lists. Existing submissions stay in the database for audit history.",
+    deleteDescriptionSuffix:
+      "from coach and player assignment lists. Existing submissions stay in the database for audit history.",
     deleteAssignment: "Delete Assignment",
     acceptSubmissionQuestion: "Accept submission?",
     needsRedoQuestion: "Mark as needs redo?",
-    acceptSubmissionDescription: "This will accept the submission. The player will not need to submit it again.",
-    redoSubmissionDescription: "This will reject the submission and let the player resubmit, even after the deadline.",
+    acceptSubmissionDescription:
+      "This will accept the submission. The player will not need to submit it again.",
+    redoSubmissionDescription:
+      "This will reject the submission and let the player resubmit, even after the deadline.",
     acceptSubmission: "Accept Submission",
     markNeedsRedo: "Mark Needs Redo",
     editPlayerAssignment: "Edit Player Assignment",
     newPlayerAssignment: "New Player Assignment",
-    playerAssignmentDescription: "Player assignments accept PDF, Word, and image submissions.",
+    playerAssignmentDescription:
+      "Player assignments accept PDF, Word, and image submissions.",
     title: "Title",
     targetBy: "Target By",
     group: "Group",
@@ -188,7 +203,8 @@ const copy = {
     description: "Description",
     openAt: "Open At",
     deadline: "Deadline",
-    openLocked: "This assignment is already open, so the opening time is locked.",
+    openLocked:
+      "This assignment is already open, so the opening time is locked.",
     now: "Now",
     status: "Status",
     active: "Active",
@@ -213,7 +229,8 @@ const copy = {
     openNowError: "Open At must be now or later.",
     deadlineNowError: "Deadline must be now or later.",
     deadlineOpenError: "Deadline must be after Open At.",
-    deadlineLockedError: "Deadline must be now or later for an open assignment.",
+    deadlineLockedError:
+      "Deadline must be now or later for an open assignment.",
     targetRequiredError: "Select at least one target group.",
     statuses: {
       assigned: "Assigned",
@@ -258,7 +275,8 @@ const copy = {
     needsRedo: "يحتاج إعادة",
     noSubmissions: "لا توجد تسليمات من اللاعبين بعد.",
     assignments: "التكليفات",
-    pageDescription: "مهام الإدارة الموجهة لك، وتكليفات اللاعبين التي تنشئها، وتكليف الذكاء اليومي المغلق.",
+    pageDescription:
+      "مهام الإدارة الموجهة لك، وتكليفات اللاعبين التي تنشئها، وتكليف الذكاء اليومي المغلق.",
     home: "الرئيسية",
     refresh: "تحديث",
     adminAssignments: "تكليفات الإدارة",
@@ -266,7 +284,8 @@ const copy = {
     retry: "إعادة المحاولة",
     searchAdminAssignments: "ابحث في تكليفات الإدارة...",
     noAdminAssignments: "لا توجد تكليفات من الإدارة",
-    noAdminAssignmentsDescription: "ستظهر هنا طلبات الإدارة التي تحتاج تسليمًا من المدرب.",
+    noAdminAssignmentsDescription:
+      "ستظهر هنا طلبات الإدارة التي تحتاج تسليمًا من المدرب.",
     dailyAiScoreAssignment: "تكليف تقييم الذكاء اليومي",
     lockedSystemDaily: "نظام يومي مغلق",
     inputs: "المدخلات",
@@ -293,13 +312,16 @@ const copy = {
     failedPlayerAssignments: "تعذر تحميل تكليفات اللاعبين.",
     searchPlayerAssignments: "ابحث في تكليفات اللاعبين...",
     noPlayerAssignments: "لا توجد تكليفات للاعبين",
-    noPlayerAssignmentsDescription: "أنشئ تكليفات لمجموعاتك وتابع تسليمات اللاعبين هنا.",
+    noPlayerAssignmentsDescription:
+      "أنشئ تكليفات لمجموعاتك وتابع تسليمات اللاعبين هنا.",
     submitAdminAssignment: "تسليم تكليف الإدارة",
-    submitAdminAssignmentDescription: "ارفع ملفات PDF أو Word أو صور مطلوبة من الإدارة.",
+    submitAdminAssignmentDescription:
+      "ارفع ملفات PDF أو Word أو صور مطلوبة من الإدارة.",
     uploadFile: "رفع ملف",
     uploadingFile: "جاري رفع الملف...",
     uploaded: "تم رفع",
-    uploadFailed: "فشل الرفع. الملفات المقبولة: PDF و DOC و DOCX و PNG و JPG و JPEG و WEBP.",
+    uploadFailed:
+      "فشل الرفع. الملفات المقبولة: PDF و DOC و DOCX و PNG و JPG و JPEG و WEBP.",
     notes: "الملاحظات",
     submitError: "تعذر تسليم هذا التكليف.",
     cancel: "إلغاء",
@@ -308,17 +330,21 @@ const copy = {
     deleteAssignmentQuestion: "حذف تكليف اللاعب؟",
     deleteDescriptionPrefix: "سيتم حذف",
     deleteDescriptionFallback: "هذا التكليف",
-    deleteDescriptionSuffix: "من قوائم تكليفات المدرب واللاعب. ستظل التسليمات السابقة محفوظة في قاعدة البيانات لسجل المراجعة.",
+    deleteDescriptionSuffix:
+      "من قوائم تكليفات المدرب واللاعب. ستظل التسليمات السابقة محفوظة في قاعدة البيانات لسجل المراجعة.",
     deleteAssignment: "حذف التكليف",
     acceptSubmissionQuestion: "قبول التسليم؟",
     needsRedoQuestion: "تحديده كإعادة مطلوبة؟",
-    acceptSubmissionDescription: "سيتم قبول التسليم، ولن يحتاج اللاعب إلى تسليمه مرة أخرى.",
-    redoSubmissionDescription: "سيتم رفض التسليم والسماح للاعب بإعادة التسليم حتى بعد الموعد النهائي.",
+    acceptSubmissionDescription:
+      "سيتم قبول التسليم، ولن يحتاج اللاعب إلى تسليمه مرة أخرى.",
+    redoSubmissionDescription:
+      "سيتم رفض التسليم والسماح للاعب بإعادة التسليم حتى بعد الموعد النهائي.",
     acceptSubmission: "قبول التسليم",
     markNeedsRedo: "تحديد إعادة مطلوبة",
     editPlayerAssignment: "تعديل تكليف اللاعب",
     newPlayerAssignment: "تكليف لاعب جديد",
-    playerAssignmentDescription: "تكليفات اللاعبين تقبل ملفات PDF و Word والصور.",
+    playerAssignmentDescription:
+      "تكليفات اللاعبين تقبل ملفات PDF و Word والصور.",
     title: "العنوان",
     targetBy: "الاستهداف حسب",
     group: "المجموعة",
@@ -357,7 +383,8 @@ const copy = {
     openNowError: "وقت الفتح يجب أن يكون الآن أو بعد ذلك.",
     deadlineNowError: "الموعد النهائي يجب أن يكون الآن أو بعد ذلك.",
     deadlineOpenError: "الموعد النهائي يجب أن يكون بعد وقت الفتح.",
-    deadlineLockedError: "الموعد النهائي يجب أن يكون الآن أو بعد ذلك للتكليف المفتوح.",
+    deadlineLockedError:
+      "الموعد النهائي يجب أن يكون الآن أو بعد ذلك للتكليف المفتوح.",
     targetRequiredError: "اختر مجموعة مستهدفة واحدة على الأقل.",
     statuses: {
       assigned: "مُسند",
@@ -385,7 +412,15 @@ const copy = {
       "نوفمبر",
       "ديسمبر",
     ],
-    weekDays: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+    weekDays: [
+      "الأحد",
+      "الاثنين",
+      "الثلاثاء",
+      "الأربعاء",
+      "الخميس",
+      "الجمعة",
+      "السبت",
+    ],
   },
 } as const;
 
@@ -415,7 +450,9 @@ const toDateTimeLocalValue = (date: Date) => {
 const dateTimeInputValue = (value: string | null | undefined) => {
   if (!value) return "";
   const raw = String(value).trim();
-  const localValue = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/);
+  const localValue = raw.match(
+    /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/,
+  );
   if (localValue) return `${localValue[1]}T${localValue[2]}`;
 
   const date = new Date(raw);
@@ -441,7 +478,9 @@ const dateTimeFromNow = (hours = 0) => {
 const dateTimeFromValue = (value: string, hours: number) => {
   const base = value ? new Date(value) : new Date();
   const timestamp = Number.isNaN(base.getTime()) ? Date.now() : base.getTime();
-  return toDateTimeLocalValue(roundUpToStep(new Date(timestamp + hours * 60 * 60 * 1000)));
+  return toDateTimeLocalValue(
+    roundUpToStep(new Date(timestamp + hours * 60 * 60 * 1000)),
+  );
 };
 
 const laterDateTime = (first: string, second: string) => {
@@ -478,30 +517,45 @@ const firstSelectableTime = (dateKey: string, minDateTime?: string) => {
   if (!minDateTime || dateKey !== minDateKey(minDateTime)) {
     return TIME_OPTIONS[0].value;
   }
-  return TIME_OPTIONS.find((option) => option.value >= minTimeValue(minDateTime))?.value || null;
+  return (
+    TIME_OPTIONS.find((option) => option.value >= minTimeValue(minDateTime))
+      ?.value || null
+  );
 };
 
-const isBeforeMinDateTime = (dateKey: string, time: string, minDateTime?: string) =>
-  Boolean(minDateTime && `${dateKey}T${time}` < minDateTime);
+const isBeforeMinDateTime = (
+  dateKey: string,
+  time: string,
+  minDateTime?: string,
+) => Boolean(minDateTime && `${dateKey}T${time}` < minDateTime);
 
 const formatDateTimeDisplay = (value: string, t: AssignmentsCopy) => {
   const parts = parseLocalDateTimeParts(value);
   if (!parts) return t.selectDateTime;
-  const time = TIME_OPTIONS.find((option) => option.value === parts.time)?.label || parts.time;
+  const time =
+    TIME_OPTIONS.find((option) => option.value === parts.time)?.label ||
+    parts.time;
   return `${t.monthNames[parts.monthIndex]} ${parts.day}, ${parts.year} • ${time}`;
 };
 
-const formatAssignmentDateTime = (value: string | null | undefined, fallback: string) => {
+const formatAssignmentDateTime = (
+  value: string | null | undefined,
+  fallback: string,
+) => {
   if (!value) return fallback;
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : formatDateTime(parsed);
+  return Number.isNaN(parsed.getTime())
+    ? String(value)
+    : formatDateTime(parsed);
 };
 
 const isAssignmentOpenNow = (assignment: CoachPlayerAssignment) => {
   if (assignment.status !== "active" || !assignment.openAt) return false;
   const now = Date.now();
   const openAt = new Date(assignment.openAt).getTime();
-  const dueAt = assignment.dueAt ? new Date(assignment.dueAt).getTime() : Number.POSITIVE_INFINITY;
+  const dueAt = assignment.dueAt
+    ? new Date(assignment.dueAt).getTime()
+    : Number.POSITIVE_INFINITY;
   return Number.isFinite(openAt) && openAt <= now && now <= dueAt;
 };
 
@@ -531,19 +585,33 @@ function AssignmentDateTimePicker({
   const selectedParts = value ? parseLocalDateTimeParts(value) : null;
   const selectedDateKey = selectedParts?.dateKey || "";
   const selectedTime = selectedParts?.time || "";
-  const selectedYearForOptions = selectedParts?.year ?? new Date().getFullYear();
+  const selectedYearForOptions =
+    selectedParts?.year ?? new Date().getFullYear();
   const [viewMonth, setViewMonth] = useState(
-    () => new Date(fallbackParts?.year ?? new Date().getFullYear(), fallbackParts?.monthIndex ?? new Date().getMonth(), 1),
+    () =>
+      new Date(
+        fallbackParts?.year ?? new Date().getFullYear(),
+        fallbackParts?.monthIndex ?? new Date().getMonth(),
+        1,
+      ),
   );
 
   const nowYear = new Date().getFullYear();
-  const startYear = Math.min(nowYear, selectedYearForOptions) - (minDateTime ? 0 : 2);
+  const startYear =
+    Math.min(nowYear, selectedYearForOptions) - (minDateTime ? 0 : 2);
   const endYear = Math.max(nowYear + 8, selectedYearForOptions + 2);
-  const years = Array.from({ length: endYear - startYear + 1 }, (_, index) => startYear + index);
+  const years = Array.from(
+    { length: endYear - startYear + 1 },
+    (_, index) => startYear + index,
+  );
 
   const monthStart = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
   const firstWeekday = monthStart.getDay();
-  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+  const daysInMonth = new Date(
+    viewMonth.getFullYear(),
+    viewMonth.getMonth() + 1,
+    0,
+  ).getDate();
   const calendarCells = [
     ...Array.from({ length: firstWeekday }, () => null),
     ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
@@ -554,7 +622,9 @@ function AssignmentDateTimePicker({
     const minimumDateKey = minDateKey(minDateTime);
     return Boolean(
       minimumDateKey &&
-        (dateKey < minimumDateKey || (dateKey === minimumDateKey && !firstSelectableTime(dateKey, minDateTime))),
+      (dateKey < minimumDateKey ||
+        (dateKey === minimumDateKey &&
+          !firstSelectableTime(dateKey, minDateTime))),
     );
   };
 
@@ -568,7 +638,8 @@ function AssignmentDateTimePicker({
   };
 
   const selectTime = (time: string) => {
-    const dateKey = selectedDateKey || minDateKey(minDateTime) || localDateKey(new Date());
+    const dateKey =
+      selectedDateKey || minDateKey(minDateTime) || localDateKey(new Date());
     if (isBeforeMinDateTime(dateKey, time, minDateTime)) return;
     onChange(`${dateKey}T${time}`);
   };
@@ -593,13 +664,22 @@ function AssignmentDateTimePicker({
           variant="outline"
           size="sm"
           className="h-9 w-9 shrink-0 p-0"
-          onClick={() => setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+          onClick={() =>
+            setViewMonth(
+              (current) =>
+                new Date(current.getFullYear(), current.getMonth() - 1, 1),
+            )
+          }
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Select
           value={String(viewMonth.getMonth())}
-          onValueChange={(month) => setViewMonth((current) => new Date(current.getFullYear(), Number(month), 1))}
+          onValueChange={(month) =>
+            setViewMonth(
+              (current) => new Date(current.getFullYear(), Number(month), 1),
+            )
+          }
         >
           <SelectTrigger className="h-9 border-cyan-400/20 bg-white/[0.04]">
             <SelectValue />
@@ -614,7 +694,11 @@ function AssignmentDateTimePicker({
         </Select>
         <Select
           value={String(viewMonth.getFullYear())}
-          onValueChange={(year) => setViewMonth((current) => new Date(Number(year), current.getMonth(), 1))}
+          onValueChange={(year) =>
+            setViewMonth(
+              (current) => new Date(Number(year), current.getMonth(), 1),
+            )
+          }
         >
           <SelectTrigger className="h-9 w-24 border-cyan-400/20 bg-white/[0.04]">
             <SelectValue />
@@ -632,7 +716,12 @@ function AssignmentDateTimePicker({
           variant="outline"
           size="sm"
           className="h-9 w-9 shrink-0 p-0"
-          onClick={() => setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+          onClick={() =>
+            setViewMonth(
+              (current) =>
+                new Date(current.getFullYear(), current.getMonth() + 1, 1),
+            )
+          }
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -645,7 +734,8 @@ function AssignmentDateTimePicker({
       </div>
       <div className="grid grid-cols-7 gap-1">
         {calendarCells.map((day, index) => {
-          if (!day) return <span key={`blank-${index}`} className="aspect-square" />;
+          if (!day)
+            return <span key={`blank-${index}`} className="aspect-square" />;
           const dateKey = `${viewMonth.getFullYear()}-${pad2(viewMonth.getMonth() + 1)}-${pad2(day)}`;
           const isSelected = dateKey === selectedDateKey;
           const disabled = isDateDisabled(day);
@@ -660,7 +750,9 @@ function AssignmentDateTimePicker({
                 isSelected
                   ? "border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)]"
                   : "border-white/5 bg-white/[0.035] text-slate-200 hover:border-cyan-400/50 hover:bg-cyan-400/10",
-                disabled ? "cursor-not-allowed opacity-30 hover:border-white/5 hover:bg-white/[0.035]" : "",
+                disabled
+                  ? "cursor-not-allowed opacity-30 hover:border-white/5 hover:bg-white/[0.035]"
+                  : "",
               ].join(" ")}
             >
               {day}
@@ -669,7 +761,11 @@ function AssignmentDateTimePicker({
         })}
       </div>
 
-      <Select value={selectedTime} onValueChange={selectTime} disabled={!selectedDateKey && !minDateTime}>
+      <Select
+        value={selectedTime}
+        onValueChange={selectTime}
+        disabled={!selectedDateKey && !minDateTime}
+      >
         <SelectTrigger className="border-cyan-400/20 bg-white/[0.04]">
           <SelectValue placeholder={t.selectTime} />
         </SelectTrigger>
@@ -678,7 +774,11 @@ function AssignmentDateTimePicker({
             <SelectItem
               key={option.value}
               value={option.value}
-              disabled={isBeforeMinDateTime(selectedDateKey || minDateKey(minDateTime), option.value, minDateTime)}
+              disabled={isBeforeMinDateTime(
+                selectedDateKey || minDateKey(minDateTime),
+                option.value,
+                minDateTime,
+              )}
             >
               {option.label}
             </SelectItem>
@@ -713,7 +813,10 @@ function AssignmentDateTimePicker({
   );
 }
 
-const submissionReviewVariant: Record<PlayerAssignmentSubmission["reviewStatus"], "info" | "success" | "destructive"> = {
+const submissionReviewVariant: Record<
+  PlayerAssignmentSubmission["reviewStatus"],
+  "info" | "success" | "destructive"
+> = {
   pending: "info",
   approved: "success",
   rejected: "destructive",
@@ -728,7 +831,11 @@ function SubmissionReviewCard({
 }: {
   submission: PlayerAssignmentSubmission;
   t: AssignmentsCopy;
-  onRequestReview: (submission: PlayerAssignmentSubmission, status: "approved" | "rejected", comment: string) => void;
+  onRequestReview: (
+    submission: PlayerAssignmentSubmission,
+    status: "approved" | "rejected",
+    comment: string,
+  ) => void;
   isReviewing: boolean;
   canReview: boolean;
 }) {
@@ -741,8 +848,17 @@ function SubmissionReviewCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{submission.playerName || t.player}</p>
-            <Badge variant={submissionReviewVariant[submission.reviewStatus || "pending"]}>
-              {t.statuses[(submission.reviewStatus || "pending") as keyof typeof t.statuses]}
+            <Badge
+              variant={
+                submissionReviewVariant[submission.reviewStatus || "pending"]
+              }
+            >
+              {
+                t.statuses[
+                  (submission.reviewStatus ||
+                    "pending") as keyof typeof t.statuses
+                ]
+              }
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -755,7 +871,8 @@ function SubmissionReviewCard({
           )}
         </div>
         <Badge variant="secondary">
-          {submission.files.length} {submission.files.length === 1 ? t.file : t.files}
+          {submission.files.length}{" "}
+          {submission.files.length === 1 ? t.file : t.files}
         </Badge>
       </div>
       {submission.notes && (
@@ -775,7 +892,9 @@ function SubmissionReviewCard({
         ))}
       </div>
       <div className="mt-3 space-y-2">
-        <Label htmlFor={`submission-comment-${submission.id}`}>{t.coachComment}</Label>
+        <Label htmlFor={`submission-comment-${submission.id}`}>
+          {t.coachComment}
+        </Label>
         <Textarea
           id={`submission-comment-${submission.id}`}
           value={comment}
@@ -820,7 +939,11 @@ function SubmissionList({
 }: {
   submissions: PlayerAssignmentSubmission[];
   t: AssignmentsCopy;
-  onRequestReview: (submission: PlayerAssignmentSubmission, status: "approved" | "rejected", comment: string) => void;
+  onRequestReview: (
+    submission: PlayerAssignmentSubmission,
+    status: "approved" | "rejected",
+    comment: string,
+  ) => void;
   isReviewing: boolean;
   canReview: boolean;
 }) {
@@ -849,14 +972,19 @@ export default function CoachAssignmentsPage() {
   const t = copy[language];
   const { can } = useCoachPermissions();
   const canManagePlayerAssignments = can("can_manage_player_assignments");
-  const [adminSelected, setAdminSelected] = useState<CoachAssignment | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<UploadedAssignmentFile | null>(null);
+  const [adminSelected, setAdminSelected] = useState<CoachAssignment | null>(
+    null,
+  );
+  const [uploadedFile, setUploadedFile] =
+    useState<UploadedAssignmentFile | null>(null);
   const [adminForm, setAdminForm] = useState({ coachNotes: "" });
   const [playerDialogOpen, setPlayerDialogOpen] = useState(false);
   const [playerForm, setPlayerForm] = useState(emptyPlayerForm);
   const [playerFormError, setPlayerFormError] = useState("");
-  const [deletePlayerAssignmentTarget, setDeletePlayerAssignmentTarget] = useState<CoachPlayerAssignment | null>(null);
-  const [submissionsFor, setSubmissionsFor] = useState<CoachPlayerAssignment | null>(null);
+  const [deletePlayerAssignmentTarget, setDeletePlayerAssignmentTarget] =
+    useState<CoachPlayerAssignment | null>(null);
+  const [submissionsFor, setSubmissionsFor] =
+    useState<CoachPlayerAssignment | null>(null);
   const [pendingSubmissionReview, setPendingSubmissionReview] = useState<{
     submission: PlayerAssignmentSubmission;
     status: "approved" | "rejected";
@@ -872,8 +1000,10 @@ export default function CoachAssignmentsPage() {
     submissionsFor?.id ?? "",
     { skip: !submissionsFor },
   );
-  const [submitAdminAssignment, { isLoading: isSubmittingAdmin, error: adminSubmitError }] =
-    useSubmitCoachAssignmentMutation();
+  const [
+    submitAdminAssignment,
+    { isLoading: isSubmittingAdmin, error: adminSubmitError },
+  ] = useSubmitCoachAssignmentMutation();
   const [uploadFile, { isLoading: isUploading, error: uploadError }] =
     useUploadCoachAssignmentFileMutation();
   const [createPlayerAssignment, { isLoading: isCreatingPlayer }] =
@@ -902,11 +1032,19 @@ export default function CoachAssignmentsPage() {
     [groupsQuery.data, manageableGroupIds],
   );
   const birthYearTargets = useMemo(() => {
-    const byId = new Map<string, { id: string; label: string; groupIds: string[] }>();
+    const byId = new Map<
+      string,
+      { id: string; label: string; groupIds: string[] }
+    >();
     groups.forEach((group) => {
       group.birthYears.forEach((birthYear) => {
-        const label = birthYear.label || `${birthYear.fromYear}-${birthYear.toYear}`;
-        const current = byId.get(birthYear.id) || { id: birthYear.id, label, groupIds: [] };
+        const label =
+          birthYear.label || `${birthYear.fromYear}-${birthYear.toYear}`;
+        const current = byId.get(birthYear.id) || {
+          id: birthYear.id,
+          label,
+          groupIds: [],
+        };
         current.groupIds.push(group.id);
         byId.set(birthYear.id, current);
       });
@@ -916,177 +1054,214 @@ export default function CoachAssignmentsPage() {
   const dailyRows = dailyAiQuery.data?.data ?? [];
   const dailyPlayers = new Set(dailyRows.map((row) => row.playerId)).size;
   const dailyAverage = dailyRows.length
-    ? Math.round(dailyRows.reduce((sum, row) => sum + row.dailyAiScore, 0) / dailyRows.length)
+    ? Math.round(
+        dailyRows.reduce((sum, row) => sum + row.dailyAiScore, 0) /
+          dailyRows.length,
+      )
     : 0;
 
-  const adminColumns = useMemo<Column<CoachAssignment>[]>(() => [
-    {
-      key: "title",
-      header: t.adminAssignments,
-      accessor: (row) => (
-        <div>
-          <p className="font-medium text-foreground">{row.title}</p>
-          <p className="text-xs text-muted-foreground">{row.description || t.noDescription}</p>
-        </div>
-      ),
-      sortable: true,
-      sortValue: (row) => row.title,
-    },
-    {
-      key: "scope",
-      header: t.scope,
-      accessor: (row) => [row.branchName, row.groupName].filter(Boolean).join(" - ") || t.general,
-    },
-    {
-      key: "due",
-      header: t.due,
-      accessor: (row) => row.dueDate ? formatDate(row.dueDate) : t.noDueDate,
-      sortable: true,
-      sortValue: (row) => row.dueDate ?? "",
-    },
-    {
-      key: "status",
-      header: t.status,
-      accessor: (row) => (
-        <Badge variant={adminStatusVariant[row.status]}>
-          {t.statuses[row.status]}
-        </Badge>
-      ),
-      sortable: true,
-      sortValue: (row) => row.status,
-    },
-    {
-      key: "actions",
-      header: "",
-      accessor: (row) => (
-        <Button
-          size="sm"
-          variant={row.submissions.length ? "outline" : "default"}
-          className="gap-1.5"
-          onClick={(event) => {
-            event.stopPropagation();
-            setAdminSelected(row);
-          }}
-        >
-          <Upload className="h-3.5 w-3.5" />
-          {row.submissions.length ? t.resubmit : t.submit}
-        </Button>
-      ),
-    },
-  ], [t]);
+  const adminColumns = useMemo<Column<CoachAssignment>[]>(
+    () => [
+      {
+        key: "title",
+        header: t.adminAssignments,
+        accessor: (row) => (
+          <div>
+            <p className="font-medium text-foreground">{row.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {row.description || t.noDescription}
+            </p>
+          </div>
+        ),
+        sortable: true,
+        sortValue: (row) => row.title,
+      },
+      {
+        key: "scope",
+        header: t.scope,
+        accessor: (row) =>
+          [row.branchName, row.groupName].filter(Boolean).join(" - ") ||
+          t.general,
+      },
+      {
+        key: "due",
+        header: t.due,
+        accessor: (row) =>
+          row.dueDate ? formatDate(row.dueDate) : t.noDueDate,
+        sortable: true,
+        sortValue: (row) => row.dueDate ?? "",
+      },
+      {
+        key: "status",
+        header: t.status,
+        accessor: (row) => (
+          <Badge variant={adminStatusVariant[row.status]}>
+            {t.statuses[row.status]}
+          </Badge>
+        ),
+        sortable: true,
+        sortValue: (row) => row.status,
+      },
+      {
+        key: "actions",
+        header: "",
+        accessor: (row) => (
+          <Button
+            size="sm"
+            variant={row.submissions.length ? "outline" : "default"}
+            className="gap-1.5"
+            onClick={(event) => {
+              event.stopPropagation();
+              setAdminSelected(row);
+            }}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {row.submissions.length ? t.resubmit : t.submit}
+          </Button>
+        ),
+      },
+    ],
+    [t],
+  );
 
-  const playerColumns = useMemo<Column<CoachPlayerAssignment>[]>(() => [
-    {
-      key: "title",
-      header: t.playerAssignments,
-      accessor: (row) => (
-        <div>
-          <p className="font-medium text-foreground">{row.title}</p>
-          <p className="text-xs text-muted-foreground">{row.description || t.noDescription}</p>
-        </div>
-      ),
-      sortable: true,
-      sortValue: (row) => row.title,
-    },
-    {
-      key: "groups",
-      header: t.groups,
-      accessor: (row) => row.groups.map((group) => group.name).join(", ") || t.noGroup,
-    },
-    {
-      key: "window",
-      header: t.window,
-      accessor: (row) => (
-        <div className="text-xs">
-          <p>{t.opens} {formatAssignmentDateTime(row.openAt, t.now)}</p>
-          <p className="text-muted-foreground">{t.due} {formatAssignmentDateTime(row.dueAt, t.noDeadline)}</p>
-        </div>
-      ),
-    },
-    {
-      key: "status",
-      header: t.status,
-      accessor: (row) => <Badge variant={playerStatusVariant[row.status]}>{t.statuses[row.status]}</Badge>,
-      sortable: true,
-      sortValue: (row) => row.status,
-    },
-    {
-      key: "submissions",
-      header: t.submissions,
-      accessor: (row) => (
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          onClick={(event) => {
-            event.stopPropagation();
-            setSubmissionsFor(row);
-          }}
-        >
-          <Eye className="h-3.5 w-3.5" />
-          {row.submissionCount}
-        </Button>
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      accessor: (row) => canManagePlayerAssignments ? (
-        <div className="flex justify-end gap-2">
+  const playerColumns = useMemo<Column<CoachPlayerAssignment>[]>(
+    () => [
+      {
+        key: "title",
+        header: t.playerAssignments,
+        accessor: (row) => (
+          <div>
+            <p className="font-medium text-foreground">{row.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {row.description || t.noDescription}
+            </p>
+          </div>
+        ),
+        sortable: true,
+        sortValue: (row) => row.title,
+      },
+      {
+        key: "groups",
+        header: t.groups,
+        accessor: (row) =>
+          row.groups.map((group) => group.name).join(", ") || t.noGroup,
+      },
+      {
+        key: "window",
+        header: t.window,
+        accessor: (row) => (
+          <div className="text-xs">
+            <p>
+              {t.opens} {formatAssignmentDateTime(row.openAt, t.now)}
+            </p>
+            <p className="text-muted-foreground">
+              {t.due} {formatAssignmentDateTime(row.dueAt, t.noDeadline)}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "status",
+        header: t.status,
+        accessor: (row) => (
+          <Badge variant={playerStatusVariant[row.status]}>
+            {t.statuses[row.status]}
+          </Badge>
+        ),
+        sortable: true,
+        sortValue: (row) => row.status,
+      },
+      {
+        key: "submissions",
+        header: t.submissions,
+        accessor: (row) => (
           <Button
             size="sm"
             variant="outline"
             className="gap-1.5"
             onClick={(event) => {
               event.stopPropagation();
-              setPlayerFormError("");
-              const assignedGroupIds = new Set(row.groups.map((group) => group.id));
-              const assignedBirthYearIds = new Set(row.birthYears?.map((birthYear) => birthYear.id) || []);
-              const allAvailableSelected =
-                groups.length > 0 && groups.every((group) => assignedGroupIds.has(group.id));
-              const allBirthYearsSelected =
-                birthYearTargets.length > 0 && birthYearTargets.every((target) => assignedBirthYearIds.has(target.id));
-              const birthYearSelected = birthYearTargets.find((target) => assignedBirthYearIds.has(target.id));
-              const isBirthYearTarget = row.targetType === "birth_year";
-              setPlayerForm({
-                assignmentId: row.id,
-                title: row.title,
-                description: row.description,
-                openAt: dateTimeInputValue(row.openAt),
-                dueAt: dateTimeInputValue(row.dueAt),
-                targetMode: isBirthYearTarget ? "birthYear" : "group",
-                groupId: isBirthYearTarget && allBirthYearsSelected
-                  ? allBirthYearsValue
-                  : isBirthYearTarget && birthYearSelected
-                    ? birthYearSelected.id
-                    : allAvailableSelected
-                      ? allGroupsValue
-                      : row.groups[0]?.id || "",
-                isOpenLocked: isAssignmentOpenNow(row),
-                status: row.status,
-              });
-              setPlayerDialogOpen(true);
+              setSubmissionsFor(row);
             }}
           >
-            <Edit className="h-3.5 w-3.5" />
-            {t.edit}
+            <Eye className="h-3.5 w-3.5" />
+            {row.submissionCount}
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
-            onClick={(event) => {
-              event.stopPropagation();
-              setDeletePlayerAssignmentTarget(row);
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {t.delete}
-          </Button>
-        </div>
-      ) : null,
-    },
-  ], [birthYearTargets, canManagePlayerAssignments, groups, t]);
+        ),
+      },
+      {
+        key: "actions",
+        header: "",
+        accessor: (row) =>
+          canManagePlayerAssignments ? (
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPlayerFormError("");
+                  const assignedGroupIds = new Set(
+                    row.groups.map((group) => group.id),
+                  );
+                  const assignedBirthYearIds = new Set(
+                    row.birthYears?.map((birthYear) => birthYear.id) || [],
+                  );
+                  const allAvailableSelected =
+                    groups.length > 0 &&
+                    groups.every((group) => assignedGroupIds.has(group.id));
+                  const allBirthYearsSelected =
+                    birthYearTargets.length > 0 &&
+                    birthYearTargets.every((target) =>
+                      assignedBirthYearIds.has(target.id),
+                    );
+                  const birthYearSelected = birthYearTargets.find((target) =>
+                    assignedBirthYearIds.has(target.id),
+                  );
+                  const isBirthYearTarget = row.targetType === "birth_year";
+                  setPlayerForm({
+                    assignmentId: row.id,
+                    title: row.title,
+                    description: row.description,
+                    openAt: dateTimeInputValue(row.openAt),
+                    dueAt: dateTimeInputValue(row.dueAt),
+                    targetMode: isBirthYearTarget ? "birthYear" : "group",
+                    groupId:
+                      isBirthYearTarget && allBirthYearsSelected
+                        ? allBirthYearsValue
+                        : isBirthYearTarget && birthYearSelected
+                          ? birthYearSelected.id
+                          : allAvailableSelected
+                            ? allGroupsValue
+                            : row.groups[0]?.id || "",
+                    isOpenLocked: isAssignmentOpenNow(row),
+                    status: row.status,
+                  });
+                  setPlayerDialogOpen(true);
+                }}
+              >
+                <Edit className="h-3.5 w-3.5" />
+                {t.edit}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setDeletePlayerAssignmentTarget(row);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t.delete}
+              </Button>
+            </div>
+          ) : null,
+      },
+    ],
+    [birthYearTargets, canManagePlayerAssignments, groups, t],
+  );
 
   const handleAdminFileUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -1121,7 +1296,9 @@ export default function CoachAssignmentsPage() {
     setPlayerDialogOpen(true);
   };
 
-  const handlePlayerAssignmentSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handlePlayerAssignmentSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     setPlayerFormError("");
     if (!playerForm.groupId) return;
@@ -1137,11 +1314,17 @@ export default function CoachAssignmentsPage() {
         return;
       }
     }
-    if (playerForm.openAt && playerForm.dueAt && playerForm.dueAt < playerForm.openAt) {
+    if (
+      playerForm.openAt &&
+      playerForm.dueAt &&
+      playerForm.dueAt < playerForm.openAt
+    ) {
       setPlayerFormError(t.deadlineOpenError);
       return;
     }
-    const selectedBirthYearTarget = birthYearTargets.find((target) => target.id === playerForm.groupId);
+    const selectedBirthYearTarget = birthYearTargets.find(
+      (target) => target.id === playerForm.groupId,
+    );
     const selectedBirthYearIds =
       playerForm.targetMode === "birthYear"
         ? playerForm.groupId === allBirthYearsValue
@@ -1164,9 +1347,18 @@ export default function CoachAssignmentsPage() {
     const body = {
       title: playerForm.title.trim(),
       description: playerForm.description.trim() || undefined,
-      ...(!playerForm.isOpenLocked ? { openAt: playerForm.openAt ? toOffsetDateTime(playerForm.openAt) : undefined } : {}),
+      ...(!playerForm.isOpenLocked
+        ? {
+            openAt: playerForm.openAt
+              ? toOffsetDateTime(playerForm.openAt)
+              : undefined,
+          }
+        : {}),
       dueAt: playerForm.dueAt ? toOffsetDateTime(playerForm.dueAt) : undefined,
-      targetType: playerForm.targetMode === "birthYear" ? "birth_year" as const : "group" as const,
+      targetType:
+        playerForm.targetMode === "birthYear"
+          ? ("birth_year" as const)
+          : ("group" as const),
       groupIds: selectedGroupIds,
       birthYearIds: selectedBirthYearIds,
     };
@@ -1208,22 +1400,32 @@ export default function CoachAssignmentsPage() {
     groupsQuery.isLoading;
 
   const minCreateDateTime = dateTimeFromNow();
-  const openAtMinDateTime = playerForm.assignmentId ? undefined : minCreateDateTime;
+  const openAtMinDateTime = playerForm.assignmentId
+    ? undefined
+    : minCreateDateTime;
   const dueAtMinDateTime = playerForm.assignmentId
     ? playerForm.isOpenLocked
       ? laterDateTime(minCreateDateTime, playerForm.openAt)
       : playerForm.openAt || undefined
     : laterDateTime(minCreateDateTime, playerForm.openAt);
   const playerDateError =
-    !playerForm.assignmentId && playerForm.openAt && playerForm.openAt < minCreateDateTime
+    !playerForm.assignmentId &&
+    playerForm.openAt &&
+    playerForm.openAt < minCreateDateTime
       ? t.openNowError
-      : !playerForm.assignmentId && playerForm.dueAt && playerForm.dueAt < minCreateDateTime
+      : !playerForm.assignmentId &&
+          playerForm.dueAt &&
+          playerForm.dueAt < minCreateDateTime
         ? t.deadlineNowError
-        : playerForm.isOpenLocked && playerForm.dueAt && playerForm.dueAt < minCreateDateTime
+        : playerForm.isOpenLocked &&
+            playerForm.dueAt &&
+            playerForm.dueAt < minCreateDateTime
           ? t.deadlineLockedError
-        : playerForm.openAt && playerForm.dueAt && playerForm.dueAt < playerForm.openAt
-          ? t.deadlineOpenError
-          : "";
+          : playerForm.openAt &&
+              playerForm.dueAt &&
+              playerForm.dueAt < playerForm.openAt
+            ? t.deadlineOpenError
+            : "";
 
   if (isInitialLoading) {
     return (
@@ -1271,7 +1473,11 @@ export default function CoachAssignmentsPage() {
           {adminAssignments.isError ? (
             <div className="flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
               <span>{t.failedAdminAssignments}</span>
-              <Button variant="outline" size="sm" onClick={() => adminAssignments.refetch()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => adminAssignments.refetch()}
+              >
                 {t.retry}
               </Button>
             </div>
@@ -1281,7 +1487,9 @@ export default function CoachAssignmentsPage() {
               columns={adminColumns}
               searchable
               searchPlaceholder={t.searchAdminAssignments}
-              searchKey={(row) => `${row.title} ${row.branchName ?? ""} ${row.groupName ?? ""}`}
+              searchKey={(row) =>
+                `${row.title} ${row.branchName ?? ""} ${row.groupName ?? ""}`
+              }
               emptyTitle={t.noAdminAssignments}
               emptyDescription={t.noAdminAssignmentsDescription}
             />
@@ -1304,16 +1512,21 @@ export default function CoachAssignmentsPage() {
             <div className="grid gap-2 sm:grid-cols-3">
               <div className="rounded-md border border-border/50 p-3">
                 <p className="text-xs">{t.inputs}</p>
-                <p className="mt-1 font-semibold text-foreground">{t.inputFieldsLabel}</p>
+                <p className="mt-1 font-semibold text-foreground">
+                  {t.inputFieldsLabel}
+                </p>
               </div>
               <div className="rounded-md border border-border/50 p-3">
                 <p className="text-xs">{t.output}</p>
-                <p className="mt-1 font-semibold text-foreground">{t.outputFieldLabel}</p>
+                <p className="mt-1 font-semibold text-foreground">
+                  {t.outputFieldLabel}
+                </p>
               </div>
               <div className="rounded-md border border-border/50 p-3">
                 <p className="text-xs">{t.thisWeek}</p>
                 <p className="mt-1 font-semibold text-foreground">
-                  {dailyRows.length} {t.submissions} / {dailyPlayers} {t.players}
+                  {dailyRows.length} {t.submissions} / {dailyPlayers}{" "}
+                  {t.players}
                 </p>
               </div>
             </div>
@@ -1337,7 +1550,10 @@ export default function CoachAssignmentsPage() {
             </div>
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {dailyRows.slice(0, 8).map((row) => (
-                <div key={row.id} className="flex items-center justify-between gap-3 rounded bg-muted/20 px-2 py-1.5 text-xs">
+                <div
+                  key={row.id}
+                  className="flex items-center justify-between gap-3 rounded bg-muted/20 px-2 py-1.5 text-xs"
+                >
                   <span className="font-medium">{row.playerName}</span>
                   <span className="text-muted-foreground">
                     {formatDate(row.inputDate)} · {t.score} {row.dailyAiScore}
@@ -1345,7 +1561,9 @@ export default function CoachAssignmentsPage() {
                 </div>
               ))}
               {!dailyRows.length && (
-                <p className="text-sm text-muted-foreground">{t.noDailyInputs}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t.noDailyInputs}
+                </p>
               )}
             </div>
           </div>
@@ -1357,7 +1575,11 @@ export default function CoachAssignmentsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">{t.playerAssignments}</CardTitle>
             {canManagePlayerAssignments && (
-              <Button className="gap-2" onClick={openCreatePlayerDialog} disabled={!groups.length}>
+              <Button
+                className="gap-2"
+                onClick={openCreatePlayerDialog}
+                disabled={!groups.length}
+              >
                 <Plus className="h-4 w-4" />
                 {t.newAssignment}
               </Button>
@@ -1368,7 +1590,11 @@ export default function CoachAssignmentsPage() {
           {playerAssignments.isError ? (
             <div className="flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
               <span>{t.failedPlayerAssignments}</span>
-              <Button variant="outline" size="sm" onClick={() => playerAssignments.refetch()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => playerAssignments.refetch()}
+              >
                 {t.retry}
               </Button>
             </div>
@@ -1378,7 +1604,9 @@ export default function CoachAssignmentsPage() {
               columns={playerColumns}
               searchable
               searchPlaceholder={t.searchPlayerAssignments}
-              searchKey={(row) => `${row.title} ${row.description} ${row.groups.map((group) => group.name).join(" ")}`}
+              searchKey={(row) =>
+                `${row.title} ${row.description} ${row.groups.map((group) => group.name).join(" ")}`
+              }
               emptyTitle={t.noPlayerAssignments}
               emptyDescription={t.noPlayerAssignmentsDescription}
             />
@@ -1399,7 +1627,9 @@ export default function CoachAssignmentsPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>{t.submitAdminAssignment}</DialogTitle>
-            <DialogDescription>{t.submitAdminAssignmentDescription}</DialogDescription>
+            <DialogDescription>
+              {t.submitAdminAssignmentDescription}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAdminSubmit}>
             <div className="space-y-2">
@@ -1408,20 +1638,24 @@ export default function CoachAssignmentsPage() {
                 id="submission-file"
                 type="file"
                 accept={fileAccept}
-                onChange={(event) => handleAdminFileUpload(event.target.files?.[0])}
+                onChange={(event) =>
+                  handleAdminFileUpload(event.target.files?.[0])
+                }
                 disabled={isUploading}
                 required
               />
-              {isUploading && <p className="text-xs text-muted-foreground">{t.uploadingFile}</p>}
+              {isUploading && (
+                <p className="text-xs text-muted-foreground">
+                  {t.uploadingFile}
+                </p>
+              )}
               {uploadedFile && (
                 <p className="text-xs text-emerald-400">
                   {t.uploaded} {uploadedFile.fileName} ({uploadedFile.fileType})
                 </p>
               )}
               {uploadError && (
-                <p className="text-xs text-red-400">
-                  {t.uploadFailed}
-                </p>
+                <p className="text-xs text-red-400">{t.uploadFailed}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -1429,16 +1663,30 @@ export default function CoachAssignmentsPage() {
               <Textarea
                 id="submission-notes"
                 value={adminForm.coachNotes}
-                onChange={(event) => setAdminForm({ coachNotes: event.target.value })}
+                onChange={(event) =>
+                  setAdminForm({ coachNotes: event.target.value })
+                }
               />
             </div>
-            {adminSubmitError && <p className="text-sm text-red-400">{t.submitError}</p>}
+            {adminSubmitError && (
+              <p className="text-sm text-red-400">{t.submitError}</p>
+            )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAdminSelected(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAdminSelected(null)}
+              >
                 {t.cancel}
               </Button>
-              <Button type="submit" disabled={isSubmittingAdmin || isUploading || !uploadedFile} className="gap-2">
-                {isSubmittingAdmin && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                disabled={isSubmittingAdmin || isUploading || !uploadedFile}
+                className="gap-2"
+              >
+                {isSubmittingAdmin && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
                 {t.submit}
               </Button>
             </DialogFooter>
@@ -1464,14 +1712,26 @@ export default function CoachAssignmentsPage() {
         onOpenChange={(open) => {
           if (!open) setPendingSubmissionReview(null);
         }}
-        title={pendingSubmissionReview?.status === "approved" ? t.acceptSubmissionQuestion : t.needsRedoQuestion}
+        title={
+          pendingSubmissionReview?.status === "approved"
+            ? t.acceptSubmissionQuestion
+            : t.needsRedoQuestion
+        }
         description={
           pendingSubmissionReview?.status === "approved"
             ? t.acceptSubmissionDescription
             : t.redoSubmissionDescription
         }
-        confirmLabel={pendingSubmissionReview?.status === "approved" ? t.acceptSubmission : t.markNeedsRedo}
-        variant={pendingSubmissionReview?.status === "rejected" ? "destructive" : "default"}
+        confirmLabel={
+          pendingSubmissionReview?.status === "approved"
+            ? t.acceptSubmission
+            : t.markNeedsRedo
+        }
+        variant={
+          pendingSubmissionReview?.status === "rejected"
+            ? "destructive"
+            : "default"
+        }
         onConfirm={confirmReviewPlayerSubmission}
         isLoading={isReviewingPlayerSubmission}
       />
@@ -1479,8 +1739,14 @@ export default function CoachAssignmentsPage() {
       <Dialog open={playerDialogOpen} onOpenChange={setPlayerDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{playerForm.assignmentId ? t.editPlayerAssignment : t.newPlayerAssignment}</DialogTitle>
-            <DialogDescription>{t.playerAssignmentDescription}</DialogDescription>
+            <DialogTitle>
+              {playerForm.assignmentId
+                ? t.editPlayerAssignment
+                : t.newPlayerAssignment}
+            </DialogTitle>
+            <DialogDescription>
+              {t.playerAssignmentDescription}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handlePlayerAssignmentSubmit}>
             <div className="grid gap-4 lg:grid-cols-[1fr_180px_1fr]">
@@ -1489,7 +1755,12 @@ export default function CoachAssignmentsPage() {
                 <Input
                   id="player-assignment-title"
                   value={playerForm.title}
-                  onChange={(event) => setPlayerForm((current) => ({ ...current, title: event.target.value }))}
+                  onChange={(event) =>
+                    setPlayerForm((current) => ({
+                      ...current,
+                      title: event.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
@@ -1501,9 +1772,14 @@ export default function CoachAssignmentsPage() {
                     setPlayerForm((current) => ({
                       ...current,
                       targetMode: value as PlayerTargetMode,
-                      groupId: value === "group"
-                        ? groups.length ? allGroupsValue : ""
-                        : birthYearTargets.length ? allBirthYearsValue : "",
+                      groupId:
+                        value === "group"
+                          ? groups.length
+                            ? allGroupsValue
+                            : ""
+                          : birthYearTargets.length
+                            ? allBirthYearsValue
+                            : "",
                     }))
                   }
                 >
@@ -1517,13 +1793,25 @@ export default function CoachAssignmentsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{playerForm.targetMode === "group" ? t.targetGroup : t.targetBirthday}</Label>
+                <Label>
+                  {playerForm.targetMode === "group"
+                    ? t.targetGroup
+                    : t.targetBirthday}
+                </Label>
                 <Select
                   value={playerForm.groupId}
-                  onValueChange={(value) => setPlayerForm((current) => ({ ...current, groupId: value }))}
+                  onValueChange={(value) =>
+                    setPlayerForm((current) => ({ ...current, groupId: value }))
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={playerForm.targetMode === "group" ? t.selectGroup : t.selectBirthday} />
+                    <SelectValue
+                      placeholder={
+                        playerForm.targetMode === "group"
+                          ? t.selectGroup
+                          : t.selectBirthday
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {playerForm.targetMode === "group" ? (
@@ -1554,11 +1842,18 @@ export default function CoachAssignmentsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="player-assignment-description">{t.description}</Label>
+              <Label htmlFor="player-assignment-description">
+                {t.description}
+              </Label>
               <Textarea
                 id="player-assignment-description"
                 value={playerForm.description}
-                onChange={(event) => setPlayerForm((current) => ({ ...current, description: event.target.value }))}
+                onChange={(event) =>
+                  setPlayerForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
               />
             </div>
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr_220px]">
@@ -1589,14 +1884,18 @@ export default function CoachAssignmentsPage() {
                     setPlayerForm((current) => ({
                       ...current,
                       openAt: value,
-                      dueAt: value && current.dueAt && current.dueAt < value
-                        ? dateTimeFromValue(value, 24)
-                        : current.dueAt,
+                      dueAt:
+                        value && current.dueAt && current.dueAt < value
+                          ? dateTimeFromValue(value, 24)
+                          : current.dueAt,
                     }));
                   }}
                   quickActions={[
                     { label: t.now, value: dateTimeFromNow() },
-                    { label: "+1h", value: dateTimeFromValue(playerForm.openAt, 1) },
+                    {
+                      label: "+1h",
+                      value: dateTimeFromValue(playerForm.openAt, 1),
+                    },
                   ]}
                 />
               )}
@@ -1611,8 +1910,20 @@ export default function CoachAssignmentsPage() {
                   setPlayerForm((current) => ({ ...current, dueAt: value }));
                 }}
                 quickActions={[
-                  { label: "+24h", value: dateTimeFromValue(playerForm.openAt || minCreateDateTime, 24) },
-                  { label: "+48h", value: dateTimeFromValue(playerForm.openAt || minCreateDateTime, 48) },
+                  {
+                    label: "+24h",
+                    value: dateTimeFromValue(
+                      playerForm.openAt || minCreateDateTime,
+                      24,
+                    ),
+                  },
+                  {
+                    label: "+48h",
+                    value: dateTimeFromValue(
+                      playerForm.openAt || minCreateDateTime,
+                      48,
+                    ),
+                  },
                 ]}
               />
               <div className="space-y-2">
@@ -1638,18 +1949,32 @@ export default function CoachAssignmentsPage() {
               </div>
             </div>
             {(playerFormError || playerDateError) && (
-              <p className="text-sm text-red-400">{playerFormError || playerDateError}</p>
+              <p className="text-sm text-red-400">
+                {playerFormError || playerDateError}
+              </p>
             )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setPlayerDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPlayerDialogOpen(false)}
+              >
                 {t.cancel}
               </Button>
               <Button
                 type="submit"
                 className="gap-2"
-                disabled={isCreatingPlayer || isUpdatingPlayer || !playerForm.title.trim() || !playerForm.groupId || Boolean(playerDateError)}
+                disabled={
+                  isCreatingPlayer ||
+                  isUpdatingPlayer ||
+                  !playerForm.title.trim() ||
+                  !playerForm.groupId ||
+                  Boolean(playerDateError)
+                }
               >
-                {(isCreatingPlayer || isUpdatingPlayer) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {(isCreatingPlayer || isUpdatingPlayer) && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
                 {playerForm.assignmentId ? t.saveChanges : t.createAssignment}
               </Button>
             </DialogFooter>

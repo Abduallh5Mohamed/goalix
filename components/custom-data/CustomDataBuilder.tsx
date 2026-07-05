@@ -213,7 +213,7 @@ const toKey = (label: string) =>
     .replace(/^_+|_+$/g, "");
 
 const isProtectedSystemField = (field: Pick<CustomField, "key">) =>
-  toKey(field.key) === "main_position";
+  ["main_position", "main_postion"].includes(toKey(field.key));
 
 export function CustomDataBuilder({ role, coaches = [] }: { role: Role; coaches?: CoachChoice[] }) {
   const language = useDashboardLanguage();

@@ -9,7 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +24,7 @@ import {
   useGetCoachGroupsQuery,
   useRegenerateCoachMfaBackupCodesMutation,
   useSetupCoachMfaMutation,
+  useUpdateCoachMutation,
   useVerifyCoachMfaMutation,
   type Setup2FAResponse,
 } from "@/lib/store/api/adminApi";
@@ -42,8 +49,11 @@ function getApiErrorMessage(err: unknown, fallback: string) {
 
   return detailMessages?.length
     ? detailMessages.join(". ")
-    : apiError.data?.error?.message ?? fallback;
+    : (apiError.data?.error?.message ?? fallback);
 }
+
+const strongPasswordPattern =
+  /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
 
 const coachProfileCopy = {
   en: {
@@ -52,9 +62,11 @@ const coachProfileCopy = {
     mfaScanMessage: "Scan this QR code with the coach authenticator app.",
     mfaSetupError: "Could not start coach MFA setup.",
     mfaCodeError: "Enter the 6-digit code from the coach phone.",
-    mfaActiveMessage: "Coach MFA is active now. The coach can log in with this authenticator.",
+    mfaActiveMessage:
+      "Coach MFA is active now. The coach can log in with this authenticator.",
     mfaInvalidCode: "Invalid MFA code.",
-    backupCodesMessage: "New coach backup codes generated. Old coach backup codes are no longer valid.",
+    backupCodesMessage:
+      "New coach backup codes generated. Old coach backup codes are no longer valid.",
     backupCodesError: "Could not generate coach backup codes.",
     notFound: "Coach not found.",
     dashboard: "Dashboard",
@@ -74,7 +86,8 @@ const coachProfileCopy = {
     role: "Role",
     noGroups: "No groups assigned.",
     coachMfa: "Coach MFA",
-    mfaDescription: "This creates an authenticator device for {name}. The verification code must come from the coach phone.",
+    mfaDescription:
+      "This creates an authenticator device for {name}. The verification code must come from the coach phone.",
     deviceName: "Device name",
     addDevice: "Add Device",
     startSetup: "Start Setup",
@@ -86,7 +99,8 @@ const coachProfileCopy = {
     coachCode: "6-digit coach code",
     verifyDevice: "Verify Coach Device",
     coachBackupCodes: "Coach backup codes",
-    backupCodesDescription: "Generate replacement backup codes for this coach. Old coach codes will stop working.",
+    backupCodesDescription:
+      "Generate replacement backup codes for this coach. Old coach codes will stop working.",
     generateCodes: "Generate Codes",
     backupCodes: "Backup codes",
   },
@@ -96,9 +110,11 @@ const coachProfileCopy = {
     mfaScanMessage: "امسح رمز QR باستخدام تطبيق المصادقة الخاص بالمدرب.",
     mfaSetupError: "تعذر بدء إعداد MFA للمدرب.",
     mfaCodeError: "أدخل الكود المكون من 6 أرقام من هاتف المدرب.",
-    mfaActiveMessage: "أصبح MFA للمدرب نشطًا الآن. يستطيع المدرب تسجيل الدخول بهذا التطبيق.",
+    mfaActiveMessage:
+      "أصبح MFA للمدرب نشطًا الآن. يستطيع المدرب تسجيل الدخول بهذا التطبيق.",
     mfaInvalidCode: "كود MFA غير صحيح.",
-    backupCodesMessage: "تم إنشاء أكواد احتياطية جديدة للمدرب. الأكواد القديمة لم تعد صالحة.",
+    backupCodesMessage:
+      "تم إنشاء أكواد احتياطية جديدة للمدرب. الأكواد القديمة لم تعد صالحة.",
     backupCodesError: "تعذر إنشاء الأكواد الاحتياطية للمدرب.",
     notFound: "لم يتم العثور على المدرب.",
     dashboard: "لوحة التحكم",
@@ -118,7 +134,8 @@ const coachProfileCopy = {
     role: "الدور",
     noGroups: "لا توجد مجموعات معينة.",
     coachMfa: "MFA المدرب",
-    mfaDescription: "هذا ينشئ جهاز مصادقة لـ {name}. يجب أن يأتي كود التحقق من هاتف المدرب.",
+    mfaDescription:
+      "هذا ينشئ جهاز مصادقة لـ {name}. يجب أن يأتي كود التحقق من هاتف المدرب.",
     deviceName: "اسم الجهاز",
     addDevice: "إضافة جهاز",
     startSetup: "بدء الإعداد",
@@ -130,22 +147,38 @@ const coachProfileCopy = {
     coachCode: "كود المدرب من 6 أرقام",
     verifyDevice: "تأكيد جهاز المدرب",
     coachBackupCodes: "الأكواد الاحتياطية للمدرب",
-    backupCodesDescription: "أنشئ أكوادًا احتياطية بديلة لهذا المدرب. ستتوقف الأكواد القديمة عن العمل.",
+    backupCodesDescription:
+      "أنشئ أكوادًا احتياطية بديلة لهذا المدرب. ستتوقف الأكواد القديمة عن العمل.",
     generateCodes: "إنشاء الأكواد",
     backupCodes: "الأكواد الاحتياطية",
   },
 } as const;
 
-export default function CoachProfilePage({ params }: { params: Promise<{ id: string }> }) {
+export default function CoachProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    resetPassword?: string | string[];
+  }>;
+}) {
   const language = useDashboardLanguage();
   const t = coachProfileCopy[language];
   const { id } = use(params);
+  const query = use(searchParams);
   const { data: coach, isLoading, error, refetch } = useGetCoachByIdQuery(id);
   const { data: groups } = useGetCoachGroupsQuery(id);
-  const [setupCoachMfa, { isLoading: isSettingUpMfa }] = useSetupCoachMfaMutation();
-  const [verifyCoachMfa, { isLoading: isVerifyingMfa }] = useVerifyCoachMfaMutation();
-  const [regenerateCoachMfaBackupCodes, { isLoading: isRegeneratingCoachBackupCodes }] =
-    useRegenerateCoachMfaBackupCodesMutation();
+  const [setupCoachMfa, { isLoading: isSettingUpMfa }] =
+    useSetupCoachMfaMutation();
+  const [verifyCoachMfa, { isLoading: isVerifyingMfa }] =
+    useVerifyCoachMfaMutation();
+  const [
+    regenerateCoachMfaBackupCodes,
+    { isLoading: isRegeneratingCoachBackupCodes },
+  ] = useRegenerateCoachMfaBackupCodesMutation();
+  const [updateCoach, { isLoading: isResettingPassword }] =
+    useUpdateCoachMutation();
   const [mfaOpen, setMfaOpen] = useState(false);
   const [mfaSetup, setMfaSetup] = useState<Setup2FAResponse | null>(null);
   const [mfaDeviceName, setMfaDeviceName] = useState<string>(t.coachPhone);
@@ -153,6 +186,16 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
   const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([]);
   const [mfaError, setMfaError] = useState("");
   const [mfaMessage, setMfaMessage] = useState("");
+  const resetPasswordQueryValue = Array.isArray(query.resetPassword)
+    ? query.resetPassword[0]
+    : query.resetPassword;
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(
+    resetPasswordQueryValue === "1",
+  );
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [resetPasswordMessage, setResetPasswordMessage] = useState("");
 
   const closeMfaDialog = () => {
     setMfaOpen(false);
@@ -174,6 +217,51 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
     setMfaMessage("");
   };
 
+  const closeResetPasswordDialog = () => {
+    setResetPasswordOpen(false);
+    setResetPassword("");
+    setResetPasswordConfirm("");
+    setResetPasswordError("");
+    setResetPasswordMessage("");
+  };
+
+  const handleResetCoachPassword = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    if (!coach) return;
+    setResetPasswordError("");
+    setResetPasswordMessage("");
+
+    if (!strongPasswordPattern.test(resetPassword)) {
+      setResetPasswordError(
+        "Password must be 8+ characters and include uppercase, number, and special character.",
+      );
+      return;
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      setResetPasswordError("Password confirmation does not match.");
+      return;
+    }
+
+    try {
+      await updateCoach({
+        id: coach.id,
+        body: { password: resetPassword },
+      }).unwrap();
+      setResetPassword("");
+      setResetPasswordConfirm("");
+      setResetPasswordMessage(
+        "Coach password changed. Any open reset request for this coach is now resolved.",
+      );
+      void refetch();
+    } catch (err) {
+      setResetPasswordError(
+        getApiErrorMessage(err, "Could not reset coach password."),
+      );
+    }
+  };
+
   const handleSetupCoachMfa = async (resetExisting = false) => {
     if (!coach) return;
     setMfaError("");
@@ -182,7 +270,8 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
     try {
       const result = await setupCoachMfa({
         coachId: coach.id,
-        deviceName: mfaDeviceName.trim() || `${coach.full_name} ${t.coachPhone}`,
+        deviceName:
+          mfaDeviceName.trim() || `${coach.full_name} ${t.coachPhone}`,
         resetExisting,
       }).unwrap();
       setMfaSetup(result);
@@ -220,7 +309,9 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
     setMfaError("");
     setMfaMessage("");
     try {
-      const result = await regenerateCoachMfaBackupCodes({ coachId: coach.id }).unwrap();
+      const result = await regenerateCoachMfaBackupCodes({
+        coachId: coach.id,
+      }).unwrap();
       setMfaBackupCodes(result.backupCodes || []);
       setMfaMessage(t.backupCodesMessage);
     } catch (err) {
@@ -269,14 +360,20 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                 </AvatarFallback>
               </Avatar>
               <h3 className="mt-4 text-lg font-bold">{coach.full_name}</h3>
-              <p className="text-sm text-muted-foreground">{coach.specialization ?? t.coachFallback}</p>
+              <p className="text-sm text-muted-foreground">
+                {coach.specialization ?? t.coachFallback}
+              </p>
               <div className="mt-6 w-full space-y-3 text-sm">
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>{t.joined} {new Date(coach.created_at).toLocaleDateString()}</span>
+                  <span>
+                    {t.joined} {new Date(coach.created_at).toLocaleDateString()}
+                  </span>
                 </div>
                 {coach.bio && (
-                  <p className="text-xs text-muted-foreground mt-2">{coach.bio}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {coach.bio}
+                  </p>
                 )}
               </div>
             </div>
@@ -284,9 +381,21 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
         </Card>
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <StatsCard label={t.specialization} value={coach.specialization ?? "\u2014"} icon="UserCheck" />
-            <StatsCard label={t.assignedGroups} value={groups?.length ?? 0} icon="Layers" />
-            <StatsCard label={t.mfa} value={coach.totp_enabled ? t.enabled : t.notSet} icon="ClipboardCheck" />
+            <StatsCard
+              label={t.specialization}
+              value={coach.specialization ?? "\u2014"}
+              icon="UserCheck"
+            />
+            <StatsCard
+              label={t.assignedGroups}
+              value={groups?.length ?? 0}
+              icon="Layers"
+            />
+            <StatsCard
+              label={t.mfa}
+              value={coach.totp_enabled ? t.enabled : t.notSet}
+              icon="ClipboardCheck"
+            />
           </div>
           <Tabs defaultValue="groups">
             <TabsList>
@@ -298,22 +407,109 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                   <Card key={g.id} className="border-border/50 bg-card">
                     <CardContent className="flex items-center justify-between p-4">
                       <div>
-                        <p className="font-medium">{t.group} {g.group_id.slice(0, 8)}</p>
-                        <p className="text-xs text-muted-foreground">{t.role}: {g.role}</p>
+                        <p className="font-medium">
+                          {t.group} {g.group_id.slice(0, 8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t.role}: {g.role}
+                        </p>
                       </div>
                       <Badge variant="secondary">{g.role}</Badge>
                     </CardContent>
                   </Card>
                 ))
               ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">{t.noGroups}</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t.noGroups}
+                </p>
               )}
             </TabsContent>
           </Tabs>
         </div>
       </div>
 
-      <Dialog open={mfaOpen} onOpenChange={(nextOpen) => (nextOpen ? setMfaOpen(true) : closeMfaDialog())}>
+      <Dialog
+        open={resetPasswordOpen}
+        onOpenChange={(nextOpen) =>
+          nextOpen ? setResetPasswordOpen(true) : closeResetPasswordDialog()
+        }
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Coach Password</DialogTitle>
+            <DialogDescription>
+              Change the coach login password. The username stays locked and
+              will not change.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetCoachPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-username">Username</Label>
+              <Input
+                id="coach-reset-username"
+                value={coach.username ?? "No username"}
+                readOnly
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-password">New password</Label>
+              <Input
+                id="coach-reset-password"
+                type="password"
+                value={resetPassword}
+                onChange={(event) => setResetPassword(event.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coach-reset-password-confirm">
+                Confirm password
+              </Label>
+              <Input
+                id="coach-reset-password-confirm"
+                type="password"
+                value={resetPasswordConfirm}
+                onChange={(event) =>
+                  setResetPasswordConfirm(event.target.value)
+                }
+                autoComplete="new-password"
+              />
+            </div>
+            {resetPasswordError && (
+              <p className="text-sm text-red-400">{resetPasswordError}</p>
+            )}
+            {resetPasswordMessage && (
+              <p className="text-sm text-emerald-400">{resetPasswordMessage}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeResetPasswordDialog}
+              >
+                Close
+              </Button>
+              <Button
+                type="submit"
+                disabled={isResettingPassword}
+                className="gap-2"
+              >
+                {isResettingPassword && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Change Password
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={mfaOpen}
+        onOpenChange={(nextOpen) =>
+          nextOpen ? setMfaOpen(true) : closeMfaDialog()
+        }
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t.coachMfa}</DialogTitle>
@@ -326,7 +522,9 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
             <div className="rounded-lg border border-border/70 bg-card/50 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1 space-y-2">
-                  <Label htmlFor="coach-detail-mfa-device-name">{t.deviceName}</Label>
+                  <Label htmlFor="coach-detail-mfa-device-name">
+                    {t.deviceName}
+                  </Label>
                   <Input
                     id="coach-detail-mfa-device-name"
                     value={mfaDeviceName}
@@ -340,7 +538,11 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                   disabled={isSettingUpMfa}
                   onClick={() => handleSetupCoachMfa(false)}
                 >
-                  {isSettingUpMfa ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  {isSettingUpMfa ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )}
                   {coach.totp_enabled ? t.addDevice : t.startSetup}
                 </Button>
                 {coach.totp_enabled && (
@@ -354,9 +556,7 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                   </Button>
                 )}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {t.appEntry}
-              </p>
+              <p className="mt-3 text-xs text-muted-foreground">{t.appEntry}</p>
             </div>
 
             {mfaSetup && (
@@ -373,18 +573,27 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>{t.issuer}</Label>
-                    <Input value={mfaSetup.issuer ?? "Goalix Academy Coach"} readOnly />
+                    <Input
+                      value={mfaSetup.issuer ?? "Goalix Academy Coach"}
+                      readOnly
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>{t.manualSecret}</Label>
                     <Input value={mfaSetup.secret} readOnly />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="coach-detail-mfa-token">{t.coachCode}</Label>
+                    <Label htmlFor="coach-detail-mfa-token">
+                      {t.coachCode}
+                    </Label>
                     <Input
                       id="coach-detail-mfa-token"
                       value={mfaToken}
-                      onChange={(event) => setMfaToken(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onChange={(event) =>
+                        setMfaToken(
+                          event.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
                       inputMode="numeric"
                       maxLength={6}
                       placeholder="123456"
@@ -396,7 +605,9 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                     disabled={isVerifyingMfa || mfaToken.length !== 6}
                     onClick={handleVerifyCoachMfa}
                   >
-                    {isVerifyingMfa && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isVerifyingMfa && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
                     {t.verifyDevice}
                   </Button>
                 </div>
@@ -407,7 +618,9 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
               <div className="rounded-lg border border-border/70 bg-card/40 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{t.coachBackupCodes}</p>
+                    <p className="font-medium text-foreground">
+                      {t.coachBackupCodes}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {t.backupCodesDescription}
                     </p>
@@ -435,7 +648,10 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
                 <p className="font-medium text-lime-200">{t.backupCodes}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {mfaBackupCodes.map((code) => (
-                    <code key={code} className="rounded-md bg-background/70 px-3 py-2 text-sm text-foreground">
+                    <code
+                      key={code}
+                      className="rounded-md bg-background/70 px-3 py-2 text-sm text-foreground"
+                    >
                       {code}
                     </code>
                   ))}
@@ -443,7 +659,9 @@ export default function CoachProfilePage({ params }: { params: Promise<{ id: str
               </div>
             )}
 
-            {mfaMessage && <p className="text-sm text-lime-300">{mfaMessage}</p>}
+            {mfaMessage && (
+              <p className="text-sm text-lime-300">{mfaMessage}</p>
+            )}
             {mfaError && <p className="text-sm text-red-400">{mfaError}</p>}
           </div>
         </DialogContent>

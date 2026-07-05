@@ -21,7 +21,7 @@ function canAccessConversation(user, conversation) {
         return conversation.player_user_id === user.userId || isChatGroupMember(user, conversation);
     }
     if (user.role === 'parent') {
-        return conversation.parent_user_id === user.userId;
+        return conversation.parent_user_id === user.userId || isChatGroupMember(user, conversation);
     }
     return false;
 }

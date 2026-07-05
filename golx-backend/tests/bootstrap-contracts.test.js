@@ -8,9 +8,12 @@ describe('application bootstrap contracts', () => {
 
         expect(services.chatService).toBeDefined();
         expect(services.calendarService).toBeDefined();
+        expect(services.dataLifecycleService).toBeDefined();
         expect(controllers.authController).toBeDefined();
         expect(controllers.chatController).toBeDefined();
+        expect(controllers.dataLifecycleController).toBeDefined();
         expect(controllers.calendarController).toBeDefined();
         expect(repositories.chatRepo).toBeDefined();
+        expect(repositories.dataLifecycleRepo).toBeDefined();
     });
 });

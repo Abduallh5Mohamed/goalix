@@ -39,7 +39,8 @@ const trainingCopy = {
     completed: "completed",
     open: "open",
     group: (count: number) => `${count} group${count === 1 ? "" : "s"}`,
-    birthYear: (count: number) => `${count} birth year${count === 1 ? "" : "s"}`,
+    birthYear: (count: number) =>
+      `${count} birth year${count === 1 ? "" : "s"}`,
     player: (count: number) => `${count} player${count === 1 ? "" : "s"}`,
     noTarget: "No target snapshot",
     opens: (time: string) => `Opens ${time}`,
@@ -56,7 +57,8 @@ const trainingCopy = {
     create: "إنشاء تدريب",
     sessions: "حصص التدريب",
     loading: "جاري تحميل التدريبات...",
-    loadError: "تعذر تحميل بيانات التدريب من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
+    loadError:
+      "تعذر تحميل بيانات التدريب من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
     completed: "مكتمل",
     open: "مفتوح",
     group: (count: number) => `${count} مجموعة`,
@@ -66,7 +68,8 @@ const trainingCopy = {
     opens: (time: string) => `يفتح ${time}`,
     openTraining: "فتح التدريب",
     viewDetails: "عرض التفاصيل",
-    empty: "لا توجد حصص تدريب ظاهرة لهذا المدرب حتى الآن. أنشئ حدث تدريب واستهدف مجموعة أو سنة ميلاد أو لاعبين من نطاق المدرب.",
+    empty:
+      "لا توجد حصص تدريب ظاهرة لهذا المدرب حتى الآن. أنشئ حدث تدريب واستهدف مجموعة أو سنة ميلاد أو لاعبين من نطاق المدرب.",
   },
 } as const;
 
@@ -97,7 +100,10 @@ export default function CoachTrainingListPage() {
       <PageHeader
         title={t.title}
         description={t.description}
-        breadcrumbs={[{ label: t.home, href: "/coach/home" }, { label: t.title }]}
+        breadcrumbs={[
+          { label: t.home, href: "/coach/home" },
+          { label: t.title },
+        ]}
       />
 
       <div className="flex justify-end">
@@ -147,15 +153,11 @@ export default function CoachTrainingListPage() {
             const isUpcoming = event.status === "scheduled" && nowMs < startMs;
             const focus = event.training?.training_focus?.replaceAll("_", " ");
             const targetText = [
-                event.groups?.length
-                ? t.group(event.groups.length)
-                : "",
+              event.groups?.length ? t.group(event.groups.length) : "",
               event.birth_years?.length
                 ? t.birthYear(event.birth_years.length)
                 : "",
-              event.players?.length
-                ? t.player(event.players.length)
-                : "",
+              event.players?.length ? t.player(event.players.length) : "",
             ]
               .filter(Boolean)
               .join(" - ");
@@ -182,7 +184,11 @@ export default function CoachTrainingListPage() {
                               : "secondary"
                       }
                     >
-                      {isCompleted ? t.completed : isOpen ? t.open : event.status}
+                      {isCompleted
+                        ? t.completed
+                        : isOpen
+                          ? t.open
+                          : event.status}
                     </Badge>
                     {focus && <Badge variant="outline">{focus}</Badge>}
                   </div>

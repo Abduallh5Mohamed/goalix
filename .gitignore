@@ -54,6 +54,7 @@ next-env.d.ts
 
 # local Goalix backend restore artifacts
 /.dev-logs/
+/.deploy/
 /db-dumps/
 /testadmin-mfa-qr.png
 /.deploy/

@@ -88,7 +88,13 @@ const weeklyScoreProfile = {
 
 const predictionProfile = {
   title: "Prediction Module",
-  inputs: ["match_score", "coach_score", "attendance_score", "weekly_ai_score", "position"],
+  inputs: [
+    "match_score",
+    "coach_score",
+    "attendance_score",
+    "weekly_ai_score",
+    "position",
+  ],
   modifiers: ["Model Random Forest Regressor"],
   output: "predicted_next_score",
 };
@@ -139,7 +145,8 @@ const compactMetricLabels: Record<string, string> = {
 const rankingCopy = {
   en: {
     title: "Ranking System",
-    description: "Weekly model inputs, calculated scores, and Ranking Model API response.",
+    description:
+      "Weekly model inputs, calculated scores, and Ranking Model API response.",
     home: "Home",
     refresh: "Refresh",
     loadError: "Could not load weekly ranking inputs.",
@@ -148,7 +155,8 @@ const rankingCopy = {
     weeklyPackages: "Weekly Packages",
     weeklyPackagesDetail: "One package per player per week",
     baseInputsReady: "Base Inputs Ready",
-    baseInputsDetail: "Technical, tactical, physical, mentality, decision, work rate, positioning",
+    baseInputsDetail:
+      "Technical, tactical, physical, mentality, decision, work rate, positioning",
     roleInputsReady: "Role Inputs Ready",
     roleInputsDetail: "Position-specific match inputs available",
     dailyAiReady: "Daily AI Ready",
@@ -160,7 +168,8 @@ const rankingCopy = {
     playersWeeks: "Players / Weeks",
     playersWeeksDetail: "Players and weeks represented",
     weeklyModelInputs: "Weekly Model Inputs",
-    showing: (start: number, end: number, total: number) => `Showing ${start}-${end} of ${total}`,
+    showing: (start: number, end: number, total: number) =>
+      `Showing ${start}-${end} of ${total}`,
     grades: "Grades",
     prev: "Prev",
     next: "Next",
@@ -179,7 +188,8 @@ const rankingCopy = {
   },
   ar: {
     title: "نظام الترتيب",
-    description: "مدخلات النموذج الأسبوعية، الدرجات المحسوبة، واستجابة Ranking Model API.",
+    description:
+      "مدخلات النموذج الأسبوعية، الدرجات المحسوبة، واستجابة Ranking Model API.",
     home: "الرئيسية",
     refresh: "تحديث",
     loadError: "تعذر تحميل مدخلات الترتيب الأسبوعية.",
@@ -200,7 +210,8 @@ const rankingCopy = {
     playersWeeks: "اللاعبون / الأسابيع",
     playersWeeksDetail: "اللاعبون والأسابيع الممثلة",
     weeklyModelInputs: "مدخلات النموذج الأسبوعية",
-    showing: (start: number, end: number, total: number) => `عرض ${start}-${end} من ${total}`,
+    showing: (start: number, end: number, total: number) =>
+      `عرض ${start}-${end} من ${total}`,
     grades: "الدرجات",
     prev: "السابق",
     next: "التالي",
@@ -237,15 +248,19 @@ const numberValue = (value: unknown) => {
   return null;
 };
 
-const metricText = (value: unknown) => {
+const metricText = (value: unknown, emptyText = "-") => {
   const numeric = numberValue(value);
-  if (numeric === null) return "-";
+  if (numeric === null) return emptyText;
   return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
 };
 
-const metricTone = (value: unknown) => {
+const metricTone = (value: unknown, mode: "score" | "count" = "score") => {
   const numeric = numberValue(value);
   if (numeric === null) return "text-muted-foreground";
+  if (mode === "count") {
+    if (numeric > 0) return "text-primary";
+    return "text-muted-foreground";
+  }
   if (numeric >= 85) return "text-emerald-400";
   if (numeric >= 70) return "text-cyan-300";
   if (numeric >= 55) return "text-amber-300";
@@ -254,6 +269,9 @@ const metricTone = (value: unknown) => {
 
 const hasBaseInputs = (row: RankingSystemInput) =>
   baseFields.every((field) => numberValue(row[field.key]) !== null);
+
+const hasAnyBaseInput = (row: RankingSystemInput) =>
+  baseFields.some((field) => numberValue(row[field.key]) !== null);
 
 const roleValues = (row: RankingSystemInput): Array<[string, unknown]> => {
   switch (row.role_family) {
@@ -355,7 +373,9 @@ function RoleProfileCard({
   return (
     <Card className="border-border/50 bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{profileTitles[profile.title] ?? profile.title}</CardTitle>
+        <CardTitle className="text-sm">
+          {profileTitles[profile.title] ?? profile.title}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-xs">
         <div>
@@ -379,7 +399,8 @@ function RoleProfileCard({
           </div>
         </div>
         <p className="text-muted-foreground">
-          {copy.output} <span className="font-medium text-foreground">{profile.output}</span>
+          {copy.output}{" "}
+          <span className="font-medium text-foreground">{profile.output}</span>
         </p>
       </CardContent>
     </Card>
@@ -389,9 +410,13 @@ function RoleProfileCard({
 function MetricStack({
   items,
   columns = 1,
+  emptyText = "-",
+  toneMode = "score",
 }: {
   items: Array<[string, unknown]>;
   columns?: 1 | 2;
+  emptyText?: string;
+  toneMode?: "score" | "count";
 }) {
   return (
     <div
@@ -410,11 +435,14 @@ function MetricStack({
           </span>
           <span
             className={cn(
-              "shrink-0 font-mono text-sm font-semibold tabular-nums",
-              metricTone(value),
+              "shrink-0 text-right font-mono text-sm font-semibold tabular-nums",
+              numberValue(value) === null && emptyText !== "-"
+                ? "font-sans text-[11px] font-medium"
+                : "",
+              metricTone(value, toneMode),
             )}
           >
-            {metricText(value)}
+            {metricText(value, emptyText)}
           </span>
         </div>
       ))}
@@ -455,15 +483,16 @@ export default function CoachRankingSystemPage() {
   const { data, isLoading, isError, refetch } =
     useGetCoachRankingSystemInputsQuery({ limit: 100 });
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
-    15,
-  );
+  const [pageSize, setPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(15);
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const baseReadyRows = rows.filter(hasBaseInputs);
   const roleReadyRows = rows.filter(hasRoleInputs);
   const dailyReadyRows = rows.filter(hasDailyInputs);
   const weeklyScoreRows = rows.filter(hasWeeklyScore);
-  const predictionReadyRows = rows.filter((row) => row.prediction_status === "ready");
+  const predictionReadyRows = rows.filter(
+    (row) => row.prediction_status === "ready",
+  );
   const playerCount = new Set(rows.map((row) => row.player_id)).size;
   const weekCount = new Set(rows.map((row) => row.week_start)).size;
   const totalRows = data?.pagination.total ?? rows.length;
@@ -573,7 +602,9 @@ export default function CoachRankingSystemPage() {
             <CardHeader>
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                  <CardTitle className="text-base">{t.weeklyModelInputs}</CardTitle>
+                  <CardTitle className="text-base">
+                    {t.weeklyModelInputs}
+                  </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t.showing(visibleStart, visibleEnd, totalRows)}
                   </p>
@@ -763,11 +794,15 @@ export default function CoachRankingSystemPage() {
                       ];
                       const stateBadges = [
                         {
-                          label: hasBaseInputs(row) ? "base ready" : "base partial",
+                          label: hasBaseInputs(row)
+                            ? "base ready"
+                            : "base partial",
                           ready: hasBaseInputs(row),
                         },
                         {
-                          label: hasRoleInputs(row) ? "role ready" : "role partial",
+                          label: hasRoleInputs(row)
+                            ? "role ready"
+                            : "role partial",
                           ready: hasRoleInputs(row),
                         },
                         {
@@ -786,108 +821,122 @@ export default function CoachRankingSystemPage() {
                       ];
 
                       return (
-                      <tr
-                        key={row.id}
-                        className={cn(
-                          "align-top",
-                          rowIndex % 2 === 1 && "bg-muted/[0.035]",
-                        )}
-                      >
-                        <td className="border-b border-r border-border/30 px-3 py-3">
-                          <div className="truncate font-medium">
-                            {row.player_name || "Player"}
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {row.position && (
-                              <Badge variant="secondary">{row.position}</Badge>
-                            )}
-                            <Badge variant="outline">
-                              {roleLabels[row.role_family]}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-muted-foreground">
-                          <div className="font-medium text-foreground">
-                            {formatDate(row.week_start)}
-                          </div>
-                          <div className="mt-1 text-xs">
-                            to {formatDate(row.week_end)}
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <MetricStack items={sourceItems} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <MetricStack items={baseItems} columns={2} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {roleValues(row).length ? (
-                            <MetricStack
-                              items={displayInputValues(roleValues(row))}
-                              columns={2}
-                            />
-                          ) : (
-                            <span className="block text-xs text-muted-foreground">
-                              No role package
-                            </span>
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "align-top",
+                            rowIndex % 2 === 1 && "bg-muted/[0.035]",
                           )}
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          {hasDailyInputs(row) ? (
-                            <MetricStack items={dailyItems} columns={2} />
-                          ) : (
-                            <span className="block text-xs text-muted-foreground">
-                              No daily input yet
-                            </span>
-                          )}
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <ScoreValue value={row.match_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.coach_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.attendance_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.weekly_ai_score} />
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <ScoreValue value={row.weekly_score} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-center">
-                          <GradeBadge grade={row.grade} />
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3 text-center">
-                          <div className="font-mono text-sm font-semibold tabular-nums">
-                            #{row.rank}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {row.trend}
-                          </div>
-                        </td>
-                        <td className="border-b border-border/30 px-3 py-3">
-                          <ScoreValue value={row.predicted_next_score} />
-                          {row.model_error && (
-                            <p className="mt-1 text-xs text-destructive">
-                              {row.model_error}
-                            </p>
-                          )}
-                        </td>
-                        <td className="border-b border-l border-border/30 px-3 py-3">
-                          <div className="flex flex-col items-start gap-1.5">
-                            {stateBadges.map((state) => (
-                              <Badge
-                                key={state.label}
-                                variant={state.ready ? "success" : "warning"}
-                              >
-                                {state.label}
+                        >
+                          <td className="border-b border-r border-border/30 px-3 py-3">
+                            <div className="truncate font-medium">
+                              {row.player_name || "Player"}
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {row.position && (
+                                <Badge variant="secondary">
+                                  {row.position}
+                                </Badge>
+                              )}
+                              <Badge variant="outline">
+                                {roleLabels[row.role_family]}
                               </Badge>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-muted-foreground">
+                            <div className="font-medium text-foreground">
+                              {formatDate(row.week_start)}
+                            </div>
+                            <div className="mt-1 text-xs">
+                              to {formatDate(row.week_end)}
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <MetricStack items={sourceItems} toneMode="count" />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {hasAnyBaseInput(row) ? (
+                              <MetricStack
+                                items={baseItems}
+                                columns={2}
+                                emptyText="No input"
+                              />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No base input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {row.match_evaluation_count > 0 &&
+                            roleValues(row).length ? (
+                              <MetricStack
+                                items={displayInputValues(roleValues(row))}
+                                columns={2}
+                                emptyText="No input"
+                              />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No match input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            {hasDailyInputs(row) ? (
+                              <MetricStack items={dailyItems} columns={2} />
+                            ) : (
+                              <span className="block text-xs text-muted-foreground">
+                                No daily input yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <ScoreValue value={row.match_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.coach_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.attendance_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.weekly_ai_score} />
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <ScoreValue value={row.weekly_score} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-center">
+                            <GradeBadge grade={row.grade} />
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3 text-center">
+                            <div className="font-mono text-sm font-semibold tabular-nums">
+                              #{row.rank}
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {row.trend}
+                            </div>
+                          </td>
+                          <td className="border-b border-border/30 px-3 py-3">
+                            <ScoreValue value={row.predicted_next_score} />
+                            {row.model_error && (
+                              <p className="mt-1 text-xs text-destructive">
+                                {row.model_error}
+                              </p>
+                            )}
+                          </td>
+                          <td className="border-b border-l border-border/30 px-3 py-3">
+                            <div className="flex flex-col items-start gap-1.5">
+                              {stateBadges.map((state) => (
+                                <Badge
+                                  key={state.label}
+                                  variant={state.ready ? "success" : "warning"}
+                                >
+                                  {state.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
                     {!rows.length && (

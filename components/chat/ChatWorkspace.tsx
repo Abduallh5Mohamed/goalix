@@ -2,7 +2,16 @@
 
 import "@/app/chat.css";
 
-import { FormEvent, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  startTransition,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { io, type Socket } from "socket.io-client";
 import {
   Check,
@@ -97,7 +106,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   }, [selectedId]);
 
   const selected = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedId) || null,
+    () =>
+      conversations.find((conversation) => conversation.id === selectedId) ||
+      null,
     [conversations, selectedId],
   );
 
@@ -122,7 +133,8 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         ? prev.map((item) => (item.id === message.id ? message : item))
         : [...prev, message];
       return next.sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
     });
   }, []);
@@ -164,13 +176,19 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     if (message.conversation_id !== selectedRef.current) return;
     if (message.visibility === "self") {
       setMessages((prev) => prev.filter((item) => item.id !== message.id));
-      setEditingMessage((current) => (current?.id === message.id ? null : current));
+      setEditingMessage((current) =>
+        current?.id === message.id ? null : current,
+      );
       return;
     }
     setMessages((prev) =>
-      prev.map((item) => (item.id === message.id ? { ...item, ...message } : item)),
+      prev.map((item) =>
+        item.id === message.id ? { ...item, ...message } : item,
+      ),
     );
-    setEditingMessage((current) => (current?.id === message.id ? null : current));
+    setEditingMessage((current) =>
+      current?.id === message.id ? null : current,
+    );
   }, []);
 
   const ensureFreshSession = useCallback(async () => {
@@ -339,14 +357,23 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           readMarkingRef.current = null;
         }
       });
-  }, [isAuthenticated, isInitialized, messages, selectedId, upsertMessages, user?.id]);
+  }, [
+    isAuthenticated,
+    isInitialized,
+    messages,
+    selectedId,
+    upsertMessages,
+    user?.id,
+  ]);
 
   const filteredContacts = useMemo(() => {
     const needle = normalizeSearch(query);
     const filter = (items: Contact[] = []) =>
       needle
         ? items.filter((item) =>
-            normalizeSearch(`${item.name} ${item.subtitle || ""}`).includes(needle),
+            normalizeSearch(`${item.name} ${item.subtitle || ""}`).includes(
+              needle,
+            ),
           )
         : items;
     return {
@@ -381,7 +408,14 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
       byUserId.set(contact.user_id, contact);
     });
     return [...byUserId.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [contacts.admins, contacts.coaches, contacts.parents, contacts.players, role, user?.id]);
+  }, [
+    contacts.admins,
+    contacts.coaches,
+    contacts.parents,
+    contacts.players,
+    role,
+    user?.id,
+  ]);
 
   const filteredGroupCandidateContacts = useMemo(() => {
     const needle = normalizeSearch(groupSearch);
@@ -460,13 +494,21 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         payload = { type: "coach_player", playerId: contact.id };
       } else if (role === "player" && contact.type === "coach") {
         payload = { type: "coach_player", coachId: contact.id };
-      } else if (role === "parent" && contact.type === "coach" && contact.player_id) {
+      } else if (
+        role === "parent" &&
+        contact.type === "coach" &&
+        contact.player_id
+      ) {
         payload = {
           type: "parent_coach",
           coachId: contact.id,
           playerId: contact.player_id,
         };
-      } else if (role === "coach" && contact.type === "parent" && contact.player_id) {
+      } else if (
+        role === "coach" &&
+        contact.type === "parent" &&
+        contact.player_id
+      ) {
         payload = {
           type: "parent_coach",
           parentUserId: contact.user_id,
@@ -520,9 +562,8 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     }
   }
 
-  async function sendMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected || sending) return;
+  async function submitMessage() {
+    if (!selected || !selected.canSend || sending) return;
     if (editingMessage && !body.trim()) return;
     if (!editingMessage && !body.trim() && !image) return;
     setSending(true);
@@ -579,6 +620,11 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     }
   }
 
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await submitMessage();
+  }
+
   function startEdit(message: Message) {
     setEditingMessage(message);
     setImage(null);
@@ -610,6 +656,15 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
     setImage(file);
   }
 
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const isEnter =
+      event.key === "Enter" || event.code === "Enter" || event.keyCode === 13;
+    if (!isEnter || event.shiftKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void submitMessage();
+  }
+
   async function deleteMessage(message: Message, scope: "me" | "everyone") {
     if (!selected || deletingId) return;
     setDeletingId(message.id);
@@ -631,13 +686,14 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
   const selectedGroupMembers = selectedIsGroup
     ? selected.group_members || []
     : [];
+  const canSubmitMessage = Boolean(
+    selected?.canSend &&
+    !sending &&
+    (editingMessage ? body.trim() : body.trim() || image),
+  );
 
   if (!isInitialized || !isAuthenticated) {
-    return (
-      <div className="goalix-chat-empty-auth">
-        {t.signInAgain}
-      </div>
-    );
+    return <div className="goalix-chat-empty-auth">{t.signInAgain}</div>;
   }
 
   return (
@@ -660,7 +716,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           selectedIsGroup={selectedIsGroup}
           groupDetailsOpen={groupDetailsOpen}
           t={t}
-          onToggleGroupDetails={() => setGroupDetailsOpen((current) => !current)}
+          onToggleGroupDetails={() =>
+            setGroupDetailsOpen((current) => !current)
+          }
           closeSession={closeSession}
         />
 
@@ -679,14 +737,10 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             </div>
           )}
           {!messagesLoading && selected && messages.length === 0 && (
-            <div className="goalix-chat-center">
-              {t.noMessages}
-            </div>
+            <div className="goalix-chat-center">{t.noMessages}</div>
           )}
           {!messagesLoading && !selected && (
-            <div className="goalix-chat-center">
-              {t.noChatSelected}
-            </div>
+            <div className="goalix-chat-center">{t.noChatSelected}</div>
           )}
           <div className="goalix-chat-message-stack">
             {messages.map((message) => {
@@ -695,15 +749,25 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               return (
                 <div
                   key={message.id}
-                  className={cn("goalix-chat-message-row", mine ? "is-own" : "is-other")}
+                  className={cn(
+                    "goalix-chat-message-row",
+                    mine ? "is-own" : "is-other",
+                  )}
                 >
-                  <div
-                    className="goalix-chat-bubble"
-                  >
+                  <div className="goalix-chat-bubble">
                     <div className="goalix-chat-message-meta">
-                      <span>{mine ? t.you : message.sender_name || t.user}</span>
-                      <span>{new Date(message.created_at).toLocaleTimeString(language === "ar" ? "ar-EG" : "en-US", { hour: "2-digit", minute: "2-digit" })}</span>
-                      {message.edited_at && !deletedForEveryone && <span>{t.edited}</span>}
+                      <span>
+                        {mine ? t.you : message.sender_name || t.user}
+                      </span>
+                      <span>
+                        {new Date(message.created_at).toLocaleTimeString(
+                          language === "ar" ? "ar-EG" : "en-US",
+                          { hour: "2-digit", minute: "2-digit" },
+                        )}
+                      </span>
+                      {message.edited_at && !deletedForEveryone && (
+                        <span>{t.edited}</span>
+                      )}
                       {mine && (
                         <span className="goalix-chat-message-actions">
                           <MessageReceipt message={message} t={t} />
@@ -750,7 +814,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                                 <DropdownMenuSeparator className="bg-[#2b4661]" />
                                 <DropdownMenuItem
                                   className="cursor-pointer text-red-200 focus:bg-red-500/15 focus:text-red-100"
-                                  onClick={() => deleteMessage(message, "everyone")}
+                                  onClick={() =>
+                                    deleteMessage(message, "everyone")
+                                  }
                                 >
                                   {t.deleteForEveryone}
                                 </DropdownMenuItem>
@@ -761,9 +827,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
                       )}
                     </div>
                     {message.body ? (
-                      <p className="goalix-chat-message-text">
-                        {message.body}
-                      </p>
+                      <p className="goalix-chat-message-text">{message.body}</p>
                     ) : null}
                     {!deletedForEveryone && message.attachment_url && (
                       <a
@@ -791,11 +855,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
         </div>
 
         <form onSubmit={sendMessage} className="goalix-chat-composer">
-          {error && (
-            <div className="goalix-chat-alert is-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="goalix-chat-alert is-error">{error}</div>}
           {connectionWarning && (
             <div className="goalix-chat-alert is-warning">
               {connectionWarning}
@@ -810,7 +870,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
           {editingMessage && (
             <div className="goalix-chat-alert is-editing">
               <Edit3 className="h-4 w-4" />
-              <span className="min-w-0 flex-1 truncate">{t.editingMessage}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {t.editingMessage}
+              </span>
               <button type="button" onClick={cancelEdit}>
                 <X className="h-4 w-4" />
               </button>
@@ -837,7 +899,9 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               type="button"
               variant="outline"
               size="icon"
-              disabled={!selected?.canSend || sending || Boolean(editingMessage)}
+              disabled={
+                !selected?.canSend || sending || Boolean(editingMessage)
+              }
               className="goalix-chat-attach-button"
               onClick={() => fileRef.current?.click()}
               title={t.attachImage}
@@ -848,6 +912,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
               ref={textRef}
               value={body}
               onChange={(event) => setBody(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
               rows={2}
               maxLength={4000}
               disabled={!selected?.canSend || sending}
@@ -856,11 +921,7 @@ export function ChatWorkspace({ role }: { role: ChatRole }) {
             />
             <Button
               type="submit"
-              disabled={
-                !selected?.canSend ||
-                sending ||
-                (editingMessage ? !body.trim() : !body.trim() && !image)
-              }
+              disabled={!canSubmitMessage}
               className="goalix-chat-send-button"
             >
               {sending ? (

@@ -18,6 +18,11 @@ const errorHandler = require('./middleware/errorHandler.middleware');
 const { authMiddleware } = require('./middleware/auth.middleware');
 const { apiLimiter } = require('./middleware/rateLimit.middleware');
 const { requireCsrfToken, setCsrfCookie } = require('./middleware/csrf.middleware');
+const {
+    noStoreApiResponses,
+    rejectCrossSiteMutations,
+    setSecureUploadHeaders,
+} = require('./middleware/security.middleware');
 const ApiResponse = require('./shared/api-response');
 const storage = require('./shared/storage');
 const { canAccessMediaFile } = require('./shared/upload-access');
@@ -33,6 +38,7 @@ const app = express();
 app.locals.services = { chatService };
 app.locals.backgroundAutomations = startBackgroundAutomations({ services });
 
+app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
@@ -77,6 +83,8 @@ app.use(cors({
 app.use(compression());
 app.use(hpp());
 app.use(cookieParser(env.COOKIE_SECRET));
+app.use('/api/', noStoreApiResponses);
+app.use(rejectCrossSiteMutations);
 app.use(setCsrfCookie);
 app.use(express.json({ limit: '512kb' }));
 app.use(express.urlencoded({ extended: true, limit: '512kb' }));
@@ -236,7 +244,7 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
             }
         }
 
-        res.setHeader('X-Content-Type-Options', 'nosniff');
+        setSecureUploadHeaders(res, normalizedPath);
         res.setHeader('Cache-Control', 'private, max-age=604800');
         if (upload.type === 'stream') {
             if (upload.contentType) res.setHeader('Content-Type', upload.contentType);

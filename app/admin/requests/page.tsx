@@ -190,6 +190,13 @@ export default function AdminRequestsPage() {
                         Reset Password
                       </Link>
                     </Button>
+                  ) : request.status === "pending" && request.coachId ? (
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href={`/admin/coaches/${request.coachId}?resetPassword=1`}>
+                        <KeyRound className="h-4 w-4" />
+                        Reset Password
+                      </Link>
+                    </Button>
                   ) : (
                     <Badge variant={resetStatusVariant(request.status)} className="gap-1.5">
                       {request.status === "resolved" ? (

@@ -17,6 +17,10 @@ function issuerForRole(role) {
     return env.TOTP_ISSUER;
 }
 
+function labelForUser(user) {
+    return user.email || user.username || user.phone || user.id;
+}
+
 function publicDevice(row) {
     return {
         id: row.id,
@@ -107,7 +111,7 @@ class TotpService {
         });
 
         const otpauth = generateURI({
-            accountName: user.email || user.username || user.phone || user.id,
+            label: labelForUser(user),
             issuer: issuerForRole(user.role),
             secret,
         });
@@ -187,7 +191,7 @@ class TotpService {
         });
 
         const otpauth = generateURI({
-            accountName: user.email || user.username || user.phone || user.id,
+            label: labelForUser(user),
             issuer: issuerForRole(user.role),
             secret,
         });

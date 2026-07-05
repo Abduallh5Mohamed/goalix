@@ -2,7 +2,8 @@ const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const backendRoot = path.resolve(__dirname, "..");
-const productionTotpKey = "d5f4a9b113be456098eecb1a99506502d1c89f5a07e6b9434df336f2b2f8c4a1";
+const productionTotpKey =
+  "d5f4a9b113be456098eecb1a99506502d1c89f5a07e6b9434df336f2b2f8c4a1";
 
 const requiredEnv = {
   DATABASE_URL: "postgresql://user:pass@localhost:5432/goalix_test",
@@ -17,10 +18,18 @@ const requiredEnv = {
   S3_SECRET_ACCESS_KEY: "test-secret-key",
 };
 
+const productionSecurityEnv = {
+  COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+  CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
+  TOTP_ENCRYPTION_KEY: productionTotpKey,
+  CORS_ORIGINS: "https://app.goalix.local",
+};
+
 function runNode(script, env = {}) {
   const childEnv = {
     ...process.env,
     ...requiredEnv,
+    ...(env.NODE_ENV === "production" ? productionSecurityEnv : {}),
     ...env,
   };
   for (const [key, value] of Object.entries(childEnv)) {
@@ -48,6 +57,9 @@ describe("security configuration", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",
       COOKIE_SECRET: null,
+      CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
+      TOTP_ENCRYPTION_KEY: productionSecurityEnv.TOTP_ENCRYPTION_KEY,
+      CORS_ORIGINS: "https://app.goalix.local",
     });
 
     expect(result.status).not.toBe(0);
@@ -88,11 +100,55 @@ describe("security configuration", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",
       COOKIE_SECRET: "production-cookie-secret-with-at-least-32-chars",
+      CSRF_SECRET: "production-csrf-secret-with-at-least-32-chars",
       TOTP_ENCRYPTION_KEY: null,
+      CORS_ORIGINS: "https://app.goalix.local",
     });
 
     expect(result.status).not.toBe(0);
     expect(`${result.stderr}${result.stdout}`).toContain("TOTP_ENCRYPTION_KEY");
+  });
+
+  it("requires an explicit CSRF secret in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CSRF_SECRET: null,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("CSRF_SECRET");
+  });
+
+  it("requires strong bcrypt rounds in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      BCRYPT_ROUNDS: "10",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("BCRYPT_ROUNDS");
+  });
+
+  it("rejects matching JWT access and refresh secrets", () => {
+    const result = runNode("require('./src/config/env')", {
+      JWT_REFRESH_SECRET: requiredEnv.JWT_SECRET,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("JWT_REFRESH_SECRET");
+  });
+
+  it("rejects localhost CORS origins in production", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CORS_ORIGINS: "http://localhost:3001",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("CORS_ORIGINS");
   });
 
   it("rejects S3 upload storage without required credentials", () => {
@@ -201,7 +257,9 @@ describe("security configuration", () => {
     });
 
     expect(result.status).not.toBe(0);
-    expect(`${result.stderr}${result.stdout}`).toContain("QUEUE_REDIS_FAILURE_MODE");
+    expect(`${result.stderr}${result.stdout}`).toContain(
+      "QUEUE_REDIS_FAILURE_MODE",
+    );
   });
 
   it("parses the legacy upload metadata fallback flag explicitly", () => {

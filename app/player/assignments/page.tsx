@@ -44,15 +44,25 @@ const fileAccept =
 const sleepOptions = Array.from({ length: 13 }, (_, value) => value);
 const mealsOptions = Array.from({ length: 9 }, (_, value) => value);
 
-const formatAssignmentDateTime = (value: string | null | undefined, fallback: string) => {
+const formatAssignmentDateTime = (
+  value: string | null | undefined,
+  fallback: string,
+) => {
   if (!value) return fallback;
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : formatDateTime(parsed);
+  return Number.isNaN(parsed.getTime())
+    ? String(value)
+    : formatDateTime(parsed);
 };
 
 const playerAssignmentsCopy = {
   en: {
-    statuses: { pending: "pending", accepted: "accepted", needsRedo: "needs redo", submitted: "submitted" },
+    statuses: {
+      pending: "pending",
+      accepted: "accepted",
+      needsRedo: "needs redo",
+      submitted: "submitted",
+    },
     pageTitle: "Assignments",
     pageDescription: "Submit coach assignments and your daily assignment.",
     home: "Home",
@@ -85,13 +95,19 @@ const playerAssignmentsCopy = {
     uploadLabel: "Upload PDF, Word, or Image",
     uploading: "Uploading file...",
     uploaded: "Uploaded {fileName} ({fileType})",
-    uploadFailed: "Upload failed. Accepted files: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.",
+    uploadFailed:
+      "Upload failed. Accepted files: PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP.",
     notes: "Notes",
     submitError: "Could not submit this assignment.",
     cancel: "Cancel",
   },
   ar: {
-    statuses: { pending: "قيد الانتظار", accepted: "مقبول", needsRedo: "يحتاج إعادة", submitted: "تم الإرسال" },
+    statuses: {
+      pending: "قيد الانتظار",
+      accepted: "مقبول",
+      needsRedo: "يحتاج إعادة",
+      submitted: "تم الإرسال",
+    },
     pageTitle: "التكليفات",
     pageDescription: "سلّم تكليفات المدرب والتكليف اليومي.",
     home: "الرئيسية",
@@ -124,19 +140,27 @@ const playerAssignmentsCopy = {
     uploadLabel: "ارفع PDF أو Word أو صورة",
     uploading: "جاري رفع الملف...",
     uploaded: "تم رفع {fileName} ({fileType})",
-    uploadFailed: "فشل الرفع. الملفات المقبولة: PDF وDOC وDOCX وPNG وJPG وJPEG وWEBP.",
+    uploadFailed:
+      "فشل الرفع. الملفات المقبولة: PDF وDOC وDOCX وPNG وJPG وJPEG وWEBP.",
     notes: "ملاحظات",
     submitError: "تعذر تسليم هذا التكليف.",
     cancel: "إلغاء",
   },
 } as const;
 
-type PlayerAssignmentsCopy = (typeof playerAssignmentsCopy)[keyof typeof playerAssignmentsCopy];
+type PlayerAssignmentsCopy =
+  (typeof playerAssignmentsCopy)[keyof typeof playerAssignmentsCopy];
 
-const assignmentReviewBadge = (assignment: PlayerAssignment, t: PlayerAssignmentsCopy) => {
-  if (!assignment.submission) return { label: t.statuses.pending, variant: "warning" as const };
-  if (assignment.submission.reviewStatus === "approved") return { label: t.statuses.accepted, variant: "success" as const };
-  if (assignment.submission.reviewStatus === "rejected") return { label: t.statuses.needsRedo, variant: "destructive" as const };
+const assignmentReviewBadge = (
+  assignment: PlayerAssignment,
+  t: PlayerAssignmentsCopy,
+) => {
+  if (!assignment.submission)
+    return { label: t.statuses.pending, variant: "warning" as const };
+  if (assignment.submission.reviewStatus === "approved")
+    return { label: t.statuses.accepted, variant: "success" as const };
+  if (assignment.submission.reviewStatus === "rejected")
+    return { label: t.statuses.needsRedo, variant: "destructive" as const };
   return { label: t.statuses.submitted, variant: "info" as const };
 };
 
@@ -144,11 +168,14 @@ export default function PlayerAssignmentsPage() {
   const language = useDashboardLanguage();
   const t = playerAssignmentsCopy[language];
   const assignmentsQuery = useGetPlayerAssignmentsQuery({ limit: 100 });
-  const [submitDaily, { isLoading: isSubmittingDaily }] = useSubmitDailyAiInputMutation();
+  const [submitDaily, { isLoading: isSubmittingDaily }] =
+    useSubmitDailyAiInputMutation();
   const [uploadFile, { isLoading: isUploading, error: uploadError }] =
     useUploadPlayerAssignmentFileMutation();
-  const [submitAssignment, { isLoading: isSubmittingAssignment, error: submitError }] =
-    useSubmitPlayerAssignmentMutation();
+  const [
+    submitAssignment,
+    { isLoading: isSubmittingAssignment, error: submitError },
+  ] = useSubmitPlayerAssignmentMutation();
   const [dailyForm, setDailyForm] = useState({
     sleepHours: "8",
     trainedToday: "1",
@@ -162,8 +189,12 @@ export default function PlayerAssignmentsPage() {
     () => assignmentsQuery.data?.data ?? [],
     [assignmentsQuery.data],
   );
-  const dailyAssignment = assignments.find((assignment) => assignment.isSystemDaily);
-  const coachTasks = assignments.filter((assignment) => !assignment.isSystemDaily);
+  const dailyAssignment = assignments.find(
+    (assignment) => assignment.isSystemDaily,
+  );
+  const coachTasks = assignments.filter(
+    (assignment) => !assignment.isSystemDaily,
+  );
 
   const handleDailySubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -227,7 +258,11 @@ export default function PlayerAssignmentsPage() {
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="flex items-center justify-between gap-3 p-4 text-sm text-destructive">
             <span>{t.loadError}</span>
-            <Button variant="outline" size="sm" onClick={() => assignmentsQuery.refetch()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => assignmentsQuery.refetch()}
+            >
               {t.retry}
             </Button>
           </CardContent>
@@ -245,12 +280,17 @@ export default function PlayerAssignmentsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form className="grid gap-4 sm:grid-cols-4" onSubmit={handleDailySubmit}>
+          <form
+            className="grid gap-4 sm:grid-cols-4"
+            onSubmit={handleDailySubmit}
+          >
             <div className="space-y-2">
               <Label>{t.sleepQuestion}</Label>
               <Select
                 value={dailyForm.sleepHours}
-                onValueChange={(value) => setDailyForm((current) => ({ ...current, sleepHours: value }))}
+                onValueChange={(value) =>
+                  setDailyForm((current) => ({ ...current, sleepHours: value }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -268,7 +308,12 @@ export default function PlayerAssignmentsPage() {
               <Label>{t.trainedQuestion}</Label>
               <Select
                 value={dailyForm.trainedToday}
-                onValueChange={(value) => setDailyForm((current) => ({ ...current, trainedToday: value }))}
+                onValueChange={(value) =>
+                  setDailyForm((current) => ({
+                    ...current,
+                    trainedToday: value,
+                  }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -283,7 +328,9 @@ export default function PlayerAssignmentsPage() {
               <Label>{t.mealsQuestion}</Label>
               <Select
                 value={dailyForm.mealsCount}
-                onValueChange={(value) => setDailyForm((current) => ({ ...current, mealsCount: value }))}
+                onValueChange={(value) =>
+                  setDailyForm((current) => ({ ...current, mealsCount: value }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -298,8 +345,14 @@ export default function PlayerAssignmentsPage() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button type="submit" className="w-full gap-2" disabled={isSubmittingDaily}>
-                {isSubmittingDaily && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                className="w-full gap-2"
+                disabled={isSubmittingDaily}
+              >
+                {isSubmittingDaily && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
                 {t.submit}
               </Button>
             </div>
@@ -326,7 +379,9 @@ export default function PlayerAssignmentsPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{assignment.title}</h3>
-                    <Badge variant={assignmentReviewBadge(assignment, t).variant}>
+                    <Badge
+                      variant={assignmentReviewBadge(assignment, t).variant}
+                    >
                       {assignmentReviewBadge(assignment, t).label}
                     </Badge>
                   </div>
@@ -335,14 +390,28 @@ export default function PlayerAssignmentsPage() {
                   </p>
                   {assignment.submission?.coachComment && (
                     <div className="mt-3 rounded-md border border-cyan-400/20 bg-cyan-400/10 p-3 text-sm">
-                      <p className="font-medium text-cyan-100">{t.coachComment}</p>
-                      <p className="mt-1 text-muted-foreground">{assignment.submission.coachComment}</p>
+                      <p className="font-medium text-cyan-100">
+                        {t.coachComment}
+                      </p>
+                      <p className="mt-1 text-muted-foreground">
+                        {assignment.submission.coachComment}
+                      </p>
                     </div>
                   )}
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {assignment.coachName && <span>{t.coach} {assignment.coachName}</span>}
-                    <span>{t.opens} {formatAssignmentDateTime(assignment.openAt, t.now)}</span>
-                    <span>{t.due} {formatAssignmentDateTime(assignment.dueAt, t.noDeadline)}</span>
+                    {assignment.coachName && (
+                      <span>
+                        {t.coach} {assignment.coachName}
+                      </span>
+                    )}
+                    <span>
+                      {t.opens}{" "}
+                      {formatAssignmentDateTime(assignment.openAt, t.now)}
+                    </span>
+                    <span>
+                      {t.due}{" "}
+                      {formatAssignmentDateTime(assignment.dueAt, t.noDeadline)}
+                    </span>
                     <span>{assignment.acceptedFileTypes.join(", ")}</span>
                   </div>
                 </div>
@@ -395,7 +464,9 @@ export default function PlayerAssignmentsPage() {
             {selected?.submission?.coachComment && (
               <div className="rounded-md border border-cyan-400/20 bg-cyan-400/10 p-3 text-sm">
                 <p className="font-medium text-cyan-100">{t.coachComment}</p>
-                <p className="mt-1 text-muted-foreground">{selected.submission.coachComment}</p>
+                <p className="mt-1 text-muted-foreground">
+                  {selected.submission.coachComment}
+                </p>
               </div>
             )}
             <div className="space-y-2">
@@ -408,16 +479,18 @@ export default function PlayerAssignmentsPage() {
                 disabled={isUploading}
                 required
               />
-              {isUploading && <p className="text-xs text-muted-foreground">{t.uploading}</p>}
+              {isUploading && (
+                <p className="text-xs text-muted-foreground">{t.uploading}</p>
+              )}
               {uploaded && (
                 <p className="text-xs text-emerald-400">
-                  {t.uploaded.replace("{fileName}", uploaded.fileName).replace("{fileType}", uploaded.fileType)}
+                  {t.uploaded
+                    .replace("{fileName}", uploaded.fileName)
+                    .replace("{fileType}", uploaded.fileType)}
                 </p>
               )}
               {uploadError && (
-                <p className="text-xs text-red-400">
-                  {t.uploadFailed}
-                </p>
+                <p className="text-xs text-red-400">{t.uploadFailed}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -428,13 +501,25 @@ export default function PlayerAssignmentsPage() {
                 onChange={(event) => setNotes(event.target.value)}
               />
             </div>
-            {submitError && <p className="text-sm text-red-400">{t.submitError}</p>}
+            {submitError && (
+              <p className="text-sm text-red-400">{t.submitError}</p>
+            )}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setSelected(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelected(null)}
+              >
                 {t.cancel}
               </Button>
-              <Button type="submit" className="gap-2" disabled={isSubmittingAssignment || isUploading || !uploaded}>
-                {isSubmittingAssignment && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={isSubmittingAssignment || isUploading || !uploaded}
+              >
+                {isSubmittingAssignment && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
                 {t.submit}
               </Button>
             </DialogFooter>

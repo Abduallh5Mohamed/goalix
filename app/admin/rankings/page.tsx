@@ -110,9 +110,18 @@ const rankingsCopy = {
   en: {
     roleCards: {
       attack: { title: "Best Attack", description: "Top attacking role score" },
-      midfield: { title: "Best Midfield", description: "Top midfield role score" },
-      defense: { title: "Best Defense", description: "Top defensive role score" },
-      goalkeeper: { title: "Best Goalkeeper", description: "Top goalkeeper score" },
+      midfield: {
+        title: "Best Midfield",
+        description: "Top midfield role score",
+      },
+      defense: {
+        title: "Best Defense",
+        description: "Top defensive role score",
+      },
+      goalkeeper: {
+        title: "Best Goalkeeper",
+        description: "Top goalkeeper score",
+      },
     },
     roleLabels: {
       attack: "Attack",
@@ -139,7 +148,8 @@ const rankingsCopy = {
     noCompletedWeeksInMonth: "No completed weekly runs in this month yet.",
     noCompletedWeeks: "No completed weeks",
     pageTitle: "Ranking Overview",
-    pageDescription: "Completed weekly model runs and month-bounded ranking totals. Every month starts a fresh monthly ranking.",
+    pageDescription:
+      "Completed weekly model runs and month-bounded ranking totals. Every month starts a fresh monthly ranking.",
     dashboard: "Dashboard",
     rankings: "Rankings",
     filterByGroup: "Filter by group",
@@ -160,21 +170,29 @@ const rankingsCopy = {
     monthlyLeaderboard: "Monthly Leaderboard",
     noMonthlyRows: "No monthly ranking rows yet.",
     detailedHistory: "Detailed Ranking History",
-    detailedHistoryDescription: "Every month includes its full monthly leaderboard and the full player ranking for each completed week inside that month.",
+    detailedHistoryDescription:
+      "Every month includes its full monthly leaderboard and the full player ranking for each completed week inside that month.",
     monthsCount: "{count} months",
     noDetailedHistory: "No detailed ranking history is available yet.",
     loadMoreHistory: "Load more ranking history ({shown}/{total})",
     cycleTitle: "How the cycle works",
-    cycleDescription: "The weekly model ranks players from that week's training, match, attendance, and daily AI inputs. The monthly table averages only completed weekly scores inside the same calendar month. When a new month starts, the monthly table starts fresh and previous months remain saved as separate history.",
+    cycleDescription:
+      "The weekly model ranks players from that week's training, match, attendance, and daily AI inputs. The monthly table averages only completed weekly scores inside the same calendar month. When a new month starts, the monthly table starts fresh and previous months remain saved as separate history.",
     weeklyPage: "Weekly page",
     monthlyPage: "Monthly page",
   },
   ar: {
     roleCards: {
       attack: { title: "أفضل هجوم", description: "أعلى نتيجة لدور هجومي" },
-      midfield: { title: "أفضل وسط", description: "أعلى نتيجة لدور وسط الملعب" },
+      midfield: {
+        title: "أفضل وسط",
+        description: "أعلى نتيجة لدور وسط الملعب",
+      },
       defense: { title: "أفضل دفاع", description: "أعلى نتيجة لدور دفاعي" },
-      goalkeeper: { title: "أفضل حارس", description: "أعلى نتيجة لحارس المرمى" },
+      goalkeeper: {
+        title: "أفضل حارس",
+        description: "أعلى نتيجة لحارس المرمى",
+      },
     },
     roleLabels: {
       attack: "هجوم",
@@ -198,10 +216,12 @@ const rankingsCopy = {
     fullMonthlyRanking: "الترتيب الشهري الكامل",
     finalAverageFor: "المتوسط النهائي لـ {label}",
     playersCount: "{count} لاعب",
-    noCompletedWeeksInMonth: "لا توجد تشغيلات أسبوعية مكتملة في هذا الشهر حتى الآن.",
+    noCompletedWeeksInMonth:
+      "لا توجد تشغيلات أسبوعية مكتملة في هذا الشهر حتى الآن.",
     noCompletedWeeks: "لا توجد أسابيع مكتملة",
     pageTitle: "نظرة عامة على الترتيب",
-    pageDescription: "تشغيلات النموذج الأسبوعية المكتملة وإجماليات الترتيب الشهرية. يبدأ كل شهر ترتيبًا شهريًا جديدًا.",
+    pageDescription:
+      "تشغيلات النموذج الأسبوعية المكتملة وإجماليات الترتيب الشهرية. يبدأ كل شهر ترتيبًا شهريًا جديدًا.",
     dashboard: "لوحة التحكم",
     rankings: "الترتيبات",
     filterByGroup: "تصفية حسب المجموعة",
@@ -222,12 +242,14 @@ const rankingsCopy = {
     monthlyLeaderboard: "لوحة الترتيب الشهرية",
     noMonthlyRows: "لا توجد صفوف ترتيب شهري حتى الآن.",
     detailedHistory: "تاريخ الترتيب المفصل",
-    detailedHistoryDescription: "كل شهر يتضمن لوحة الترتيب الشهرية الكاملة وترتيب اللاعبين الكامل لكل أسبوع مكتمل داخل نفس الشهر.",
+    detailedHistoryDescription:
+      "كل شهر يتضمن لوحة الترتيب الشهرية الكاملة وترتيب اللاعبين الكامل لكل أسبوع مكتمل داخل نفس الشهر.",
     monthsCount: "{count} شهر",
     noDetailedHistory: "لا يوجد تاريخ ترتيب مفصل حتى الآن.",
     loadMoreHistory: "تحميل المزيد من تاريخ الترتيب ({shown}/{total})",
     cycleTitle: "كيف تعمل الدورة",
-    cycleDescription: "النموذج الأسبوعي يرتب اللاعبين من بيانات التدريب والمباراة والحضور ومدخلات الذكاء اليومية لذلك الأسبوع. الجدول الشهري يحسب متوسط النتائج الأسبوعية المكتملة داخل نفس الشهر فقط. عند بداية شهر جديد يبدأ الجدول الشهري من جديد وتبقى الشهور السابقة محفوظة كتاريخ منفصل.",
+    cycleDescription:
+      "النموذج الأسبوعي يرتب اللاعبين من بيانات التدريب والمباراة والحضور ومدخلات الذكاء اليومية لذلك الأسبوع. الجدول الشهري يحسب متوسط النتائج الأسبوعية المكتملة داخل نفس الشهر فقط. عند بداية شهر جديد يبدأ الجدول الشهري من جديد وتبقى الشهور السابقة محفوظة كتاريخ منفصل.",
     weeklyPage: "صفحة الأسبوع",
     monthlyPage: "صفحة الشهر",
   },
@@ -235,7 +257,10 @@ const rankingsCopy = {
 
 type RankingsCopy = (typeof rankingsCopy)[keyof typeof rankingsCopy];
 
-const roleFamilyLabel = (role: RankingSystemInput["role_family"], t: RankingsCopy) => t.roleLabels[role];
+const roleFamilyLabel = (
+  role: RankingSystemInput["role_family"],
+  t: RankingsCopy,
+) => t.roleLabels[role];
 
 function PlayerAvatar({ name }: { name: string }) {
   return (
@@ -263,8 +288,12 @@ function MonthlyRoleCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-bold">{t.roleCards[config.role].title}</p>
-            <p className="mt-1 text-xs text-current/75">{t.roleCards[config.role].description}</p>
+            <p className="text-sm font-bold">
+              {t.roleCards[config.role].title}
+            </p>
+            <p className="mt-1 text-xs text-current/75">
+              {t.roleCards[config.role].description}
+            </p>
           </div>
           <span className="rounded-md bg-black/15 p-2">
             <Icon className="h-5 w-5" />
@@ -276,7 +305,8 @@ function MonthlyRoleCard({
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{row.playerName}</p>
               <p className="text-xs text-current/75">
-                #{row.rank} {t.monthly} - {scoreText(row.score)} {t.points} - {rankingWeeksInMonthLabel(row.weekStarts, row.month)}
+                #{row.rank} {t.monthly} - {scoreText(row.score)} {t.points} -{" "}
+                {rankingWeeksInMonthLabel(row.weekStarts, row.month)}
               </p>
             </div>
           </div>
@@ -305,7 +335,9 @@ function WeeklyRoleCard({
     <div className="rounded-lg border border-border/40 bg-muted/15 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">{t.roleCards[config.role].title}</p>
+          <p className="text-sm font-semibold">
+            {t.roleCards[config.role].title}
+          </p>
           <p className="text-xs text-muted-foreground">{t.latestWeeklyRun}</p>
         </div>
         <Icon className="h-5 w-5 text-primary" />
@@ -314,9 +346,12 @@ function WeeklyRoleCard({
         <div className="mt-4 flex items-center gap-3">
           <PlayerAvatar name={row.player_name || t.playerFallback} />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{row.player_name || t.playerFallback}</p>
+            <p className="truncate font-semibold">
+              {row.player_name || t.playerFallback}
+            </p>
             <p className="text-xs text-muted-foreground">
-              #{rankValue(row)} {t.weekly} - {scoreText(rankingWeeklyScore(row))} {t.points}
+              #{rankValue(row)} {t.weekly} -{" "}
+              {scoreText(rankingWeeklyScore(row))} {t.points}
             </p>
           </div>
         </div>
@@ -327,7 +362,13 @@ function WeeklyRoleCard({
   );
 }
 
-function WeeklyFullRankingList({ rows, t }: { rows: RankingSystemInput[]; t: RankingsCopy }) {
+function WeeklyFullRankingList({
+  rows,
+  t,
+}: {
+  rows: RankingSystemInput[];
+  t: RankingsCopy;
+}) {
   return (
     <div className="max-h-[420px] overflow-y-auto pr-1">
       <div className="min-w-[560px] space-y-1">
@@ -336,11 +377,17 @@ function WeeklyFullRankingList({ rows, t }: { rows: RankingSystemInput[]; t: Ran
             key={row.id}
             className="grid grid-cols-[56px_1fr_96px_96px] items-center gap-3 rounded-md border border-border/25 bg-background/35 px-3 py-2 text-sm"
           >
-            <span className="font-mono font-bold text-primary">#{rankValue(row)}</span>
+            <span className="font-mono font-bold text-primary">
+              #{rankValue(row)}
+            </span>
             <div className="min-w-0">
-              <p className="truncate font-medium">{row.player_name || t.playerFallback}</p>
+              <p className="truncate font-medium">
+                {row.player_name || t.playerFallback}
+              </p>
               <p className="text-xs text-muted-foreground">
-                {[row.position, roleFamilyLabel(row.role_family, t)].filter(Boolean).join(" - ")}
+                {[row.position, roleFamilyLabel(row.role_family, t)]
+                  .filter(Boolean)
+                  .join(" - ")}
               </p>
             </div>
             <span className="text-right font-mono font-semibold">
@@ -361,7 +408,13 @@ function WeeklyFullRankingList({ rows, t }: { rows: RankingSystemInput[]; t: Ran
   );
 }
 
-function MonthlyFullRankingList({ rows, t }: { rows: MonthlyRankingRow[]; t: RankingsCopy }) {
+function MonthlyFullRankingList({
+  rows,
+  t,
+}: {
+  rows: MonthlyRankingRow[];
+  t: RankingsCopy;
+}) {
   return (
     <div className="max-h-[420px] overflow-y-auto pr-1">
       <div className="min-w-[620px] space-y-1">
@@ -370,11 +423,15 @@ function MonthlyFullRankingList({ rows, t }: { rows: MonthlyRankingRow[]; t: Ran
             key={row.id}
             className="grid grid-cols-[56px_1fr_96px_120px] items-center gap-3 rounded-md border border-border/25 bg-background/35 px-3 py-2 text-sm"
           >
-            <span className="font-mono font-bold text-primary">#{row.rank}</span>
+            <span className="font-mono font-bold text-primary">
+              #{row.rank}
+            </span>
             <div className="min-w-0">
               <p className="truncate font-medium">{row.playerName}</p>
               <p className="text-xs text-muted-foreground">
-                {[row.position, roleFamilyLabel(row.roleFamily, t)].filter(Boolean).join(" - ")}
+                {[row.position, roleFamilyLabel(row.roleFamily, t)]
+                  .filter(Boolean)
+                  .join(" - ")}
               </p>
             </div>
             <span className="text-right font-mono font-semibold">
@@ -410,12 +467,20 @@ function MonthlyDetailedHistory({
         <div>
           <h3 className="text-lg font-black">{month.label}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {formatDate(month.start)} {t.to} {formatDate(month.end)} - {month.weeksLabel}
+            {formatDate(month.start)} {t.to} {formatDate(month.end)} -{" "}
+            {month.weeksLabel}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">{t.monthlyPlayersCount.replace("{count}", String(month.rows.length))}</Badge>
-          <Badge variant="info">{t.completedWeeksCount.replace("{count}", String(weeks.length))}</Badge>
+          <Badge variant="outline">
+            {t.monthlyPlayersCount.replace(
+              "{count}",
+              String(month.rows.length),
+            )}
+          </Badge>
+          <Badge variant="info">
+            {t.completedWeeksCount.replace("{count}", String(weeks.length))}
+          </Badge>
         </div>
       </div>
 
@@ -428,14 +493,19 @@ function MonthlyDetailedHistory({
                 {t.finalAverageFor.replace("{label}", month.label)}
               </p>
             </div>
-            <Badge variant="success">{t.playersCount.replace("{count}", String(month.rows.length))}</Badge>
+            <Badge variant="success">
+              {t.playersCount.replace("{count}", String(month.rows.length))}
+            </Badge>
           </div>
           <MonthlyFullRankingList rows={month.rows} t={t} />
         </div>
 
         <div className="space-y-3">
           {weeks.map((week) => (
-            <div key={week.key} className="rounded-lg border border-border/30 bg-muted/15 p-3">
+            <div
+              key={week.key}
+              className="rounded-lg border border-border/30 bg-muted/15 p-3"
+            >
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-semibold">{week.label}</p>
@@ -443,7 +513,9 @@ function MonthlyDetailedHistory({
                     {formatDate(week.start)} {t.to} {formatDate(week.end)}
                   </p>
                 </div>
-                <Badge variant="outline">{t.playersCount.replace("{count}", String(week.rows.length))}</Badge>
+                <Badge variant="outline">
+                  {t.playersCount.replace("{count}", String(week.rows.length))}
+                </Badge>
               </div>
               <WeeklyFullRankingList rows={week.rows} t={t} />
             </div>
@@ -481,12 +553,17 @@ export default function AdminRankingsOverviewPage() {
   const weeklyRows = useMemo(
     () =>
       sortWeeklyRankingRows(
-        completedRows.filter((row) => rankingDateKey(row.week_start) === latestWeek),
+        completedRows.filter(
+          (row) => rankingDateKey(row.week_start) === latestWeek,
+        ),
       ),
     [completedRows, latestWeek],
   );
   const latestMonth = useMemo(() => latestRankingMonthKey(rows), [rows]);
-  const monthRange = useMemo(() => rankingMonthRange(latestMonth), [latestMonth]);
+  const monthRange = useMemo(
+    () => rankingMonthRange(latestMonth),
+    [latestMonth],
+  );
   const monthlyRows = useMemo(
     () => buildMonthlyRankingRows(rows, latestMonth),
     [rows, latestMonth],
@@ -501,12 +578,17 @@ export default function AdminRankingsOverviewPage() {
   const monthlyTop = monthlyRows.slice(0, 10);
   const weeklyTop = weeklyRows.slice(0, 5);
   const weeklyHistory = useMemo(() => buildWeeklyRankingHistory(rows), [rows]);
-  const monthlyHistory = useMemo(() => buildMonthlyRankingHistory(rows), [rows]);
+  const monthlyHistory = useMemo(
+    () => buildMonthlyRankingHistory(rows),
+    [rows],
+  );
   const detailedHistory = useMemo(
     () =>
       monthlyHistory.map((month) => ({
         month,
-        weeks: weeklyHistory.filter((week) => rankingMonthKey(week.key) === month.key),
+        weeks: weeklyHistory.filter(
+          (week) => rankingMonthKey(week.key) === month.key,
+        ),
       })),
     [monthlyHistory, weeklyHistory],
   );
@@ -580,12 +662,18 @@ export default function AdminRankingsOverviewPage() {
                 <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
                   <p className="text-xs text-muted-foreground">{t.period}</p>
                   <p className="mt-2 font-semibold">
-                    {monthRange.start ? `${formatDate(monthRange.start)} ${t.to} ${formatDate(monthRange.end)}` : "-"}
+                    {monthRange.start
+                      ? `${formatDate(monthRange.start)} ${t.to} ${formatDate(monthRange.end)}`
+                      : "-"}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">{t.weeksCounted}</p>
-                  <p className="mt-2 text-sm font-semibold">{monthlyWeeksLabel}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.weeksCounted}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold">
+                    {monthlyWeeksLabel}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -602,16 +690,26 @@ export default function AdminRankingsOverviewPage() {
                   <div className="flex items-center gap-3">
                     <PlayerAvatar name={monthlyRows[0].playerName} />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{monthlyRows[0].playerName}</p>
+                      <p className="truncate font-semibold">
+                        {monthlyRows[0].playerName}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {t.scoreAcrossWeeks
                           .replace("{score}", scoreText(monthlyRows[0].score))
-                          .replace("{weeks}", rankingWeeksInMonthLabel(monthlyRows[0].weekStarts, monthlyRows[0].month))}
+                          .replace(
+                            "{weeks}",
+                            rankingWeeksInMonthLabel(
+                              monthlyRows[0].weekStarts,
+                              monthlyRows[0].month,
+                            ),
+                          )}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t.noMonthlyRanking}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t.noMonthlyRanking}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -633,7 +731,9 @@ export default function AdminRankingsOverviewPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between gap-3 text-base">
                   <span>{t.latestWeeklyRunTitle}</span>
-                  <Badge variant="info">{latestWeek ? rankingWeekLabel(latestWeek) : t.noWeek}</Badge>
+                  <Badge variant="info">
+                    {latestWeek ? rankingWeekLabel(latestWeek) : t.noWeek}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -649,16 +749,25 @@ export default function AdminRankingsOverviewPage() {
                 </div>
                 <div className="space-y-2">
                   {weeklyTop.map((row) => (
-                    <div key={row.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/15 p-3">
+                    <div
+                      key={row.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/15 p-3"
+                    >
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-background font-mono font-bold">
                           #{rankValue(row)}
                         </span>
-                        <PlayerAvatar name={row.player_name || t.playerFallback} />
+                        <PlayerAvatar
+                          name={row.player_name || t.playerFallback}
+                        />
                         <div className="min-w-0">
-                          <p className="truncate font-medium">{row.player_name || t.playerFallback}</p>
+                          <p className="truncate font-medium">
+                            {row.player_name || t.playerFallback}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {[row.position, roleFamilyLabel(row.role_family, t)].filter(Boolean).join(" - ")}
+                            {[row.position, roleFamilyLabel(row.role_family, t)]
+                              .filter(Boolean)
+                              .join(" - ")}
                           </p>
                         </div>
                       </div>
@@ -680,12 +789,20 @@ export default function AdminRankingsOverviewPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between gap-3 text-base">
                   <span>{t.monthlyLeaderboard}</span>
-                  <Badge variant="outline">{t.playersCount.replace("{count}", String(monthlyRows.length))}</Badge>
+                  <Badge variant="outline">
+                    {t.playersCount.replace(
+                      "{count}",
+                      String(monthlyRows.length),
+                    )}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {monthlyTop.map((row) => (
-                  <div key={row.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/15 p-3">
+                  <div
+                    key={row.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border/30 bg-muted/15 p-3"
+                  >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-background font-mono font-bold">
                         #{row.rank}
@@ -694,7 +811,13 @@ export default function AdminRankingsOverviewPage() {
                       <div className="min-w-0">
                         <p className="truncate font-medium">{row.playerName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {[row.position, roleFamilyLabel(row.roleFamily, t), rankingWeeksInMonthLabel(row.weekStarts, row.month)].filter(Boolean).join(" - ")}
+                          {[
+                            row.position,
+                            roleFamilyLabel(row.roleFamily, t),
+                            rankingWeeksInMonthLabel(row.weekStarts, row.month),
+                          ]
+                            .filter(Boolean)
+                            .join(" - ")}
                         </p>
                       </div>
                     </div>
@@ -721,12 +844,20 @@ export default function AdminRankingsOverviewPage() {
                 </p>
               </div>
               <Badge variant="outline" className="w-fit">
-                {t.monthsCount.replace("{count}", String(detailedHistory.length))}
+                {t.monthsCount.replace(
+                  "{count}",
+                  String(detailedHistory.length),
+                )}
               </Badge>
             </div>
 
             {detailedHistory.map(({ month, weeks }) => (
-              <MonthlyDetailedHistory key={month.key} month={month} weeks={weeks} t={t} />
+              <MonthlyDetailedHistory
+                key={month.key}
+                month={month}
+                weeks={weeks}
+                t={t}
+              />
             ))}
 
             {!detailedHistory.length && (

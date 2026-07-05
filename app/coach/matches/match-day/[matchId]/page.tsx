@@ -624,6 +624,12 @@ export default function CoachMatchDayPage() {
   const currentPlayingPlayers = squadPlayers.filter((player) =>
     currentPlayingIds.has(player.player_id),
   );
+  const matchLive = Boolean(
+    match && ["first_half", "second_half"].includes(match.match_status),
+  );
+  const attendanceEditable = Boolean(
+    canTakeAttendance && match && match.match_status === "scheduled",
+  );
   const benchPlayers = squadPlayers.filter(
     (player) => !currentPlayingIds.has(player.player_id),
   );
@@ -668,12 +674,11 @@ export default function CoachMatchDayPage() {
   const canRecordGoal = Boolean(
     canManageMatches &&
     match &&
-      ["first_half", "second_half"].includes(match.match_status) &&
+      matchLive &&
       (goalForm.team === "opponent" || goalForm.scorerPlayerId),
   );
   const canRecordIncident = Boolean(
-    canManageMatches &&
-    match && ["first_half", "second_half"].includes(match.match_status),
+    canManageMatches && match && matchLive,
   );
   const liveVisual = useMemo(() => {
     if (!match) {
@@ -732,7 +737,10 @@ export default function CoachMatchDayPage() {
     playerId: string,
     status: "present" | "absent",
   ) => {
-    if (!canTakeAttendance) return;
+    if (!attendanceEditable) {
+      setPageError("Attendance can only be marked before the match starts.");
+      return;
+    }
     setPageError("");
     try {
       await upsertAttendance({
@@ -1025,11 +1033,19 @@ export default function CoachMatchDayPage() {
                   const lastInjury = playerIncidents.find(
                     (incident) => incident.incident_type === "injury",
                   );
-                  const canSubPlayer =
-                    canManageMatches &&
+                  const preKickoffAbsenceSubstitution =
+                    match.match_status === "scheduled" &&
+                    player.squad_role === "starter" &&
+                    attendance?.status === "absent" &&
+                    !substitutedOutIds.has(player.player_id);
+                  const liveSubstitution =
+                    matchLive &&
                     (currentPlayingIds.has(player.player_id) ||
                       (injuredPlayerIds.has(player.player_id) &&
                         !substitutedOutIds.has(player.player_id)));
+                  const canSubPlayer =
+                    canManageMatches &&
+                    (liveSubstitution || preKickoffAbsenceSubstitution);
                   return (
                     <div
                       key={player.player_id}
@@ -1094,7 +1110,7 @@ export default function CoachMatchDayPage() {
                         }
                         className="gap-2"
                         disabled={
-                          !canTakeAttendance ||
+                          !attendanceEditable ||
                           savingAttendance ||
                           match.match_status === "finished"
                         }
@@ -1115,7 +1131,7 @@ export default function CoachMatchDayPage() {
                         }
                         className="gap-2"
                         disabled={
-                          !canTakeAttendance ||
+                          !attendanceEditable ||
                           savingAttendance ||
                           match.match_status === "finished"
                         }
@@ -1258,7 +1274,7 @@ export default function CoachMatchDayPage() {
                 mode="match"
                 id={matchId}
                 disabled={
-                  !canTakeAttendance ||
+                  !attendanceEditable ||
                   savingAttendance ||
                   match.match_status === "finished"
                 }

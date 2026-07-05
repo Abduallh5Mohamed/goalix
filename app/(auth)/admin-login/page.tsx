@@ -64,6 +64,14 @@ function mapApiUser(apiUser: ApiUser, fallbackName: string) {
   };
 }
 
+function isExpiredMfaChallenge(message?: string) {
+  return /invalid or expired 2fa token|invalid token purpose/i.test(message ?? "");
+}
+
+function isInvalidTotpCode(message?: string) {
+  return /invalid totp code/i.test(message ?? "");
+}
+
 export default function AdminLoginPage() {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -88,6 +96,29 @@ export default function AdminLoginPage() {
       return;
     }
     router.push(ROLE_ROUTES[user.role]);
+  };
+
+  const resetMfaChallenge = () => {
+    setTempToken("");
+    setTotpCode("");
+    setBackupCode("");
+    setPassword("");
+    setStep("credentials");
+  };
+
+  const handleMfaError = (message: string | undefined, fallback: string) => {
+    if (isExpiredMfaChallenge(message)) {
+      resetMfaChallenge();
+      setError("Your verification session expired. Log in again to get a fresh 2FA challenge.");
+      return;
+    }
+
+    if (isInvalidTotpCode(message)) {
+      setError("This code does not match the active authenticator device. Try the newest Goalix entry or use a backup code.");
+      return;
+    }
+
+    setError(message || fallback);
   };
 
   const handleCredentials = async (event: React.FormEvent) => {
@@ -119,6 +150,9 @@ export default function AdminLoginPage() {
 
       if (json.data?.requires2FA) {
         setTempToken(json.data.tempToken);
+        setPassword("");
+        setTotpCode("");
+        setBackupCode("");
         setStep("totp");
         dispatch(loginFailure());
         return;
@@ -160,7 +194,7 @@ export default function AdminLoginPage() {
 
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error?.message || "Invalid verification code.");
+        handleMfaError(json.error?.message, "Invalid verification code.");
         return;
       }
 
@@ -195,7 +229,7 @@ export default function AdminLoginPage() {
 
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error?.message || "Invalid backup code.");
+        handleMfaError(json.error?.message, "Invalid backup code.");
         return;
       }
 
@@ -239,7 +273,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="staff-identifier"
                   type="text"
-                  placeholder="admin@example.com or staff.username"
+                  placeholder="admin/coach email or username"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
                   autoComplete="username"

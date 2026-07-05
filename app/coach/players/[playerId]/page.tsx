@@ -40,7 +40,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetBranchesQuery, useUpdatePlayerMutation } from "@/lib/store/api/adminApi";
+import {
+  useGetBranchesQuery,
+  useUpdatePlayerMutation,
+} from "@/lib/store/api/adminApi";
 import {
   type ParentManagementRole,
   useGetManagedPlayerDetailQuery,
@@ -49,6 +52,26 @@ import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { formatDate, formatDateTime, getInitials } from "@/lib/utils";
 
 type AnyRecord = Record<string, unknown>;
+
+const hasMeasurementValue = (value: unknown) =>
+  value !== null && value !== undefined && value !== "";
+
+const numberValue = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const calculateBmi = (heightCm: unknown, weightKg: unknown) => {
+  const height = numberValue(heightCm);
+  const weight = numberValue(weightKg);
+  if (!height || !weight) return null;
+  const heightM = height / 100;
+  return Number((weight / (heightM * heightM)).toFixed(2));
+};
 
 const copy = {
   en: {
@@ -498,7 +521,9 @@ const copy = {
 type PlayerDetailCopy = (typeof copy)[keyof typeof copy];
 
 const compact = (value: unknown, t: PlayerDetailCopy) =>
-  value === null || value === undefined || value === "" ? t.empty : String(value);
+  value === null || value === undefined || value === ""
+    ? t.empty
+    : String(value);
 
 const formatValue = (value: unknown, t: PlayerDetailCopy): string => {
   if (value === null || value === undefined || value === "") return t.empty;
@@ -515,7 +540,10 @@ const formatValue = (value: unknown, t: PlayerDetailCopy): string => {
 };
 
 const formatListValue = (value: unknown, t: PlayerDetailCopy): string => {
-  if (Array.isArray(value)) return value.length ? value.map((item) => formatValue(item, t)).join(", ") : t.empty;
+  if (Array.isArray(value))
+    return value.length
+      ? value.map((item) => formatValue(item, t)).join(", ")
+      : t.empty;
   if (typeof value !== "string") return formatValue(value, t);
   try {
     const parsed = JSON.parse(value);
@@ -532,7 +560,8 @@ const ageFrom = (date: string | null | undefined, t: PlayerDetailCopy) => {
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate()))
+    age -= 1;
   return age >= 0 ? `${age}` : t.empty;
 };
 
@@ -558,13 +587,21 @@ function StatCard({
   );
 }
 
-function DetailGrid({ rows, t }: { rows: Array<[string, unknown]>; t: PlayerDetailCopy }) {
+function DetailGrid({
+  rows,
+  t,
+}: {
+  rows: Array<[string, unknown]>;
+  t: PlayerDetailCopy;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map(([label, value]) => (
         <div key={label} className="rounded-md border border-border/60 p-3">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 break-words text-sm font-medium">{formatValue(value, t)}</p>
+          <p className="mt-1 break-words text-sm font-medium">
+            {formatValue(value, t)}
+          </p>
         </div>
       ))}
     </div>
@@ -578,12 +615,20 @@ function RecordsTable({
   t,
 }: {
   rows: AnyRecord[];
-  columns: Array<{ key: string; label: string; render?: (row: AnyRecord) => ReactNode }>;
+  columns: Array<{
+    key: string;
+    label: string;
+    render?: (row: AnyRecord) => ReactNode;
+  }>;
   empty: string;
   t: PlayerDetailCopy;
 }) {
   if (!rows.length) {
-    return <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">{empty}</p>;
+    return (
+      <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
+        {empty}
+      </p>
+    );
   }
 
   return (
@@ -600,10 +645,15 @@ function RecordsTable({
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={String(row.id ?? `${row.player_id ?? "row"}-${index}`)} className="border-t border-border/60">
+            <tr
+              key={String(row.id ?? `${row.player_id ?? "row"}-${index}`)}
+              className="border-t border-border/60"
+            >
               {columns.map((column) => (
                 <td key={column.key} className="px-3 py-2 align-top">
-                  {column.render ? column.render(row) : formatValue(row[column.key], t)}
+                  {column.render
+                    ? column.render(row)
+                    : formatValue(row[column.key], t)}
                 </td>
               ))}
             </tr>
@@ -625,6 +675,13 @@ const assignmentStatusMeta = (status: unknown, t: PlayerDetailCopy) => {
     default:
       return { label: t.notSubmitted, variant: "warning" as const };
   }
+};
+
+const injuryRiskVariant = (level: unknown) => {
+  if (level === "High") return "destructive" as const;
+  if (level === "Medium") return "warning" as const;
+  if (level === "Low") return "success" as const;
+  return "secondary" as const;
 };
 
 const emptyEditForm = {
@@ -655,11 +712,13 @@ const editFormFromPlayer = (
   fullName: String(player.full_name ?? ""),
   birthDate: String(player.date_of_birth ?? "").slice(0, 10),
   heightCm:
-    latestMeasurement?.height_cm === null || latestMeasurement?.height_cm === undefined
+    latestMeasurement?.height_cm === null ||
+    latestMeasurement?.height_cm === undefined
       ? ""
       : String(latestMeasurement.height_cm),
   weightKg:
-    latestMeasurement?.weight_kg === null || latestMeasurement?.weight_kg === undefined
+    latestMeasurement?.weight_kg === null ||
+    latestMeasurement?.weight_kg === undefined
       ? ""
       : String(latestMeasurement.weight_kg),
   preferredFoot: String(player.preferred_foot ?? ""),
@@ -708,15 +767,20 @@ export function ManagedPlayerDetailPage({
   const attendanceRate = useMemo(() => {
     const total = Number(attendanceTotals?.total || 0);
     if (!total) return 0;
-    const attended = Number(attendanceTotals?.present || 0) + Number(attendanceTotals?.late || 0);
+    const attended =
+      Number(attendanceTotals?.present || 0) +
+      Number(attendanceTotals?.late || 0);
     return Math.round((attended / total) * 100);
   }, [attendanceTotals]);
-  const latestMeasurement = data?.summary.latestMeasurement ?? data?.measurements?.[0] ?? null;
+  const latestMeasurement =
+    data?.summary.latestMeasurement ?? data?.measurements?.[0] ?? null;
 
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">{t.loadingProfile}</CardContent>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          {t.loadingProfile}
+        </CardContent>
       </Card>
     );
   }
@@ -724,19 +788,50 @@ export function ManagedPlayerDetailPage({
   if (error || !data || !player) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" className="gap-2" onClick={() => router.push("/coach/players")}>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => router.push("/coach/players")}
+        >
           <ArrowLeft className="h-4 w-4" />
           {t.backToPlayers}
         </Button>
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">{t.playerNotFound}</CardContent>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            {t.playerNotFound}
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  const latestValue = (key: string) => player[key] ?? latestMeasurement?.[key] ?? null;
+  const latestMeasurementValue = (key: string) => {
+    for (const measurement of data.measurements) {
+      const value = measurement[key];
+      if (hasMeasurementValue(value)) return value;
+    }
+    return null;
+  };
+  const latestValue = (key: string) =>
+    player[key] ?? latestMeasurement?.[key] ?? latestMeasurementValue(key);
+  const baselineHeight = latestMeasurementValue("height_cm");
+  const baselineWeight = latestMeasurementValue("weight_kg");
+  const baselineBmi =
+    latestMeasurementValue("bmi") ??
+    calculateBmi(baselineHeight, baselineWeight);
   const linkedParent = player.linked_parent ?? null;
+  const matchInjuries = (data.incidents as unknown as AnyRecord[]).filter(
+    (incident) => incident.incident_type === "injury",
+  );
+  const injuryRisk = data.injuryRisk;
+  const injuryPrediction = injuryRisk?.prediction ?? null;
+  const injuryInput = injuryRisk?.input ?? null;
+  const currentInjuryStatus =
+    String(data.healthProfile?.current_injury_status ?? "none") || "none";
+  const hasInjuryHistory =
+    currentInjuryStatus === "injured" ||
+    data.injuries.length > 0 ||
+    matchInjuries.length > 0;
   const handleSaveEdit = async () => {
     setEditError("");
     if (!editForm.fullName.trim()) {
@@ -746,7 +841,9 @@ export function ManagedPlayerDetailPage({
     const level = ["A", "B", "C", "D", "F"].includes(editForm.level)
       ? (editForm.level as "A" | "B" | "C" | "D" | "F")
       : undefined;
-    const preferredFoot = ["left", "right", "both"].includes(editForm.preferredFoot)
+    const preferredFoot = ["left", "right", "both"].includes(
+      editForm.preferredFoot,
+    )
       ? (editForm.preferredFoot as "left" | "right" | "both")
       : undefined;
     const gender = ["male", "female", "other"].includes(editForm.gender)
@@ -789,8 +886,14 @@ export function ManagedPlayerDetailPage({
         title={player.full_name}
         description={`${compact(player.position, t)} - ${compact(player.group_name, t)} - ${compact(player.branch_name, t)}`}
         breadcrumbs={[
-          { label: t.dashboard, href: role === "admin" ? "/admin/dashboard" : "/coach/home" },
-          { label: t.players, href: role === "admin" ? "/admin/players" : "/coach/players" },
+          {
+            label: t.dashboard,
+            href: role === "admin" ? "/admin/dashboard" : "/coach/home",
+          },
+          {
+            label: t.players,
+            href: role === "admin" ? "/admin/players" : "/coach/players",
+          },
           { label: player.full_name },
         ]}
         actions={
@@ -811,7 +914,9 @@ export function ManagedPlayerDetailPage({
             {role === "coach" && player.profile_status !== "complete" && (
               <Button
                 className="gap-2"
-                onClick={() => router.push(`/coach/players?complete=${player.id}`)}
+                onClick={() =>
+                  router.push(`/coach/players?complete=${player.id}`)
+                }
               >
                 <ShieldAlert className="h-4 w-4" />
                 {t.completeProfile}
@@ -820,7 +925,11 @@ export function ManagedPlayerDetailPage({
             <Button
               variant="outline"
               className="gap-2"
-              onClick={() => router.push(role === "admin" ? "/admin/players" : "/coach/players")}
+              onClick={() =>
+                router.push(
+                  role === "admin" ? "/admin/players" : "/coach/players",
+                )
+              }
             >
               <ArrowLeft className="h-4 w-4" />
               {t.back}
@@ -839,10 +948,18 @@ export function ManagedPlayerDetailPage({
                 </AvatarFallback>
               </Avatar>
               <h2 className="mt-4 text-xl font-semibold">{player.full_name}</h2>
-              <p className="text-sm text-muted-foreground">{compact(player.player_code, t)}</p>
+              <p className="text-sm text-muted-foreground">
+                {compact(player.player_code, t)}
+              </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <Badge variant={player.profile_status === "complete" ? "success" : "warning"}>
-                  {player.profile_status === "complete" ? t.completeProfileBadge : t.incompleteProfileBadge}
+                <Badge
+                  variant={
+                    player.profile_status === "complete" ? "success" : "warning"
+                  }
+                >
+                  {player.profile_status === "complete"
+                    ? t.completeProfileBadge
+                    : t.incompleteProfileBadge}
                 </Badge>
                 <Badge variant="outline">{compact(player.level, t)}</Badge>
               </div>
@@ -850,24 +967,34 @@ export function ManagedPlayerDetailPage({
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">{t.age}</span>
-                <span className="font-medium">{ageFrom(player.date_of_birth, t)} {t.years}</span>
+                <span className="font-medium">
+                  {ageFrom(player.date_of_birth, t)} {t.years}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">{t.preferredFoot}</span>
-                <span className="font-medium capitalize">{compact(player.preferred_foot, t)}</span>
+                <span className="font-medium capitalize">
+                  {compact(player.preferred_foot, t)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">{t.phone}</span>
-                <span className="font-medium">{compact(player.phone ?? player.account_phone, t)}</span>
+                <span className="font-medium">
+                  {compact(player.phone ?? player.account_phone, t)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">{t.guardian}</span>
-                <span className="font-medium">{compact(player.guardian_name, t)}</span>
+                <span className="font-medium">
+                  {compact(player.guardian_name, t)}
+                </span>
               </div>
             </div>
             {data.attendanceQr?.qrCodeDataUrl && (
               <div className="mt-6 rounded-md border border-border/60 bg-background/40 p-3 text-center">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">{t.playerQrCode}</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t.playerQrCode}
+                </p>
                 <Image
                   src={data.attendanceQr.qrCodeDataUrl}
                   alt={`${player.full_name} QR code`}
@@ -877,7 +1004,9 @@ export function ManagedPlayerDetailPage({
                   className="mx-auto mt-3 h-44 w-44 rounded-md bg-white p-2"
                 />
                 <p className="mt-2 break-all text-xs text-muted-foreground">
-                  {data.attendanceQr.playerCode || data.attendanceQr.username || player.id}
+                  {data.attendanceQr.playerCode ||
+                    data.attendanceQr.username ||
+                    player.id}
                 </p>
               </div>
             )}
@@ -885,23 +1014,51 @@ export function ManagedPlayerDetailPage({
         </Card>
 
         <div className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label={t.matches} value={matchTotals?.matches_played ?? 0} icon={<Trophy className="h-5 w-5" />} />
-          <StatCard label={t.minutes} value={matchTotals?.minutes_played ?? 0} icon={<Activity className="h-5 w-5" />} />
-          <StatCard label={t.goals} value={matchTotals?.goals ?? 0} icon={<Target className="h-5 w-5" />} />
-          <StatCard label={t.assists} value={matchTotals?.assists ?? 0} icon={<Star className="h-5 w-5" />} />
+          <StatCard
+            label={t.matches}
+            value={matchTotals?.matches_played ?? 0}
+            icon={<Trophy className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.minutes}
+            value={matchTotals?.minutes_played ?? 0}
+            icon={<Activity className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.goals}
+            value={matchTotals?.goals ?? 0}
+            icon={<Target className="h-5 w-5" />}
+          />
+          <StatCard
+            label={t.assists}
+            value={matchTotals?.assists ?? 0}
+            icon={<Star className="h-5 w-5" />}
+          />
           <Card className="border-border/50 bg-card sm:col-span-2 xl:col-span-4">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">{t.trainingAttendance}</p>
-                <p className="text-sm text-muted-foreground">{attendanceRate}%</p>
+                <p className="text-sm text-muted-foreground">
+                  {attendanceRate}%
+                </p>
               </div>
               <Progress value={attendanceRate} className="mt-3 h-2" />
               <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-5">
-                <span>{t.total} {attendanceTotals?.total ?? 0}</span>
-                <span>{t.present} {attendanceTotals?.present ?? 0}</span>
-                <span>{t.late} {attendanceTotals?.late ?? 0}</span>
-                <span>{t.absent} {attendanceTotals?.absent ?? 0}</span>
-                <span>{t.injured} {attendanceTotals?.injured ?? 0}</span>
+                <span>
+                  {t.total} {attendanceTotals?.total ?? 0}
+                </span>
+                <span>
+                  {t.present} {attendanceTotals?.present ?? 0}
+                </span>
+                <span>
+                  {t.late} {attendanceTotals?.late ?? 0}
+                </span>
+                <span>
+                  {t.absent} {attendanceTotals?.absent ?? 0}
+                </span>
+                <span>
+                  {t.injured} {attendanceTotals?.injured ?? 0}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -920,7 +1077,11 @@ export function ManagedPlayerDetailPage({
 
         <TabsContent value="overview" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><User className="h-4 w-4" /> {t.identity}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="h-4 w-4" /> {t.identity}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
                 t={t}
@@ -942,13 +1103,18 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.footballProfile}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.footballProfile}</CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
                 t={t}
                 rows={[
                   [t.labels.mainPosition, player.position],
-                  [t.labels.secondaryPositions, formatListValue(player.secondary_positions, t)],
+                  [
+                    t.labels.secondaryPositions,
+                    formatListValue(player.secondary_positions, t),
+                  ],
                   [t.labels.preferredFoot, player.preferred_foot],
                   [t.labels.currentTeam, player.current_team],
                   [t.labels.shirtNumber, player.shirt_number],
@@ -960,22 +1126,35 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Shield className="h-4 w-4" /> {t.contactGuardian}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="h-4 w-4" /> {t.contactGuardian}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
                 t={t}
                 rows={[
                   [t.labels.playerPhone, player.phone],
-                  ...(player.account_phone && player.account_phone !== player.phone
-                    ? [[t.labels.accountPhone, player.account_phone] as [string, unknown]]
+                  ...(player.account_phone &&
+                  player.account_phone !== player.phone
+                    ? [
+                        [t.labels.accountPhone, player.account_phone] as [
+                          string,
+                          unknown,
+                        ],
+                      ]
                     : []),
                   [t.labels.address, player.address],
                   [t.labels.guardianName, player.guardian_name],
                   [t.labels.guardianPhone, player.guardian_phone],
                   [
                     t.labels.guardianRelation,
-                    t.guardianRelations[String(player.guardian_relation ?? "") as keyof typeof t.guardianRelations] ??
-                      player.guardian_relation,
+                    t.guardianRelations[
+                      String(
+                        player.guardian_relation ?? "",
+                      ) as keyof typeof t.guardianRelations
+                    ] ?? player.guardian_relation,
                   ],
                   [t.labels.linkedParentAccount, linkedParent?.name],
                   [t.labels.parentUsername, linkedParent?.username],
@@ -986,7 +1165,9 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.accountStatus}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.accountStatus}</CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
                 t={t}
@@ -1002,7 +1183,9 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.physicalBaseline}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.physicalBaseline}</CardTitle>
+            </CardHeader>
             <CardContent>
               <DetailGrid
                 t={t}
@@ -1023,7 +1206,9 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.groupAssignments}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.groupAssignments}</CardTitle>
+            </CardHeader>
             <CardContent>
               <RecordsTable
                 rows={data.groups}
@@ -1039,7 +1224,9 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.playerAssignments}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.playerAssignments}</CardTitle>
+            </CardHeader>
             <CardContent>
               <RecordsTable
                 rows={(data.playerAssignments || []) as unknown as AnyRecord[]}
@@ -1051,15 +1238,18 @@ export function ManagedPlayerDetailPage({
                     key: "groups",
                     label: t.labels.target,
                     render: (row) => {
-                      const groups = Array.isArray(row.groups) ? row.groups : [];
+                      const groups = Array.isArray(row.groups)
+                        ? row.groups
+                        : [];
                       return groups.length
                         ? groups
-                            .map((group) =>
-                              `${formatValue((group as AnyRecord).name, t)}${
-                                (group as AnyRecord).branchName
-                                  ? ` - ${formatValue((group as AnyRecord).branchName, t)}`
-                                  : ""
-                              }`,
+                            .map(
+                              (group) =>
+                                `${formatValue((group as AnyRecord).name, t)}${
+                                  (group as AnyRecord).branchName
+                                    ? ` - ${formatValue((group as AnyRecord).branchName, t)}`
+                                    : ""
+                                }`,
                             )
                             .join(", ")
                         : t.empty;
@@ -1083,7 +1273,9 @@ export function ManagedPlayerDetailPage({
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">{t.customProfile}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t.customProfile}</CardTitle>
+            </CardHeader>
             <CardContent>
               {data.customProfile.length ? (
                 <DetailGrid
@@ -1094,7 +1286,9 @@ export function ManagedPlayerDetailPage({
                   ])}
                 />
               ) : (
-                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">{t.noCustomProfile}</p>
+                <p className="rounded-md border border-border/60 p-4 text-sm text-muted-foreground">
+                  {t.noCustomProfile}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -1168,7 +1362,8 @@ export function ManagedPlayerDetailPage({
               {
                 key: "direction",
                 label: t.labels.direction,
-                render: (row) => (row.in_player_id === player.id ? t.subbedIn : t.subbedOff),
+                render: (row) =>
+                  row.in_player_id === player.id ? t.subbedIn : t.subbedOff,
               },
               { key: "reason", label: t.labels.reason },
             ]}
@@ -1239,11 +1434,19 @@ export function ManagedPlayerDetailPage({
 
         <TabsContent value="medical" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><HeartPulse className="h-4 w-4" /> {t.healthProfile}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <HeartPulse className="h-4 w-4" /> {t.healthProfile}
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              <DetailGrid t={t} rows={Object.entries(data.healthProfile ?? {})} />
+              <DetailGrid
+                t={t}
+                rows={Object.entries(data.healthProfile ?? {})}
+              />
             </CardContent>
           </Card>
+
           <RecordsTable
             rows={data.measurements}
             empty={t.noMeasurements}
@@ -1257,6 +1460,7 @@ export function ManagedPlayerDetailPage({
               { key: "notes", label: t.labels.notes },
             ]}
           />
+
           <RecordsTable
             rows={data.injuries}
             empty={t.noInjuries}
@@ -1314,7 +1518,10 @@ export function ManagedPlayerDetailPage({
               { key: "group_name", label: t.labels.group },
               { key: "score", label: t.labels.score },
               { key: "potential_rating", label: t.labels.potential },
-              { key: "recommended_position", label: t.labels.recommendedPosition },
+              {
+                key: "recommended_position",
+                label: t.labels.recommendedPosition,
+              },
               { key: "strengths", label: t.labels.strengths },
               { key: "weaknesses", label: t.labels.weaknesses },
               { key: "development_plan", label: t.labels.developmentPlan },
@@ -1362,7 +1569,6 @@ export function ManagedPlayerDetailPage({
             ]}
           />
         </TabsContent>
-
       </Tabs>
       {role === "admin" && (
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -1373,8 +1579,14 @@ export function ManagedPlayerDetailPage({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-username">{t.labels.username}</Label>
-                <Input id="edit-username" value={String(player.username ?? "")} readOnly />
-                <p className="text-xs text-muted-foreground">{t.usernameCannotChange}</p>
+                <Input
+                  id="edit-username"
+                  value={String(player.username ?? "")}
+                  readOnly
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.usernameCannotChange}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-password">{t.labels.password}</Label>
@@ -1420,11 +1632,16 @@ export function ManagedPlayerDetailPage({
                 </div>
               ))}
               <div className="space-y-2">
-                <Label htmlFor="edit-preferredFoot">{t.labels.preferredFoot}</Label>
+                <Label htmlFor="edit-preferredFoot">
+                  {t.labels.preferredFoot}
+                </Label>
                 <Select
                   value={editForm.preferredFoot}
                   onValueChange={(value) =>
-                    setEditForm((current) => ({ ...current, preferredFoot: value }))
+                    setEditForm((current) => ({
+                      ...current,
+                      preferredFoot: value,
+                    }))
                   }
                 >
                   <SelectTrigger id="edit-preferredFoot">
@@ -1450,8 +1667,12 @@ export function ManagedPlayerDetailPage({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">{t.genderOptions.male}</SelectItem>
-                    <SelectItem value="female">{t.genderOptions.female}</SelectItem>
-                    <SelectItem value="other">{t.genderOptions.other}</SelectItem>
+                    <SelectItem value="female">
+                      {t.genderOptions.female}
+                    </SelectItem>
+                    <SelectItem value="other">
+                      {t.genderOptions.other}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1476,22 +1697,29 @@ export function ManagedPlayerDetailPage({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-guardianRelation">{t.labels.guardianRelation}</Label>
+                <Label htmlFor="edit-guardianRelation">
+                  {t.labels.guardianRelation}
+                </Label>
                 <Select
                   value={editForm.guardianRelation}
                   onValueChange={(value) =>
-                    setEditForm((current) => ({ ...current, guardianRelation: value }))
+                    setEditForm((current) => ({
+                      ...current,
+                      guardianRelation: value,
+                    }))
                   }
                 >
                   <SelectTrigger id="edit-guardianRelation">
                     <SelectValue placeholder={t.chooseRelation} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(t.guardianRelations).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
+                    {Object.entries(t.guardianRelations).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1531,10 +1759,18 @@ export function ManagedPlayerDetailPage({
             </div>
             {editError && <p className="text-sm text-red-400">{editError}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+              >
                 {t.close}
               </Button>
-              <Button type="button" disabled={updateState.isLoading} onClick={handleSaveEdit}>
+              <Button
+                type="button"
+                disabled={updateState.isLoading}
+                onClick={handleSaveEdit}
+              >
                 {updateState.isLoading ? (
                   <Activity className="h-4 w-4 animate-spin" />
                 ) : (

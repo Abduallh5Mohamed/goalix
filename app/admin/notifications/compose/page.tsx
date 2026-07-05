@@ -23,7 +23,8 @@ import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 const composeCopy = {
   en: {
     pageTitle: "Compose Notification",
-    pageDescription: "Send a custom notification to specific users or segments.",
+    pageDescription:
+      "Send a custom notification to specific users or segments.",
     dashboard: "Dashboard",
     notifications: "Notifications",
     compose: "Compose",
@@ -208,10 +209,15 @@ export default function ComposeNotificationPage() {
             {title || message ? (
               <div className="space-y-2 rounded-lg border border-border/50 p-4">
                 <h4 className="text-sm font-semibold">{title || t.untitled}</h4>
-                <p className="text-xs text-muted-foreground">{message || t.noMessage}</p>
+                <p className="text-xs text-muted-foreground">
+                  {message || t.noMessage}
+                </p>
                 <div className="flex flex-wrap gap-2 pt-2">
                   {targetRole !== "all" && (
-                    <Badge variant="secondary" className="text-[10px] capitalize">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] capitalize"
+                    >
                       <Users className="mr-1 h-3 w-3" />
                       {t.roles[targetRole as keyof typeof t.roles]}
                     </Badge>

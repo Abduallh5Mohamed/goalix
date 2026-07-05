@@ -112,9 +112,9 @@ class AiService {
         return risk;
     }
 
-    async getInjuryRiskHistory(playerId, academyId, user = null) {
+    async getInjuryRiskHistory(playerId, academyId, user = null, options = {}) {
         await this._assertAiPlayerOwnership(playerId, academyId, user, 'ai_injury_risk_history_denied');
-        return this.repo.getInjuryRisks(playerId);
+        return this.repo.getInjuryRisks(playerId, options);
     }
 
     // Called by worker
