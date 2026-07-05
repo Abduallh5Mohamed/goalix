@@ -4,6 +4,7 @@ import { Inter, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store/provider";
 import { AuthProvider } from "@/lib/auth/auth-context";
+import { ClientErrorMonitor } from "@/components/shared/ClientErrorMonitor";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -41,6 +42,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <StoreProvider>
           <AuthProvider>
+            <ClientErrorMonitor />
             {children}
           </AuthProvider>
         </StoreProvider>

@@ -215,15 +215,13 @@ class AuthController {
                 tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
             }
 
-            if (req.user?.userId) {
-                await this.authService.logout(
-                    req.user.userId,
-                    tokenHash,
-                    req.ip,
-                    req.get('user-agent'),
-                    req.user.sessionId,
-                );
-            }
+            await this.authService.logout(
+                req.user?.userId || null,
+                tokenHash,
+                req.ip,
+                req.get('user-agent'),
+                req.user?.sessionId || null,
+            );
 
             this._clearAuthCookies(res);
             res.json(ApiResponse.success({ message: 'Logged out successfully' }));

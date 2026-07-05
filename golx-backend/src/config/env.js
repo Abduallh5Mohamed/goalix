@@ -28,7 +28,7 @@ const envSchema = z.object({
 
     // Redis
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
-    AUTH_SESSION_CACHE_TTL_SECONDS: z.coerce.number().int().min(30).default(900),
+    AUTH_SESSION_CACHE_TTL_SECONDS: z.coerce.number().int().min(30).default(60),
     AUTH_SESSION_LAST_SEEN_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(300),
     AUTH_SESSION_LAST_SEEN_JITTER_SECONDS: z.coerce.number().int().min(0).default(60),
     AUTH_USER_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).default(120),
@@ -74,6 +74,8 @@ const envSchema = z.object({
     CHAT_WRITE_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
     UPLOAD_RATE_LIMIT_MAX: z.coerce.number().default(60),
     UPLOAD_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    AI_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+    AI_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().min(1).default(15),
 
     // Account Lockout
     MAX_FAILED_LOGIN_ATTEMPTS: z.coerce.number().default(5),
@@ -89,6 +91,8 @@ const envSchema = z.object({
     // Admin Login Rate Limit
     ADMIN_AUTH_RATE_LIMIT_MAX: z.coerce.number().default(5),
     ADMIN_AUTH_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().default(15),
+    AUTH_ACCOUNT_RATE_LIMIT_MAX: z.coerce.number().int().min(3).default(10),
+    AUTH_ACCOUNT_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().min(1).default(15),
 
     // Cookie signing secret
     COOKIE_SECRET: z.string().min(32).default(DEFAULT_COOKIE_SECRET),
@@ -133,6 +137,20 @@ function isValidAes256Key(value) {
     return Buffer.from(raw, 'base64').length === 32;
 }
 
+function isSecureCorsOrigin(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:'
+            && !url.username
+            && !url.password
+            && !url.search
+            && !url.hash
+            && url.origin === value;
+    } catch {
+        return false;
+    }
+}
+
 let env;
 try {
     env = envSchema.parse(process.env);
@@ -160,11 +178,28 @@ try {
     if (env.JWT_REFRESH_SECRET_PREVIOUS && env.JWT_REFRESH_SECRET_PREVIOUS === env.JWT_REFRESH_SECRET) {
         throw configIssue('JWT_REFRESH_SECRET_PREVIOUS', 'JWT_REFRESH_SECRET_PREVIOUS must be different from JWT_REFRESH_SECRET');
     }
+    if (env.NODE_ENV === 'production') {
+        const activeSecrets = [
+            env.JWT_SECRET,
+            env.JWT_REFRESH_SECRET,
+            env.COOKIE_SECRET,
+            env.CSRF_SECRET,
+        ];
+        if (new Set(activeSecrets).size !== activeSecrets.length) {
+            throw configIssue(
+                'SECURITY_SECRETS',
+                'JWT, refresh, cookie, and CSRF secrets must all be different',
+            );
+        }
+    }
     if (
         env.NODE_ENV === 'production' &&
-        env.CORS_ORIGINS.split(',').some((origin) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(origin))
+        env.CORS_ORIGINS.split(',').some((origin) => !isSecureCorsOrigin(origin.trim()))
     ) {
-        throw configIssue('CORS_ORIGINS', 'Production CORS_ORIGINS must not include localhost or wildcard development hosts');
+        throw configIssue(
+            'CORS_ORIGINS',
+            'Production CORS_ORIGINS must contain exact HTTPS origins without paths, credentials, query strings, or fragments',
+        );
     }
     if (env.TOTP_ENCRYPTION_KEY && !isValidAes256Key(env.TOTP_ENCRYPTION_KEY)) {
         throw configIssue('TOTP_ENCRYPTION_KEY', 'TOTP_ENCRYPTION_KEY must be a 32-byte base64 value or 64-character hex value');

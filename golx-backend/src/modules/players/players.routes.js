@@ -43,6 +43,7 @@ function playersRoutes(controller) {
   router.delete(
     "/:id/hard-delete",
     rbac("manage_players"),
+    rbac("manage_permissions"),
     validate({ params: uuidParam }),
     controller.hardRemove,
   );

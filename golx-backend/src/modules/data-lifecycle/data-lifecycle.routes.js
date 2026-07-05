@@ -10,10 +10,16 @@ const runSchema = z.object({
 
 function dataLifecycleRoutes(controller) {
   const router = Router();
-  router.use(authMiddleware, rbac("access_admin_dashboard"));
+  router.use(authMiddleware);
 
-  router.get("/status", controller.status);
-  router.post("/run", validate({ body: runSchema }), controller.run);
+  router.get("/status", rbac("manage_academy_settings"), controller.status);
+  router.post(
+    "/run",
+    rbac("manage_academy_settings"),
+    rbac("manage_permissions"),
+    validate({ body: runSchema }),
+    controller.run,
+  );
 
   return router;
 }

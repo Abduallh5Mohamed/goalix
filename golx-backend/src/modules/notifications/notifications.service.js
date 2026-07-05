@@ -41,8 +41,15 @@ class NotificationsService {
     }
 
     async sendNotification(data, academyId) {
-        const recipients = data.userId
-            ? [{ user_id: data.userId }]
+        const directRecipient = data.userId
+            ? await this.repo.findTargetUser(academyId, data.userId)
+            : null;
+        if (data.userId && !directRecipient) {
+            throw new NotFoundError('Notification recipient', data.userId);
+        }
+
+        const recipients = directRecipient
+            ? [directRecipient]
             : await this.repo.targetUsers(academyId, data.targetRole);
 
         const notifications = recipients.length
@@ -112,8 +119,8 @@ class NotificationsService {
         return { markedRead: count };
     }
 
-    async getLogs(filters) {
-        return this.repo.findLogs(filters);
+    async getLogs(academyId, filters) {
+        return this.repo.findLogs(academyId, filters);
     }
 
     async cleanupExpiredNotifications({ now = new Date(), retentionMonths = env.NOTIFICATION_RETENTION_MONTHS } = {}) {

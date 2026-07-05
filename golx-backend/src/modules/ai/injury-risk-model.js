@@ -4,6 +4,10 @@ const path = require("path");
 
 const MODEL_VERSION = "football_academy_injury_risk_model_v3";
 const DEFAULT_TIMEOUT_MS = Number(process.env.INJURY_RISK_MODEL_TIMEOUT_MS || 60000);
+const MAX_OUTPUT_BYTES = Math.max(
+    64 * 1024,
+    Number(process.env.MODEL_MAX_OUTPUT_BYTES || 5 * 1024 * 1024),
+);
 
 const modelDir =
     process.env.INJURY_RISK_MODEL_DIR ||
@@ -48,18 +52,35 @@ function runInjuryRiskPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = 
         const child = spawn(pythonBin, [scriptPath, "--json-stdin"], {
             cwd: modelDir,
             windowsHide: true,
+            env: {
+                PATH: process.env.PATH,
+                SYSTEMROOT: process.env.SYSTEMROOT,
+                PYTHONPATH: process.env.PYTHONPATH,
+                PYTHONUNBUFFERED: '1',
+            },
         });
 
         const stdout = [];
         const stderr = [];
         let timedOut = false;
+        let outputExceeded = false;
         const timer = setTimeout(() => {
             timedOut = true;
             child.kill("SIGKILL");
         }, timeoutMs);
 
-        child.stdout.on("data", (chunk) => stdout.push(chunk));
-        child.stderr.on("data", (chunk) => stderr.push(chunk));
+        let outputBytes = 0;
+        const captureOutput = (target) => (chunk) => {
+            outputBytes += chunk.length;
+            if (outputBytes > MAX_OUTPUT_BYTES) {
+                outputExceeded = true;
+                child.kill("SIGKILL");
+                return;
+            }
+            target.push(chunk);
+        };
+        child.stdout.on("data", captureOutput(stdout));
+        child.stderr.on("data", captureOutput(stderr));
         child.on("error", (error) => {
             clearTimeout(timer);
             reject(
@@ -77,6 +98,10 @@ function runInjuryRiskPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = 
 
             if (timedOut) {
                 reject(new Error("Injury risk model timed out"));
+                return;
+            }
+            if (outputExceeded) {
+                reject(new Error("Injury risk model output exceeded the configured limit"));
                 return;
             }
             if (code !== 0) {

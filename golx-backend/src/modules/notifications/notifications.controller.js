@@ -53,8 +53,11 @@ class NotificationsController {
         try {
             const { page, limit } = parsePagination(req.query);
             // req.query is already Zod-validated and stripped by logsQuerySchema
-            const { channel, status } = req.query;
-            const result = await this.service.getLogs({ channel, status, page, limit });
+            const { channel, status, includeArchive } = req.query;
+            const result = await this.service.getLogs(
+                req.user.academyId,
+                { channel, status, includeArchive, page, limit },
+            );
             res.json(ApiResponse.paginated(result.data, buildPaginationMeta(result.total, page, limit)));
         } catch (err) { next(err); }
     };

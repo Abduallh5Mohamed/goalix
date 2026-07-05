@@ -24,6 +24,9 @@ function buildCsrfApp() {
     app.post('/api/v1/protected', (_req, res) => {
         res.json(ApiResponse.success({ ok: true }));
     });
+    app.post('/api/v1/auth/logout-all', (_req, res) => {
+        res.json(ApiResponse.success({ ok: true }));
+    });
 
     return app;
 }
@@ -66,5 +69,16 @@ describe('CSRF middleware', () => {
             .expect(200);
 
         expect(res.body.data.ok).toBe(true);
+    });
+
+    test('does not let a public-path prefix exempt an authenticated route', async () => {
+        const app = buildCsrfApp();
+
+        const res = await request(app)
+            .post('/api/v1/auth/logout-all')
+            .set('Cookie', ['accessToken=mock'])
+            .expect(403);
+
+        expect(res.body.error.code).toBe('CSRF_TOKEN_REJECTED');
     });
 });

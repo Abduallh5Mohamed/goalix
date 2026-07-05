@@ -61,7 +61,11 @@ const socialLabels = {
 } as const;
 
 type FooterContact = { label: string; value: string; href?: string };
-type FooterSocialLink = { key: keyof typeof socialLabels; href: string; label: string };
+type FooterSocialLink = {
+  key: keyof typeof socialLabels;
+  href: string;
+  label: (typeof socialLabels)[keyof typeof socialLabels];
+};
 
 export default function HeroSection({
   initialPublicProfile = null,
@@ -95,7 +99,16 @@ export default function HeroSection({
           const [key, value] = entry;
           return key in socialLabels && typeof value === "string" && value.trim().length > 0;
         })
-        .map(([key, href]) => ({ key, href: href.trim(), label: socialLabels[key] })),
+        .map(([key, href]) => {
+          try {
+            const url = new URL(href.trim());
+            if (!["http:", "https:"].includes(url.protocol)) return null;
+            return { key, href: url.href, label: socialLabels[key] };
+          } catch {
+            return null;
+          }
+        })
+        .filter((link): link is FooterSocialLink => Boolean(link)),
     [publicProfile?.socialLinks],
   );
   const footerContacts = [

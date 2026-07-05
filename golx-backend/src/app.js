@@ -36,12 +36,15 @@ const { chatService } = services;
 const app = express();
 app.locals.services = { chatService };
 app.locals.backgroundAutomations = startBackgroundAutomations({ services });
+const requestIdPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
-    req.id = req.get('x-request-id') || randomUUID();
+    const suppliedRequestId = String(req.get('x-request-id') || '').trim();
+    req.id = requestIdPattern.test(suppliedRequestId) ? suppliedRequestId : randomUUID();
     res.setHeader('X-Request-ID', req.id);
     next();
 });
@@ -159,7 +162,8 @@ app.get('/ready', async (_req, res) => {
         await db.raw('SELECT 1');
         checks.postgres.ok = true;
     } catch (err) {
-        checks.postgres.error = err.message;
+        logger.warn({ err }, 'Readiness database check failed');
+        checks.postgres.error = 'unavailable';
     }
 
     const ok = checks.postgres.ok;
@@ -179,13 +183,6 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
     try {
         const relativePath = req.params[0] || '';
         const normalizedPath = relativePath.replace(/\\/g, '/').replace(/^\/+/, '');
-        const upload = await storage.getUpload(relativePath);
-        if (!upload) {
-            return res.status(400).json({
-                success: false,
-                error: { code: 'INVALID_FILE_PATH', message: 'Invalid file path' },
-            });
-        }
 
         if (normalizedPath.startsWith('chat/')) {
             const attachmentUrl = `/uploads/${normalizedPath}`;
@@ -202,15 +199,11 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
             const pathParts = normalizedPath.split('/');
             const legacyScope = pathParts[0];
             const legacyAcademyId = pathParts[1];
-            const sensitiveLegacyScopes = new Set(['assignments', 'player-assignments']);
             const publicLegacyScopes = new Set(['coaches']);
             const allowedLegacySameAcademy = !mediaFile
                 && legacyAcademyId
                 && legacyAcademyId === req.user.academyId
-                && (
-                    publicLegacyScopes.has(legacyScope)
-                    || (sensitiveLegacyScopes.has(legacyScope) && ['admin', 'coach'].includes(req.user.role))
-                );
+                && publicLegacyScopes.has(legacyScope);
 
             if (!allowedByMetadata && !allowedLegacySameAcademy) {
                 if (mediaFile?.is_sensitive !== false) {
@@ -226,6 +219,14 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
                     error: { code: 'NOT_FOUND', message: 'File not found' },
                 });
             }
+        }
+
+        const upload = await storage.getUpload(relativePath);
+        if (!upload) {
+            return res.status(404).json({
+                success: false,
+                error: { code: 'NOT_FOUND', message: 'File not found' },
+            });
         }
 
         setSecureUploadHeaders(res, normalizedPath);
@@ -247,10 +248,11 @@ app.get('/uploads/*', authMiddleware, async (req, res, next) => {
 mountApplicationRoutes(app, controllers);
 
 app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.originalUrl} not found` },
-    });
+    res.status(404).json(
+        ApiResponse.error('NOT_FOUND', 'API route not found', [], {
+            requestId: req.id,
+        }),
+    );
 });
 
 app.use(errorHandler);

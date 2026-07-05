@@ -25,6 +25,13 @@ function storageKeyFromUrl(url) {
     return String(url || '').replace(/\\/g, '/').replace(/^\/uploads\/+/, '').replace(/^\/+/, '');
 }
 
+function isSafeStorageKey(value) {
+    const key = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    return Boolean(key)
+        && !key.includes('\0')
+        && !key.split('/').some((segment) => segment === '.' || segment === '..');
+}
+
 async function s3Client() {
     const { S3Client } = require('@aws-sdk/client-s3');
     return new S3Client({
@@ -180,19 +187,15 @@ async function putUpload({
 
 async function findUploadMetadata(relativePath) {
     const normalized = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-    try {
-        return await db('media_files')
-            .where({ storage_key: normalized })
-            .first();
-    } catch (err) {
-        logger.warn({ err, relativePath: normalized }, 'Failed to read upload metadata');
-        return null;
-    }
+    return db('media_files')
+        .where({ storage_key: normalized })
+        .first();
 }
 
 async function attachMediaToEntity(fileUrls = [], {
     academyId,
     scope,
+    uploaderId,
     entityType,
     entityId,
     isSensitive,
@@ -200,30 +203,65 @@ async function attachMediaToEntity(fileUrls = [], {
     const urls = [...new Set((fileUrls || []).filter(Boolean))];
     const keys = [...new Set(urls.map(storageKeyFromUrl).filter(Boolean))];
     if (!urls.length && !keys.length) return 0;
+    if (!academyId || !scope || !uploaderId || !entityType || !entityId) {
+        throw new AppError(
+            'Upload ownership information is incomplete.',
+            400,
+            'INVALID_UPLOAD_OWNERSHIP',
+        );
+    }
 
     try {
-        const count = await db('media_files')
-            .where((q) => {
-                if (urls.length) q.whereIn('url', urls);
-                if (keys.length) q.orWhereIn('storage_key', keys);
-            })
-            .update({
-                academy_id: academyId || null,
-                scope: scope || null,
-                entity_type: entityType || scope || null,
-                entity_id: entityId || null,
-                ...(isSensitive === undefined ? {} : { is_sensitive: Boolean(isSensitive) }),
-                updated_at: new Date(),
-            });
-        return Number(count || 0);
+        return await db.transaction(async (trx) => {
+            const media = await trx('media_files')
+                .where({
+                    academy_id: academyId,
+                    scope,
+                    uploader_id: uploaderId,
+                })
+                .whereIn('storage_key', keys)
+                .where((q) => {
+                    q.whereNull('entity_id').orWhere({
+                        entity_type: entityType,
+                        entity_id: entityId,
+                    });
+                })
+                .forUpdate()
+                .select('id', 'storage_key');
+
+            const foundKeys = new Set(media.map((row) => row.storage_key));
+            if (keys.some((key) => !foundKeys.has(key))) {
+                throw new AppError(
+                    'One or more files are invalid or were not uploaded by this account.',
+                    403,
+                    'UPLOAD_OWNERSHIP_REQUIRED',
+                );
+            }
+
+            const count = await trx('media_files')
+                .whereIn('id', media.map((row) => row.id))
+                .update({
+                    entity_type: entityType,
+                    entity_id: entityId,
+                    ...(isSensitive === undefined ? {} : { is_sensitive: Boolean(isSensitive) }),
+                    updated_at: new Date(),
+                });
+            return Number(count || 0);
+        });
     } catch (err) {
+        if (err instanceof AppError) throw err;
         logger.warn({ err, scope, academyId, entityType, entityId }, 'Failed to attach upload metadata to entity');
-        return 0;
+        throw new AppError(
+            'Upload metadata could not be verified. Please upload the file again.',
+            503,
+            'UPLOAD_METADATA_UNAVAILABLE',
+        );
     }
 }
 
 async function getUpload(relativePath) {
     const normalized = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!isSafeStorageKey(normalized)) return null;
     if (env.STORAGE_PROVIDER === 's3') {
         const { GetObjectCommand } = require('@aws-sdk/client-s3');
         const client = await s3Client();
@@ -246,7 +284,17 @@ async function getUpload(relativePath) {
     if (!requestedPath.startsWith(`${uploadsRoot}${path.sep}`)) {
         return null;
     }
-    return { type: 'file', path: requestedPath };
+    try {
+        const [realRoot, realRequestedPath] = await Promise.all([
+            fs.realpath(uploadsRoot),
+            fs.realpath(requestedPath),
+        ]);
+        if (!realRequestedPath.startsWith(`${realRoot}${path.sep}`)) return null;
+        return { type: 'file', path: realRequestedPath };
+    } catch (err) {
+        if (err.code === 'ENOENT') return null;
+        throw err;
+    }
 }
 
 module.exports = {

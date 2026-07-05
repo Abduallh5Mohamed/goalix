@@ -46,6 +46,7 @@ function chatRoutes(controller) {
   router.get("/conversations", controller.listConversations);
   router.post(
     "/conversations",
+    chatWriteLimiter,
     validate({ body: schema.createConversationSchema }),
     controller.createConversation,
   );
@@ -70,6 +71,7 @@ function chatRoutes(controller) {
   );
   router.patch(
     "/conversations/:id/messages/:messageId",
+    chatWriteLimiter,
     validate({
       params: schema.messageParam,
       body: schema.editMessageSchema,
@@ -78,11 +80,13 @@ function chatRoutes(controller) {
   );
   router.delete(
     "/conversations/:id/messages/:messageId",
+    chatWriteLimiter,
     validate({ params: schema.messageParam, query: schema.deleteMessageQuery }),
     controller.deleteMessage,
   );
   router.patch(
     "/conversations/:id/close",
+    chatWriteLimiter,
     validate({ params: schema.idParam }),
     controller.closeConversation,
   );

@@ -117,11 +117,33 @@ describe("security configuration", () => {
     expect(`${result.stderr}${result.stdout}`).toContain("JWT_REFRESH_SECRET");
   });
 
+  it("requires separate production secrets for JWT, cookies, and CSRF", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CSRF_SECRET: productionSecurityEnv.COOKIE_SECRET,
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("SECURITY_SECRETS");
+  });
+
   it("rejects localhost CORS origins in production", () => {
     const result = runNode("require('./src/config/env')", {
       NODE_ENV: "production",
       ...productionSecurityEnv,
       CORS_ORIGINS: "http://localhost:3001",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stderr}${result.stdout}`).toContain("CORS_ORIGINS");
+  });
+
+  it("rejects non-HTTPS production CORS origins", () => {
+    const result = runNode("require('./src/config/env')", {
+      NODE_ENV: "production",
+      ...productionSecurityEnv,
+      CORS_ORIGINS: "http://app.goalix.local",
     });
 
     expect(result.status).not.toBe(0);

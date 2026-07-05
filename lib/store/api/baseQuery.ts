@@ -12,6 +12,7 @@ import {
   isMutatingMethod,
   refreshCsrfToken,
 } from "@/lib/api/csrf";
+import { normalizeBaseQueryError } from "@/lib/api/errors";
 
 const API_BASE = getApiBaseUrl();
 
@@ -97,7 +98,7 @@ function mapApiUser(apiUser: Record<string, unknown>) {
   };
 }
 
-export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+const executeBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
   extraOptions,
@@ -142,5 +143,32 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     logQueryTiming(args, api.endpoint, startedAt, result);
   }
 
+  if (result.error) {
+    result = {
+      ...result,
+      error: normalizeBaseQueryError(result.error),
+    };
+  }
+
   return result;
+};
+
+export const baseQueryWithReauth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  try {
+    return await executeBaseQuery(args, api, extraOptions);
+  } catch (error) {
+    return {
+      error: normalizeBaseQueryError({
+        status: "CUSTOM_ERROR",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unexpected API client error",
+      }),
+    };
+  }
 };

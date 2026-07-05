@@ -111,6 +111,19 @@ class AuthRepository extends BaseRepository {
             .first();
     }
 
+    async consumeRefreshTokenByHash(tokenHash) {
+        const [row] = await this.db('auth_refresh_tokens')
+            .where({ token_hash: tokenHash, is_revoked: false })
+            .where('expires_at', '>', new Date())
+            .update({
+                is_revoked: true,
+                revoke_reason: 'rotation',
+                updated_at: new Date(),
+            })
+            .returning('*');
+        return row || null;
+    }
+
     async revokeRefreshToken(id) {
         return this.db('auth_refresh_tokens')
             .where({ id })
@@ -232,6 +245,39 @@ class AuthRepository extends BaseRepository {
             .first();
     }
 
+    async resetPasswordWithToken(tokenHash, passwordHash) {
+        return this.db.transaction(async (trx) => {
+            const resetRecord = await trx('auth_password_resets')
+                .where({ token_hash: tokenHash, is_used: false })
+                .where('expires_at', '>', new Date())
+                .forUpdate()
+                .first();
+            if (!resetRecord) return null;
+
+            await trx('auth_password_resets')
+                .where({ id: resetRecord.id, is_used: false })
+                .update({ is_used: true, updated_at: new Date() });
+            await trx('auth_users')
+                .where({ id: resetRecord.user_id })
+                .update({
+                    password_hash: passwordHash,
+                    failed_login_attempts: 0,
+                    locked_until: null,
+                    last_failed_login_at: null,
+                    updated_at: new Date(),
+                });
+            await trx('auth_refresh_tokens')
+                .where({ user_id: resetRecord.user_id, is_revoked: false })
+                .update({
+                    is_revoked: true,
+                    revoke_reason: 'password_reset',
+                    updated_at: new Date(),
+                });
+
+            return resetRecord;
+        });
+    }
+
     async findActiveTotpDevices(userId) {
         return this.db('auth_totp_devices')
             .where({ user_id: userId, status: 'active' })
@@ -308,6 +354,14 @@ class AuthRepository extends BaseRepository {
         return this.db('auth_totp_backup_codes')
             .where({ user_id: userId, code_hash: codeHash, is_used: false })
             .first();
+    }
+
+    async consumeUnusedBackupCode(userId, codeHash) {
+        const [row] = await this.db('auth_totp_backup_codes')
+            .where({ user_id: userId, code_hash: codeHash, is_used: false })
+            .update({ is_used: true, used_at: new Date() })
+            .returning('*');
+        return row || null;
     }
 
     async markBackupCodeUsed(id) {

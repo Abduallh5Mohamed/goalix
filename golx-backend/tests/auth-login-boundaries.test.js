@@ -3,6 +3,9 @@ require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.en
 const AuthService = require('../src/modules/auth/auth.service');
 const { UnauthorizedError } = require('../src/shared/errors');
 
+// bcrypt cost 4 keeps the unit test fast while still exercising real password verification.
+const PASSWORD_HASH = '$2b$04$Pjh8jy5S/G9Y0yZvQu86A./aI3WZk6TM0FgXuBNrrOmo807sU9hpy';
+
 function buildServiceForUser(user) {
     const repo = {
         findByEmailPhoneOrUsername: jest.fn(async () => user),
@@ -19,13 +22,13 @@ function buildServiceForUser(user) {
 }
 
 describe('auth login role boundaries', () => {
-    test('admin/coach login rejects player accounts before password verification', async () => {
+    test('admin/coach login rejects a player account with otherwise valid credentials', async () => {
         const { service, repo } = buildServiceForUser({
             id: 'player-user',
             role: 'player',
             username: 'player1',
             is_active: true,
-            password_hash: 'not-used',
+            password_hash: PASSWORD_HASH,
         });
 
         await expect(service.login({
@@ -37,14 +40,14 @@ describe('auth login role boundaries', () => {
         expect(repo.findActiveAdminAccount).not.toHaveBeenCalled();
     });
 
-    test('public player/parent login rejects admin accounts before admin session checks', async () => {
+    test('public player/parent login rejects an admin account with otherwise valid credentials', async () => {
         const { service, repo } = buildServiceForUser({
             id: 'admin-user',
             role: 'admin',
             username: 'admin1',
             email: 'admin@example.com',
             is_active: true,
-            password_hash: 'not-used',
+            password_hash: PASSWORD_HASH,
         });
 
         await expect(service.login({
@@ -62,7 +65,7 @@ describe('auth login role boundaries', () => {
             role: 'player',
             username: 'player1',
             is_active: true,
-            password_hash: 'not-used',
+            password_hash: PASSWORD_HASH,
         });
 
         await expect(service.login({

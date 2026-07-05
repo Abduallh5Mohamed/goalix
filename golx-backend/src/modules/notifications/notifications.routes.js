@@ -14,15 +14,15 @@ function notificationsRoutes(controller) {
     const router = Router();
     router.use(authMiddleware);
 
-    router.get('/', rbac('*'), validate({ query: notificationsQuery }), controller.getNotifications);
-    router.get('/unread-count', rbac('*'), controller.getUnreadCount);
+    router.get('/', validate({ query: notificationsQuery }), controller.getNotifications);
+    router.get('/unread-count', controller.getUnreadCount);
     // send: admin-only — prevents any authenticated user from spamming arbitrary users
-    router.post('/send', rbac('access_admin_dashboard'), validate({ body: sendNotificationSchema }), controller.send);
-    router.post('/send-bulk', rbac('access_admin_dashboard'), validate({ body: bulkNotificationSchema }), controller.sendBulk);
-    router.patch('/:id/read', rbac('*'), validate({ params: uuidParam }), controller.markAsRead);
-    router.patch('/read-all', rbac('*'), controller.markAllAsRead);
+    router.post('/send', rbac('manage_users'), validate({ body: sendNotificationSchema }), controller.send);
+    router.post('/send-bulk', rbac('manage_users'), validate({ body: bulkNotificationSchema }), controller.sendBulk);
+    router.patch('/read-all', controller.markAllAsRead);
+    router.patch('/:id/read', validate({ params: uuidParam }), controller.markAsRead);
     // Logs: admin-only with validated query params
-    router.get('/logs', rbac('access_admin_dashboard'), validate({ query: logsQuerySchema }), controller.getLogs);
+    router.get('/logs', rbac('manage_users'), validate({ query: logsQuerySchema }), controller.getLogs);
 
     return router;
 }

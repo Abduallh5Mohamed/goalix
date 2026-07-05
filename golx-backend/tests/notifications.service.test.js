@@ -10,8 +10,35 @@ jest.mock('../src/infrastructure/redis', () => ({
 }));
 
 const NotificationsService = require('../src/modules/notifications/notifications.service');
+const { NotFoundError } = require('../src/shared/errors');
 
 describe('NotificationsService delivery persistence', () => {
+    test('rejects a direct recipient outside the sender academy', async () => {
+        const repo = {
+            findTargetUser: jest.fn(async () => null),
+            createBulkWithLogs: jest.fn(),
+        };
+        const service = new NotificationsService(repo, { add: jest.fn() });
+        service._invalidateUnreadCounts = jest.fn();
+
+        await expect(service.sendNotification(
+            {
+                userId: 'other-academy-user',
+                type: 'warning',
+                title: 'Private update',
+                body: 'Academy-only message',
+                channel: 'in_app',
+            },
+            'academy-1',
+        )).rejects.toBeInstanceOf(NotFoundError);
+
+        expect(repo.findTargetUser).toHaveBeenCalledWith(
+            'academy-1',
+            'other-academy-user',
+        );
+        expect(repo.createBulkWithLogs).not.toHaveBeenCalled();
+    });
+
     test('creates inbox notifications and delivery logs atomically', async () => {
         const recipients = [
             { user_id: 'user-1' },

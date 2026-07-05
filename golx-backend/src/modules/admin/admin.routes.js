@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { authMiddleware } = require('../../middleware/auth.middleware');
-const { rbac, rbacAny } = require('../../middleware/rbac.middleware');
+const { rbac } = require('../../middleware/rbac.middleware');
 const validate = require('../../middleware/validate.middleware');
 const {
     uuidParam,
@@ -18,7 +18,7 @@ function adminRoutes(controller) {
     router.get('/dashboard', rbac('access_admin_dashboard'), controller.getDashboard);
     router.get(
         '/reports/overview',
-        rbacAny('view_financial_reports', 'payment.export', 'attendance.export'),
+        rbac('view_financial_reports'),
         validate({ query: reportsOverviewQuery }),
         controller.getReportsOverview,
     );

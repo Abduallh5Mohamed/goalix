@@ -1,3 +1,5 @@
+const env = require('../config/env');
+
 const legacyPermissions = {
     admin: ['*'],
     coach: [
@@ -113,11 +115,15 @@ async function getIamPermissionCodes(user, db) {
             .whereNull('deleted_at')
             .first('id');
     } catch (err) {
-        if (err.code === '42P01') return null;
+        if (err.code === '42P01') {
+            return env.NODE_ENV === 'production' ? new Set() : null;
+        }
         throw err;
     }
 
-    if (!iamUser) return null;
+    if (!iamUser) {
+        return env.NODE_ENV === 'production' ? new Set() : null;
+    }
 
     const query = db('iam_user_roles as ur')
         .join('iam_roles as r', 'ur.role_id', 'r.id')
@@ -125,6 +131,11 @@ async function getIamPermissionCodes(user, db) {
         .join('iam_permissions as p', 'rp.permission_id', 'p.id')
         .where('ur.user_id', user.userId)
         .whereNull('ur.revoked_at')
+        // A generic route permission has academy-wide effect. Scoped role
+        // assignments must be enforced by a resource-aware policy instead of
+        // being silently promoted to academy-wide access here.
+        .whereNull('ur.scope_branch_id')
+        .whereNull('ur.scope_group_id')
         .where(function activeRole() {
             this.whereNull('ur.expires_at').orWhere('ur.expires_at', '>', new Date());
         })
@@ -153,7 +164,8 @@ async function getIamPermissionCodes(user, db) {
 }
 
 async function hasPermission(user, required, db) {
-    if (required === '*') return true;
+    // Never use "*" as an "any authenticated user" route shortcut.
+    if (required === '*') return false;
 
     const iamPerms = await getIamPermissionCodes(user, db);
     if (iamPerms) {

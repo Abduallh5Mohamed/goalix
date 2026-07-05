@@ -1,10 +1,15 @@
 const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
-const { corsOrigin } = require("../config/cors");
+const { corsOrigin, isAllowedOrigin } = require("../config/cors");
 const { authenticateAccessToken } = require("../middleware/auth.middleware");
 const { redis, isRedisAvailable } = require("../infrastructure/redis");
 const logger = require("../shared/logger");
 const { setChatRealtime } = require("./chat.realtime");
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const JOIN_WINDOW_MS = 60 * 1000;
+const MAX_JOIN_ATTEMPTS = 30;
 
 function parseCookies(header = "") {
   return header.split(";").reduce((acc, part) => {
@@ -36,6 +41,10 @@ function setupChatSocket(server, chatService) {
       credentials: true,
     },
     maxHttpBufferSize: 64 * 1024,
+    perMessageDeflate: false,
+    allowRequest: (request, callback) => {
+      callback(null, isAllowedOrigin(request.headers.origin));
+    },
   });
 
   if (isRedisAvailable() && typeof redis.duplicate === "function") {
@@ -70,17 +79,28 @@ function setupChatSocket(server, chatService) {
 
   io.on("connection", (socket) => {
     socket.join(`user:${socket.user.userId}`);
+    const joinAttempts = [];
 
     socket.on("chat:join", async (payload, ack) => {
       try {
         const conversationId = payload?.conversationId;
-        if (!conversationId) throw new Error("conversationId is required");
+        if (!UUID_PATTERN.test(String(conversationId || ""))) {
+          throw new Error("Invalid conversation");
+        }
+        const now = Date.now();
+        while (joinAttempts.length && joinAttempts[0] <= now - JOIN_WINDOW_MS) {
+          joinAttempts.shift();
+        }
+        if (joinAttempts.length >= MAX_JOIN_ATTEMPTS) {
+          throw new Error("Rate limit exceeded");
+        }
+        joinAttempts.push(now);
         await chatService.getConversation(socket.user, conversationId);
         socket.join(`chat:${conversationId}`);
         if (typeof ack === "function") ack({ ok: true });
-      } catch (err) {
+      } catch {
         if (typeof ack === "function") {
-          ack({ ok: false, error: err.message || "Unable to join chat" });
+          ack({ ok: false, error: "Unable to join chat" });
         }
       }
     });

@@ -1,6 +1,26 @@
 const EventEmitter = require('node:events');
 const logger = require('../shared/logger');
 
+const sensitiveKeyPattern =
+    /password|passcode|token|secret|authorization|cookie|backup.?code|otp/i;
+
+function redactPayload(value, depth = 0) {
+    if (depth > 5) return '[TRUNCATED]';
+    if (Array.isArray(value)) {
+        return value.slice(0, 100).map((item) => redactPayload(item, depth + 1));
+    }
+    if (!value || typeof value !== 'object') return value;
+
+    return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+            key,
+            sensitiveKeyPattern.test(key)
+                ? '[REDACTED]'
+                : redactPayload(item, depth + 1),
+        ]),
+    );
+}
+
 /**
  * Internal EventBus — Node EventEmitter today → Kafka/RabbitMQ tomorrow.
  *
@@ -21,10 +41,7 @@ class EventBus extends EventEmitter {
      */
     publish(event, payload) {
         // Strip sensitive fields from debug log to prevent secret leakage
-        const safePayload = { ...payload };
-        delete safePayload.resetToken;
-        delete safePayload.password;
-        delete safePayload.token;
+        const safePayload = redactPayload(payload);
         logger.debug({ event, payload: safePayload }, `Event published: ${event}`);
         this.emit(event, payload);
     }
@@ -39,7 +56,10 @@ class EventBus extends EventEmitter {
             try {
                 await handler(payload);
             } catch (err) {
-                logger.error({ err, event, payload }, `Event handler error: ${event}`);
+                logger.error(
+                    { err, event, payload: redactPayload(payload) },
+                    `Event handler error: ${event}`,
+                );
             }
         });
         logger.debug({ event }, 'Event handler subscribed');

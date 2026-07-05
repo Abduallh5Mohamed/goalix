@@ -6,9 +6,9 @@ This runbook keeps the current product behavior, roles, permissions, and workflo
 
 - Target: Docker on a VPS or VM.
 - Entry point: `docker-compose.prod.yml`.
-- Public edge: `nginx` load balances `api-1` and `api-2`.
-- Background processing: `worker-1` and `worker-2` run BullMQ outside the API process.
-- Realtime: Socket.IO uses sticky load balancing plus the Redis adapter, so events can move between API instances.
+- Public edge: `nginx` terminates HTTPS and proxies to the private API/frontend containers.
+- Background processing: `worker` runs BullMQ outside the API process.
+- PostgreSQL and Redis are attached only to the internal Docker data network.
 
 Required production environment:
 
@@ -22,8 +22,26 @@ Required production environment:
 - `CSRF_SECRET`
 - `MFA_ENFORCED_ROLES=admin,coach`
 - `CORS_ORIGINS=https://your-real-app-domain.example`
+- `TLS_CERT_PATH=/etc/letsencrypt/live/your-domain/fullchain.pem`
+- `TLS_KEY_PATH=/etc/letsencrypt/live/your-domain/privkey.pem`
 
 Production startup intentionally fails if `CSRF_SECRET` is missing, if `JWT_SECRET` and `JWT_REFRESH_SECRET` match, or if `CORS_ORIGINS` contains localhost/development origins.
+
+## HTTPS Certificates
+
+- Obtain the certificate on the host (for example with Certbot), then point
+  `TLS_CERT_PATH` and `TLS_KEY_PATH` at the host files. Never commit a private
+  key or certificate bundle to this repository.
+- The Nginx container mounts both files read-only. Port 80 only serves
+  `/health`; all other HTTP requests are redirected permanently to HTTPS.
+- Renew certificates on the host and reload Nginx after renewal:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
+```
+
+- Restrict the private-key file to root on the host and test renewal before
+  enabling unattended deployment.
 
 Recommended database/runtime guards:
 
@@ -53,7 +71,7 @@ For S3-compatible upload storage:
 ## Health Checks
 
 - `GET /health` is lightweight and only confirms the process is alive.
-- `GET /ready` checks PostgreSQL and Redis.
+- `GET /ready` checks PostgreSQL and Redis from the private Docker network; Nginx does not expose it publicly.
 - PostgreSQL failure returns HTTP 503.
 - Redis failure returns HTTP 200 with `status=degraded` because Redis/cache/queue should not take down normal API browsing.
 

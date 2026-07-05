@@ -8,7 +8,7 @@ const sendNotificationSchema = z.object({
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
-    targetRole: z.string().optional(), // broadcast to role
+    targetRole: z.enum(['admin', 'coach', 'player', 'parent']).optional(),
 });
 
 const bulkNotificationSchema = z.object({
@@ -16,7 +16,7 @@ const bulkNotificationSchema = z.object({
     title: z.string().min(1).max(200),
     body: z.string().max(2000),
     channel: z.enum(['in_app', 'push', 'email', 'sms']).default('in_app'),
-    targetRole: z.string().optional(),
+    targetRole: z.enum(['admin', 'coach', 'player', 'parent']).optional(),
 });
 
 const notificationsQuery = z.object({

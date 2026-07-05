@@ -7,6 +7,7 @@ const redisEnabled = process.env.REDIS_ENABLED !== 'false';
 const noopRedis = {
     connect: async () => null,
     get: async () => null,
+    getdel: async () => null,
     set: async () => null,
     del: async () => 0,
     incr: async () => 0,

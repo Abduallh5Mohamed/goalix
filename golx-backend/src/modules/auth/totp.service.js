@@ -45,7 +45,8 @@ function generateBackupCodes() {
     const backupCodes = [];
     const codeHashes = [];
     for (let i = 0; i < 10; i++) {
-        const code = crypto.randomBytes(4).toString('hex');
+        // 80 bits keeps offline guessing impractical if backup-code hashes leak.
+        const code = crypto.randomBytes(10).toString('hex');
         backupCodes.push(code);
         codeHashes.push(crypto.createHash('sha256').update(code).digest('hex'));
     }
@@ -250,10 +251,8 @@ class TotpService {
 
     async verifyBackupCode(userId, code) {
         const codeHash = crypto.createHash('sha256').update(code).digest('hex');
-        const backupCode = await this.repo.findUnusedBackupCode(userId, codeHash);
+        const backupCode = await this.repo.consumeUnusedBackupCode(userId, codeHash);
         if (!backupCode) throw new UnauthorizedError('Invalid or already used backup code');
-
-        await this.repo.markBackupCodeUsed(backupCode.id);
         return true;
     }
 

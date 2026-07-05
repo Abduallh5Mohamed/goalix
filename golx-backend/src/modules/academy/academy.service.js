@@ -21,6 +21,16 @@ const deriveLabel = (label, fromYear, toYear) => {
     return `${fromYear}-${toYear}`;
 };
 
+const safePublicUrl = (value) => {
+    if (typeof value !== 'string' || !value.trim()) return '';
+    try {
+        const url = new URL(value.trim());
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+};
+
 const normalizeAcademySettings = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
 
@@ -55,10 +65,27 @@ class AcademyService {
     }
 
     // ─── Academy ────────────────────────────────────────────────────────
-    async getAcademy(academyId) {
+    async getAcademy(academyId, { includePrivate = false } = {}) {
         const academy = await this.repo.findById(academyId);
         if (!academy) throw new NotFoundError('Academy', academyId);
-        return academy;
+        if (includePrivate) return academy;
+
+        const settings = academy.settings && typeof academy.settings === 'object'
+            ? academy.settings
+            : {};
+        return {
+            id: academy.id,
+            name: academy.name,
+            email: academy.email || null,
+            phone: academy.phone || null,
+            address: academy.address || null,
+            logo_url: academy.logo_url || null,
+            settings: {
+                communityWhatsappUrl: typeof settings.communityWhatsappUrl === 'string'
+                    ? settings.communityWhatsappUrl
+                    : '',
+            },
+        };
     }
 
     async getPublicAcademyProfile() {
@@ -79,10 +106,10 @@ class AcademyService {
             address: academy.address || null,
             logoUrl: academy.logo_url || null,
             socialLinks: {
-                facebook: typeof socialLinks.facebook === 'string' ? socialLinks.facebook : '',
-                instagram: typeof socialLinks.instagram === 'string' ? socialLinks.instagram : '',
-                twitter: typeof socialLinks.twitter === 'string' ? socialLinks.twitter : '',
-                linkedin: typeof socialLinks.linkedin === 'string' ? socialLinks.linkedin : '',
+                facebook: safePublicUrl(socialLinks.facebook),
+                instagram: safePublicUrl(socialLinks.instagram),
+                twitter: safePublicUrl(socialLinks.twitter),
+                linkedin: safePublicUrl(socialLinks.linkedin),
             },
         };
     }

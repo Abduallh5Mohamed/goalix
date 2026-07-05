@@ -10,7 +10,7 @@ function attendanceRoutes(controller) {
 
     router.get(
         '/overview',
-        rbac('attendance:read'),
+        rbac('manage_attendance'),
         validate({ query: attendanceOverviewQuery }),
         controller.getOverview,
     );

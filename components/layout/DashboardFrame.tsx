@@ -103,7 +103,14 @@ const settingsRoutes: Partial<Record<UserRole, string>> = {
 const getExternalHref = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(
+      /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
+    );
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 };
 
 type DashboardLanguage = "en" | "ar";

@@ -5,15 +5,14 @@ const COOKIE_NAME = 'csrfToken';
 const HEADER_NAME = 'x-csrf-token';
 const csrfSecret = env.CSRF_SECRET || env.COOKIE_SECRET;
 
-const excludedPrefixes = [
+const excludedPaths = new Set([
     '/api/v1/auth/login',
     '/api/v1/auth/admin/login',
-    '/api/v1/auth/signup',
     '/api/v1/auth/refresh',
     '/api/v1/auth/logout',
     '/api/v1/auth/2fa/verify',
     '/api/v1/auth/2fa/backup-verify',
-];
+]);
 
 function signNonce(nonce) {
     return crypto.createHmac('sha256', csrfSecret).update(nonce).digest('base64url');
@@ -52,7 +51,7 @@ function setCsrfCookie(req, res, next) {
 
 function requireCsrfToken(req, res, next) {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-    if (excludedPrefixes.some((prefix) => req.originalUrl.startsWith(prefix))) return next();
+    if (excludedPaths.has(req.path)) return next();
     if (!req.cookies?.accessToken) return next();
     if (req.get('authorization')?.startsWith('Bearer ')) return next();
 

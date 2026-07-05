@@ -12,6 +12,7 @@ function adminCalendarRoutes(controller) {
 
   router.get(
     "/parent-links",
+    rbac("manage_teams"),
     validate({ query: schema.parentLinkQuery }),
     controller.adminListParentLinks,
   );
@@ -50,32 +51,38 @@ function adminCalendarRoutes(controller) {
   );
   router.get(
     "/parent-accounts",
+    rbac("manage_teams"),
     validate({ query: schema.parentLinkQuery }),
     controller.adminListParentAccounts,
   );
   router.get(
     "/parents/:id/profile",
+    rbac("manage_teams"),
     validate({ params: schema.idParam }),
     controller.adminGetParentProfile,
   );
   router.get(
     "/parent-linkable-players",
+    rbac("manage_teams"),
     validate({ query: schema.parentLinkQuery }),
     controller.adminListLinkablePlayers,
   );
   router.get(
     "/players/:id/detail",
+    rbac("manage_players"),
     validate({ params: schema.idParam }),
     controller.adminGetPlayerDetail,
   );
   router.get(
     "/ranking-system-inputs",
+    rbac("manage_players"),
     validate({ query: schema.rankingSystemInputsQuery }),
     controller.adminRankingSystemInputs,
   );
 
   router.get(
     "/calendar-events",
+    rbac("manage_schedules"),
     validate({ query: schema.calendarFiltersQuery }),
     controller.adminListCalendarEvents,
   );
@@ -87,6 +94,7 @@ function adminCalendarRoutes(controller) {
   );
   router.get(
     "/calendar-events/:id",
+    rbac("manage_schedules"),
     validate({ params: schema.idParam }),
     controller.adminGetCalendarEvent,
   );
@@ -102,6 +110,7 @@ function adminCalendarRoutes(controller) {
   router.delete(
     "/calendar-events/:id/hard-delete-training",
     rbac("manage_schedules"),
+    rbac("manage_permissions"),
     validate({ params: schema.idParam }),
     controller.adminHardDeleteTrainingEvent,
   );
@@ -114,6 +123,7 @@ function adminCalendarRoutes(controller) {
 
   router.get(
     "/matches",
+    rbac("manage_schedules"),
     validate({ query: schema.adminMatchFiltersQuery }),
     controller.adminListMatches,
   );
@@ -125,6 +135,7 @@ function adminCalendarRoutes(controller) {
   );
   router.get(
     "/match-coach-requests",
+    rbac("manage_schedules"),
     validate({ query: schema.paginationQuery }),
     controller.adminListCoachMatchRequests,
   );
@@ -136,6 +147,7 @@ function adminCalendarRoutes(controller) {
   );
   router.get(
     "/evaluation-edit-requests",
+    rbac("manage_schedules"),
     validate({ query: schema.evaluationEditRequestsQuery }),
     controller.adminListEvaluationEditRequests,
   );
@@ -159,6 +171,7 @@ function adminCalendarRoutes(controller) {
   );
   router.get(
     "/matches/:id",
+    rbac("manage_schedules"),
     validate({ params: schema.idParam }),
     controller.adminGetMatch,
   );
@@ -180,6 +193,7 @@ function adminCalendarRoutes(controller) {
   router.delete(
     "/matches/:id/hard-delete",
     rbac("manage_schedules"),
+    rbac("manage_permissions"),
     validate({ params: schema.idParam }),
     controller.adminHardDeleteMatch,
   );
@@ -198,6 +212,7 @@ function adminCalendarRoutes(controller) {
 
   router.get(
     "/friendly-match-requests",
+    rbac("manage_schedules"),
     validate({ query: schema.paginationQuery }),
     controller.adminListFriendlyRequests,
   );
@@ -231,17 +246,20 @@ function adminCalendarRoutes(controller) {
 
   router.get(
     "/reports/attendance",
+    rbac("manage_attendance"),
     validate({ query: schema.calendarFiltersQuery }),
     controller.adminAttendanceReport,
   );
   router.get(
     "/reports/performance",
+    rbac("manage_players"),
     validate({ query: schema.calendarFiltersQuery }),
     controller.adminPerformanceReport,
   );
 
   router.get(
     "/coach-groups",
+    rbac("manage_teams"),
     validate({ query: schema.paginationQuery }),
     controller.adminListCoachGroups,
   );
@@ -269,6 +287,7 @@ function adminCalendarRoutes(controller) {
 
   router.get(
     "/player-field-options",
+    rbac("manage_academy_settings"),
     validate({ query: schema.optionQuery }),
     controller.listPlayerOptions,
   );

@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const validate = require('../../middleware/validate.middleware');
 const { authMiddleware } = require('../../middleware/auth.middleware');
-const { rbac } = require('../../middleware/rbac.middleware');
+const { rbac, rbacAny } = require('../../middleware/rbac.middleware');
 const {
     uuidParam,
     rankingsQuery,
@@ -16,18 +16,19 @@ function rankingsRoutes(controller) {
     router.use(authMiddleware);
 
     // Rankings
-    router.get('/weekly', rbac('rankings:read'), validate({ query: rankingsQuery }), controller.getWeekly);
-    router.get('/monthly', rbac('rankings:read'), validate({ query: rankingsQuery }), controller.getMonthly);
-    router.get('/player/:id', rbac('rankings:read'), validate({ params: uuidParam }), controller.getPlayerRankings);
+    const academyRankingRead = rbacAny('manage_players', 'ranking.read.academy');
+    router.get('/weekly', academyRankingRead, validate({ query: rankingsQuery }), controller.getWeekly);
+    router.get('/monthly', academyRankingRead, validate({ query: rankingsQuery }), controller.getMonthly);
+    router.get('/player/:id', academyRankingRead, validate({ params: uuidParam }), controller.getPlayerRankings);
     router.post('/recalculate', rbac('manage_players'), validate({ body: recalculateSchema }), controller.recalculate);
 
     // Evaluations
-    router.post('/evaluations', rbac('evaluations:write'), validate({ body: createEvaluationSchema }), controller.createEvaluation);
-    router.get('/evaluations/player/:id', rbac('evaluations:read'), validate({ params: uuidParam }), controller.getPlayerEvaluations);
+    router.post('/evaluations', rbac('manage_players'), validate({ body: createEvaluationSchema }), controller.createEvaluation);
+    router.get('/evaluations/player/:id', rbacAny('manage_players', 'evaluation.read.academy'), validate({ params: uuidParam }), controller.getPlayerEvaluations);
 
     // Matches
-    router.post('/matches', rbac('matches:write'), validate({ body: createMatchSchema }), controller.createMatch);
-    router.post('/matches/player-stats', rbac('matches:write'), validate({ body: playerMatchStatsSchema }), controller.addPlayerStats);
+    router.post('/matches', rbac('manage_schedules'), validate({ body: createMatchSchema }), controller.createMatch);
+    router.post('/matches/player-stats', rbac('manage_schedules'), validate({ body: playerMatchStatsSchema }), controller.addPlayerStats);
 
     return router;
 }

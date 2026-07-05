@@ -436,6 +436,7 @@ class PlayerAssignmentsService {
       {
         academyId,
         scope: "player-assignments",
+        uploaderId: userId,
         entityType: "player_assignment_submission",
         entityId: submission.id,
         isSensitive: true,

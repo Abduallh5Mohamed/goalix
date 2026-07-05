@@ -192,6 +192,17 @@ class NotificationsRepository extends BaseRepository {
             .select('id as user_id');
     }
 
+    async findTargetUser(academyId, userId) {
+        return this.db('auth_users')
+            .where({
+                id: userId,
+                academy_id: academyId,
+                is_active: true,
+            })
+            .whereNull('deleted_at')
+            .first('id as user_id');
+    }
+
     async markAsRead(id, userId) {
         const [row] = await this.db('notification_inbox')
             .where({ id, user_id: userId })
@@ -219,21 +230,29 @@ class NotificationsRepository extends BaseRepository {
         return +count;
     }
 
-    async findLogs({ channel, status, page = 1, limit = 20, includeArchive = false } = {}) {
-        const query = this.db('notification_logs')
+    _academyLogsQuery(sourceTable, academyId, { channel, status } = {}) {
+        return this.db(`${sourceTable} as notification_logs`)
+            .join('auth_users as notification_user', 'notification_user.id', 'notification_logs.user_id')
+            .where('notification_user.academy_id', academyId)
+            .whereNull('notification_user.deleted_at')
             .modify((q) => {
-                if (channel) q.where('channel', channel);
-                if (status) q.where('status', status);
-            });
+                if (channel) q.where('notification_logs.channel', channel);
+                if (status) q.where('notification_logs.status', status);
+            })
+            .select('notification_logs.*');
+    }
+
+    async findLogs(academyId, { channel, status, page = 1, limit = 20, includeArchive = false } = {}) {
+        const query = this._academyLogsQuery('notification_logs', academyId, { channel, status });
 
         if (includeArchive && await this.db.schema.hasTable('notification_logs_archive')) {
-            const archiveQuery = this.db('notification_logs_archive')
-                .modify((q) => {
-                    if (channel) q.where('channel', channel);
-                    if (status) q.where('status', status);
-                });
-            const [{ count: hotCount }] = await query.clone().count('id as count');
-            const [{ count: archiveCount }] = await archiveQuery.clone().count('id as count');
+            const archiveQuery = this._academyLogsQuery(
+                'notification_logs_archive',
+                academyId,
+                { channel, status },
+            );
+            const [{ count: hotCount }] = await query.clone().clearSelect().count('notification_logs.id as count');
+            const [{ count: archiveCount }] = await archiveQuery.clone().clearSelect().count('notification_logs.id as count');
             const readLimit = page * limit;
             const [hotRows, archiveRows] = await Promise.all([
                 query.clone().orderBy('created_at', 'desc').limit(readLimit),
@@ -246,7 +265,7 @@ class NotificationsRepository extends BaseRepository {
             return { data, total, page, totalPages: Math.ceil(total / limit) || 1 };
         }
 
-        const [{ count }] = await query.clone().count('id as count');
+        const [{ count }] = await query.clone().clearSelect().count('notification_logs.id as count');
         const data = await query
             .orderBy('created_at', 'desc')
             .limit(limit)

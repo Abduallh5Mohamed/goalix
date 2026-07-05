@@ -7,6 +7,10 @@ const MODEL_VERSION = "football_ranking_model";
 const DEFAULT_TIMEOUT_MS = Number(process.env.RANKING_MODEL_TIMEOUT_MS || 60000);
 const CACHE_TTL_MS = Math.max(0, Number(process.env.RANKING_MODEL_CACHE_TTL_MS || 30000));
 const CACHE_MAX_ENTRIES = Math.max(1, Number(process.env.RANKING_MODEL_CACHE_MAX_ENTRIES || 100));
+const MAX_OUTPUT_BYTES = Math.max(
+    64 * 1024,
+    Number(process.env.MODEL_MAX_OUTPUT_BYTES || 5 * 1024 * 1024),
+);
 const predictionCache = new Map();
 
 const modelDir =
@@ -88,18 +92,35 @@ function runRankingPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = {})
         const child = spawn(pythonBin, [scriptPath, "--json-stdin"], {
             cwd: modelDir,
             windowsHide: true,
+            env: {
+                PATH: process.env.PATH,
+                SYSTEMROOT: process.env.SYSTEMROOT,
+                PYTHONPATH: process.env.PYTHONPATH,
+                PYTHONUNBUFFERED: '1',
+            },
         });
 
         const stdout = [];
         const stderr = [];
         let timedOut = false;
+        let outputExceeded = false;
         const timer = setTimeout(() => {
             timedOut = true;
             child.kill("SIGKILL");
         }, timeoutMs);
 
-        child.stdout.on("data", (chunk) => stdout.push(chunk));
-        child.stderr.on("data", (chunk) => stderr.push(chunk));
+        let outputBytes = 0;
+        const captureOutput = (target) => (chunk) => {
+            outputBytes += chunk.length;
+            if (outputBytes > MAX_OUTPUT_BYTES) {
+                outputExceeded = true;
+                child.kill("SIGKILL");
+                return;
+            }
+            target.push(chunk);
+        };
+        child.stdout.on("data", captureOutput(stdout));
+        child.stderr.on("data", captureOutput(stderr));
         child.on("error", (error) => {
             clearTimeout(timer);
             reject(
@@ -117,6 +138,10 @@ function runRankingPredictions(records, { timeoutMs = DEFAULT_TIMEOUT_MS } = {})
 
             if (timedOut) {
                 reject(new Error("Ranking model timed out"));
+                return;
+            }
+            if (outputExceeded) {
+                reject(new Error("Ranking model output exceeded the configured limit"));
                 return;
             }
             if (code !== 0) {

@@ -109,7 +109,15 @@ const assertActiveAuthUser = async (decoded) => {
     const user = await db('auth_users')
         .where({ id: decoded.userId, is_active: true })
         .whereNull('deleted_at')
-        .first('id', 'role', 'totp_enabled', 'totp_verified_at');
+        .first(
+            'id',
+            'role',
+            'academy_id',
+            'branch_id',
+            'linked_player_id',
+            'totp_enabled',
+            'totp_verified_at',
+        );
 
     if (!user) {
         throw new UnauthorizedError('Account is deactivated');
@@ -129,13 +137,13 @@ const authenticateAccessToken = async (token, { allowMfaSetup = false } = {}) =>
     if (mfaRequired && !allowMfaSetup) {
         throw new UnauthorizedError('MFA setup required');
     }
-    await assertActiveAdminAccount(decoded);
+    await assertActiveAdminAccount({ ...decoded, role: activeUser.role });
     return createAbility({
         userId: decoded.userId,
-        role: decoded.role,
-        academyId: decoded.academyId,
-        branchId: decoded.branchId,
-        linkedPlayerId: decoded.linkedPlayerId,
+        role: activeUser.role,
+        academyId: activeUser.academy_id,
+        branchId: activeUser.branch_id,
+        linkedPlayerId: activeUser.linked_player_id,
         sessionId: decoded.jti,
         totpEnabled: Boolean(activeUser.totp_enabled),
         mfaRequired,
@@ -143,13 +151,13 @@ const authenticateAccessToken = async (token, { allowMfaSetup = false } = {}) =>
 };
 
 const isMfaSetupRoute = (req) => {
-    const url = req.originalUrl || '';
-    return [
+    const path = String(req.originalUrl || '').split('?')[0];
+    return new Set([
         '/api/v1/auth/me',
         '/api/v1/auth/logout',
         '/api/v1/auth/2fa/setup',
         '/api/v1/auth/2fa/verify-setup',
-    ].some((prefix) => url.startsWith(prefix));
+    ]).has(path);
 };
 
 /**

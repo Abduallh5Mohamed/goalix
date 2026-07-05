@@ -15,6 +15,7 @@ const {
     ConflictError,
     NotFoundError,
     ForbiddenError,
+    AppError,
 } = require('../../shared/errors');
 const logger = require('../../shared/logger');
 const { ensureIamForAuthUser } = require('../../shared/iam-sync');
@@ -35,6 +36,8 @@ const {
 const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 const authPermissionsCacheKey = (user) =>
     `goalix:auth:permissions:v1:${user.userId}:${user.academyId || 'global'}`;
+const mfaChallengeKey = (challengeId) => `goalix:auth:mfa-challenge:${challengeId}`;
+const DUMMY_PASSWORD_HASH = '$2b$12$0IN7e3dc5K2UQwSl1aRno.cmNNcEA6.IK9rtfOEPT1GcDrjBWfpVq';
 const mfaEnforcedRoles = new Set(
     String(env.MFA_ENFORCED_ROLES || '')
         .split(',')
@@ -168,91 +171,93 @@ class AuthService {
         const normalizedUsername = username ? username.trim().toLowerCase() : null;
         const credentialMode = email ? 'email' : phone ? 'phone' : 'username';
         const user = await this.repo.findByEmailPhoneOrUsername(email, phone, normalizedUsername);
-        if (!user) {
+        const isValid = await bcrypt.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
+
+        if (!user) throw new UnauthorizedError('Invalid credentials');
+
+        if (!isValid) {
+            const roleAllowed = !Array.isArray(allowedRoles) || allowedRoles.includes(user.role);
+            if (roleAllowed) {
+                await this.repo.incrementFailedAttempts(user.id);
+                const maxAttempts = user.role === 'admin'
+                    ? env.ADMIN_MAX_FAILED_LOGIN_ATTEMPTS
+                    : env.MAX_FAILED_LOGIN_ATTEMPTS;
+                const currentAttempts = (user.failed_login_attempts || 0) + 1;
+
+                if (currentAttempts >= maxAttempts) {
+                    const lockoutMinutes = user.role === 'admin'
+                        ? env.ADMIN_LOCKOUT_DURATION_MINUTES
+                        : env.LOCKOUT_DURATION_MINUTES;
+                    await this.repo.lockAccount(
+                        user.id,
+                        new Date(Date.now() + lockoutMinutes * 60 * 1000),
+                    );
+                    await this.repo.createAuditLog({
+                        user_id: user.id,
+                        action: 'account_locked',
+                        table_name: 'auth_users',
+                        record_id: user.id,
+                        ip_address: ip,
+                        user_agent: userAgent,
+                        metadata: JSON.stringify({ attempts: currentAttempts, lockoutMinutes }),
+                    });
+                }
+            }
             throw new UnauthorizedError('Invalid credentials');
         }
 
         if (Array.isArray(allowedRoles) && !allowedRoles.includes(user.role)) {
             throw new UnauthorizedError('Invalid credentials');
         }
-
-        if (role && user.role !== role) {
-            throw new UnauthorizedError('Invalid credentials');
-        }
-
+        if (role && user.role !== role) throw new UnauthorizedError('Invalid credentials');
         if (user.role === 'admin' && !['email', 'username'].includes(credentialMode)) {
             throw new UnauthorizedError('Invalid credentials');
         }
-
-        if (user.role === 'admin') {
-            const adminAccount = await this.repo.findActiveAdminAccount(user.id);
-            if (!adminAccount) {
-                throw new UnauthorizedError('Admin account is not active');
-            }
-        }
-
         if (user.role === 'coach' && !['email', 'username'].includes(credentialMode)) {
             throw new UnauthorizedError('Invalid credentials');
         }
-
         if (['player', 'parent'].includes(user.role) && credentialMode !== 'username') {
             throw new UnauthorizedError('Invalid credentials');
         }
+        if (!user.is_active) throw new UnauthorizedError('Account is deactivated');
 
-        if (!user.is_active) {
-            throw new UnauthorizedError('Account is deactivated');
+        if (user.role === 'admin') {
+            const adminAccount = await this.repo.findActiveAdminAccount(user.id);
+            if (!adminAccount) throw new UnauthorizedError('Admin account is not active');
         }
 
-        // Check account lockout
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
             const remainingMs = new Date(user.locked_until) - new Date();
             const remainingMin = Math.ceil(remainingMs / 60000);
             throw new UnauthorizedError(`Account is locked. Try again in ${remainingMin} minutes`);
         }
 
-        const isValid = await bcrypt.compare(password, user.password_hash);
-        if (!isValid) {
-            // Increment failed attempts
-            await this.repo.incrementFailedAttempts(user.id);
-            const maxAttempts = user.role === 'admin'
-                ? env.ADMIN_MAX_FAILED_LOGIN_ATTEMPTS
-                : env.MAX_FAILED_LOGIN_ATTEMPTS;
-            const currentAttempts = (user.failed_login_attempts || 0) + 1;
-
-            if (currentAttempts >= maxAttempts) {
-                const lockoutMinutes = user.role === 'admin'
-                    ? env.ADMIN_LOCKOUT_DURATION_MINUTES
-                    : env.LOCKOUT_DURATION_MINUTES;
-                const lockedUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
-                await this.repo.lockAccount(user.id, lockedUntil);
-
-                // Audit log for lockout
-                await this.repo.createAuditLog({
-                    user_id: user.id,
-                    action: 'account_locked',
-                    table_name: 'auth_users',
-                    record_id: user.id,
-                    ip_address: ip,
-                    user_agent: userAgent,
-                    metadata: JSON.stringify({ attempts: currentAttempts, lockoutMinutes }),
-                });
-            }
-
-            throw new UnauthorizedError('Invalid credentials');
-        }
-
-        // Reset failed attempts on successful password
         if (user.failed_login_attempts > 0) {
             await this.repo.resetFailedAttempts(user.id);
         }
 
-        // Check if 2FA is required
         if (user.totp_enabled) {
-            // Return a temporary token for 2FA verification
+            const challengeId = crypto.randomUUID();
             const tempToken = signAccessToken(
-                { userId: user.id, purpose: '2fa' },
+                { userId: user.id, purpose: '2fa', jti: challengeId },
                 { expiresIn: '5m' },
             );
+            try {
+                const stored = await this.redis.set(
+                    mfaChallengeKey(challengeId),
+                    user.id,
+                    'EX',
+                    5 * 60,
+                    'NX',
+                );
+                if (stored !== 'OK') throw new Error('MFA challenge was not stored');
+            } catch {
+                throw new AppError(
+                    'MFA verification is temporarily unavailable. Please try again.',
+                    503,
+                    'MFA_SERVICE_UNAVAILABLE',
+                );
+            }
 
             return {
                 requires2FA: true,
@@ -271,7 +276,6 @@ class AuthService {
             role: user.role,
             ip,
         });
-
         this._recordSuccessfulLogin(user, ip, userAgent, 'login', loggedInAt);
 
         return {
@@ -290,8 +294,22 @@ class AuthService {
             throw new UnauthorizedError('Invalid or expired 2FA token');
         }
 
-        if (decoded.purpose !== '2fa') {
+        if (decoded.purpose !== '2fa' || !decoded.jti) {
             throw new UnauthorizedError('Invalid token purpose');
+        }
+
+        let challengeUserId;
+        try {
+            challengeUserId = await this.redis.getdel(mfaChallengeKey(decoded.jti));
+        } catch {
+            throw new AppError(
+                'MFA verification is temporarily unavailable. Please try again.',
+                503,
+                'MFA_SERVICE_UNAVAILABLE',
+            );
+        }
+        if (challengeUserId !== decoded.userId) {
+            throw new UnauthorizedError('Invalid or already used 2FA token');
         }
 
         const user = await this.repo.findById(decoded.userId);
@@ -319,34 +337,38 @@ class AuthService {
 
     // ─── Logout ─────────────────────────────────────────────────────────
     async logout(userId, refreshTokenHash, ip, userAgent, accessJti) {
+        let storedToken = null;
         if (refreshTokenHash) {
-            const token = await this.repo.findRefreshTokenByHash(refreshTokenHash);
-            if (token) {
-                await this.repo.revokeRefreshToken(token.id);
+            storedToken = await this.repo.findRefreshTokenByHash(refreshTokenHash);
+            if (storedToken) {
+                await this.repo.revokeRefreshToken(storedToken.id);
             }
         }
-        await this.repo.revokeAccessSessionByJti(userId, accessJti, 'logout');
 
-        // Also remove from Redis if cached (best-effort)
+        const effectiveUserId = userId || storedToken?.user_id;
+        if (!effectiveUserId) return;
+        await this.repo.revokeAccessSessionByJti(effectiveUserId, accessJti, 'logout');
+
         try {
             await Promise.all([
-                this.redis.del(`goalix:auth:refresh:${userId}`),
-                invalidateSession(this.redis, userId, accessJti),
+                this.redis.del(`goalix:auth:refresh:${effectiveUserId}`),
+                accessJti
+                    ? invalidateSession(this.redis, effectiveUserId, accessJti)
+                    : Promise.resolve(),
             ]);
         } catch { /* Redis unavailable */ }
 
-        // Audit log
         await this.repo.createAuditLog({
-            user_id: userId,
+            user_id: effectiveUserId,
             action: 'logout',
             table_name: 'auth_users',
-            record_id: userId,
+            record_id: effectiveUserId,
             ip_address: ip,
             user_agent: userAgent,
             session_jti: accessJti || null,
         });
 
-        eventBus.publish(AUTH_EVENTS.USER_LOGGED_OUT, { userId });
+        eventBus.publish(AUTH_EVENTS.USER_LOGGED_OUT, { userId: effectiveUserId });
     }
 
     // ─── Logout All Devices ─────────────────────────────────────────────
@@ -383,7 +405,7 @@ class AuthService {
 
         // Hash the token to find it in DB
         const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-        const storedToken = await this.repo.findRefreshTokenByHash(tokenHash);
+        const storedToken = await this.repo.consumeRefreshTokenByHash(tokenHash);
 
         if (!storedToken) {
             // ── Refresh token reuse detection ──────────────────────────
@@ -410,8 +432,6 @@ class AuthService {
             throw new UnauthorizedError('Token reuse detected. All sessions have been revoked. Please log in again.');
         }
 
-        // Revoke old token (rotation)
-        await this.repo.revokeRefreshToken(storedToken.id);
         try {
             await invalidateSession(
                 this.redis,
@@ -471,17 +491,11 @@ class AuthService {
     // ─── Reset Password ────────────────────────────────────────────────
     async resetPassword(token, newPassword) {
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-        const resetRecord = await this.repo.findValidPasswordReset(tokenHash);
+        const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS);
+        const resetRecord = await this.repo.resetPasswordWithToken(tokenHash, passwordHash);
         if (!resetRecord) {
             throw new UnauthorizedError('Invalid or expired reset token');
         }
-
-        const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS);
-        await this.repo.update(resetRecord.user_id, { password_hash: passwordHash });
-        await this.repo.markPasswordResetUsed(resetRecord.id);
-
-        // Revoke all refresh tokens for security
-        await this.repo.revokeAllUserTokens(resetRecord.user_id);
         try {
             await Promise.all([
                 this.redis.del(`goalix:auth:refresh:${resetRecord.user_id}`),

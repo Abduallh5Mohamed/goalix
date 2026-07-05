@@ -34,6 +34,22 @@ function buildAuthContractApp() {
 }
 
 describe('auth route contracts', () => {
+    test('does not expose self-service signup or registration status endpoints', async () => {
+        const app = buildAuthContractApp();
+
+        await request(app)
+            .post('/api/v1/auth/signup')
+            .send({
+                email: 'attacker@example.com',
+                password: 'Password1!',
+                role: 'parent',
+            })
+            .expect(404);
+        await request(app)
+            .get('/api/v1/auth/registration-status?email=attacker@example.com')
+            .expect(404);
+    });
+
     test('public login accepts only player and parent roles', async () => {
         const res = await request(buildAuthContractApp())
             .post('/api/v1/auth/login')

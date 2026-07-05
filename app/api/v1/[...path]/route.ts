@@ -1,6 +1,8 @@
 import * as http from "node:http";
 import * as https from "node:https";
-import { Readable } from "node:stream";
+import { randomUUID } from "node:crypto";
+import { Readable, Transform } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { NextRequest } from "next/server";
 
 type ApiRouteContext = {
@@ -41,6 +43,14 @@ const UPSTREAM_TIMEOUT_MS = Math.max(
   5_000,
   Number(process.env.GOALIX_API_PROXY_TIMEOUT_MS || 90_000),
 );
+const MAX_PROXY_BODY_BYTES = Math.max(
+  1024 * 1024,
+  Number(process.env.GOALIX_API_PROXY_MAX_BODY_BYTES || 26 * 1024 * 1024),
+);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+class PayloadTooLargeError extends Error {}
 const UPSTREAM_LOCAL_ADDRESSES = (
   process.env.GOALIX_API_PROXY_LOCAL_ADDRESSES || ""
 )
@@ -108,6 +118,7 @@ function getApiUrl() {
 function copyRequestHeaders(
   request: NextRequest,
   target: URL,
+  requestId: string,
 ): http.OutgoingHttpHeaders {
   const headers: http.OutgoingHttpHeaders = {};
   request.headers.forEach((value, key) => {
@@ -117,6 +128,7 @@ function copyRequestHeaders(
   });
 
   headers.host = target.host;
+  headers["x-request-id"] = requestId;
   headers["x-forwarded-host"] = request.headers.get("host") || "";
   headers["x-forwarded-proto"] = request.nextUrl.protocol.replace(":", "");
   return headers;
@@ -146,7 +158,8 @@ function copyResponseHeaders(upstream: http.IncomingMessage) {
 function requestUpstream(
   target: URL,
   request: NextRequest,
-  body: ArrayBuffer | undefined,
+  body: ReadableStream<Uint8Array> | null,
+  requestId: string,
 ) {
   const transport = target.protocol === "https:" ? https : http;
   const agent =
@@ -159,7 +172,7 @@ function requestUpstream(
       target,
       {
         method: request.method,
-        headers: copyRequestHeaders(request, target),
+        headers: copyRequestHeaders(request, target, requestId),
         agent,
       },
       (upstreamResponse) => {
@@ -186,42 +199,139 @@ function requestUpstream(
       );
     });
     upstreamRequest.once("error", reject);
+    request.signal.addEventListener(
+      "abort",
+      () => upstreamRequest.destroy(new Error("Client request aborted")),
+      { once: true },
+    );
 
-    if (body?.byteLength) {
-      upstreamRequest.end(Buffer.from(body));
-    } else {
+    if (!body) {
       upstreamRequest.end();
+      return;
     }
+
+    let receivedBytes = 0;
+    const limiter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        receivedBytes += chunk.length;
+        if (receivedBytes > MAX_PROXY_BODY_BYTES) {
+          callback(new PayloadTooLargeError("Request body is too large"));
+          return;
+        }
+        callback(null, chunk);
+      },
+    });
+    limiter.once("error", (error) => upstreamRequest.destroy(error));
+    Readable.fromWeb(
+      body as unknown as NodeReadableStream<Uint8Array>,
+    ).pipe(limiter).pipe(upstreamRequest);
   });
 }
 
 let proxyFailureCount = 0;
 
+function requestIdFor(request: NextRequest) {
+  const supplied = request.headers.get("x-request-id")?.trim() || "";
+  return UUID_PATTERN.test(supplied) ? supplied : randomUUID();
+}
+
+function encodedPathSegment(value: string) {
+  const decoded = decodeURIComponent(value);
+  if (
+    !decoded ||
+    decoded === "." ||
+    decoded === ".." ||
+    decoded.includes("/") ||
+    decoded.includes("\\") ||
+    decoded.includes("\0")
+  ) {
+    throw new Error("Invalid API path");
+  }
+  return encodeURIComponent(decoded);
+}
+
 async function proxyApiRequest(
   request: NextRequest,
   context: ApiRouteContext,
 ) {
+  const requestId = requestIdFor(request);
   const params = await context.params;
-  const fallbackPath = request.nextUrl.pathname
-    .replace(/^\/api\/v1\/?/, "")
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => decodeURIComponent(segment));
-  const path = params.path?.length ? params.path : fallbackPath;
+  let path: string[];
+  try {
+    const fallbackPath = request.nextUrl.pathname
+      .replace(/^\/api\/v1\/?/, "")
+      .split("/")
+      .filter(Boolean);
+    path = (params.path?.length ? params.path : fallbackPath).map(
+      encodedPathSegment,
+    );
+  } catch {
+    return Response.json(
+      {
+        success: false,
+        error: {
+          code: "INVALID_API_PATH",
+          message: "The requested API path is invalid.",
+          details: [],
+        },
+        meta: { requestId, timestamp: new Date().toISOString() },
+      },
+      {
+        status: 400,
+        headers: { "cache-control": "no-store", "x-request-id": requestId },
+      },
+    );
+  }
   const target = new URL(
     `/api/v1/${path.join("/")}${request.nextUrl.search}`,
     getApiUrl(),
   );
   const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_PROXY_BODY_BYTES) {
+    return Response.json(
+      {
+        success: false,
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "The request body is too large.",
+          details: [],
+        },
+        meta: { requestId, timestamp: new Date().toISOString() },
+      },
+      {
+        status: 413,
+        headers: { "cache-control": "no-store", "x-request-id": requestId },
+      },
+    );
+  }
 
   try {
     return await requestUpstream(
       target,
       request,
-      hasBody ? await request.arrayBuffer() : undefined,
+      hasBody ? request.body : null,
+      requestId,
     );
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return Response.json(
+        {
+          success: false,
+          error: {
+            code: "PAYLOAD_TOO_LARGE",
+            message: "The request body is too large.",
+            details: [],
+          },
+          meta: { requestId, timestamp: new Date().toISOString() },
+        },
+        {
+          status: 413,
+          headers: { "cache-control": "no-store", "x-request-id": requestId },
+        },
+      );
+    }
     proxyFailureCount += 1;
     if (proxyFailureCount === 1 || proxyFailureCount % 100 === 0) {
       console.error("Goalix API proxy connection failed", {
@@ -242,6 +352,7 @@ async function proxyApiRequest(
           details: [],
         },
         meta: {
+          requestId,
           timestamp: new Date().toISOString(),
         },
       },
@@ -250,6 +361,7 @@ async function proxyApiRequest(
         headers: {
           "cache-control": "no-store",
           "retry-after": "2",
+          "x-request-id": requestId,
         },
       },
     );

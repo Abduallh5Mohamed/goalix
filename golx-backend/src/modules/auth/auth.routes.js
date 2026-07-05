@@ -2,11 +2,13 @@ const { Router } = require('express');
 const validate = require('../../middleware/validate.middleware');
 const { authMiddleware, optionalAuth } = require('../../middleware/auth.middleware');
 const { rbacAny } = require('../../middleware/rbac.middleware');
-const { authLimiter, adminAuthLimiter } = require('../../middleware/rateLimit.middleware');
+const {
+    authLimiter,
+    adminAuthLimiter,
+    accountAuthLimiter,
+} = require('../../middleware/rateLimit.middleware');
 const {
     registerSchema,
-    signupSchema,
-    registrationStatusSchema,
     loginSchema,
     refreshSchema,
     forgotPasswordSchema,
@@ -54,29 +56,17 @@ function authRoutes(controller) {
     router.post(
         '/login',
         authLimiter,
+        accountAuthLimiter,
         allowLoginRoles('player', 'parent'),
         validate({ body: loginSchema }),
         controller.login,
-    );
-
-    router.post(
-        '/signup',
-        authLimiter,
-        validate({ body: signupSchema }),
-        controller.signup,
-    );
-
-    router.get(
-        '/registration-status',
-        authLimiter,
-        validate({ query: registrationStatusSchema }),
-        controller.registrationStatus,
     );
 
     // Dedicated admin login with stricter rate limiting
     router.post(
         '/admin/login',
         adminLoginLimiter,
+        accountAuthLimiter,
         allowLoginRoles('admin', 'coach'),
         validate({ body: loginSchema }),
         controller.login,
@@ -103,6 +93,7 @@ function authRoutes(controller) {
     router.post(
         '/forgot-password',
         authLimiter,
+        accountAuthLimiter,
         validate({ body: forgotPasswordSchema }),
         controller.forgotPassword,
     );

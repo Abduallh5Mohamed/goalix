@@ -42,20 +42,43 @@ async function main() {
 
     const io = setupChatSocket(server, app.locals.services.chatService);
 
-    const shutdown = async (signal) => {
-        logger.info({ signal }, 'Shutting down gracefully...');
+    let shuttingDown = false;
+    const shutdown = async (signal, exitCode = 0, error = null) => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        const logContext = error ? { signal, err: error } : { signal };
+        if (error) logger.fatal(logContext, 'Fatal process error');
+        else logger.info(logContext, 'Shutting down gracefully...');
+
+        const forceExit = setTimeout(() => {
+            logger.fatal({ signal }, 'Forced shutdown after timeout');
+            process.exit(1);
+        }, 10000);
+        forceExit.unref();
+
         server.close(async () => {
-            io.close();
-            app.locals.backgroundAutomations?.stop?.();
-            await stopWorkers(workers);
-            logger.info('Server closed');
-            process.exit(0);
+            try {
+                io.close();
+                app.locals.backgroundAutomations?.stop?.();
+                await stopWorkers(workers);
+                logger.info({ signal }, 'Server closed');
+                process.exit(exitCode);
+            } catch (shutdownError) {
+                logger.fatal({ err: shutdownError, signal }, 'Graceful shutdown failed');
+                process.exit(1);
+            }
         });
-        setTimeout(() => process.exit(1), 10000);
     };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGTERM', () => void shutdown('SIGTERM'));
+    process.once('SIGINT', () => void shutdown('SIGINT'));
+    process.once('unhandledRejection', (reason) => {
+        const error = reason instanceof Error ? reason : new Error(String(reason));
+        void shutdown('unhandledRejection', 1, error);
+    });
+    process.once('uncaughtException', (error) => {
+        void shutdown('uncaughtException', 1, error);
+    });
 }
 
 main().catch((err) => {

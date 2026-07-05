@@ -106,4 +106,19 @@ describe('TotpService', () => {
         );
         expect(repo.revokeTotpDevice).not.toHaveBeenCalled();
     });
+
+    test('consumes a backup code atomically so it cannot be replayed', async () => {
+        const repo = {
+            consumeUnusedBackupCode: jest.fn()
+                .mockResolvedValueOnce({ id: 'backup-code-1' })
+                .mockResolvedValueOnce(null),
+        };
+        const service = new TotpService(repo);
+
+        await expect(service.verifyBackupCode('user-1', 'recovery-code')).resolves.toBe(true);
+        await expect(service.verifyBackupCode('user-1', 'recovery-code')).rejects.toThrow(
+            'Invalid or already used backup code',
+        );
+        expect(repo.consumeUnusedBackupCode).toHaveBeenCalledTimes(2);
+    });
 });

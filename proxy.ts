@@ -31,7 +31,7 @@ function securityHeaders(nonce: string, requestHost?: string) {
   ].filter(Boolean);
   const wsConnectSources = [
     apiWsOrigin,
-    ...(isDev ? ["ws://localhost:3000", "ws://127.0.0.1:3000", "ws://localhost:3001", "ws://127.0.0.1:3001"] : ["ws:", "wss:"]),
+    ...(isDev ? ["ws://localhost:3000", "ws://127.0.0.1:3000", "ws://localhost:3001", "ws://127.0.0.1:3001"] : []),
   ].filter(Boolean);
 
   if (isDev && requestHost) {
@@ -57,6 +57,9 @@ function securityHeaders(nonce: string, requestHost?: string) {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "X-Permitted-Cross-Domain-Policies": "none",
   };
 
   if (!isDev) {

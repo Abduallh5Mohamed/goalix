@@ -22,13 +22,14 @@ RUN python3 -m venv /opt/goalix-python \
     && /opt/goalix-python/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/goalix-python/bin/pip install --no-cache-dir -r ./Models/requirements.txt
 
-COPY golx-backend/ ./
-COPY Models/ ./Models/
+COPY --chown=node:node golx-backend/ ./
+COPY --chown=node:node Models/ ./Models/
 
 RUN test -f "./Models/Ranking Model/football_ranking_model.pkl" \
     && test -f "./Models/football_academy_injury_risk_model_v3.joblib" \
     && test -f "./Models/inference_football_academy_injury_risk_v3.py" \
-    && mkdir -p ./uploads
+    && install -d -o node -g node ./uploads
 
 EXPOSE 3000
+USER node
 CMD ["node", "src/server.js"]

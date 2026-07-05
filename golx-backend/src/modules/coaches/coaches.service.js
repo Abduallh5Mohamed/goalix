@@ -660,6 +660,7 @@ class CoachesService {
         await storage.attachMediaToEntity((data.attachments || []).map((file) => file.fileUrl), {
             academyId,
             scope: 'assignments',
+            uploaderId: adminUserId,
             entityType: 'coach_assignment',
             entityId: assignment.id,
             isSensitive: true,
@@ -692,6 +693,7 @@ class CoachesService {
         await storage.attachMediaToEntity((data.files || []).map((file) => file.fileUrl), {
             academyId,
             scope: 'assignments',
+            uploaderId: userId,
             entityType: 'coach_assignment',
             entityId: assignmentId,
             isSensitive: true,
