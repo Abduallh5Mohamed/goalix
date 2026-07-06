@@ -1,4 +1,8 @@
 const ApiResponse = require("../../shared/api-response");
+const { ValidationError, BadRequestError } = require("../../shared/errors");
+const { assertMimeSignature } = require("../../shared/file-signature");
+const XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const {
   parsePagination,
   buildPaginationMeta,
@@ -57,6 +61,91 @@ class PlayersController {
         req.user,
       );
       res.status(201).json(ApiResponse.success(player));
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  downloadImportTemplate = async (req, res, next) => {
+    try {
+      const mode = req.query.mode === "sample" ? "sample" : "empty";
+      const result = await this.service.exportPlayers(mode, null, req.user);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${result.fileName}"`,
+      );
+      res.send(result.buffer);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  exportPlayers = async (req, res, next) => {
+    try {
+      const mode = String(req.query.mode || "empty").toLowerCase();
+      const result = await this.service.exportPlayers(
+        mode,
+        req.get("x-confirm-username") || req.query.confirmation,
+        req.user,
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${result.fileName}"`,
+      );
+      res.send(result.buffer);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  validateImport = async (req, res, next) => {
+    try {
+      if (!req.file) throw new BadRequestError("Select an Excel file to upload.");
+      assertMimeSignature(XLSX_MIME, req.file.buffer, "Excel file");
+      const result = await this.service.validatePlayerImportWithLog(
+        req.file.buffer,
+        req.file.originalname,
+        req.user,
+      );
+      res.json(
+        ApiResponse.success({
+          valid: result.valid,
+          totalRows: result.totalRows,
+          created: result.created,
+          updated: result.updated,
+          skipped: result.skipped,
+          failed: result.failed,
+          status: result.status,
+          logId: result.logId,
+          errors: result.errors,
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  importPlayers = async (req, res, next) => {
+    try {
+      if (!req.file) throw new BadRequestError("Select an Excel file to upload.");
+      assertMimeSignature(XLSX_MIME, req.file.buffer, "Excel file");
+      const result = await this.service.importPlayers(
+        req.file.buffer,
+        req.file.originalname,
+        req.user,
+      );
+      if (!result.valid) {
+        throw new ValidationError(result.errors);
+      }
+      res.status(201).json(ApiResponse.success(result));
     } catch (err) {
       next(err);
     }

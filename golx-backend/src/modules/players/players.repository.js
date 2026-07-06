@@ -6,8 +6,8 @@ class PlayersRepository extends BaseRepository {
         super('player_profiles', db);
     }
 
-    async findAuthUserByCredentials({ username, phone }) {
-        return this.db('auth_users')
+    async findAuthUserByCredentials({ username, phone }, db = this.db) {
+        return db('auth_users')
             .whereNull('deleted_at')
             .where((q) => {
                 if (username) q.orWhere('username', username);
@@ -16,8 +16,8 @@ class PlayersRepository extends BaseRepository {
             .first();
     }
 
-    async findCoachProfileByUserId(userId) {
-        return this.db('coach_profiles')
+    async findCoachProfileByUserId(userId, db = this.db) {
+        return db('coach_profiles')
             .where({ user_id: userId })
             .whereNull('deleted_at')
             .first();
@@ -188,8 +188,8 @@ class PlayersRepository extends BaseRepository {
             .orderBy('joined_at', 'desc');
     }
 
-    async findCurrentGroupAssignment(playerId) {
-        return this.db('player_group_assignments')
+    async findCurrentGroupAssignment(playerId, db = this.db) {
+        return db('player_group_assignments')
             .where({ player_id: playerId })
             .whereNull('left_at')
             .orderBy('joined_at', 'desc')
@@ -262,21 +262,21 @@ class PlayersRepository extends BaseRepository {
             .first();
     }
 
-    async coachCanAccessGroup(coachId, groupId) {
-        return this.db('coach_group_assignments')
+    async coachCanAccessGroup(coachId, groupId, db = this.db) {
+        return db('coach_group_assignments')
             .where({ coach_id: coachId, group_id: groupId })
             .first('group_id');
     }
 
-    async assignToGroup(playerId, groupId) {
+    async assignToGroup(playerId, groupId, db = this.db) {
         // Close previous assignment
-        await this.db('player_group_assignments')
+        await db('player_group_assignments')
             .where({ player_id: playerId })
             .whereNull('left_at')
             .update({ left_at: new Date() });
 
         // Create new assignment
-        const [row] = await this.db('player_group_assignments')
+        const [row] = await db('player_group_assignments')
             .insert({ player_id: playerId, group_id: groupId, joined_at: new Date() })
             .returning('*');
 
@@ -344,20 +344,161 @@ class PlayersRepository extends BaseRepository {
         return Boolean(legacy);
     }
 
-    async findBranchByIdAndAcademy(branchId, academyId) {
-        return this.db('academy_branches')
+    async findBranchByIdAndAcademy(branchId, academyId, db = this.db) {
+        return db('academy_branches')
             .where({ id: branchId, academy_id: academyId })
             .whereNull('deleted_at')
             .first();
     }
 
-    async findGroupByIdAndBranch(groupId, branchId) {
-        return this.db('academy_groups as ag')
+    async findGroupByIdAndBranch(groupId, branchId, db = this.db) {
+        return db('academy_groups as ag')
             .where('ag.id', groupId)
             .where('ag.branch_id', branchId)
             .whereNull('ag.deleted_at')
             .select('ag.*')
             .first();
+    }
+
+    async findAuthUserById(userId, db = this.db) {
+        return db('auth_users')
+            .where({ id: userId })
+            .whereNull('deleted_at')
+            .first('id', 'username', 'email', 'role', 'academy_id');
+    }
+
+    async findBranchesForImport(academyId, coachId = null) {
+        const query = this.db('academy_branches as ab')
+            .where('ab.academy_id', academyId)
+            .whereNull('ab.deleted_at')
+            .select('ab.id', 'ab.name')
+            .distinct()
+            .orderBy('ab.name', 'asc');
+
+        if (coachId) {
+            query
+                .join('academy_birth_years as aby', 'aby.branch_id', 'ab.id')
+                .whereNull('aby.deleted_at')
+                .whereIn('aby.id', this._coachAccessibleBirthYearIdsQuery(coachId));
+        }
+
+        return query;
+    }
+
+    async findExistingImportUsers(usernames, phones, db = this.db) {
+        if (!usernames.length && !phones.length) return [];
+        return db('auth_users')
+            .whereNull('deleted_at')
+            .where((query) => {
+                if (usernames.length) query.whereIn('username', usernames);
+                if (phones.length) {
+                    if (usernames.length) query.orWhereIn('phone', phones);
+                    else query.whereIn('phone', phones);
+                }
+            })
+            .select('id', 'username', 'phone', 'role', 'academy_id');
+    }
+
+    _scopeImportPlayers(query, coachId, db = this.db) {
+        if (!coachId) return query;
+        return query.where((access) => {
+            access
+                .whereExists((groupAccess) => {
+                    groupAccess
+                        .select(db.raw('1'))
+                        .from('player_group_assignments as pga')
+                        .join(
+                            'coach_group_assignments as cga',
+                            'pga.group_id',
+                            'cga.group_id',
+                        )
+                        .whereRaw('pga.player_id = pp.id')
+                        .where('cga.coach_id', coachId)
+                        .whereNull('pga.left_at');
+                })
+                .orWhereExists((birthYearAccess) => {
+                    birthYearAccess
+                        .select(db.raw('1'))
+                        .from('academy_birth_years as aby')
+                        .whereRaw('aby.branch_id = pp.branch_id')
+                        .whereNull('aby.deleted_at')
+                        .whereRaw(
+                            'EXTRACT(YEAR FROM pp.date_of_birth)::int BETWEEN aby.from_year AND aby.to_year',
+                        )
+                        .whereIn(
+                            'aby.id',
+                            this._coachAccessibleBirthYearIdsQuery(coachId),
+                        );
+                });
+        });
+    }
+
+    _selectImportPlayerFields(query, db = this.db) {
+        return query.select(
+            'pp.*',
+            'au.username',
+            'au.phone as auth_phone',
+            'au.is_active as auth_is_active',
+            'ab.name as branch_name',
+            db.raw(`(
+                SELECT pm.height_cm
+                FROM player_measurements pm
+                WHERE pm.player_id = pp.id
+                ORDER BY pm.measured_at DESC
+                LIMIT 1
+            ) as height_cm`),
+            db.raw(`(
+                SELECT pm.weight_kg
+                FROM player_measurements pm
+                WHERE pm.player_id = pp.id
+                ORDER BY pm.measured_at DESC
+                LIMIT 1
+            ) as weight_kg`),
+        );
+    }
+
+    async findImportPlayersByUsernames(
+        academyId,
+        usernames,
+        coachId = null,
+        db = this.db,
+    ) {
+        if (!usernames.length) return [];
+        const query = db('player_profiles as pp')
+            .join('auth_users as au', 'au.id', 'pp.user_id')
+            .leftJoin('academy_branches as ab', 'ab.id', 'pp.branch_id')
+            .where('pp.academy_id', academyId)
+            .whereIn('au.username', usernames)
+            .whereNull('pp.deleted_at')
+            .whereNull('au.deleted_at');
+        this._scopeImportPlayers(query, coachId, db);
+        return this._selectImportPlayerFields(query, db);
+    }
+
+    async findPlayersForExport(academyId, coachId = null, db = this.db) {
+        const query = db('player_profiles as pp')
+            .join('auth_users as au', 'au.id', 'pp.user_id')
+            .leftJoin('academy_branches as ab', 'ab.id', 'pp.branch_id')
+            .where('pp.academy_id', academyId)
+            .where('au.role', 'player')
+            .whereNull('pp.deleted_at')
+            .whereNull('au.deleted_at')
+            .orderBy('pp.full_name', 'asc');
+        this._scopeImportPlayers(query, coachId, db);
+        return this._selectImportPlayerFields(query, db);
+    }
+
+    async createImportLog(data, db = this.db) {
+        const [row] = await db('player_import_logs').insert(data).returning('*');
+        return row;
+    }
+
+    async updateImportLog(id, data, db = this.db) {
+        const [row] = await db('player_import_logs')
+            .where({ id })
+            .update({ ...data, updated_at: new Date() })
+            .returning('*');
+        return row;
     }
 
     async findAutoAssignableGroup(branchId, birthYear, trx = this.db) {

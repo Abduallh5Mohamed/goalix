@@ -1,5 +1,10 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "./baseQuery";
+import type {
+  PlayerExportRequest,
+  PlayerImportResult,
+  PlayerImportValidationResult,
+} from "@/lib/types/playerImport";
 import type { RankingSystemInput } from "./calendarApi";
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
@@ -921,6 +926,54 @@ export const adminApi = createApi({
       invalidatesTags: ["Players"],
     }),
 
+    downloadPlayerImportTemplate: builder.mutation<
+      string,
+      PlayerExportRequest
+    >({
+      query: ({ mode, confirmation }) => ({
+        url: `/players/export?${new URLSearchParams({
+          mode,
+          ...(confirmation ? { confirmation } : {}),
+        })}`,
+        method: "GET",
+        responseHandler: async (response) => {
+          if (!response.ok) return response.json();
+          return URL.createObjectURL(await response.blob());
+        },
+      }),
+    }),
+
+    validatePlayerImport: builder.mutation<
+      PlayerImportValidationResult,
+      File
+    >({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import/validate",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportValidationResult }) =>
+        res.data,
+    }),
+
+    importPlayers: builder.mutation<PlayerImportResult, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportResult }) => res.data,
+      invalidatesTags: ["Players"],
+    }),
+
     updatePlayer: builder.mutation<
       PlayerDetail,
       { id: string; body: Partial<CreatePlayerInput> }
@@ -1598,6 +1651,9 @@ export const adminApi = createApi({
 export const {
   useGetPlayersQuery,
   useCreatePlayerMutation,
+  useDownloadPlayerImportTemplateMutation,
+  useValidatePlayerImportMutation,
+  useImportPlayersMutation,
   useUpdatePlayerMutation,
   useDeletePlayerMutation,
   useHardDeletePlayerMutation,

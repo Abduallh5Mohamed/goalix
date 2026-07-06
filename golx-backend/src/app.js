@@ -78,7 +78,13 @@ app.use(cors({
     origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'X-CSRF-Token', 'X-File-Name'],
+    allowedHeaders: [
+        'Authorization',
+        'Content-Type',
+        'X-CSRF-Token',
+        'X-File-Name',
+        'X-Confirm-Username',
+    ],
 }));
 app.use(compression());
 app.use(hpp());
