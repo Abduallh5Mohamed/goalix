@@ -22,6 +22,9 @@ Required production environment:
 - `CSRF_SECRET`
 - `QR_ATTENDANCE_SECRET`
 - `MFA_ENFORCED_ROLES=admin,coach`
+- `CORS_ORIGINS=https://your-real-app-domain.example`
+
+Production startup intentionally fails if `CSRF_SECRET` is missing, if `JWT_SECRET` and `JWT_REFRESH_SECRET` match, or if `CORS_ORIGINS` contains localhost/development origins.
 
 Recommended database/runtime guards:
 
@@ -38,7 +41,8 @@ Background automations:
 - Keep `REDIS_REQUIRED=true` and `QUEUE_REDIS_FAILURE_MODE=throw` in production so queue loss is visible instead of silently skipped.
 - Prefer enabling `BACKGROUND_AUTOMATIONS_ENABLED=true` and `INJURY_RISK_AUTOMATION_ENABLED=true` on worker containers only.
 - Automations use Redis locks, so duplicate worker/API instances should not run the same scheduled task at the same time.
-- `NOTIFICATION_CLEANUP_ENABLED=true` keeps old notification data pruned according to `NOTIFICATION_RETENTION_MONTHS`.
+- `NOTIFICATION_CLEANUP_ENABLED=true` archives old notification data according to `NOTIFICATION_RETENTION_MONTHS`, then removes it from hot storage.
+- `DATA_LIFECYCLE_ENABLED=true` runs the broader archive job for audit logs, AI history, chat messages, and realtime outbox rows. Keep it enabled on one worker/background process, with `DATA_LIFECYCLE_INTERVAL_HOURS=24` and `DATA_LIFECYCLE_BATCH_SIZE=1000` unless staging data proves another value is needed.
 
 For S3-compatible upload storage:
 
@@ -140,6 +144,20 @@ Chat images and assignment files go through the storage adapter:
 - Production: S3-compatible bucket via `STORAGE_PROVIDER=s3`.
 
 Files are served through `/uploads/...` so permission checks remain enforced. Do not expose the bucket directly. Archive old objects with bucket lifecycle policies, but keep links resolvable through the app unless a product data-retention decision explicitly says otherwise.
+
+## Data Lifecycle
+
+Use `docs/data-lifecycle.md` for the detailed archive and partitioning policy.
+
+Recommended production flow:
+
+1. Run `npm run data:lifecycle:report`.
+2. Run `npm run data:lifecycle:dry-run`.
+3. Review `data_lifecycle_runs`.
+4. Enable `DATA_LIFECYCLE_ENABLED=true` on a worker/background process only.
+5. Monitor hot table sizes, archive table sizes, and p95 read latency.
+
+Partitioning should be a separate migration per table after a table reaches `5M` rows or p95 read latency remains above `800ms` after indexes.
 
 ## Authorization Hardening
 

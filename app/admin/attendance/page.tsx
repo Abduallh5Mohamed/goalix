@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DoughnutChart } from "@/components/charts/DoughnutChart";
@@ -157,7 +158,7 @@ export default function AttendanceOverviewPage() {
   const t = attendanceCopy[language];
   const statusLabel = (status: string) =>
     t.statusLabels[status as keyof typeof t.statusLabels] ?? status;
-  const { data, isLoading, isError, refetch } = useGetAttendanceOverviewQuery(
+  const { data, isLoading, isError, isFetching, refetch } = useGetAttendanceOverviewQuery(
     undefined,
     { refetchOnMountOrArgChange: 30 },
   );
@@ -223,10 +224,11 @@ export default function AttendanceOverviewPage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={() => refetch()} className="gap-1.5">
-              <RefreshCw className="h-4 w-4" />
-              {t.refresh}
-            </Button>
+            <RefreshButton
+              onRefresh={refetch}
+              isRefreshing={isFetching}
+              label={t.refresh}
+            />
             <Button asChild variant="outline" className="gap-1.5">
               <Link href="/admin/reports/attendance">
                 <FileDown className="h-4 w-4" />
@@ -238,23 +240,47 @@ export default function AttendanceOverviewPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <StatsCard label={t.overallRate} value={`${overallRate}%`} icon="ClipboardCheck" />
-        <StatsCard label={t.trainingSessions} value={totalTrainings} icon="Calendar" />
-        <StatsCard label={t.attendanceRecords} value={totalRecords} icon="Users" />
+        <StatsCard
+          label={t.overallRate}
+          value={`${overallRate}%`}
+          icon="ClipboardCheck"
+        />
+        <StatsCard
+          label={t.trainingSessions}
+          value={totalTrainings}
+          icon="Calendar"
+        />
+        <StatsCard
+          label={t.attendanceRecords}
+          value={totalRecords}
+          icon="Users"
+        />
         <StatsCard label={t.attended} value={attendedCount} icon="UserCheck" />
-        <StatsCard label={t.missedExcused} value={missedCount} icon="AlertTriangle" />
-        <StatsCard label={t.completedScheduled} value={`${completedTrainings}/${scheduledTrainings}`} icon="Layers" />
+        <StatsCard
+          label={t.missedExcused}
+          value={missedCount}
+          icon="AlertTriangle"
+        />
+        <StatsCard
+          label={t.completedScheduled}
+          value={`${completedTrainings}/${scheduledTrainings}`}
+          icon="Layers"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-4">
         <Card className="border-border/50 bg-card xl:col-span-3">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">{t.groupDetails}</CardTitle>
-            <Badge variant="outline">{byGroup.length} {t.groups}</Badge>
+            <Badge variant="outline">
+              {byGroup.length} {t.groups}
+            </Badge>
           </CardHeader>
           <CardContent>
             {byGroup.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.noGroupRecords}</p>
+              <p className="text-sm text-muted-foreground">
+                {t.noGroupRecords}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-sm">
@@ -273,7 +299,9 @@ export default function AttendanceOverviewPage() {
                   <tbody className="divide-y divide-border/40">
                     {byGroup.map((group) => (
                       <tr key={group.groupId}>
-                        <td className="py-3 pr-4 font-medium">{group.groupName}</td>
+                        <td className="py-3 pr-4 font-medium">
+                          {group.groupName}
+                        </td>
                         <td className="py-3 pr-4">
                           <div className="flex min-w-40 items-center gap-3">
                             <Progress
@@ -287,11 +315,21 @@ export default function AttendanceOverviewPage() {
                           </div>
                         </td>
                         <td className="py-3 pr-4">{group.total}</td>
-                        <td className="py-3 pr-4 text-emerald-300">{group.present ?? 0}</td>
-                        <td className="py-3 pr-4 text-lime-300">{group.late ?? 0}</td>
-                        <td className="py-3 pr-4 text-red-300">{group.absent ?? 0}</td>
-                        <td className="py-3 pr-4 text-cyan-300">{group.excused ?? 0}</td>
-                        <td className="py-3 text-rose-300">{group.injured ?? 0}</td>
+                        <td className="py-3 pr-4 text-emerald-300">
+                          {group.present ?? 0}
+                        </td>
+                        <td className="py-3 pr-4 text-lime-300">
+                          {group.late ?? 0}
+                        </td>
+                        <td className="py-3 pr-4 text-red-300">
+                          {group.absent ?? 0}
+                        </td>
+                        <td className="py-3 pr-4 text-cyan-300">
+                          {group.excused ?? 0}
+                        </td>
+                        <td className="py-3 text-rose-300">
+                          {group.injured ?? 0}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -321,9 +359,15 @@ export default function AttendanceOverviewPage() {
               centerLabel={t.rate}
             />
             <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-              <Badge variant="success">{t.completed} {completedTrainings}</Badge>
-              <Badge variant="secondary">{t.scheduled} {scheduledTrainings}</Badge>
-              <Badge variant="destructive">{t.cancelled} {cancelledTrainings}</Badge>
+              <Badge variant="success">
+                {t.completed} {completedTrainings}
+              </Badge>
+              <Badge variant="secondary">
+                {t.scheduled} {scheduledTrainings}
+              </Badge>
+              <Badge variant="destructive">
+                {t.cancelled} {cancelledTrainings}
+              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -337,11 +381,16 @@ export default function AttendanceOverviewPage() {
           </CardHeader>
           <CardContent>
             {byBranch.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.noBranchRecords}</p>
+              <p className="text-sm text-muted-foreground">
+                {t.noBranchRecords}
+              </p>
             ) : (
               <div className="space-y-4">
                 {byBranch.map((branch) => (
-                  <div key={branch.branchId} className="rounded-lg border border-border/50 p-4">
+                  <div
+                    key={branch.branchId}
+                    className="rounded-lg border border-border/50 p-4"
+                  >
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="font-semibold">{branch.branchName}</p>
@@ -349,17 +398,38 @@ export default function AttendanceOverviewPage() {
                           {branch.attended}/{branch.total} {t.attended}
                         </p>
                       </div>
-                      <Badge variant={branch.rate >= 80 ? "success" : branch.rate >= 60 ? "warning" : "destructive"}>
+                      <Badge
+                        variant={
+                          branch.rate >= 80
+                            ? "success"
+                            : branch.rate >= 60
+                              ? "warning"
+                              : "destructive"
+                        }
+                      >
                         {branch.rate}%
                       </Badge>
                     </div>
-                    <Progress value={branch.rate} indicatorClassName={statusColor(branch.rate)} />
+                    <Progress
+                      value={branch.rate}
+                      indicatorClassName={statusColor(branch.rate)}
+                    />
                     <div className="mt-3 grid grid-cols-5 gap-2 text-center text-xs">
-                      <span className="rounded-md bg-emerald-500/10 px-2 py-1 text-emerald-300">{t.present} {branch.present}</span>
-                      <span className="rounded-md bg-lime-500/10 px-2 py-1 text-lime-300">{t.late} {branch.late}</span>
-                      <span className="rounded-md bg-red-500/10 px-2 py-1 text-red-300">{t.absent} {branch.absent}</span>
-                      <span className="rounded-md bg-cyan-500/10 px-2 py-1 text-cyan-300">{t.excused} {branch.excused}</span>
-                      <span className="rounded-md bg-rose-500/10 px-2 py-1 text-rose-300">{t.injured} {branch.injured}</span>
+                      <span className="rounded-md bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                        {t.present} {branch.present}
+                      </span>
+                      <span className="rounded-md bg-lime-500/10 px-2 py-1 text-lime-300">
+                        {t.late} {branch.late}
+                      </span>
+                      <span className="rounded-md bg-red-500/10 px-2 py-1 text-red-300">
+                        {t.absent} {branch.absent}
+                      </span>
+                      <span className="rounded-md bg-cyan-500/10 px-2 py-1 text-cyan-300">
+                        {t.excused} {branch.excused}
+                      </span>
+                      <span className="rounded-md bg-rose-500/10 px-2 py-1 text-rose-300">
+                        {t.injured} {branch.injured}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -375,7 +445,9 @@ export default function AttendanceOverviewPage() {
           </CardHeader>
           <CardContent>
             {lowAttendancePlayers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.noPlayerRecords}</p>
+              <p className="text-sm text-muted-foreground">
+                {t.noPlayerRecords}
+              </p>
             ) : (
               <div className="space-y-3">
                 {lowAttendancePlayers.map((player) => (
@@ -384,24 +456,38 @@ export default function AttendanceOverviewPage() {
                     className="flex flex-col gap-3 rounded-lg border border-border/50 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{player.playerName}</p>
+                      <p className="truncate font-semibold">
+                        {player.playerName}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {player.branchName} · {player.groupName}
                         {player.position ? ` · ${player.position}` : ""}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {t.lastSession} {player.lastSessionAt ? formatDateTime(player.lastSessionAt) : "--"}
+                        {t.lastSession}{" "}
+                        {player.lastSessionAt
+                          ? formatDateTime(player.lastSessionAt)
+                          : "--"}
                       </p>
                     </div>
                     <div className="min-w-36 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span>{player.attended}/{player.total}</span>
+                        <span>
+                          {player.attended}/{player.total}
+                        </span>
                         <span className="font-semibold">{player.rate}%</span>
                       </div>
-                      <Progress value={player.rate} indicatorClassName={statusColor(player.rate)} />
+                      <Progress
+                        value={player.rate}
+                        indicatorClassName={statusColor(player.rate)}
+                      />
                       <div className="flex gap-2 text-xs text-muted-foreground">
-                        <span>{t.absent} {player.absent}</span>
-                        <span>{t.injured} {player.injured}</span>
+                        <span>
+                          {t.absent} {player.absent}
+                        </span>
+                        <span>
+                          {t.injured} {player.injured}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -419,7 +505,9 @@ export default function AttendanceOverviewPage() {
         </CardHeader>
         <CardContent>
           {recentSessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t.noRecentSessions}</p>
+            <p className="text-sm text-muted-foreground">
+              {t.noRecentSessions}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[940px] text-sm">
@@ -452,26 +540,47 @@ export default function AttendanceOverviewPage() {
                         </div>
                       </td>
                       <td className="py-3 pr-4">{session.coachName || "--"}</td>
-                      <td className="max-w-56 truncate py-3 pr-4">{session.groupNames || "--"}</td>
+                      <td className="max-w-56 truncate py-3 pr-4">
+                        {session.groupNames || "--"}
+                      </td>
                       <td className="py-3 pr-4">
                         <div className="flex flex-wrap gap-1.5">
-                          {session.trainingFocus && <Badge variant="outline">{session.trainingFocus}</Badge>}
-                          {session.intensityLevel && <Badge variant="secondary">{session.intensityLevel}</Badge>}
+                          {session.trainingFocus && (
+                            <Badge variant="outline">
+                              {session.trainingFocus}
+                            </Badge>
+                          )}
+                          {session.intensityLevel && (
+                            <Badge variant="secondary">
+                              {session.intensityLevel}
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 pr-4">
-                        <Badge variant={session.rate >= 80 ? "success" : session.rate >= 60 ? "warning" : "destructive"}>
+                        <Badge
+                          variant={
+                            session.rate >= 80
+                              ? "success"
+                              : session.rate >= 60
+                                ? "warning"
+                                : "destructive"
+                          }
+                        >
                           {session.rate}%
                         </Badge>
                       </td>
                       <td className="py-3 pr-4">
                         {session.attendedCount}/{session.recordedCount}
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {t.absent} {session.absentCount} · {t.injured} {session.injuredCount}
+                          {t.absent} {session.absentCount} · {t.injured}{" "}
+                          {session.injuredCount}
                         </span>
                       </td>
                       <td className="py-3">
-                        <Badge variant={statusVariant(session.status)}>{statusLabel(session.status)}</Badge>
+                        <Badge variant={statusVariant(session.status)}>
+                          {statusLabel(session.status)}
+                        </Badge>
                       </td>
                     </tr>
                   ))}

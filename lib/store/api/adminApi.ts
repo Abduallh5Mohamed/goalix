@@ -1,5 +1,10 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "./baseQuery";
+import type {
+  PlayerExportRequest,
+  PlayerImportResult,
+  PlayerImportValidationResult,
+} from "@/lib/types/playerImport";
 import type { RankingSystemInput } from "./calendarApi";
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
@@ -93,13 +98,7 @@ export interface CreatePlayerInput {
   groupId?: string;
   level?: "A" | "B" | "C" | "D" | "F";
   position?: string;
-  secondaryPositions?: string[];
   preferredFoot?: "left" | "right" | "both";
-  currentTeam?: string;
-  shirtNumber?: number;
-  playingStyle?: string;
-  yearsExperience?: number;
-  previousClubAcademy?: string;
   guardianName?: string;
   guardianPhone?: string;
   guardianRelation?: string;
@@ -107,12 +106,7 @@ export interface CreatePlayerInput {
   weightKg?: number;
   bmi?: number;
   sprintSpeed?: number;
-  acceleration?: number;
   stamina?: number;
-  strength?: number;
-  agility?: number;
-  balance?: number;
-  jumpHeightCm?: number;
   flexibility?: number;
   ballControl?: number;
   firstTouch?: number;
@@ -347,6 +341,8 @@ export interface PasswordResetRequest {
   phone: string | null;
   playerId: string | null;
   playerName: string | null;
+  coachId: string | null;
+  coachName: string | null;
   displayName: string;
   status: "pending" | "expired" | "resolved";
   expiresAt: string;
@@ -431,6 +427,7 @@ export interface UpdateCoachInput {
   specialization?: string | null;
   bio?: string | null;
   isActive?: boolean;
+  password?: string;
 }
 
 export interface CoachImageUploadResponse {
@@ -926,6 +923,54 @@ export const adminApi = createApi({
     createPlayer: builder.mutation<PlayerDetail, CreatePlayerInput>({
       query: (body) => ({ url: "/players", method: "POST", body }),
       transformResponse: (res: { data: PlayerDetail }) => res.data,
+      invalidatesTags: ["Players"],
+    }),
+
+    downloadPlayerImportTemplate: builder.mutation<
+      string,
+      PlayerExportRequest
+    >({
+      query: ({ mode, confirmation }) => ({
+        url: `/players/export?${new URLSearchParams({
+          mode,
+          ...(confirmation ? { confirmation } : {}),
+        })}`,
+        method: "GET",
+        responseHandler: async (response) => {
+          if (!response.ok) return response.json();
+          return URL.createObjectURL(await response.blob());
+        },
+      }),
+    }),
+
+    validatePlayerImport: builder.mutation<
+      PlayerImportValidationResult,
+      File
+    >({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import/validate",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportValidationResult }) =>
+        res.data,
+    }),
+
+    importPlayers: builder.mutation<PlayerImportResult, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportResult }) => res.data,
       invalidatesTags: ["Players"],
     }),
 
@@ -1606,6 +1651,9 @@ export const adminApi = createApi({
 export const {
   useGetPlayersQuery,
   useCreatePlayerMutation,
+  useDownloadPlayerImportTemplateMutation,
+  useValidatePlayerImportMutation,
+  useImportPlayersMutation,
   useUpdatePlayerMutation,
   useDeletePlayerMutation,
   useHardDeletePlayerMutation,

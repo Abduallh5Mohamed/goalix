@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import {
   type ChartPoint,
@@ -232,11 +233,14 @@ function TrendChart({
   const values = points.map((point) => Number(point.value || 0));
   const max = Math.max(...values, 1);
   const chartPoints = points.map((point, index) => {
-    const x = points.length <= 1 ? 260 : 42 + (index * 430) / (points.length - 1);
+    const x =
+      points.length <= 1 ? 260 : 42 + (index * 430) / (points.length - 1);
     const y = 188 - (Number(point.value || 0) / max) * 142;
     return { ...point, x, y };
   });
-  const polyline = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const polyline = chartPoints
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
 
   return (
     <Panel className="p-5">
@@ -288,7 +292,13 @@ function TrendChart({
                 rx="9"
                 fill="rgba(255,255,255,0.08)"
               />
-              <text x="405" y="38" fill="#edf7ff" fontSize="13" fontWeight="800">
+              <text
+                x="405"
+                y="38"
+                fill="#edf7ff"
+                fontSize="13"
+                fontWeight="800"
+              >
                 {copy.latest}: {valuePrefix}
                 {formatNumber(values[values.length - 1] || 0, language)}
                 {valueSuffix}
@@ -296,7 +306,13 @@ function TrendChart({
             </>
           )}
           {chartPoints.length === 0 && (
-            <text x="260" y="118" fill="#8fa0b7" fontSize="14" textAnchor="middle">
+            <text
+              x="260"
+              y="118"
+              fill="#8fa0b7"
+              fontSize="14"
+              textAnchor="middle"
+            >
               {copy.noTrend}
             </text>
           )}
@@ -319,7 +335,9 @@ function WeeklyMatches({
     <Panel className="p-5">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">{copy.thisWeekMatches}</h2>
+          <h2 className="text-xl font-semibold text-white">
+            {copy.thisWeekMatches}
+          </h2>
           <p className="mt-1 text-sm text-slate-400">
             {copy.thisWeekDescription}
           </p>
@@ -349,7 +367,9 @@ function WeeklyMatches({
                       ? "border-lime-300 bg-lime-300 text-[#06111f]"
                       : "border-transparent bg-transparent"
                   }`}
-                  aria-label={hasPlayedMatch ? copy.playedMatch : copy.noPlayedMatch}
+                  aria-label={
+                    hasPlayedMatch ? copy.playedMatch : copy.noPlayedMatch
+                  }
                 >
                   {hasPlayedMatch && <Check className="h-4 w-4" />}
                 </span>
@@ -365,7 +385,8 @@ function WeeklyMatches({
                       {copy.vs} {match.opponentName}
                     </p>
                     <p className="mt-1 text-xs capitalize text-slate-400">
-                      {match.matchTime || "--:--"} | {formatVenue(match.venueType, language, copy)}
+                      {match.matchTime || "--:--"} |{" "}
+                      {formatVenue(match.venueType, language, copy)}
                     </p>
                     {match.played &&
                       match.ourScore !== null &&
@@ -377,9 +398,7 @@ function WeeklyMatches({
                   </div>
                 ))}
 
-                {day.matches.length === 0 && (
-                  <div className="h-9" />
-                )}
+                {day.matches.length === 0 && <div className="h-9" />}
               </div>
             </div>
           );
@@ -393,7 +412,8 @@ export default function AdminDashboardPage() {
   const language = useDashboardLanguage();
   const t = adminDashboardCopy[language];
   const { user } = useCurrentUser();
-  const { data, isLoading, isFetching, isError, refetch } = useGetDashboardQuery();
+  const { data, isLoading, isFetching, isError, refetch } =
+    useGetDashboardQuery();
 
   const kpis = data?.kpis;
   const attendanceTrend = data?.attendanceTrend ?? [];
@@ -447,14 +467,13 @@ export default function AdminDashboardPage() {
           <h1 className="font-display text-5xl font-bold leading-none tracking-normal text-white md:text-6xl">
             {t.welcome(user?.fullName || t.adminFallback)}
           </h1>
-          <p className="mt-2 text-lg text-slate-300">
-            {t.description}
-          </p>
+          <p className="mt-2 text-lg text-slate-300">{t.description}</p>
         </div>
-        <Button type="button" variant="outline" onClick={() => refetch()}>
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          {t.refresh}
-        </Button>
+        <RefreshButton
+          onRefresh={refetch}
+          isRefreshing={isFetching}
+          label={t.refresh}
+        />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
@@ -562,7 +581,9 @@ export default function AdminDashboardPage() {
 
         <Panel className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">{t.recentAlerts}</h2>
+            <h2 className="text-xl font-semibold text-white">
+              {t.recentAlerts}
+            </h2>
             <Bell className="h-5 w-5 text-cyan-300" />
           </div>
           <div className="space-y-3">

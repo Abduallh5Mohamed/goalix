@@ -130,6 +130,40 @@ class AuthRepository extends BaseRepository {
             .update({ is_revoked: true, revoke_reason: 'logout_all' });
     }
 
+    // --- MFA login challenges (PostgreSQL fallback when Redis is unavailable) ---
+
+    async createMfaChallenge(challengeId, userId, expiresAt) {
+        const now = new Date();
+        await this.db('auth_mfa_challenges')
+            .where('expires_at', '<=', now)
+            .del();
+
+        const [row] = await this.db('auth_mfa_challenges')
+            .insert({
+                id: challengeId,
+                user_id: userId,
+                expires_at: expiresAt,
+            })
+            .returning('*');
+        return row;
+    }
+
+    async consumeMfaChallenge(challengeId, userId) {
+        const [row] = await this.db('auth_mfa_challenges')
+            .where({
+                id: challengeId,
+                user_id: userId,
+            })
+            .whereNull('consumed_at')
+            .where('expires_at', '>', new Date())
+            .update({
+                consumed_at: new Date(),
+                updated_at: new Date(),
+            })
+            .returning('user_id');
+        return row?.user_id || null;
+    }
+
     // --- Password reset tokens (owned by auth module) ---
 
     async createPasswordReset(data) {
@@ -264,11 +298,29 @@ class AuthRepository extends BaseRepository {
             .whereNull('revoked_at')
             .update({
                 status: 'revoked',
+                is_primary: false,
                 revoked_at: new Date(),
                 updated_at: new Date(),
             })
             .returning('*');
         return row;
+    }
+
+    async setPrimaryTotpDevice(userId, deviceId) {
+        return this.db.transaction(async (trx) => {
+            await trx('auth_totp_devices')
+                .where({ user_id: userId })
+                .whereNull('revoked_at')
+                .update({ is_primary: false, updated_at: new Date() });
+
+            const [row] = await trx('auth_totp_devices')
+                .where({ id: deviceId, user_id: userId, status: 'active' })
+                .whereNull('revoked_at')
+                .update({ is_primary: true, updated_at: new Date() })
+                .returning('*');
+
+            return row;
+        });
     }
 
     async deletePendingTotpDevices(userId) {

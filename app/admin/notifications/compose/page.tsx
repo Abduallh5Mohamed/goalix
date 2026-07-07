@@ -23,7 +23,8 @@ import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 const composeCopy = {
   en: {
     pageTitle: "Compose Notification",
-    pageDescription: "Send a custom notification to specific users or segments.",
+    pageDescription:
+      "Send a custom notification to specific users or segments.",
     dashboard: "Dashboard",
     notifications: "Notifications",
     compose: "Compose",
@@ -101,17 +102,23 @@ export default function ComposeNotificationPage() {
   const [message, setMessage] = useState("");
   const [targetRole, setTargetRole] = useState("all");
   const [type, setType] = useState("info");
-  const [sendNotification, { isLoading, isError }] = useSendNotificationMutation();
+  const [sendError, setSendError] = useState("");
+  const [sendNotification, { isLoading }] = useSendNotificationMutation();
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
-    await sendNotification({
-      title: title.trim(),
-      body: message.trim(),
-      type,
-      ...(targetRole !== "all" ? { targetRole } : {}),
-    }).unwrap();
-    router.push("/admin/notifications");
+    setSendError("");
+    try {
+      await sendNotification({
+        title: title.trim(),
+        body: message.trim(),
+        type,
+        ...(targetRole !== "all" ? { targetRole } : {}),
+      }).unwrap();
+      router.push("/admin/notifications");
+    } catch {
+      setSendError(t.sendError);
+    }
   };
 
   return (
@@ -181,7 +188,7 @@ export default function ComposeNotificationPage() {
                   </Select>
                 </div>
               </div>
-              {isError && <p className="text-sm text-red-400">{t.sendError}</p>}
+              {sendError && <p className="text-sm text-red-400">{sendError}</p>}
               <Button
                 className="w-full gap-1.5"
                 disabled={!title.trim() || !message.trim() || isLoading}
@@ -202,10 +209,15 @@ export default function ComposeNotificationPage() {
             {title || message ? (
               <div className="space-y-2 rounded-lg border border-border/50 p-4">
                 <h4 className="text-sm font-semibold">{title || t.untitled}</h4>
-                <p className="text-xs text-muted-foreground">{message || t.noMessage}</p>
+                <p className="text-xs text-muted-foreground">
+                  {message || t.noMessage}
+                </p>
                 <div className="flex flex-wrap gap-2 pt-2">
                   {targetRole !== "all" && (
-                    <Badge variant="secondary" className="text-[10px] capitalize">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] capitalize"
+                    >
                       <Users className="mr-1 h-3 w-3" />
                       {t.roles[targetRole as keyof typeof t.roles]}
                     </Badge>

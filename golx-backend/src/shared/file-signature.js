@@ -50,6 +50,7 @@ function matchesMimeSignature(mimeType, buffer) {
         case 'application/msword':
             return isDoc(buffer);
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
             return isZipBasedOfficeDocument(buffer);
         default:
             return true;
@@ -63,5 +64,6 @@ function assertMimeSignature(mimeType, buffer, label = 'Uploaded file') {
 
 module.exports = {
     assertMimeSignature,
+    isZipBasedOfficeDocument,
     matchesMimeSignature,
 };

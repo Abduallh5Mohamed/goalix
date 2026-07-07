@@ -12,6 +12,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PlayerImportDialog } from "@/components/players/PlayerImportDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -721,14 +722,20 @@ function CoachPlayersContent() {
         ]}
         actions={
           canManagePlayers ? (
-            <Button
-              className="gap-2"
-              disabled={!hasAssignments || loadingPermissions}
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              {t.addPlayer}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <PlayerImportDialog
+                role="coach"
+                disabled={!hasAssignments || loadingPermissions}
+              />
+              <Button
+                className="gap-2"
+                disabled={!hasAssignments || loadingPermissions}
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                {t.addPlayer}
+              </Button>
+            </div>
           ) : undefined
         }
       />

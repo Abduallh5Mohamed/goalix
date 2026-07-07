@@ -1,5 +1,10 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "./baseQuery";
+import type {
+  PlayerExportRequest,
+  PlayerImportResult,
+  PlayerImportValidationResult,
+} from "@/lib/types/playerImport";
 
 export interface Pagination {
   total: number;
@@ -415,7 +420,7 @@ export interface AdminCoachMatchRequest {
 
 export interface PlayerOption {
   id: string;
-  field_key: "position" | "secondary_position" | "playing_style";
+  field_key: "position";
   label: string;
   value: string;
   created_by_role: "admin" | "coach";
@@ -735,12 +740,7 @@ export interface ParentMeasurement {
   weight_kg?: string | number | null;
   bmi?: string | number | null;
   sprint_speed?: string | number | null;
-  acceleration?: string | number | null;
   stamina?: number | null;
-  strength?: number | null;
-  agility?: number | null;
-  balance?: number | null;
-  jump_height_cm?: string | number | null;
   flexibility?: number | null;
   measured_at: string;
   measured_by?: string | null;
@@ -949,6 +949,7 @@ export interface CoachPlayerDetail {
   rankings: Record<string, unknown>[];
   coachRatings: Record<string, unknown>[];
   playerAssignments: PlayerAssignment[];
+  injuryRisk: InjuryRiskPredictionRecord | null;
   attendanceQr?: PlayerAttendanceQr | null;
   payments: {
     subscriptions: Record<string, unknown>[];
@@ -1587,6 +1588,51 @@ export const calendarApi = createApi({
       transformResponse: (res: { data: CoachPlayer }) => res.data,
       invalidatesTags: ["CoachPlayers"],
     }),
+    downloadPlayerImportTemplate: builder.mutation<
+      string,
+      PlayerExportRequest
+    >({
+      query: ({ mode, confirmation }) => ({
+        url: `/players/export?${new URLSearchParams({
+          mode,
+          ...(confirmation ? { confirmation } : {}),
+        })}`,
+        method: "GET",
+        responseHandler: async (response) => {
+          if (!response.ok) return response.json();
+          return URL.createObjectURL(await response.blob());
+        },
+      }),
+    }),
+    validatePlayerImport: builder.mutation<
+      PlayerImportValidationResult,
+      File
+    >({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import/validate",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportValidationResult }) =>
+        res.data,
+    }),
+    importPlayers: builder.mutation<PlayerImportResult, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append("file", file);
+        return {
+          url: "/players/import",
+          method: "POST",
+          body,
+        };
+      },
+      transformResponse: (res: { data: PlayerImportResult }) => res.data,
+      invalidatesTags: ["CoachPlayers"],
+    }),
     completeCoachPlayerProfile: builder.mutation<
       CoachPlayer,
       { id: string; body: Record<string, unknown> }
@@ -2002,7 +2048,7 @@ export const calendarApi = createApi({
     }),
     getPlayerOptions: builder.query<
       PlayerOption[],
-      { role?: "admin" | "coach"; fieldKey?: string } | void
+      { role?: "admin" | "coach"; fieldKey?: PlayerOption["field_key"] } | void
     >({
       query: (args) => {
         const role = args?.role ?? "admin";
@@ -2739,6 +2785,9 @@ export const {
   useGetInjuryRiskPredictionsQuery,
   useRunInjuryRiskPredictionsMutation,
   useCreateCoachBasicPlayerMutation,
+  useDownloadPlayerImportTemplateMutation,
+  useValidatePlayerImportMutation,
+  useImportPlayersMutation,
   useCompleteCoachPlayerProfileMutation,
   useCreateCoachTrainingEventMutation,
   useGetCoachTrainingEventQuery,

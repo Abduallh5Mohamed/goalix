@@ -6,16 +6,15 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useDisable2FAMutation,
   useGetAcademyQuery,
@@ -33,14 +32,23 @@ import {
 import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { setMfaSetupRequired, updateUser } from "@/lib/store/slices/authSlice";
-import { CheckCircle, KeyRound, Loader2, Plus, Save, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import {
+  CheckCircle,
+  Copy,
+  KeyRound,
+  Loader2,
+  Plus,
+  Save,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 
 type AcademyDraft = {
   name?: string;
   email?: string;
   phone?: string;
   address?: string;
-  timezone?: string;
   communityWhatsappUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -59,7 +67,9 @@ const numberDraft = (
   draftValue: string | undefined,
   storedValue: unknown,
   fallback: number,
-) => draftValue ?? String(typeof storedValue === "number" ? storedValue : fallback);
+) =>
+  draftValue ??
+  String(typeof storedValue === "number" ? storedValue : fallback);
 
 const booleanDraft = (
   draftValue: boolean | undefined,
@@ -67,7 +77,12 @@ const booleanDraft = (
   fallback: boolean,
 ) => draftValue ?? (typeof storedValue === "boolean" ? storedValue : fallback);
 
-const clampInt = (value: string, min: number, max: number, fallback: number) => {
+const clampInt = (
+  value: string,
+  min: number,
+  max: number,
+  fallback: number,
+) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.round(parsed)));
@@ -120,14 +135,14 @@ const settingsCopy = {
     twitterUrl: "Twitter / X URL",
     linkedinUrl: "LinkedIn URL",
     systemDefaults: "System Defaults",
-    timezone: "Timezone",
     matchDayOpen: "Match Day opens before kick-off",
     whatsappCommunity: "WhatsApp Community Link",
     lateGrace: "Late Grace Minutes",
     autoClose: "Auto Close Minutes",
     qrAttendance: "QR Attendance",
     adminSecurity: "Admin Login Security",
-    adminSecurityDescription: "Two-factor authentication for this admin account.",
+    adminSecurityDescription:
+      "Two-factor authentication for this admin account.",
     checking: "Checking",
     twoFaOn: "2FA On",
     twoFaOff: "2FA Off",
@@ -166,7 +181,8 @@ const settingsCopy = {
     start2FAError: "Could not start 2FA setup.",
     twoFaEnabled: "2FA enabled.",
     invalidCode: "Invalid verification code.",
-    twoFaDisabled: "2FA disabled. Set it up again before using the admin dashboard.",
+    twoFaDisabled:
+      "2FA disabled. Set it up again before using the admin dashboard.",
     disable2FAError: "Could not disable 2FA.",
     addDeviceError: "Could not add MFA device.",
     deviceAdded: "MFA device added.",
@@ -197,7 +213,6 @@ const settingsCopy = {
     twitterUrl: "رابط تويتر / X",
     linkedinUrl: "رابط لينكدإن",
     systemDefaults: "إعدادات النظام الافتراضية",
-    timezone: "المنطقة الزمنية",
     matchDayOpen: "فتح يوم المباراة قبل ضربة البداية",
     whatsappCommunity: "رابط مجتمع واتساب",
     lateGrace: "دقائق السماح للتأخير",
@@ -243,7 +258,8 @@ const settingsCopy = {
     start2FAError: "تعذر بدء إعداد 2FA.",
     twoFaEnabled: "تم تفعيل 2FA.",
     invalidCode: "كود التحقق غير صحيح.",
-    twoFaDisabled: "تم تعطيل 2FA. فعّله مرة أخرى قبل استخدام لوحة تحكم الإدارة.",
+    twoFaDisabled:
+      "تم تعطيل 2FA. فعّله مرة أخرى قبل استخدام لوحة تحكم الإدارة.",
     disable2FAError: "تعذر تعطيل 2FA.",
     addDeviceError: "تعذر إضافة جهاز MFA.",
     deviceAdded: "تمت إضافة جهاز MFA.",
@@ -261,17 +277,22 @@ export default function AcademyProfilePage() {
   const t = settingsCopy[language];
   const dateLocale = language === "ar" ? "ar-EG" : "en-US";
   const { data: academy, isLoading } = useGetAcademyQuery();
-  const { data: currentUser, isLoading: loadingUser } = useGetCurrentUserQuery();
+  const { data: currentUser, isLoading: loadingUser } =
+    useGetCurrentUserQuery();
   const [updateAcademy, { isLoading: saving }] = useUpdateAcademyMutation();
   const [setup2FA, { isLoading: settingUp2FA }] = useSetup2FAMutation();
-  const [verifySetup2FA, { isLoading: verifying2FA }] = useVerifySetup2FAMutation();
+  const [verifySetup2FA, { isLoading: verifying2FA }] =
+    useVerifySetup2FAMutation();
   const [disable2FA, { isLoading: disabling2FA }] = useDisable2FAMutation();
   const { data: mfaDevices = [] } = useGetMfaDevicesQuery(undefined, {
     skip: !currentUser?.totpEnabled,
   });
-  const [setupMfaDevice, { isLoading: settingUpDevice }] = useSetupMfaDeviceMutation();
-  const [verifyMfaDevice, { isLoading: verifyingDevice }] = useVerifyMfaDeviceMutation();
-  const [revokeMfaDevice, { isLoading: revokingDevice }] = useRevokeMfaDeviceMutation();
+  const [setupMfaDevice, { isLoading: settingUpDevice }] =
+    useSetupMfaDeviceMutation();
+  const [verifyMfaDevice, { isLoading: verifyingDevice }] =
+    useVerifyMfaDeviceMutation();
+  const [revokeMfaDevice, { isLoading: revokingDevice }] =
+    useRevokeMfaDeviceMutation();
   const [regenerateBackupCodes, { isLoading: regeneratingBackupCodes }] =
     useRegenerateMfaBackupCodesMutation();
 
@@ -280,12 +301,17 @@ export default function AcademyProfilePage() {
   const [saveError, setSaveError] = useState("");
   const [setupData, setSetupData] = useState<Setup2FAResponse | null>(null);
   const [setupCode, setSetupCode] = useState("");
-  const [newDeviceName, setNewDeviceName] = useState<string>(t.defaultDeviceName);
-  const [newDeviceSetup, setNewDeviceSetup] = useState<Setup2FAResponse | null>(null);
+  const [newDeviceName, setNewDeviceName] = useState<string>(
+    t.defaultDeviceName,
+  );
+  const [newDeviceSetup, setNewDeviceSetup] = useState<Setup2FAResponse | null>(
+    null,
+  );
   const [newDeviceCode, setNewDeviceCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
   const [backupCodesPassword, setBackupCodesPassword] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [securityMessage, setSecurityMessage] = useState("");
   const [securityError, setSecurityError] = useState("");
 
@@ -302,6 +328,8 @@ export default function AcademyProfilePage() {
     typeof settings.socialLinks === "object" && settings.socialLinks
       ? (settings.socialLinks as Record<string, unknown>)
       : {};
+  const settingsWithoutTimezone = { ...settings };
+  delete settingsWithoutTimezone.timezone;
   const facebookUrl =
     academyDraft.facebookUrl ??
     (typeof socialLinks.facebook === "string" ? socialLinks.facebook : "");
@@ -314,18 +342,16 @@ export default function AcademyProfilePage() {
   const linkedinUrl =
     academyDraft.linkedinUrl ??
     (typeof socialLinks.linkedin === "string" ? socialLinks.linkedin : "");
-  const timezone =
-    academyDraft.timezone ??
-    (typeof settings.timezone === "string" ? settings.timezone : "Africa/Cairo");
   const communityWhatsappUrl =
     academyDraft.communityWhatsappUrl ??
-    (typeof settings.communityWhatsappUrl === "string" ? settings.communityWhatsappUrl : "");
-  const matchDayOpenMinutesBeforeKickoff =
-    numberDraft(
-      academyDraft.matchDayOpenMinutesBeforeKickoff,
-      settings.matchDayOpenMinutesBeforeKickoff,
-      5,
-    );
+    (typeof settings.communityWhatsappUrl === "string"
+      ? settings.communityWhatsappUrl
+      : "");
+  const matchDayOpenMinutesBeforeKickoff = numberDraft(
+    academyDraft.matchDayOpenMinutesBeforeKickoff,
+    settings.matchDayOpenMinutesBeforeKickoff,
+    5,
+  );
   const lateGraceMinutes = numberDraft(
     academyDraft.lateGraceMinutes,
     attendanceSettings.lateGraceMinutes,
@@ -347,6 +373,14 @@ export default function AcademyProfilePage() {
     true,
   );
   const totpEnabled = Boolean(currentUser?.totpEnabled);
+  const mfaAccountLabel =
+    currentUser?.email ||
+    currentUser?.username ||
+    currentUser?.phone ||
+    "admin";
+
+  const getAuthenticatorLabel = (issuer?: string) =>
+    `${issuer ?? "Goalix Academy Admin"}:${mfaAccountLabel}`;
 
   const updateDraft = (field: keyof AcademyDraft, value: string) => {
     setAcademyDraft((current) => ({ ...current, [field]: value }));
@@ -367,8 +401,7 @@ export default function AcademyProfilePage() {
         phone: academyPhone.trim() || null,
         address: academyAddress.trim() || null,
         settings: {
-          ...settings,
-          timezone,
+          ...settingsWithoutTimezone,
           weekStartsOn: SYSTEM_WEEK_STARTS_ON,
           communityWhatsappUrl: normalizeOptionalUrl(communityWhatsappUrl),
           socialLinks: {
@@ -400,6 +433,7 @@ export default function AcademyProfilePage() {
     setSecurityError("");
     setSecurityMessage("");
     setBackupCodes([]);
+    setBackupCodesCopied(false);
 
     try {
       const result = await setup2FA().unwrap();
@@ -418,6 +452,7 @@ export default function AcademyProfilePage() {
     try {
       const result = await verifySetup2FA(setupCode.trim()).unwrap();
       setBackupCodes(result.backupCodes);
+      setBackupCodesCopied(false);
       setSetupData(null);
       setSetupCode("");
       dispatch(updateUser({ totpEnabled: true }));
@@ -451,7 +486,9 @@ export default function AcademyProfilePage() {
     setSecurityMessage("");
 
     try {
-      const result = await setupMfaDevice({ deviceName: newDeviceName.trim() || t.defaultDeviceName }).unwrap();
+      const result = await setupMfaDevice({
+        deviceName: newDeviceName.trim() || t.defaultDeviceName,
+      }).unwrap();
       setNewDeviceSetup(result);
       setNewDeviceCode("");
     } catch (err) {
@@ -459,7 +496,9 @@ export default function AcademyProfilePage() {
     }
   };
 
-  const handleVerifyDevice = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleVerifyDevice = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     if (!newDeviceSetup?.deviceId) return;
     setSecurityError("");
@@ -490,7 +529,9 @@ export default function AcademyProfilePage() {
     }
   };
 
-  const handleRegenerateBackupCodes = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRegenerateBackupCodes = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     setSecurityError("");
     setSecurityMessage("");
@@ -498,6 +539,7 @@ export default function AcademyProfilePage() {
     try {
       const result = await regenerateBackupCodes(backupCodesPassword).unwrap();
       setBackupCodes(result.backupCodes);
+      setBackupCodesCopied(false);
       setBackupCodesPassword("");
       setSecurityMessage(t.backupCodesGenerated);
     } catch (err) {
@@ -528,24 +570,47 @@ export default function AcademyProfilePage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>{t.academyName}</Label>
-                <Input value={academyName} onChange={(event) => updateDraft("name", event.target.value)} />
+                <Input
+                  value={academyName}
+                  onChange={(event) => updateDraft("name", event.target.value)}
+                />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{t.email}</Label>
-                  <Input type="email" value={academyEmail} onChange={(event) => updateDraft("email", event.target.value)} />
+                  <Input
+                    type="email"
+                    value={academyEmail}
+                    onChange={(event) =>
+                      updateDraft("email", event.target.value)
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>{t.phone}</Label>
-                  <Input value={academyPhone} onChange={(event) => updateDraft("phone", event.target.value)} />
+                  <Input
+                    value={academyPhone}
+                    onChange={(event) =>
+                      updateDraft("phone", event.target.value)
+                    }
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>{t.address}</Label>
-                <Input value={academyAddress} onChange={(event) => updateDraft("address", event.target.value)} />
+                <Input
+                  value={academyAddress}
+                  onChange={(event) =>
+                    updateDraft("address", event.target.value)
+                  }
+                />
               </div>
               <div className="flex items-center gap-3">
-                <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
+                <Button
+                  className="gap-1.5"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
                   <Save className="h-4 w-4" />
                   {saving ? t.saving : t.saveChanges}
                 </Button>
@@ -562,9 +627,7 @@ export default function AcademyProfilePage() {
           <Card className="border-border/50 bg-card">
             <CardHeader>
               <CardTitle className="text-base">{t.footerLinks}</CardTitle>
-              <CardDescription>
-                {t.footerLinksDescription}
-              </CardDescription>
+              <CardDescription>{t.footerLinksDescription}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -572,7 +635,9 @@ export default function AcademyProfilePage() {
                 <Input
                   type="url"
                   value={facebookUrl}
-                  onChange={(event) => updateDraft("facebookUrl", event.target.value)}
+                  onChange={(event) =>
+                    updateDraft("facebookUrl", event.target.value)
+                  }
                   placeholder="https://facebook.com/..."
                 />
               </div>
@@ -581,7 +646,9 @@ export default function AcademyProfilePage() {
                 <Input
                   type="url"
                   value={instagramUrl}
-                  onChange={(event) => updateDraft("instagramUrl", event.target.value)}
+                  onChange={(event) =>
+                    updateDraft("instagramUrl", event.target.value)
+                  }
                   placeholder="https://instagram.com/..."
                 />
               </div>
@@ -590,7 +657,9 @@ export default function AcademyProfilePage() {
                 <Input
                   type="url"
                   value={twitterUrl}
-                  onChange={(event) => updateDraft("twitterUrl", event.target.value)}
+                  onChange={(event) =>
+                    updateDraft("twitterUrl", event.target.value)
+                  }
                   placeholder="https://x.com/..."
                 />
               </div>
@@ -599,12 +668,18 @@ export default function AcademyProfilePage() {
                 <Input
                   type="url"
                   value={linkedinUrl}
-                  onChange={(event) => updateDraft("linkedinUrl", event.target.value)}
+                  onChange={(event) =>
+                    updateDraft("linkedinUrl", event.target.value)
+                  }
                   placeholder="https://linkedin.com/company/..."
                 />
               </div>
               <div className="flex items-center gap-3 sm:col-span-2">
-                <Button className="gap-1.5" onClick={handleSave} disabled={saving}>
+                <Button
+                  className="gap-1.5"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
                   <Save className="h-4 w-4" />
                   {saving ? t.saving : t.saveChanges}
                 </Button>
@@ -614,7 +689,11 @@ export default function AcademyProfilePage() {
                   </span>
                 )}
               </div>
-              {saveError && <p className="text-sm text-red-400 sm:col-span-2">{saveError}</p>}
+              {saveError && (
+                <p className="text-sm text-red-400 sm:col-span-2">
+                  {saveError}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -624,23 +703,6 @@ export default function AcademyProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{t.timezone}</Label>
-                  <Select
-                    value={timezone}
-                    onValueChange={(value) => updateDraft("timezone", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Africa/Cairo">Africa/Cairo</SelectItem>
-                      <SelectItem value="Asia/Riyadh">Asia/Riyadh</SelectItem>
-                      <SelectItem value="Europe/London">Europe/London</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="match-day-open-minutes">
                     {t.matchDayOpen}
@@ -659,9 +721,16 @@ export default function AcademyProfilePage() {
                       )
                     }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {language === "ar"
+                      ? "\u0639\u062f\u062f \u0627\u0644\u062f\u0642\u0627\u0626\u0642 \u0642\u0628\u0644 \u0636\u0631\u0628\u0629 \u0627\u0644\u0628\u062f\u0627\u064a\u0629 \u0627\u0644\u062a\u064a \u064a\u0645\u0643\u0646 \u0644\u0644\u0645\u062f\u0631\u0628 \u062e\u0644\u0627\u0644\u0647\u0627 \u0641\u062a\u062d \u064a\u0648\u0645 \u0627\u0644\u0645\u0628\u0627\u0631\u0627\u0629 (0\u2013240)."
+                      : "Minutes before kick-off when coaches can open Match Day (0\u2013240)."}
+                  </p>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="community-whatsapp-url">{t.whatsappCommunity}</Label>
+                  <Label htmlFor="community-whatsapp-url">
+                    {t.whatsappCommunity}
+                  </Label>
                   <Input
                     id="community-whatsapp-url"
                     type="url"
@@ -710,6 +779,27 @@ export default function AcademyProfilePage() {
                   }
                 />
               </label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  className="gap-1.5"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {saving ? t.saving : t.saveChanges}
+                </Button>
+                {saved && (
+                  <span className="flex items-center gap-1 text-sm text-emerald-400">
+                    <CheckCircle className="h-4 w-4" /> {t.saved}
+                  </span>
+                )}
+              </div>
+              {saveError && <p className="text-sm text-red-400">{saveError}</p>}
             </CardContent>
           </Card>
 
@@ -720,7 +810,11 @@ export default function AcademyProfilePage() {
                 <CardDescription>{t.adminSecurityDescription}</CardDescription>
               </div>
               <Badge variant={totpEnabled ? "success" : "secondary"}>
-                {loadingUser ? t.checking : totpEnabled ? t.twoFaOn : t.twoFaOff}
+                {loadingUser
+                  ? t.checking
+                  : totpEnabled
+                    ? t.twoFaOn
+                    : t.twoFaOff}
               </Badge>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -734,7 +828,9 @@ export default function AcademyProfilePage() {
                   <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-semibold">{t.authenticatorDevices}</p>
+                        <p className="text-sm font-semibold">
+                          {t.authenticatorDevices}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {t.authenticatorDevicesDescription}
                         </p>
@@ -747,7 +843,11 @@ export default function AcademyProfilePage() {
                           disabled={settingUpDevice}
                           className="gap-1.5"
                         >
-                          {settingUpDevice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          {settingUpDevice ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4" />
+                          )}
                           {t.addDevice}
                         </Button>
                       )}
@@ -762,10 +862,15 @@ export default function AcademyProfilePage() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-medium">{device.deviceName}</p>
-                              {device.isPrimary && <Badge variant="success">{t.primary}</Badge>}
+                              {device.isPrimary && (
+                                <Badge variant="success">{t.primary}</Badge>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {t.added} {new Date(device.createdAt).toLocaleString(dateLocale)}
+                              {t.added}{" "}
+                              {new Date(device.createdAt).toLocaleString(
+                                dateLocale,
+                              )}
                               {device.lastUsedAt
                                 ? ` - ${t.lastUsed} ${new Date(device.lastUsedAt).toLocaleString(dateLocale)}`
                                 : ""}
@@ -776,8 +881,13 @@ export default function AcademyProfilePage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleRevokeDevice(device.id)}
-                            disabled={revokingDevice || device.isPrimary}
+                            disabled={revokingDevice || mfaDevices.length <= 1}
                             className="gap-1.5"
+                            title={
+                              mfaDevices.length <= 1
+                                ? "Add and verify another device before removing this one."
+                                : undefined
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                             {t.remove}
@@ -793,11 +903,15 @@ export default function AcademyProfilePage() {
 
                     {!newDeviceSetup && (
                       <div className="space-y-2">
-                        <Label htmlFor="new-mfa-device-name">{t.newDeviceName}</Label>
+                        <Label htmlFor="new-mfa-device-name">
+                          {t.newDeviceName}
+                        </Label>
                         <Input
                           id="new-mfa-device-name"
                           value={newDeviceName}
-                          onChange={(event) => setNewDeviceName(event.target.value)}
+                          onChange={(event) =>
+                            setNewDeviceName(event.target.value)
+                          }
                           placeholder={t.defaultDeviceName}
                         />
                       </div>
@@ -819,18 +933,33 @@ export default function AcademyProfilePage() {
                           <div className="space-y-3">
                             <div className="space-y-2">
                               <Label>{t.authenticatorLabel}</Label>
-                              <Input value={newDeviceSetup.issuer ?? t.issuerFallback} readOnly />
+                              <Input
+                                value={
+                                  newDeviceSetup.issuer ?? t.issuerFallback
+                                }
+                                readOnly
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label>{t.secret}</Label>
-                              <Input value={newDeviceSetup.secret} readOnly className="font-mono text-xs" />
+                              <Input
+                                value={newDeviceSetup.secret}
+                                readOnly
+                                className="font-mono text-xs"
+                              />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="new-device-code">{t.verificationCode}</Label>
+                              <Label htmlFor="new-device-code">
+                                {t.verificationCode}
+                              </Label>
                               <Input
                                 id="new-device-code"
                                 value={newDeviceCode}
-                                onChange={(event) => setNewDeviceCode(event.target.value.replace(/\D/g, ""))}
+                                onChange={(event) =>
+                                  setNewDeviceCode(
+                                    event.target.value.replace(/\D/g, ""),
+                                  )
+                                }
                                 inputMode="numeric"
                                 maxLength={6}
                                 required
@@ -839,11 +968,23 @@ export default function AcademyProfilePage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button type="submit" disabled={verifyingDevice || newDeviceCode.length !== 6} className="gap-1.5">
-                            {verifyingDevice && <Loader2 className="h-4 w-4 animate-spin" />}
+                          <Button
+                            type="submit"
+                            disabled={
+                              verifyingDevice || newDeviceCode.length !== 6
+                            }
+                            className="gap-1.5"
+                          >
+                            {verifyingDevice && (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
                             {t.verifyDevice}
                           </Button>
-                          <Button type="button" variant="outline" onClick={() => setNewDeviceSetup(null)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setNewDeviceSetup(null)}
+                          >
                             {t.cancel}
                           </Button>
                         </div>
@@ -856,18 +997,24 @@ export default function AcademyProfilePage() {
                     className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3"
                   >
                     <div>
-                      <p className="text-sm font-semibold">{t.backupCodesTitle}</p>
+                      <p className="text-sm font-semibold">
+                        {t.backupCodesTitle}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {t.backupCodesDescription}
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="admin-backup-codes-password">{t.adminPassword}</Label>
+                      <Label htmlFor="admin-backup-codes-password">
+                        {t.adminPassword}
+                      </Label>
                       <Input
                         id="admin-backup-codes-password"
                         type="password"
                         value={backupCodesPassword}
-                        onChange={(event) => setBackupCodesPassword(event.target.value)}
+                        onChange={(event) =>
+                          setBackupCodesPassword(event.target.value)
+                        }
                         autoComplete="current-password"
                         required
                       />
@@ -878,25 +1025,42 @@ export default function AcademyProfilePage() {
                       disabled={regeneratingBackupCodes || !backupCodesPassword}
                       className="gap-1.5"
                     >
-                      {regeneratingBackupCodes ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                      {regeneratingBackupCodes ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
                       {t.generateBackupCodes}
                     </Button>
                   </form>
 
                   <form onSubmit={handleDisable2FA} className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="disable-2fa-password">{t.adminPassword}</Label>
+                      <Label htmlFor="disable-2fa-password">
+                        {t.adminPassword}
+                      </Label>
                       <Input
                         id="disable-2fa-password"
                         type="password"
                         value={disablePassword}
-                        onChange={(event) => setDisablePassword(event.target.value)}
+                        onChange={(event) =>
+                          setDisablePassword(event.target.value)
+                        }
                         autoComplete="current-password"
                         required
                       />
                     </div>
-                    <Button type="submit" variant="outline" disabled={disabling2FA} className="gap-1.5">
-                      {disabling2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={disabling2FA}
+                      className="gap-1.5"
+                    >
+                      {disabling2FA ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ShieldOff className="h-4 w-4" />
+                      )}
                       {t.disable2FA}
                     </Button>
                   </form>
@@ -908,8 +1072,16 @@ export default function AcademyProfilePage() {
                     {t.twoFaNotRequired}
                   </div>
                   {!setupData ? (
-                    <Button onClick={handleStart2FA} disabled={settingUp2FA || loadingUser} className="gap-1.5">
-                      {settingUp2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                    <Button
+                      onClick={handleStart2FA}
+                      disabled={settingUp2FA || loadingUser}
+                      className="gap-1.5"
+                    >
+                      {settingUp2FA ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
                       {t.enable2FA}
                     </Button>
                   ) : (
@@ -928,18 +1100,31 @@ export default function AcademyProfilePage() {
                         <div className="space-y-3">
                           <div className="space-y-2">
                             <Label>{t.authenticatorLabel}</Label>
-                            <Input value={setupData.issuer ?? t.issuerFallback} readOnly />
+                            <Input
+                              value={setupData.issuer ?? t.issuerFallback}
+                              readOnly
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>{t.secret}</Label>
-                            <Input value={setupData.secret} readOnly className="font-mono text-xs" />
+                            <Input
+                              value={setupData.secret}
+                              readOnly
+                              className="font-mono text-xs"
+                            />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="setup-2fa-code">{t.verificationCode}</Label>
+                            <Label htmlFor="setup-2fa-code">
+                              {t.verificationCode}
+                            </Label>
                             <Input
                               id="setup-2fa-code"
                               value={setupCode}
-                              onChange={(event) => setSetupCode(event.target.value.replace(/\D/g, ""))}
+                              onChange={(event) =>
+                                setSetupCode(
+                                  event.target.value.replace(/\D/g, ""),
+                                )
+                              }
                               inputMode="numeric"
                               maxLength={6}
                               required
@@ -948,11 +1133,21 @@ export default function AcademyProfilePage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit" disabled={verifying2FA} className="gap-1.5">
-                          {verifying2FA && <Loader2 className="h-4 w-4 animate-spin" />}
+                        <Button
+                          type="submit"
+                          disabled={verifying2FA}
+                          className="gap-1.5"
+                        >
+                          {verifying2FA && (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )}
                           {t.verifyAndEnable}
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => setSetupData(null)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setSetupData(null)}
+                        >
                           {t.cancel}
                         </Button>
                       </div>
@@ -966,7 +1161,10 @@ export default function AcademyProfilePage() {
                   <p className="text-sm font-medium">{t.backupCodes}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {backupCodes.map((code) => (
-                      <code key={code} className="rounded bg-background px-2 py-1 text-sm">
+                      <code
+                        key={code}
+                        className="rounded bg-background px-2 py-1 text-sm"
+                      >
                         {code}
                       </code>
                     ))}
@@ -974,12 +1172,15 @@ export default function AcademyProfilePage() {
                 </div>
               )}
 
-              {securityMessage && <p className="text-sm text-emerald-400">{securityMessage}</p>}
-              {securityError && <p className="text-sm text-red-400">{securityError}</p>}
+              {securityMessage && (
+                <p className="text-sm text-emerald-400">{securityMessage}</p>
+              )}
+              {securityError && (
+                <p className="text-sm text-red-400">{securityError}</p>
+              )}
             </CardContent>
           </Card>
         </div>
-
       </div>
     </div>
   );

@@ -34,16 +34,36 @@ function securityHeaders(nonce: string, requestHost?: string) {
 
   const httpConnectSources = [
     publicApiOrigin,
-    ...(isDev ? ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"] : []),
+    ...(isDev
+      ? [
+          "http://localhost:3000",
+          "http://127.0.0.1:3000",
+          "http://localhost:3001",
+          "http://127.0.0.1:3001",
+        ]
+      : []),
   ].filter(Boolean);
   const wsConnectSources = [
     apiWsOrigin,
-    ...(isDev ? ["ws://localhost:3000", "ws://127.0.0.1:3000", "ws://localhost:3001", "ws://127.0.0.1:3001"] : []),
+    ...(isDev
+      ? [
+          "ws://localhost:3000",
+          "ws://127.0.0.1:3000",
+          "ws://localhost:3001",
+          "ws://127.0.0.1:3001",
+        ]
+      : []),
   ].filter(Boolean);
 
   if (isDev && requestHost) {
-    httpConnectSources.push(`http://${requestHost}:3000`, `http://${requestHost}:3001`);
-    wsConnectSources.push(`ws://${requestHost}:3000`, `ws://${requestHost}:3001`);
+    httpConnectSources.push(
+      `http://${requestHost}:3000`,
+      `http://${requestHost}:3001`,
+    );
+    wsConnectSources.push(
+      `ws://${requestHost}:3000`,
+      `ws://${requestHost}:3001`,
+    );
   }
 
   const csp = [
@@ -70,9 +90,11 @@ function securityHeaders(nonce: string, requestHost?: string) {
   };
 
   if (!isDev) {
-    headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
+    headers["Strict-Transport-Security"] =
+      "max-age=31536000; includeSubDomains; preload";
     headers["Content-Security-Policy"] = `${csp}; upgrade-insecure-requests`;
-    headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()";
+    headers["Permissions-Policy"] =
+      "camera=(self), microphone=(), geolocation=()";
   }
 
   return headers;
@@ -84,10 +106,14 @@ function getAccessJwtSecret() {
 
 function base64UrlToBytes(value: string) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  for (let index = 0; index < binary.length; index += 1)
+    bytes[index] = binary.charCodeAt(index);
   return bytes;
 }
 
@@ -123,7 +149,9 @@ async function verifyJwt(token: string) {
 
     const secret = getAccessJwtSecret();
     if (!secret) {
-      return process.env.NODE_ENV === "development" ? decodeJwtWithoutVerification(token) : null;
+      return process.env.NODE_ENV === "development"
+        ? decodeJwtWithoutVerification(token)
+        : null;
     }
 
     const key = await crypto.subtle.importKey(
@@ -151,12 +179,16 @@ async function verifyJwt(token: string) {
 export async function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const pathname = request.nextUrl.pathname;
-  const requestHost = request.headers.get("host")?.split(":")[0] || request.nextUrl.hostname;
+  const requestHost =
+    request.headers.get("host")?.split(":")[0] || request.nextUrl.hostname;
   const headers = securityHeaders(nonce, requestHost);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", headers["Content-Security-Policy"]);
+  requestHeaders.set(
+    "Content-Security-Policy",
+    headers["Content-Security-Policy"],
+  );
 
   // Server-side Route Protection Check
   const token = request.cookies.get("accessToken")?.value;
@@ -226,7 +258,9 @@ export async function proxy(request: NextRequest) {
       )
     : NextResponse.next({ request: { headers: requestHeaders } });
 
-  Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
+  Object.entries(headers).forEach(([key, value]) =>
+    response.headers.set(key, value),
+  );
   return response;
 }
 

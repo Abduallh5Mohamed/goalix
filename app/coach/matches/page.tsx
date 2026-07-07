@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,8 +43,7 @@ const getServerMatchClockSnapshot = () => 0;
 const matchStartTimestamp = (match?: {
   match_date: string;
   match_time: string;
-}) =>
-  match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0;
+}) => (match ? localDateTimeTimestamp(match.match_date, match.match_time) : 0);
 
 const MATCH_AUTO_FINISH_HOURS = 3;
 const closedMatchStatuses = new Set(["cancelled", "finished", "completed"]);
@@ -57,19 +57,27 @@ const matchAutoFinishTimestamp = (match?: {
 };
 
 const isClosedMatch = (
-  match: { status: string; match_status: string; match_date: string; match_time: string },
+  match: {
+    status: string;
+    match_status: string;
+    match_date: string;
+    match_time: string;
+  },
   nowMs: number,
 ) =>
   closedMatchStatuses.has(match.status) ||
   closedMatchStatuses.has(match.match_status) ||
-  (match.match_status === "scheduled" && matchAutoFinishTimestamp(match) <= nowMs);
+  (match.match_status === "scheduled" &&
+    matchAutoFinishTimestamp(match) <= nowMs);
 
 const matchDayOpenMinutes = (match?: Match) => {
   const raw =
     match?.academy_settings?.matchDayOpenMinutesBeforeKickoff ??
     match?.academy_settings?.match_day_open_minutes_before_kickoff;
   const minutes = Number(raw);
-  return Number.isFinite(minutes) ? Math.max(0, Math.min(240, Math.round(minutes))) : 5;
+  return Number.isFinite(minutes)
+    ? Math.max(0, Math.min(240, Math.round(minutes)))
+    : 5;
 };
 
 const getApiMessage = (error: unknown, fallback: string) => {
@@ -241,9 +249,14 @@ export default function CoachMatchesPage() {
     data: matchesRes,
     isLoading,
     isError: matchesError,
+    isFetching: isFetchingMatches,
     refetch: refetchMatches,
   } = useGetCoachMatchesQuery();
-  const { data: adminRequestsRes } = useGetCoachAdminMatchRequestsQuery();
+  const {
+    data: adminRequestsRes,
+    isFetching: isFetchingAdminRequests,
+    refetch: refetchAdminRequests,
+  } = useGetCoachAdminMatchRequestsQuery();
   const nowMs = useSyncExternalStore(
     subscribeMatchClock,
     getMatchClockSnapshot,
@@ -263,42 +276,42 @@ export default function CoachMatchesPage() {
               match_time: request.match_time,
             }) <= nowMs;
           return {
-          id: request.created_match_id!,
-          event_id: null,
-          team_id: request.selected_group_id,
-          age_group_id: null,
-          opponent_name: request.opponent_name,
-          match_type: request.match_type,
-          match_date: request.match_date,
-          match_time: request.match_time,
-          location: request.location,
-          venue_type: request.venue_type,
-          referee_name: request.referee_name,
-          status: closed ? ("completed" as const) : ("scheduled" as const),
-          match_status: closed ? "finished" : "scheduled",
-          organizer_notes: request.organizer_notes,
-          match_notes: null,
-          our_score: null,
-          opponent_score: null,
-          groups: request.selected_group_id
-            ? [
-                {
-                  id: request.selected_group_id,
-                  name: request.selected_group_name ?? t.selectedGroup,
-                },
-              ]
-            : [],
-          birth_years: request.selected_birth_year_id
-            ? [
-                {
-                  id: request.selected_birth_year_id,
-                  label:
-                    request.selected_birth_year_name ?? t.selectedBirthYear,
-                  fromYear: 0,
-                  toYear: 9999,
-                },
-              ]
-            : [],
+            id: request.created_match_id!,
+            event_id: null,
+            team_id: request.selected_group_id,
+            age_group_id: null,
+            opponent_name: request.opponent_name,
+            match_type: request.match_type,
+            match_date: request.match_date,
+            match_time: request.match_time,
+            location: request.location,
+            venue_type: request.venue_type,
+            referee_name: request.referee_name,
+            status: closed ? ("completed" as const) : ("scheduled" as const),
+            match_status: closed ? "finished" : "scheduled",
+            organizer_notes: request.organizer_notes,
+            match_notes: null,
+            our_score: null,
+            opponent_score: null,
+            groups: request.selected_group_id
+              ? [
+                  {
+                    id: request.selected_group_id,
+                    name: request.selected_group_name ?? t.selectedGroup,
+                  },
+                ]
+              : [],
+            birth_years: request.selected_birth_year_id
+              ? [
+                  {
+                    id: request.selected_birth_year_id,
+                    label:
+                      request.selected_birth_year_name ?? t.selectedBirthYear,
+                    fromYear: 0,
+                    toYear: 9999,
+                  },
+                ]
+              : [],
           };
         }),
     ],
@@ -315,19 +328,28 @@ export default function CoachMatchesPage() {
     [acceptedRequestMatches, matchesRes?.data],
   );
   const activeMatches = useMemo(
-    () =>
-      matches.filter(
-        (item) => !isClosedMatch(item, nowMs),
-      ),
+    () => matches.filter((item) => !isClosedMatch(item, nowMs)),
     [matches, nowMs],
   );
   const [selectedId, setSelectedId] = useState<string>("");
   const activeId = activeMatches.some((item) => item.id === selectedId)
     ? selectedId
     : activeMatches[0]?.id || "";
-  const { data: match } = useGetCoachMatchQuery(activeId, { skip: !activeId });
-  const { data: groups = [] } = useGetCoachGroupsScopedQuery();
-  const { data: birthdays = [] } = useGetCoachBirthdaysQuery();
+  const {
+    data: match,
+    isFetching: isFetchingMatch,
+    refetch: refetchMatch,
+  } = useGetCoachMatchQuery(activeId, { skip: !activeId });
+  const {
+    data: groups = [],
+    isFetching: isFetchingGroups,
+    refetch: refetchGroups,
+  } = useGetCoachGroupsScopedQuery();
+  const {
+    data: birthdays = [],
+    isFetching: isFetchingBirthdays,
+    refetch: refetchBirthdays,
+  } = useGetCoachBirthdaysQuery();
   const [adminRequestTargets, setAdminRequestTargets] = useState<
     Record<string, { mode: "group" | "birthday"; value: string }>
   >({});
@@ -338,8 +360,7 @@ export default function CoachMatchesPage() {
   const configurationReady = Boolean(match?.tactics && match.squad?.length);
   const matchStartMs = matchStartTimestamp(match);
   const safeMatchDayOpenMinutes = matchDayOpenMinutes(match);
-  const matchDayUnlockMs =
-    matchStartMs - safeMatchDayOpenMinutes * 60 * 1000;
+  const matchDayUnlockMs = matchStartMs - safeMatchDayOpenMinutes * 60 * 1000;
   const matchClosed = match ? isClosedMatch(match, nowMs) : false;
   const matchDayOpen = Boolean(
     match &&
@@ -366,9 +387,7 @@ export default function CoachMatchesPage() {
         [requestId]: { mode: "group", value: "" },
       }));
     } catch (error) {
-      setAdminRequestError(
-        getApiMessage(error, t.acceptRequestError),
-      );
+      setAdminRequestError(getApiMessage(error, t.acceptRequestError));
     }
   };
 
@@ -376,6 +395,23 @@ export default function CoachMatchesPage() {
 
   const selectMatch = (id: string) => {
     setSelectedId(id);
+  };
+
+  const isRefreshing =
+    isFetchingMatches ||
+    isFetchingAdminRequests ||
+    isFetchingMatch ||
+    isFetchingGroups ||
+    isFetchingBirthdays;
+
+  const refreshPageData = async () => {
+    await Promise.all([
+      refetchMatches(),
+      refetchAdminRequests(),
+      refetchGroups(),
+      refetchBirthdays(),
+      ...(activeId ? [refetchMatch()] : []),
+    ]);
   };
 
   return (
@@ -388,9 +424,11 @@ export default function CoachMatchesPage() {
           { label: t.matches },
         ]}
         actions={
-          <Button variant="outline" onClick={() => refetchMatches()}>
-            {t.refresh}
-          </Button>
+          <RefreshButton
+            onRefresh={refreshPageData}
+            isRefreshing={isRefreshing}
+            label={t.refresh}
+          />
         }
       />
 
@@ -399,7 +437,7 @@ export default function CoachMatchesPage() {
           <CardHeader>
             <CardTitle className="text-base">{t.upcomingMatches}</CardTitle>
           </CardHeader>
-            <CardContent className="space-y-2">
+          <CardContent className="space-y-2">
             {matchesError && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
                 {t.backendError}
@@ -653,7 +691,9 @@ export default function CoachMatchesPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="group">{t.group}</SelectItem>
-                            <SelectItem value="birthday">{t.birthday}</SelectItem>
+                            <SelectItem value="birthday">
+                              {t.birthday}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <Select

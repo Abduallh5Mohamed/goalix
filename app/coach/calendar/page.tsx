@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { MonthCalendar } from "@/components/shared/MonthCalendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,16 +34,19 @@ const calendarCopy = {
     calendar: "التقويم",
     refresh: "تحديث",
     loading: "جاري تحميل التقويم...",
-    loadError: "تعذر تحميل بيانات التقويم من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
+    loadError:
+      "تعذر تحميل بيانات التقويم من الباك إند. تأكد أن الباك إند يعمل وأن جلسة المدرب صالحة.",
     openTraining: "فتح التدريب",
-    empty: "لا توجد أحداث تقويم ظاهرة لهذا المدرب حتى الآن. يجب أن تستهدف الأحداث مجموعة أو سنة ميلاد أو لاعبين ضمن نطاق المدرب.",
+    empty:
+      "لا توجد أحداث تقويم ظاهرة لهذا المدرب حتى الآن. يجب أن تستهدف الأحداث مجموعة أو سنة ميلاد أو لاعبين ضمن نطاق المدرب.",
   },
 } as const;
 
 export default function CoachCalendarPage() {
   const language = useDashboardLanguage();
   const t = calendarCopy[language];
-  const { data, isLoading, isError, refetch } = useGetCoachCalendarEventsQuery();
+  const { data, isLoading, isError, isFetching, refetch } =
+    useGetCoachCalendarEventsQuery();
   const events = useMemo(() => data?.data ?? [], [data?.data]);
   const calendarItems = useMemo(
     () =>
@@ -67,9 +71,11 @@ export default function CoachCalendarPage() {
           { label: t.calendar },
         ]}
         actions={
-          <Button variant="outline" onClick={() => refetch()}>
-            {t.refresh}
-          </Button>
+          <RefreshButton
+            onRefresh={refetch}
+            isRefreshing={isFetching}
+            label={t.refresh}
+          />
         }
       />
 

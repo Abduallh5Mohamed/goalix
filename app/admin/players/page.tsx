@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PlayerImportDialog } from "@/components/players/PlayerImportDialog";
 import { DataTable, Column } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -566,10 +567,13 @@ export default function PlayersPage() {
           { label: t.playersTitle },
         ]}
         actions={
-          <Button className="gap-1.5" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" />
-            {t.addPlayer}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PlayerImportDialog role="admin" />
+            <Button className="gap-1.5" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t.addPlayer}
+            </Button>
+          </div>
         }
       />
 

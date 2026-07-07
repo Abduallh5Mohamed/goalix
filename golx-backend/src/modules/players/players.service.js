@@ -4,13 +4,24 @@ const {
   NotFoundError,
   ForbiddenError,
   BadRequestError,
+  ConflictError,
 } = require("../../shared/errors");
-const { ConflictError } = require("../../shared/errors");
 const bcrypt = require("bcrypt");
 const env = require("../../config/env");
 const { ensureIamForAuthUser } = require("../../shared/iam-sync");
 const { auditAccessDenied } = require("../../shared/access-audit");
 const { canAccessPlayerRecord } = require("../../shared/access-policy");
+const {
+  createPlayerSchema,
+  updatePlayerSchema,
+} = require("./players.schema");
+const {
+  COLUMN_BY_FIELD,
+  PLAYER_IMPORT_COLUMNS,
+  buildPlayerImportTemplate,
+  parsePlayerImportWorkbook,
+  samplePlayerRows,
+} = require("./players.import");
 
 const technicalSkillMap = {
   ballControl: "ball_control",
@@ -43,12 +54,7 @@ const tacticalSkillMap = {
 const physicalMap = {
   bmi: "bmi",
   sprintSpeed: "sprint_speed",
-  acceleration: "acceleration",
   stamina: "stamina",
-  strength: "strength",
-  agility: "agility",
-  balance: "balance",
-  jumpHeightCm: "jump_height_cm",
   flexibility: "flexibility",
 };
 
@@ -124,6 +130,78 @@ const addPlanPeriod = (date, plan = "monthly") => {
   next.setMonth(next.getMonth() + months);
   return next.toISOString().slice(0, 10);
 };
+
+const normalizeImportPhone = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/[\s()-]+/g, "");
+
+const importDateValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+};
+
+const existingImportValue = (player, field) => {
+  const values = {
+    fullName: player.full_name,
+    birthDate: importDateValue(player.date_of_birth),
+    heightCm:
+      player.height_cm === null || player.height_cm === undefined
+        ? null
+        : Number(player.height_cm),
+    weightKg:
+      player.weight_kg === null || player.weight_kg === undefined
+        ? null
+        : Number(player.weight_kg),
+    preferredFoot: player.preferred_foot,
+    dateJoined: importDateValue(player.date_joined),
+    username: player.username,
+    password: null,
+    gender: player.gender,
+    nationality: player.nationality,
+    phone: player.phone,
+    address: player.address,
+    branchId: player.branch_id,
+    guardianName: player.guardian_name,
+    guardianPhone: player.guardian_phone,
+    guardianRelation: player.guardian_relation,
+    isActive: Boolean(player.is_active),
+  };
+  return values[field] ?? null;
+};
+
+const importValuesEqual = (field, left, right) => {
+  if (["heightCm", "weightKg"].includes(field)) {
+    if (left === null || left === undefined || left === "") {
+      return right === null || right === undefined || right === "";
+    }
+    return Number(left) === Number(right);
+  }
+  if (field === "isActive") return Boolean(left) === Boolean(right);
+  if (["birthDate", "dateJoined"].includes(field)) {
+    return importDateValue(left) === importDateValue(right);
+  }
+  return String(left ?? "").trim() === String(right ?? "").trim();
+};
+
+const exportPlayerRow = (player) =>
+  Object.fromEntries(
+    PLAYER_IMPORT_COLUMNS.map((column) => [
+      column.field,
+      column.field === "password"
+        ? null
+        : existingImportValue(player, column.field),
+    ]),
+  );
+
+const errorForImportRow = (row, field, message) => ({
+  row: row.rowNumber,
+  column: COLUMN_BY_FIELD.get(field)?.header || field,
+  field,
+  value: field === "password" ? "[redacted]" : row.data[field] ?? "",
+  message,
+});
 
 class PlayersService {
   constructor(playersRepository) {
@@ -204,23 +282,29 @@ class PlayersService {
     return player;
   }
 
-  async createPlayer(academyId, data, actor = {}) {
-    // Verify the branch belongs to this academy before creating a player
+  async _validatePlayerCreation(
+    academyId,
+    data,
+    actor = {},
+    db = this.repo.db,
+    { checkCredentials = true } = {},
+  ) {
     const branch = await this.repo.findBranchByIdAndAcademy(
       data.branchId,
       academyId,
+      db,
     );
     if (!branch) throw new NotFoundError("Branch", data.branchId);
 
-    let targetGroupId = data.groupId || null;
+    const targetGroupId = data.groupId || null;
     const coachProfile =
       actor.role === "coach"
-        ? await this.repo.findCoachProfileByUserId(actor.userId)
+        ? await this.repo.findCoachProfileByUserId(actor.userId, db)
         : null;
     const playerBirthYear = data.birthDate
-      ? new Date(data.birthDate).getFullYear()
+      ? new Date(`${data.birthDate}T00:00:00.000Z`).getUTCFullYear()
       : null;
-    const profileCompleteOnCreate = data.markProfileComplete === true;
+
     if (actor.role === "coach") {
       if (!coachProfile)
         throw new ForbiddenError("Coach profile is not linked to this user");
@@ -232,6 +316,7 @@ class PlayersService {
           coachProfile.id,
           data.branchId,
           playerBirthYear,
+          db,
         );
       if (!accessibleBirthYear) {
         throw new ForbiddenError(
@@ -239,15 +324,21 @@ class PlayersService {
         );
       }
     }
+
     if (targetGroupId) {
       const group = await this.repo.findGroupByIdAndBranch(
         targetGroupId,
         data.branchId,
+        db,
       );
       if (!group) throw new NotFoundError("Group", data.groupId);
       if (
         actor.role === "coach" &&
-        !(await this.repo.coachCanAccessGroup(coachProfile.id, targetGroupId))
+        !(await this.repo.coachCanAccessGroup(
+          coachProfile.id,
+          targetGroupId,
+          db,
+        ))
       ) {
         throw new ForbiddenError(
           "Your coach account cannot assign players to this group",
@@ -259,11 +350,14 @@ class PlayersService {
       ? data.username.trim().toLowerCase()
       : null;
     const authPhone = data.phone || data.guardianPhone || null;
-    if (normalizedUsername) {
-      const existing = await this.repo.findAuthUserByCredentials({
-        username: normalizedUsername,
-        phone: authPhone,
-      });
+    if (checkCredentials && normalizedUsername) {
+      const existing = await this.repo.findAuthUserByCredentials(
+        {
+          username: normalizedUsername,
+          phone: authPhone,
+        },
+        db,
+      );
       if (existing) {
         throw new ConflictError(
           "User with this username or phone already exists",
@@ -271,42 +365,78 @@ class PlayersService {
       }
     }
 
-    const passwordHash = data.password
-      ? await bcrypt.hash(data.password, env.BCRYPT_ROUNDS)
-      : null;
-    // Generate code + insert profile atomically inside a single DB transaction
-    // so the sequence counter and the profile row are either both committed or both rolled back.
-    const player = await this.repo.db.transaction(async (trx) => {
+    return {
+      authPhone,
+      branch,
+      coachProfile,
+      normalizedUsername,
+      playerBirthYear,
+      profileCompleteOnCreate: data.markProfileComplete === true,
+      targetGroupId,
+    };
+  }
+
+  _publishPlayerCreated(player, academyId, branchId, groupId) {
+    eventBus.publish(PLAYERS_EVENTS.CREATED, {
+      playerId: player.id,
+      playerCode: player.player_code,
+      academyId,
+      branchId,
+      groupId,
+    });
+  }
+
+  async createPlayer(academyId, data, actor = {}, options = {}) {
+    const passwordHash =
+      options.passwordHash !== undefined
+        ? options.passwordHash
+        : data.password
+          ? await bcrypt.hash(data.password, env.BCRYPT_ROUNDS)
+          : null;
+
+    const createWithinTransaction = async (trx) => {
+      const context = await this._validatePlayerCreation(
+        academyId,
+        data,
+        actor,
+        trx,
+      );
+      let targetGroupId = context.targetGroupId;
       let userId = data.userId || null;
-      if (profileCompleteOnCreate && !targetGroupId && data.birthDate) {
-        const autoGroup = Number.isInteger(playerBirthYear)
+
+      if (
+        context.profileCompleteOnCreate &&
+        !targetGroupId &&
+        data.birthDate
+      ) {
+        const autoGroup = Number.isInteger(context.playerBirthYear)
           ? actor.role === "coach"
             ? await this.repo.findCoachAutoAssignableGroup(
-                coachProfile.id,
+                context.coachProfile.id,
                 data.branchId,
-                playerBirthYear,
+                context.playerBirthYear,
                 trx,
               )
             : await this.repo.findAutoAssignableGroup(
                 data.branchId,
-                playerBirthYear,
+                context.playerBirthYear,
                 trx,
               )
           : null;
         targetGroupId = autoGroup?.id || null;
       }
 
-      if (normalizedUsername && passwordHash) {
+      if (context.normalizedUsername && passwordHash) {
         const [user] = await trx("auth_users")
           .insert({
-            username: normalizedUsername,
+            username: context.normalizedUsername,
             email: null,
-            phone: authPhone,
+            phone: context.authPhone,
             password_hash: passwordHash,
             role: "player",
             academy_id: academyId,
             branch_id: data.branchId,
-            is_active: true,
+            is_active: data.isActive ?? true,
             is_verified: true,
           })
           .returning("*");
@@ -315,17 +445,14 @@ class PlayersService {
           fullName: data.fullName,
           grantedBy: actor.userId || null,
         });
-
         userId = user.id;
       }
 
-      // Atomically allocate the next sequential number for this age category + year
       const playerCode = await this.repo.generatePlayerCode(
         data.birthDate,
         trx,
       );
-
-      const [row] = await trx("player_profiles")
+      const [player] = await trx("player_profiles")
         .insert({
           academy_id: academyId,
           branch_id: data.branchId,
@@ -340,18 +467,13 @@ class PlayersService {
           nationality: data.nationality || null,
           level: data.level || null,
           position: data.position || null,
-          secondary_positions: JSON.stringify(data.secondaryPositions || []),
           preferred_foot: data.preferredFoot || null,
-          current_team: data.currentTeam || null,
-          shirt_number: data.shirtNumber || null,
-          playing_style: data.playingStyle || null,
-          years_experience: data.yearsExperience ?? null,
-          previous_club_academy: data.previousClubAcademy || null,
           guardian_name: data.guardianName || null,
           guardian_phone: data.guardianPhone || null,
           guardian_relation: data.guardianRelation || null,
           notes: data.notes || null,
-          ...(profileCompleteOnCreate
+          is_active: data.isActive ?? true,
+          ...(context.profileCompleteOnCreate
             ? {
                 profile_status: "complete",
                 profile_completed_at: new Date(),
@@ -360,10 +482,9 @@ class PlayersService {
         })
         .returning("*");
 
-      // Group assignment inside the same transaction
-      if (profileCompleteOnCreate && targetGroupId) {
+      if (context.profileCompleteOnCreate && targetGroupId) {
         await trx("player_group_assignments").insert({
-          player_id: row.id,
+          player_id: player.id,
           group_id: targetGroupId,
           joined_at: data.dateJoined ? new Date(data.dateJoined) : new Date(),
         });
@@ -371,24 +492,679 @@ class PlayersService {
 
       await this._saveExtendedPlayerData(
         trx,
-        row,
+        player,
         { ...data, groupId: targetGroupId },
         actor,
-        coachProfile,
+        context.coachProfile,
       );
 
-      return row;
+      return { player, targetGroupId };
+    };
+
+    const result = options.trx
+      ? await createWithinTransaction(options.trx)
+      : await this.repo.db.transaction(createWithinTransaction);
+    const shouldPublishEvent =
+      options.publishEvent !== undefined
+        ? options.publishEvent
+        : !options.trx;
+    if (shouldPublishEvent) {
+      this._publishPlayerCreated(
+        result.player,
+        academyId,
+        data.branchId,
+        result.targetGroupId,
+      );
+    }
+    return result.player;
+  }
+
+  async _getPlayerImportBranches(actor) {
+    const coachProfile =
+      actor.role === "coach"
+        ? await this.repo.findCoachProfileByUserId(actor.userId)
+        : null;
+    if (actor.role === "coach" && !coachProfile) {
+      throw new ForbiddenError("Coach profile is not linked to this user");
+    }
+    return this.repo.findBranchesForImport(
+      actor.academyId,
+      coachProfile?.id || null,
+    );
+  }
+
+  async buildPlayerImportTemplate(actor, mode = "empty") {
+    const branches = await this._getPlayerImportBranches(actor);
+    const rows = mode === "sample" ? samplePlayerRows(branches) : [];
+    return buildPlayerImportTemplate(branches, { rows, mode });
+  }
+
+  async _createPlayerOperationLog(actionType, fileName, actor) {
+    return this.repo.createImportLog({
+      academy_id: actor.academyId,
+      uploaded_by_user_id: actor.userId || null,
+      file_name: String(fileName || "players.xlsx").slice(0, 255),
+      action_type: actionType,
+      total_rows: 0,
+      imported_rows: 0,
+      created_count: 0,
+      updated_count: 0,
+      skipped_count: 0,
+      failed_count: 0,
+      status: "pending",
+      error_details: null,
+      completed_at: null,
+    });
+  }
+
+  async exportPlayers(mode, confirmation, actor) {
+    if (!["full", "sample", "empty"].includes(mode)) {
+      throw new BadRequestError(
+        "Export mode must be full, sample, or empty.",
+      );
+    }
+
+    const fileName = `goalix-players-${mode}.xlsx`;
+    const log = await this._createPlayerOperationLog(
+      `export_${mode}`,
+      fileName,
+      actor,
+    );
+
+    try {
+      await this.repo.updateImportLog(log.id, { status: "processing" });
+      if (mode === "full") {
+        const currentUser = await this.repo.findAuthUserById(actor.userId);
+        const confirmationIdentity =
+          currentUser?.username || currentUser?.email || "";
+        if (
+          !confirmationIdentity ||
+          String(confirmation || "").trim().toLowerCase() !==
+            confirmationIdentity.trim().toLowerCase()
+        ) {
+          throw new ForbiddenError(
+            "The confirmation does not match your account username or email.",
+          );
+        }
+      }
+
+      const coachProfile =
+        actor.role === "coach"
+          ? await this.repo.findCoachProfileByUserId(actor.userId)
+          : null;
+      if (actor.role === "coach" && !coachProfile) {
+        throw new ForbiddenError("Coach profile is not linked to this user");
+      }
+      const branches = await this._getPlayerImportBranches(actor);
+      const rows =
+        mode === "full"
+          ? (
+              await this.repo.findPlayersForExport(
+                actor.academyId,
+                coachProfile?.id || null,
+              )
+            ).map(exportPlayerRow)
+          : mode === "sample"
+            ? samplePlayerRows(branches)
+            : [];
+      const buffer = await buildPlayerImportTemplate(branches, { rows, mode });
+
+      await this.repo.updateImportLog(log.id, {
+        total_rows: rows.length,
+        status: "completed",
+        completed_at: new Date(),
+      });
+      return { buffer, fileName, totalRows: rows.length, logId: log.id };
+    } catch (error) {
+      await this.repo.updateImportLog(log.id, {
+        status: "failed",
+        failed_count: 1,
+        error_details: [{ message: error.message || "Player export failed." }],
+        completed_at: new Date(),
+      });
+      throw error;
+    }
+  }
+
+  async validatePlayerImport(buffer, actor) {
+    let parsed;
+    try {
+      parsed = await parsePlayerImportWorkbook(buffer);
+    } catch {
+      throw new BadRequestError(
+        "The uploaded file is not a readable Goalix Excel workbook.",
+      );
+    }
+
+    const errors = [...parsed.errors];
+    const errorKeys = new Set(
+      errors.map(
+        (error) => `${error.row}|${error.field}|${error.message}`,
+      ),
+    );
+    const addError = (error) => {
+      const key = `${error.row}|${error.field}|${error.message}`;
+      if (errorKeys.has(key)) return;
+      errorKeys.add(key);
+      errors.push(error);
+    };
+    const valueForError = (field, value) =>
+      field === "password" ? "[redacted]" : value ?? "";
+    const columnForField = (field) =>
+      COLUMN_BY_FIELD.get(field)?.header || field || "Workbook";
+
+    const branches = await this._getPlayerImportBranches(actor);
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
+    const branchByLabel = new Map(
+      branches.map((branch) => [
+        `${branch.name} [${branch.id}]`.toLowerCase(),
+        branch,
+      ]),
+    );
+    const branchesByName = new Map();
+    for (const branch of branches) {
+      const key = branch.name.trim().toLowerCase();
+      const matches = branchesByName.get(key) || [];
+      matches.push(branch);
+      branchesByName.set(key, matches);
+    }
+
+    const usernames = [
+      ...new Set(
+        parsed.rows
+          .map((row) =>
+            String(row.data.username || "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    ];
+    const phones = [
+      ...new Set(
+        parsed.rows
+          .map((row) => normalizeImportPhone(row.data.phone))
+          .filter(Boolean),
+      ),
+    ];
+    const coachProfile =
+      actor.role === "coach"
+        ? await this.repo.findCoachProfileByUserId(actor.userId)
+        : null;
+    const [existingUsers, existingPlayers] = await Promise.all([
+      this.repo.findExistingImportUsers(usernames, phones),
+      this.repo.findImportPlayersByUsernames(
+        actor.academyId,
+        usernames,
+        coachProfile?.id || null,
+      ),
+    ]);
+    const userByUsername = new Map(
+      existingUsers
+        .filter((user) => user.username)
+        .map((user) => [user.username.trim().toLowerCase(), user]),
+    );
+    const userByPhone = new Map(
+      existingUsers
+        .filter((user) => normalizeImportPhone(user.phone))
+        .map((user) => [normalizeImportPhone(user.phone), user]),
+    );
+    const playerByUsername = new Map(
+      existingPlayers.map((player) => [
+        player.username.trim().toLowerCase(),
+        player,
+      ]),
+    );
+
+    const duplicateFields = [
+      {
+        field: "username",
+        normalize: (row) =>
+          String(row.data.username || "")
+            .trim()
+            .toLowerCase(),
+        message: "Duplicate username found in the uploaded Excel file.",
+      },
+      {
+        field: "phone",
+        normalize: (row) => normalizeImportPhone(row.data.phone),
+        message: "Duplicate phone number found in the uploaded Excel file.",
+      },
+    ];
+    for (const duplicateField of duplicateFields) {
+      const groupedRows = new Map();
+      for (const row of parsed.rows) {
+        const key = duplicateField.normalize(row);
+        if (!key) continue;
+        const matches = groupedRows.get(key) || [];
+        matches.push(row);
+        groupedRows.set(key, matches);
+      }
+      for (const matches of groupedRows.values()) {
+        if (matches.length < 2) continue;
+        const allRows = matches.map((match) => match.rowNumber);
+        for (const row of matches) {
+          const otherRows = allRows.filter(
+            (rowNumber) => rowNumber !== row.rowNumber,
+          );
+          addError({
+            row: row.rowNumber,
+            column: columnForField(duplicateField.field),
+            field: duplicateField.field,
+            value: valueForError(
+              duplicateField.field,
+              row.data[duplicateField.field],
+            ),
+            message: `${duplicateField.message} Also found in row${otherRows.length === 1 ? "" : "s"} ${otherRows.join(", ")}.`,
+          });
+        }
+      }
+    }
+
+    const validRows = [];
+    for (const row of parsed.rows) {
+      const rowHadExistingErrors = errors.some(
+        (error) => error.row === row.rowNumber,
+      );
+      const rowErrorCount = errors.length;
+      const suppliedBranch = String(row.data.branchId || "").trim();
+      const branch =
+        branchById.get(suppliedBranch) ||
+        branchByLabel.get(suppliedBranch.toLowerCase()) ||
+        (branchesByName.get(suppliedBranch.toLowerCase())?.length === 1
+          ? branchesByName.get(suppliedBranch.toLowerCase())[0]
+          : null);
+
+      if (!branch) {
+        addError({
+          row: row.rowNumber,
+          column: "Branch",
+          field: "branchId",
+          value: suppliedBranch,
+          message:
+            "Choose an accessible branch from the template dropdown list.",
+        });
+      } else {
+        row.data.branchId = branch.id;
+      }
+
+      const username = String(row.data.username || "")
+        .trim()
+        .toLowerCase();
+      const existingUser = userByUsername.get(username) || null;
+      const existingPlayer = playerByUsername.get(username) || null;
+      if (existingUser && !existingPlayer) {
+        addError({
+          row: row.rowNumber,
+          column: "Username",
+          field: "username",
+          value: row.data.username,
+          message:
+            "This username belongs to an account that cannot be updated as a player in your scope.",
+        });
+      }
+
+      const phoneOwner = userByPhone.get(normalizeImportPhone(row.data.phone));
+      if (phoneOwner && phoneOwner.id !== existingUser?.id) {
+        addError({
+          row: row.rowNumber,
+          column: "Phone Number",
+          field: "phone",
+          value: row.data.phone,
+          message: "This phone number already belongs to another account.",
+        });
+      }
+
+      if (!existingPlayer) {
+        for (const column of PLAYER_IMPORT_COLUMNS) {
+          if (
+            column.required === "create" &&
+            (row.data[column.field] === null ||
+              row.data[column.field] === undefined ||
+              row.data[column.field] === "")
+          ) {
+            addError(
+              errorForImportRow(
+                row,
+                column.field,
+                `${column.header} is required for a new player.`,
+              ),
+            );
+          }
+        }
+      } else {
+        for (const column of PLAYER_IMPORT_COLUMNS) {
+          if (
+            column.required === "create" &&
+            column.field !== "password" &&
+            (row.data[column.field] === null ||
+              row.data[column.field] === undefined ||
+              row.data[column.field] === "") &&
+            existingImportValue(existingPlayer, column.field) !== null
+          ) {
+            addError(
+              errorForImportRow(
+                row,
+                column.field,
+                `${column.header} cannot be blank for an existing player.`,
+              ),
+            );
+          }
+        }
+      }
+
+      const candidateData = Object.fromEntries(
+        Object.entries(row.data).filter(
+          ([, value]) => value !== null && value !== undefined,
+        ),
+      );
+      let action = "create";
+      let actionData = candidateData;
+      if (existingPlayer) {
+        actionData = {};
+        for (const column of PLAYER_IMPORT_COLUMNS) {
+          if (["username", "password"].includes(column.field)) continue;
+          const nextValue = row.data[column.field];
+          if (nextValue === null || nextValue === undefined) continue;
+          if (
+            !importValuesEqual(
+              column.field,
+              nextValue,
+              existingImportValue(existingPlayer, column.field),
+            )
+          ) {
+            actionData[column.field] = nextValue;
+          }
+        }
+        if (row.data.password) actionData.password = row.data.password;
+        if (
+          actionData.heightCm !== undefined ||
+          actionData.weightKg !== undefined
+        ) {
+          actionData.heightCm = row.data.heightCm;
+          actionData.weightKg = row.data.weightKg;
+        }
+        action = Object.keys(actionData).length ? "update" : "skip";
+      }
+
+      const schemaResult = existingPlayer
+        ? updatePlayerSchema.safeParse(actionData)
+        : createPlayerSchema.safeParse(candidateData);
+      if (!schemaResult.success) {
+        for (const issue of schemaResult.error.issues) {
+          const field = String(issue.path[0] || "row");
+          addError({
+            row: row.rowNumber,
+            column: columnForField(field),
+            field,
+            value: valueForError(field, actionData[field] ?? row.data[field]),
+            message: issue.message,
+          });
+        }
+      }
+
+      if (
+        rowHadExistingErrors ||
+        errors.length !== rowErrorCount ||
+        !schemaResult.success
+      ) {
+        continue;
+      }
+
+      try {
+        await this._validatePlayerCreation(
+          actor.academyId,
+          existingPlayer
+            ? Object.fromEntries(
+                PLAYER_IMPORT_COLUMNS.filter(
+                  (column) =>
+                    !["username", "password", "isActive"].includes(
+                      column.field,
+                    ),
+                ).map((column) => [
+                  column.field,
+                  row.data[column.field] ??
+                    existingImportValue(existingPlayer, column.field),
+                ]),
+              )
+            : schemaResult.data,
+          actor,
+          this.repo.db,
+          { checkCredentials: false },
+        );
+        validRows.push({
+          rowNumber: row.rowNumber,
+          action,
+          data: schemaResult.data,
+          existingPlayer,
+        });
+      } catch (error) {
+        const message = error.message || "Player data is not valid.";
+        const field =
+          message.toLowerCase().includes("birth year")
+            ? "birthDate"
+            : message.toLowerCase().includes("branch")
+              ? "branchId"
+              : message.toLowerCase().includes("group")
+                ? "groupId"
+                : "row";
+        addError({
+          row: row.rowNumber,
+          column: columnForField(field),
+          field,
+          value: valueForError(field, schemaResult.data[field]),
+          message,
+        });
+      }
+    }
+
+    errors.sort((left, right) => {
+      const rowDifference = Number(left.row || 0) - Number(right.row || 0);
+      return rowDifference || left.column.localeCompare(right.column);
     });
 
-    eventBus.publish(PLAYERS_EVENTS.CREATED, {
-      playerId: player.id,
-      playerCode: player.player_code,
-      academyId,
-      branchId: data.branchId,
-      groupId: targetGroupId,
-    });
+    const actionCounts = validRows.reduce(
+      (counts, row) => {
+        counts[row.action] += 1;
+        return counts;
+      },
+      { create: 0, update: 0, skip: 0 },
+    );
+    return {
+      valid: errors.length === 0,
+      totalRows: parsed.rows.length,
+      created: actionCounts.create,
+      updated: actionCounts.update,
+      skipped: actionCounts.skip,
+      failed: new Set(errors.map((error) => error.row).filter(Boolean)).size,
+      status: errors.length ? "failed" : "completed",
+      errors,
+      rows: validRows,
+    };
+  }
 
-    return player;
+  async validatePlayerImportWithLog(buffer, fileName, actor) {
+    const log = await this._createPlayerOperationLog(
+      "import_validate",
+      fileName,
+      actor,
+    );
+    try {
+      await this.repo.updateImportLog(log.id, { status: "processing" });
+      const validation = await this.validatePlayerImport(buffer, actor);
+      await this.repo.updateImportLog(log.id, {
+        total_rows: validation.totalRows,
+        created_count: validation.created,
+        updated_count: validation.updated,
+        skipped_count: validation.skipped,
+        failed_count: validation.failed,
+        status: validation.valid ? "completed" : "failed",
+        error_details: validation.valid ? null : validation.errors,
+        completed_at: new Date(),
+      });
+      return { ...validation, logId: log.id };
+    } catch (error) {
+      await this.repo.updateImportLog(log.id, {
+        status: "failed",
+        failed_count: 1,
+        error_details: [{ message: error.message || "Validation failed." }],
+        completed_at: new Date(),
+      });
+      throw error;
+    }
+  }
+
+  async importPlayers(buffer, fileName, actor) {
+    const importLog = await this._createPlayerOperationLog(
+      "import_process",
+      fileName,
+      actor,
+    );
+
+    try {
+      await this.repo.updateImportLog(importLog.id, { status: "processing" });
+      const validation = await this.validatePlayerImport(buffer, actor);
+      if (!validation.valid) {
+        await this.repo.updateImportLog(importLog.id, {
+          total_rows: validation.totalRows,
+          imported_rows: 0,
+          created_count: 0,
+          updated_count: 0,
+          skipped_count: 0,
+          failed_count: validation.failed,
+          status: "failed",
+          error_details: validation.errors,
+          completed_at: new Date(),
+        });
+        return { ...validation, logId: importLog.id };
+      }
+
+      const passwordHashes = new Map();
+      const passwordRows = validation.rows.filter(
+        (row) => row.data.password,
+      );
+      for (let index = 0; index < passwordRows.length; index += 4) {
+        const batch = passwordRows.slice(index, index + 4);
+        const hashes = await Promise.all(
+          batch.map((row) =>
+            bcrypt.hash(row.data.password, env.BCRYPT_ROUNDS),
+          ),
+        );
+        batch.forEach((row, batchIndex) => {
+          passwordHashes.set(row.rowNumber, hashes[batchIndex]);
+        });
+      }
+
+      const processedRows = await this.repo.db.transaction(async (trx) => {
+        const processed = [];
+        for (const row of validation.rows) {
+          try {
+            if (row.action === "create") {
+              const player = await this.createPlayer(
+                actor.academyId,
+                row.data,
+                actor,
+                {
+                  trx,
+                  passwordHash: passwordHashes.get(row.rowNumber),
+                  publishEvent: false,
+                },
+              );
+              processed.push({ ...row, player });
+            } else if (row.action === "update") {
+              const player = await this.updatePlayer(
+                row.existingPlayer.id,
+                actor.academyId,
+                row.data,
+                actor,
+                {
+                  trx,
+                  passwordHash: passwordHashes.get(row.rowNumber),
+                  publishEvent: false,
+                },
+              );
+              processed.push({ ...row, player });
+            } else {
+              processed.push({ ...row, player: row.existingPlayer });
+            }
+          } catch (error) {
+            error.importRow = row.rowNumber;
+            error.importPlayerName =
+              row.data.fullName || row.existingPlayer?.full_name;
+            throw error;
+          }
+        }
+        await this.repo.updateImportLog(
+          importLog.id,
+          {
+            total_rows: validation.totalRows,
+            imported_rows: validation.created + validation.updated,
+            created_count: validation.created,
+            updated_count: validation.updated,
+            skipped_count: validation.skipped,
+            failed_count: 0,
+            status: "completed",
+            error_details: null,
+            completed_at: new Date(),
+          },
+          trx,
+        );
+        return processed;
+      });
+
+      processedRows.forEach((row) => {
+        if (row.action === "create") {
+          this._publishPlayerCreated(
+            row.player,
+            actor.academyId,
+            row.data.branchId,
+            row.data.groupId || null,
+          );
+        } else if (row.action === "update") {
+          eventBus.publish(PLAYERS_EVENTS.UPDATED, {
+            playerId: row.player.id,
+          });
+        }
+      });
+
+      return {
+        valid: true,
+        logId: importLog.id,
+        totalRows: validation.totalRows,
+        importedRows: validation.created + validation.updated,
+        created: validation.created,
+        updated: validation.updated,
+        skipped: validation.skipped,
+        failed: 0,
+        status: "completed",
+        errors: [],
+      };
+    } catch (error) {
+      const failureDetail = {
+        row: error.importRow || null,
+        column: error.importRow ? "Full Name" : "Import",
+        field: error.importRow ? "fullName" : "import",
+        value: error.importPlayerName || "",
+        message: error.message || "The player import failed.",
+      };
+      await this.repo.updateImportLog(importLog.id, {
+        imported_rows: 0,
+        created_count: 0,
+        updated_count: 0,
+        skipped_count: 0,
+        failed_count: 1,
+        status: "failed",
+        error_details: [failureDetail],
+        completed_at: new Date(),
+      });
+      if (error.importRow) {
+        throw new BadRequestError(
+          "Player import failed. No players were imported.",
+          [failureDetail],
+        );
+      }
+      throw error;
+    }
   }
 
   async _saveExtendedPlayerData(
@@ -568,17 +1344,18 @@ class PlayersService {
     }
   }
 
-  async updatePlayer(id, academyId, data, actor = {}) {
-    const player = await this.repo.findById(id);
+  async updatePlayer(id, academyId, data, actor = {}, options = {}) {
+    const db = options.trx || this.repo.db;
+    const player = await this.repo.findById(id, db);
     if (!player) throw new NotFoundError("Player", id);
     await this._assertPlayerAccess(actor, player, { write: true });
 
     const coachProfile =
       actor.role === "coach"
-        ? await this.repo.findCoachProfileByUserId(actor.userId)
+        ? await this.repo.findCoachProfileByUserId(actor.userId, db)
         : null;
     const currentGroupAssignment = data.groupId || data.markProfileComplete
-      ? await this.repo.findCurrentGroupAssignment(id)
+      ? await this.repo.findCurrentGroupAssignment(id, db)
       : null;
     const nextBranchId = data.branchId || player.branch_id;
     const nextBirthDate = data.birthDate || player.date_of_birth;
@@ -590,6 +1367,7 @@ class PlayersService {
       const branch = await this.repo.findBranchByIdAndAcademy(
         data.branchId,
         academyId,
+        db,
       );
       if (!branch) throw new NotFoundError("Branch", data.branchId);
     }
@@ -603,6 +1381,7 @@ class PlayersService {
       const group = await this.repo.findGroupByIdAndBranch(
         data.groupId,
         nextBranchId,
+        db,
       );
       if (!group) throw new NotFoundError("Group", data.groupId);
     }
@@ -618,6 +1397,7 @@ class PlayersService {
           coachProfile.id,
           nextBranchId,
           nextBirthYear,
+          db,
         );
       if (!accessibleBirthYear) {
         throw new ForbiddenError(
@@ -626,7 +1406,11 @@ class PlayersService {
       }
       if (
         data.groupId &&
-        !(await this.repo.coachCanAccessGroup(coachProfile.id, data.groupId))
+        !(await this.repo.coachCanAccessGroup(
+          coachProfile.id,
+          data.groupId,
+          db,
+        ))
       ) {
         throw new ForbiddenError(
           "Your coach account cannot assign players to this group",
@@ -646,20 +1430,8 @@ class PlayersService {
     if (data.branchId) updateData.branch_id = data.branchId;
     if (data.level !== undefined) updateData.level = data.level;
     if (data.position !== undefined) updateData.position = data.position;
-    if (data.secondaryPositions !== undefined)
-      updateData.secondary_positions = JSON.stringify(data.secondaryPositions);
     if (data.preferredFoot !== undefined)
       updateData.preferred_foot = data.preferredFoot;
-    if (data.currentTeam !== undefined)
-      updateData.current_team = data.currentTeam;
-    if (data.shirtNumber !== undefined)
-      updateData.shirt_number = data.shirtNumber;
-    if (data.playingStyle !== undefined)
-      updateData.playing_style = data.playingStyle;
-    if (data.yearsExperience !== undefined)
-      updateData.years_experience = data.yearsExperience;
-    if (data.previousClubAcademy !== undefined)
-      updateData.previous_club_academy = data.previousClubAcademy;
     if (data.isActive !== undefined) updateData.is_active = data.isActive;
     if (data.guardianName !== undefined)
       updateData.guardian_name = data.guardianName;
@@ -673,14 +1445,29 @@ class PlayersService {
       updateData.profile_completed_at = new Date();
     }
 
-    const hasIamUsers = await this.repo.db.schema.hasTable("iam_users");
-    const updated = await this.repo.db.transaction(async (trx) => {
+    const passwordHash =
+      options.passwordHash !== undefined
+        ? options.passwordHash
+        : data.password !== undefined
+          ? await bcrypt.hash(data.password, env.BCRYPT_ROUNDS)
+          : null;
+    const hasIamUsers = await db.schema.hasTable("iam_users");
+    const applyUpdate = async (trx) => {
       const row = await this.repo.update(id, updateData, trx);
-      if (data.isActive !== undefined && player.user_id) {
+      if (
+        player.user_id &&
+        (data.isActive !== undefined ||
+          data.phone !== undefined ||
+          data.branchId !== undefined)
+      ) {
+        const authUpdate = { updated_at: new Date() };
+        if (data.isActive !== undefined) authUpdate.is_active = data.isActive;
+        if (data.phone !== undefined) authUpdate.phone = data.phone;
+        if (data.branchId !== undefined) authUpdate.branch_id = data.branchId;
         await trx("auth_users")
           .where({ id: player.user_id, role: "player" })
-          .update({ is_active: data.isActive, updated_at: new Date() });
-        if (hasIamUsers) {
+          .update(authUpdate);
+        if (hasIamUsers && data.isActive !== undefined) {
           await trx("iam_users")
             .where({ id: player.user_id })
             .update({ is_active: data.isActive, updated_at: new Date() });
@@ -690,7 +1477,6 @@ class PlayersService {
         if (!player.user_id) {
           throw new BadRequestError("This player does not have a login account to reset.");
         }
-        const passwordHash = await bcrypt.hash(data.password, env.BCRYPT_ROUNDS);
         const updatedAuthRows = await trx("auth_users")
           .where({ id: player.user_id, role: "player" })
           .whereNull("deleted_at")
@@ -704,7 +1490,10 @@ class PlayersService {
       }
       await this._saveExtendedPlayerData(trx, row, data, actor, coachProfile);
       return row;
-    });
+    };
+    const updated = options.trx
+      ? await applyUpdate(options.trx)
+      : await this.repo.db.transaction(applyUpdate);
 
     let nextGroupId = data.groupId || null;
     if (data.markProfileComplete && !nextGroupId && !currentGroupAssignment) {
@@ -714,32 +1503,43 @@ class PlayersService {
               coachProfile.id,
               nextBranchId,
               nextBirthYear,
+              db,
             )
-          : await this.repo.findAutoAssignableGroup(nextBranchId, nextBirthYear)
+          : await this.repo.findAutoAssignableGroup(
+              nextBranchId,
+              nextBirthYear,
+              db,
+            )
         : null;
       nextGroupId = autoGroup?.id || null;
     }
 
     // Handle group change
     if (nextGroupId && nextGroupId !== currentGroupAssignment?.group_id) {
-      await this.repo.assignToGroup(id, nextGroupId);
-      eventBus.publish(PLAYERS_EVENTS.GROUP_CHANGED, {
-        playerId: id,
-        oldGroupId: currentGroupAssignment?.group_id,
-        newGroupId: nextGroupId,
-      });
+      await this.repo.assignToGroup(id, nextGroupId, db);
     }
 
-    // Handle level change
-    if (data.level && data.level !== player.level) {
-      eventBus.publish(PLAYERS_EVENTS.LEVEL_CHANGED, {
-        playerId: id,
-        oldLevel: player.level,
-        newLevel: data.level,
-      });
+    const shouldPublishEvent =
+      options.publishEvent !== undefined
+        ? options.publishEvent
+        : !options.trx;
+    if (shouldPublishEvent) {
+      if (nextGroupId && nextGroupId !== currentGroupAssignment?.group_id) {
+        eventBus.publish(PLAYERS_EVENTS.GROUP_CHANGED, {
+          playerId: id,
+          oldGroupId: currentGroupAssignment?.group_id,
+          newGroupId: nextGroupId,
+        });
+      }
+      if (data.level && data.level !== player.level) {
+        eventBus.publish(PLAYERS_EVENTS.LEVEL_CHANGED, {
+          playerId: id,
+          oldLevel: player.level,
+          newLevel: data.level,
+        });
+      }
+      eventBus.publish(PLAYERS_EVENTS.UPDATED, { playerId: id });
     }
-
-    eventBus.publish(PLAYERS_EVENTS.UPDATED, { playerId: id });
     return updated;
   }
 

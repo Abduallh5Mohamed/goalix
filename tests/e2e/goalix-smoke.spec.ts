@@ -166,6 +166,12 @@ function parentDashboardData() {
 
 function mockData(pathname: string) {
   if (pathname === "/api/v1/admin/dashboard") return adminDashboardData();
+  if (pathname === "/api/v1/auth/permissions") {
+    return {
+      permissions: ["manage_players", "player.read.academy"],
+      source: "iam",
+    };
+  }
   if (pathname === "/api/v1/player/profile") return playerProfile();
   if (pathname === "/api/v1/player/progress") return playerProgress();
   if (pathname === "/api/v1/parent/dashboard") return parentDashboardData();
@@ -177,7 +183,27 @@ function mockData(pathname: string) {
       birthYearIds: [],
       canEvaluate: true,
       canManageAttendance: true,
+      can_manage_players: true,
     };
+  }
+  if (pathname === "/api/v1/coaches/me/access-status") {
+    return { hasAssignments: true };
+  }
+  if (pathname === "/api/v1/coaches/me/birthdays") {
+    return [
+      {
+        id: "birth-year-1",
+        branchId: "branch-1",
+        branchName: "Main Branch",
+        label: "U14",
+        normalizedLabel: "u14",
+        fromYear: 2012,
+        toYear: 2012,
+        accessType: "birth_years",
+        groupCount: 1,
+        playerCount: 0,
+      },
+    ];
   }
   if (pathname === "/api/v1/coach/groups") return [];
   if (pathname === "/api/v1/auth/csrf") return { csrfToken: "e2e-csrf-token" };
@@ -205,6 +231,14 @@ async function mockAuthenticatedApi(page: Page, role: Role) {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/v1/auth/refresh") {
       return fulfillJson(route, { success: true, data: { user: users[role] } });
+    }
+    if (url.pathname === "/api/v1/players/export") {
+      return route.fulfill({
+        status: 200,
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        body: Buffer.from("mock player import workbook"),
+      });
     }
     return fulfillJson(route, { success: true, data: mockData(url.pathname) });
   });
@@ -277,6 +311,100 @@ test.describe("Goalix authenticated dashboards", () => {
       await page.goto(item.path);
       await expect(page).toHaveURL(new RegExp(`${item.path.replaceAll("/", "\\/")}`));
       await expect(page.locator("body")).toContainText(item.marker);
+      await expectNoClientCrash(page);
+      await expectNoHorizontalOverflow(page);
+      await context.close();
+    });
+  }
+});
+
+test.describe("Player Excel import", () => {
+  for (const item of [
+    { role: "admin" as const, path: "/admin/players" },
+    { role: "coach" as const, path: "/coach/players" },
+  ]) {
+    test(`${item.role} can open the player import workflow`, async ({
+      browser,
+      baseURL,
+    }) => {
+      const origin = new URL(baseURL ?? "http://localhost:3001").origin;
+      const context = await browser.newContext({
+        storageState: {
+          cookies: [
+            {
+              name: "accessToken",
+              value: signAccessCookie(item.role),
+              domain: new URL(origin).hostname,
+              path: "/",
+              expires: Math.floor(Date.now() / 1000) + 60 * 60,
+              httpOnly: true,
+              secure: origin.startsWith("https://"),
+              sameSite: "Lax",
+            },
+          ],
+          origins: [
+            {
+              origin,
+              localStorage: [
+                { name: "goalix:auth-session", value: "1" },
+                { name: "goalix-dashboard-language", value: "en" },
+                { name: "goalix-dashboard-theme", value: "light" },
+              ],
+            },
+          ],
+        },
+      });
+      const page = await context.newPage();
+      const serializabilityErrors: string[] = [];
+      page.on("console", (message) => {
+        if (/non-serializable value/i.test(message.text())) {
+          serializabilityErrors.push(message.text());
+        }
+      });
+      await mockAuthenticatedApi(page, item.role);
+      await page.goto(item.path);
+
+      await page.getByRole("button", { name: "Download Excel" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Download players Excel" }),
+      ).toBeVisible();
+      await page.getByLabel("Full players data").check();
+      const exportButton = page.getByRole("button", {
+        name: "Download selected file",
+      });
+      await expect(exportButton).toBeDisabled();
+      await page
+        .getByLabel("Confirm with your username")
+        .fill(String(users[item.role].username));
+      const fullDownloadPromise = page.waitForEvent("download");
+      await exportButton.click();
+      const fullDownload = await fullDownloadPromise;
+      expect(fullDownload.suggestedFilename()).toBe(
+        "goalix-players-full.xlsx",
+      );
+
+      const importButton = page.getByRole("button", { name: "Import Excel" });
+      await expect(importButton).toBeVisible();
+      await expect(importButton).toBeEnabled();
+      await importButton.click();
+      await expect(
+        page.getByRole("heading", { name: "Import players from Excel" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Download tutorial template" }),
+      ).toBeVisible();
+      const downloadPromise = page.waitForEvent("download");
+      await page
+        .getByRole("button", { name: "Download tutorial template" })
+        .click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe(
+        "goalix-players-sample.xlsx",
+      );
+      expect(serializabilityErrors).toEqual([]);
+      await expect(
+        page.getByRole("button", { name: "Import all players" }),
+      ).toBeDisabled();
       await expectNoClientCrash(page);
       await expectNoHorizontalOverflow(page);
       await context.close();

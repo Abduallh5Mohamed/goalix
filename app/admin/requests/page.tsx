@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RefreshButton } from "@/components/shared/RefreshButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,18 +109,11 @@ export default function AdminRequestsPage() {
           { label: t.title },
         ]}
         actions={
-          <Button
-            variant="outline"
+          <RefreshButton
             size="sm"
-            onClick={() => {
-              refetch();
-              refetchResets();
-            }}
-            className="gap-1.5"
-          >
-            <RefreshCw className="h-4 w-4" />
-            {t.refresh}
-          </Button>
+            onRefresh={() => Promise.all([refetch(), refetchResets()])}
+            label={t.refresh}
+          />
         }
       />
 
@@ -192,6 +186,13 @@ export default function AdminRequestsPage() {
                   {request.status === "pending" && request.playerId ? (
                     <Button asChild size="sm" className="gap-1.5">
                       <Link href={`/admin/players/${request.playerId}`}>
+                        <KeyRound className="h-4 w-4" />
+                        Reset Password
+                      </Link>
+                    </Button>
+                  ) : request.status === "pending" && request.coachId ? (
+                    <Button asChild size="sm" className="gap-1.5">
+                      <Link href={`/admin/coaches/${request.coachId}?resetPassword=1`}>
                         <KeyRound className="h-4 w-4" />
                         Reset Password
                       </Link>

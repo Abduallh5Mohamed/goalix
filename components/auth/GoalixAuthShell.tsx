@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -17,8 +16,6 @@ const navLinks = [
 ];
 
 export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   return (
     <div className="goalix-login-system">
       {/* ─── Top Navbar ─── */}
@@ -38,7 +35,10 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           <Link href="/" aria-label="Goalix home" className="goalix-login-logo">
             <Image src="/Logo.png" alt="Goalix" width={1536} height={1024} priority style={{ width: "110px", height: "auto", objectFit: "contain" }} />
           </Link>
-          <div className="goalix-login-nav-links" style={{ display: "flex", gap: 36 }}>
+          <div
+            className="goalix-login-nav-links"
+            style={{ display: "flex", gap: 36 }}
+          >
             {navLinks.map((link, index) => (
               <div
                 key={link.href}
@@ -66,14 +66,46 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
                   {link.label}
                   {index > 0 && (
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                      <path d="M1 1L5 5L9 1" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M1 1L5 5L9 1"
+                        stroke="#94a3b8"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </a>
                 {index === 0 && (
-                  <div style={{ position: "absolute", bottom: -2, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                    <div style={{ width: "120%", height: 1, background: "linear-gradient(90deg, transparent, #cfff04, transparent)", opacity: 0.7 }} />
-                    <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#cfff04", marginTop: 4, boxShadow: "0 0 6px #cfff04" }} />
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: -2,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      width: "100%",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "120%",
+                        height: 1,
+                        background:
+                          "linear-gradient(90deg, transparent, #cfff04, transparent)",
+                        opacity: 0.7,
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        background: "#cfff04",
+                        marginTop: 4,
+                        boxShadow: "0 0 6px #cfff04",
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -91,42 +123,43 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         </div>
         {/* Mobile menu action buttons */}
         <div className="goalix-login-mobile-actions">
-          <button
-            type="button"
-            className="goalix-login-hamburger-btn"
+          <input
+            id="goalix-login-menu-toggle"
+            className="goalix-login-menu-toggle"
+            type="checkbox"
             aria-label="Toggle menu"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
+          />
+          <label className="goalix-login-hamburger-btn" htmlFor="goalix-login-menu-toggle">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line className="goalix-login-menu-line goalix-login-menu-line-top" x1="3" y1="6" x2="21" y2="6" />
+              <line className="goalix-login-menu-line goalix-login-menu-line-middle" x1="3" y1="12" x2="21" y2="12" />
+              <line className="goalix-login-menu-line goalix-login-menu-line-bottom" x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </label>
         </div>
 
         {/* Mobile dropdown menu overlay */}
-        {isMenuOpen && (
-          <div className="goalix-login-mobile-dropdown">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMenuOpen(false)}
-                className="goalix-login-mobile-dropdown-link"
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-        )}
+        <div className="goalix-login-mobile-dropdown">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="goalix-login-mobile-dropdown-link"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </nav>
 
       {/* ─── Left: story panel ─── */}
@@ -139,19 +172,34 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           {/* Hero copy - compact block */}
           <div className="goalix-login-copy">
             <h1>
-              Smarter<br />
-              <span>decisions.</span>
-              {" "}Better<br />
+              Smarter
+              <br />
+              <span>decisions.</span> Better
+              <br />
               <span>results.</span>
             </h1>
-            <p>AI-powered football insights<br />for <em>winning</em> teams.</p>
+            <p>
+              AI-powered football insights
+              <br />
+              for <em>winning</em> teams.
+            </p>
           </div>
         </div>
 
         {/* Live Match Analysis strip */}
         <div className="goalix-login-live-strip">
           <span className="goalix-login-live-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: "block" }}
+            >
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 15 15" />
               <line x1="12" y1="2" x2="12" y2="5" />
@@ -163,7 +211,9 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
             <strong>Live Match Analysis</strong>
             <p>Real-time data. Actionable insights.</p>
           </div>
-          <em className="goalix-login-live-dot">● <span>Live</span></em>
+          <em className="goalix-login-live-dot">
+            ● <span>Live</span>
+          </em>
         </div>
       </section>
 
@@ -197,7 +247,14 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           />
         </svg>
         <div className="goalix-login-mobile-brand">
-          <Image src="/Logo.png" alt="Goalix" width={1536} height={1024} priority style={{ width: "130px", height: "auto" }} />
+          <Image
+            src="/Logo.png"
+            alt="Goalix"
+            width={1536}
+            height={1024}
+            priority
+            style={{ width: "130px", height: "auto" }}
+          />
           <Link href="/">Home</Link>
         </div>
         {children}

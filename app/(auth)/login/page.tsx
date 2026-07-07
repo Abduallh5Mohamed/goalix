@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Eye,
@@ -16,6 +17,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [role, setRole] = useState<"player" | "parent">("player");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +30,11 @@ export default function LoginPage() {
     e.preventDefault();
     if (!username.trim() || !password) {
       setError("Please enter your username and password.");
+      return;
+    }
+    if (username.includes("@")) {
+      setError("Staff accounts use the staff login page.");
+      router.push("/admin-login");
       return;
     }
     setError("");
@@ -83,7 +90,9 @@ export default function LoginPage() {
               <input
                 id="username"
                 type="text"
-                placeholder={role === "parent" ? "parent.username" : "player.username"}
+                placeholder={
+                  role === "parent" ? "parent.username" : "player.username"
+                }
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -130,14 +139,14 @@ export default function LoginPage() {
             <Link href="/forgot-password">Forgot password?</Link>
           </div>
 
-          {error && (
-            <p className="goalix-login-error">
-              {error}
-            </p>
-          )}
+          {error && <p className="goalix-login-error">{error}</p>}
 
           {/* Submit Button */}
-          <button type="submit" className="goalix-login-submit" disabled={isLoading}>
+          <button
+            type="submit"
+            className="goalix-login-submit"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="goalix-spin" size={18} />
@@ -154,7 +163,8 @@ export default function LoginPage() {
           {/* Secure Badge */}
           <p className="goalix-login-secure">
             <ShieldCheck size={14} />
-            Your data is <strong>secure</strong> with enterprise-grade encryption.
+            Your data is <strong>secure</strong> with enterprise-grade
+            encryption.
           </p>
         </form>
       </div>

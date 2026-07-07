@@ -1,6 +1,14 @@
 const BaseRepository = require('../../shared/base.repository');
 const { PERMISSION_COLUMNS } = require('./coach-assignment-roles');
 
+const calculateBmi = (heightCm, weightKg) => {
+    if (!heightCm || !weightKg) return null;
+    const heightM = Number(heightCm) / 100;
+    const weight = Number(weightKg);
+    if (!Number.isFinite(heightM) || !Number.isFinite(weight) || heightM <= 0) return null;
+    return Number((weight / (heightM * heightM)).toFixed(2));
+};
+
 class CoachesRepository extends BaseRepository {
     constructor(db) {
         super('coach_profiles', db);
@@ -436,6 +444,7 @@ class CoachesRepository extends BaseRepository {
                     player_id: record.playerId,
                     height_cm: record.heightCm ?? null,
                     weight_kg: record.weightKg ?? null,
+                    bmi: calculateBmi(record.heightCm, record.weightKg),
                     sprint_speed: record.sprintSpeed ?? null,
                     stamina: record.stamina ?? null,
                     flexibility: record.flexibility ?? null,
