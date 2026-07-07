@@ -1,8 +1,9 @@
 const ApiResponse = require('../../shared/api-response');
 
 class AdminController {
-    constructor(adminService) {
+    constructor(adminService, backupService) {
         this.service = adminService;
+        this.backupService = backupService;
     }
 
     getDashboard = async (req, res, next) => {
@@ -120,6 +121,38 @@ class AdminController {
                 req.user.userId,
             );
             res.json(ApiResponse.success(result));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    getBackups = async (_req, res, next) => {
+        try {
+            const data = await this.backupService.getStatus();
+            res.json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    createBackup = async (_req, res, next) => {
+        try {
+            const data = await this.backupService.createBackup({ label: 'manual' });
+            res.status(201).json(ApiResponse.success(data));
+        } catch (err) {
+            next(err);
+        }
+    };
+
+    restoreBackup = async (req, res, next) => {
+        try {
+            const data = await this.backupService.restoreBackup({
+                fileName: req.body.fileName,
+                password: req.body.password,
+                confirmation: req.body.confirmation,
+                userId: req.user.userId,
+            });
+            res.json(ApiResponse.success(data));
         } catch (err) {
             next(err);
         }

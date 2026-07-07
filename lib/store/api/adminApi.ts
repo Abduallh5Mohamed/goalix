@@ -871,6 +871,36 @@ export interface CurrentPermissions {
   source: "iam" | "legacy" | "legacy_admin";
 }
 
+export interface DatabaseBackup {
+  fileName: string;
+  sizeBytes: number;
+  createdAt: string;
+  checksum: string | null;
+}
+
+export interface DatabaseBackupStatus {
+  backupDir: string;
+  automaticEnabled: boolean;
+  intervalMinutes: number;
+  retentionDays: number;
+  restoreEnabled: boolean;
+  restoreConfirmation: string;
+  latestBackup: DatabaseBackup | null;
+  backups: DatabaseBackup[];
+}
+
+export interface RestoreDatabaseBackupInput {
+  fileName: string;
+  password: string;
+  confirmation: string;
+}
+
+export interface RestoreDatabaseBackupResult {
+  fileName: string;
+  restoredAt: string;
+  safetyBackup: DatabaseBackup;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 export const adminApi = createApi({
   reducerPath: "adminApi",
@@ -893,6 +923,7 @@ export const adminApi = createApi({
     "CurrentPermissions",
     "Academy",
     "AccessControl",
+    "DatabaseBackups",
   ],
   endpoints: (builder) => ({
     // ── Players ──────────────────────────────────────────────────────────
@@ -1565,6 +1596,50 @@ export const adminApi = createApi({
       invalidatesTags: ["Academy"],
     }),
 
+    getDatabaseBackups: builder.query<DatabaseBackupStatus, void>({
+      query: () => "/admin/settings/backups",
+      transformResponse: (res: { data: DatabaseBackupStatus }) => res.data,
+      providesTags: ["DatabaseBackups"],
+    }),
+
+    createDatabaseBackup: builder.mutation<DatabaseBackup, void>({
+      query: () => ({ url: "/admin/settings/backups", method: "POST" }),
+      transformResponse: (res: { data: DatabaseBackup }) => res.data,
+      invalidatesTags: ["DatabaseBackups"],
+    }),
+
+    restoreDatabaseBackup: builder.mutation<
+      RestoreDatabaseBackupResult,
+      RestoreDatabaseBackupInput
+    >({
+      query: (body) => ({
+        url: "/admin/settings/backups/restore",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: { data: RestoreDatabaseBackupResult }) =>
+        res.data,
+      invalidatesTags: [
+        "Academy",
+        "AccessControl",
+        "Attendance",
+        "BirthYears",
+        "Branches",
+        "CoachAssignments",
+        "Coaches",
+        "CurrentPermissions",
+        "CurrentUser",
+        "DatabaseBackups",
+        "Groups",
+        "Invoices",
+        "Notifications",
+        "Payments",
+        "Players",
+        "Rankings",
+        "Subscriptions",
+      ],
+    }),
+
     getCurrentUser: builder.query<AuthUser, void>({
       query: () => "/auth/me",
       transformResponse: (res: { data: AuthUser }) => res.data,
@@ -1715,6 +1790,9 @@ export const {
   useRevokeAdminRoleFromUserMutation,
   useGetAcademyQuery,
   useUpdateAcademyMutation,
+  useGetDatabaseBackupsQuery,
+  useCreateDatabaseBackupMutation,
+  useRestoreDatabaseBackupMutation,
   useGetCurrentUserQuery,
   useGetCurrentPermissionsQuery,
   useSetup2FAMutation,

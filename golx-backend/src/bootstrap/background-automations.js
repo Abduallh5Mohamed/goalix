@@ -60,11 +60,12 @@ function startBackgroundAutomations({
     }
 
     const timers = [];
-    const { calendarService, notificationsService, dataLifecycleService } = services || {};
+    const { calendarService, notificationsService, dataLifecycleService, backupService } = services || {};
     const backgroundAutomationsEnabled = env.BACKGROUND_AUTOMATIONS_ENABLED ?? false;
     const injuryRiskAutomationEnabled = env.INJURY_RISK_AUTOMATION_ENABLED ?? false;
     const notificationCleanupEnabled = env.NOTIFICATION_CLEANUP_ENABLED ?? true;
     const dataLifecycleEnabled = env.DATA_LIFECYCLE_ENABLED ?? false;
+    const backupAutomationEnabled = env.BACKUP_AUTOMATION_ENABLED ?? false;
 
     if (backgroundAutomationsEnabled && calendarService) {
         let reminderScanRunning = false;
@@ -222,6 +223,48 @@ function startBackgroundAutomations({
             runDataLifecycle,
             env.DATA_LIFECYCLE_INTERVAL_HOURS * 60 * 60 * 1000,
             Number(process.env.DATA_LIFECYCLE_INITIAL_DELAY_MS || 20 * 1000),
+        );
+    }
+
+    if (backupAutomationEnabled && backupService) {
+        let backupRunning = false;
+        const runBackup = async () => {
+            if (backupRunning) {
+                log.debug('Database backup skipped because the previous run is still active');
+                return;
+            }
+
+            backupRunning = true;
+            try {
+                await runWithClusterLock({
+                    key: 'goalix:automation:database-backup',
+                    ttlMs: Math.min(
+                        env.BACKUP_INTERVAL_MINUTES * 60 * 1000,
+                        60 * 60 * 1000,
+                    ),
+                    redisClient,
+                    log,
+                    task: async () => {
+                        const result = await backupService.createScheduledBackupIfDue();
+                        if (result.skipped) {
+                            log.debug({ result }, 'Scheduled database backup skipped');
+                            return;
+                        }
+                        log.info({ result }, 'Scheduled database backup completed');
+                    },
+                });
+            } catch (err) {
+                log.error({ err }, 'Scheduled database backup failed');
+            } finally {
+                backupRunning = false;
+            }
+        };
+
+        scheduleInterval(
+            timers,
+            runBackup,
+            env.BACKUP_INTERVAL_MINUTES * 60 * 1000,
+            Number(process.env.BACKUP_INITIAL_DELAY_MS || 30 * 1000),
         );
     }
 

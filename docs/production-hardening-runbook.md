@@ -65,6 +65,24 @@ For metrics:
 - Run `npm run backup:db` from `golx-backend`.
 - Store both the `.dump` and `.sha256` files outside the application server.
 - Restore drills should use `pg_restore --clean --if-exists --no-owner --dbname <target_db> <dump_file>`.
+- If the database is too damaged for the app to open Settings, restore from the backend host or backup runner with `CONFIRM_RESTORE="RESTORE GOALIX" npm run restore:db -- <dump_file>`.
+- In Docker production, the worker can run scheduled backups when `BACKUP_AUTOMATION_ENABLED=true`; keep `goalix-backups` copied or synced to off-server storage.
+- The admin Settings restore button is disabled in production unless `BACKUP_RESTORE_ENABLED=true`, and still requires admin password plus the confirmation phrase.
+
+## First Admin Bootstrap
+
+When migrations exist but all data has been wiped, create the initial academy owner from a trusted shell or CI secret context:
+
+```bash
+cd golx-backend
+BOOTSTRAP_ADMIN_EMAIL=owner@example.com \
+BOOTSTRAP_ADMIN_USERNAME=admin \
+BOOTSTRAP_ADMIN_PASSWORD='StrongPass#123' \
+BOOTSTRAP_ACADEMY_NAME='Goalix Academy' \
+npm run bootstrap:admin
+```
+
+The command seeds the IAM permission catalog, creates the academy if none exists, creates or updates the academy owner, links the IAM role, and leaves MFA disabled so the first admin login is forced into MFA setup before full admin access. It refuses to run if another active admin exists unless `BOOTSTRAP_ADMIN_ALLOW_EXISTING=true` is set deliberately for recovery.
 
 ## Health Checks
 

@@ -9,6 +9,7 @@ const {
     roleUpdateSchema,
     createAccessUserSchema,
     reportsOverviewQuery,
+    restoreBackupSchema,
 } = require('./admin.schema');
 
 function adminRoutes(controller) {
@@ -24,6 +25,9 @@ function adminRoutes(controller) {
     );
 
     router.get('/settings/access-control', rbac('manage_roles'), controller.getAccessControl);
+    router.get('/settings/backups', rbac('manage_academy_settings'), controller.getBackups);
+    router.post('/settings/backups', rbac('manage_academy_settings'), controller.createBackup);
+    router.post('/settings/backups/restore', rbac('manage_academy_settings'), validate({ body: restoreBackupSchema }), controller.restoreBackup);
     router.get('/password-reset-requests', rbac('manage_users'), controller.listPasswordResetRequests);
     router.post('/settings/users', rbac('manage_roles'), validate({ body: createAccessUserSchema }), controller.createAccessUser);
     router.post('/settings/roles', rbac('manage_roles'), validate({ body: roleBodySchema }), controller.createRole);
