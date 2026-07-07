@@ -402,3 +402,192 @@ Docker is not available and Redis port 6379 is closed. Redis cache/queue feature
 [frontend]     at performWorkOnRoot (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9061:150)
 [frontend]     at performWorkOnRootViaSchedulerTask (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10255:9)
 [frontend]     at MessagePort.performWorkUntilDeadline (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64) (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3439:25)
+[frontend]  POST /api/v1/auth/admin/login 200 in 404ms (next.js: 138ms, application-code: 267ms)
+[frontend]  GET /coach/settings 200 in 1027ms (next.js: 976ms, proxy.ts: 6ms, application-code: 45ms)
+[frontend] [browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend]  GET /api/v1/auth/me 200 in 800ms (next.js: 769ms, application-code: 31ms)
+[frontend]  GET /api/v1/coach/groups 401 in 818ms (next.js: 780ms, application-code: 38ms)
+[frontend]  GET /api/v1/academy 401 in 819ms (next.js: 786ms, application-code: 33ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 26ms (next.js: 7ms, application-code: 19ms)
+[frontend] [browser] [api] getCurrentUser /auth/me 912ms {
+[frontend]   bytes: [33m911[39m,
+[frontend]   durationMs: [33m912[39m,
+[frontend]   endpoint: [32m'getCurrentUser'[39m,
+[frontend]   rows: [90mundefined[39m,
+[frontend]   status: [32m'ok'[39m,
+[frontend]   url: [32m'/auth/me'[39m
+[frontend] } (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend]  POST /api/v1/auth/refresh 200 in 24ms (next.js: 4ms, application-code: 20ms)
+[frontend]  GET /api/v1/coach/groups 401 in 34ms (next.js: 4ms, application-code: 30ms)
+[frontend]  GET /api/v1/academy 401 in 36ms (next.js: 12ms, application-code: 24ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 43ms (next.js: 21ms, application-code: 23ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 18ms (next.js: 4ms, application-code: 14ms)
+[frontend] [browser] [api] getCoachGroupsScoped /coach/groups 1141.1ms {
+[frontend]   bytes: [33m0[39m,
+[frontend]   durationMs: [33m1141.1[39m,
+[frontend]   endpoint: [32m'getCoachGroupsScoped'[39m,
+[frontend]   rows: [90mundefined[39m,
+[frontend]   status: [33m401[39m,
+[frontend]   url: [32m'/coach/groups'[39m
+[frontend] } (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend] [browser] [api] getAcademy /academy 1134.2ms {
+[frontend]   bytes: [33m0[39m,
+[frontend]   durationMs: [33m1134.2[39m,
+[frontend]   endpoint: [32m'getAcademy'[39m,
+[frontend]   rows: [90mundefined[39m,
+[frontend]   status: [33m401[39m,
+[frontend]   url: [32m'/academy'[39m
+[frontend] } (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend] [browser] [api] getUnreadNotificationsCount /notifications/unread-count 1231.4ms {
+[frontend]   bytes: [33m0[39m,
+[frontend]   durationMs: [33m1231.4[39m,
+[frontend]   endpoint: [32m'getUnreadNotificationsCount'[39m,
+[frontend]   rows: [90mundefined[39m,
+[frontend]   status: [33m401[39m,
+[frontend]   url: [32m'/notifications/unread-count'[39m
+[frontend] } (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend]  POST /api/v1/auth/refresh 200 in 36ms (next.js: 8ms, application-code: 28ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 16ms (next.js: 4ms, application-code: 12ms)
+[frontend]  GET /coach/home 200 in 710ms (next.js: 670ms, proxy.ts: 6ms, application-code: 34ms)
+[frontend]  GET /api/v1/coach/groups 401 in 327ms (next.js: 293ms, application-code: 34ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 35ms (next.js: 13ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 23ms (next.js: 5ms, application-code: 18ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 401 in 27ms (next.js: 12ms, application-code: 15ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 29ms (next.js: 8ms, application-code: 21ms)
+[frontend]  GET /api/v1/coach/groups 401 in 27ms (next.js: 4ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 45ms (next.js: 14ms, application-code: 31ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 26ms (next.js: 8ms, application-code: 18ms)
+[frontend]  GET /api/v1/coach/matches?limit=100 401 in 28ms (next.js: 15ms, application-code: 13ms)
+[frontend]  GET /coach/chat 200 in 951ms (next.js: 892ms, proxy.ts: 6ms, application-code: 54ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 55ms (next.js: 21ms, application-code: 34ms)
+[frontend]  GET /api/v1/chat/contacts 401 in 30ms (next.js: 8ms, application-code: 22ms)
+[frontend]  GET /api/v1/chat/conversations 401 in 35ms (next.js: 19ms, application-code: 16ms)
+[frontend]  GET /api/v1/chat/contacts 401 in 32ms (next.js: 5ms, application-code: 27ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 29ms (next.js: 7ms, application-code: 23ms)
+[frontend]  GET /api/v1/chat/conversations 401 in 18ms (next.js: 6ms, application-code: 12ms)
+[frontend]  GET /api/v1/chat/contacts 401 in 25ms (next.js: 4ms, application-code: 21ms)
+[frontend]  GET /api/v1/chat/conversations 401 in 37ms (next.js: 14ms, application-code: 23ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 40ms (next.js: 7ms, application-code: 32ms)
+[frontend]  GET /api/v1/chat/contacts 401 in 20ms (next.js: 5ms, application-code: 15ms)
+[frontend]  GET /api/v1/chat/conversations 401 in 19ms (next.js: 5ms, application-code: 14ms)
+[frontend]  GET /coach/notifications 200 in 672ms (next.js: 636ms, proxy.ts: 6ms, application-code: 30ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 124ms (next.js: 107ms, application-code: 18ms)
+[frontend]  GET /api/v1/notifications?limit=20 401 in 124ms (next.js: 112ms, application-code: 12ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 23ms (next.js: 4ms, application-code: 19ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 18ms (next.js: 4ms, application-code: 14ms)
+[frontend]  GET /api/v1/notifications?limit=20 401 in 22ms (next.js: 11ms, application-code: 11ms)
+[frontend]  GET /coach/players 200 in 659ms (next.js: 623ms, proxy.ts: 5ms, application-code: 32ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 66ms (next.js: 23ms, application-code: 44ms)
+[frontend]  GET /api/v1/coach/custom-categories?targetModule=player_profile 401 in 37ms (next.js: 8ms, application-code: 29ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 44ms (next.js: 20ms, application-code: 24ms)
+[frontend]  GET /api/v1/coaches/me/access-status 401 in 42ms (next.js: 7ms, application-code: 35ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 68ms (next.js: 18ms, application-code: 50ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 41ms (next.js: 5ms, application-code: 35ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 29ms (next.js: 4ms, application-code: 25ms)
+[frontend]  GET /api/v1/coach/custom-categories?targetModule=player_profile 401 in 30ms (next.js: 12ms, application-code: 18ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 34ms (next.js: 20ms, application-code: 14ms)
+[frontend]  GET /api/v1/coaches/me/access-status 401 in 29ms (next.js: 4ms, application-code: 24ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 32ms (next.js: 13ms, application-code: 20ms)
+[frontend]  GET /coach/parents 200 in 902ms (next.js: 842ms, proxy.ts: 4ms, application-code: 55ms)
+[frontend]  GET /api/v1/coach/parent-links?page=1&limit=100 401 in 117ms (next.js: 88ms, application-code: 29ms)
+[frontend]  GET /api/v1/coach/parent-accounts?page=1&limit=100 401 in 118ms (next.js: 98ms, application-code: 20ms)
+[frontend]  GET /api/v1/coach/parent-linkable-players?page=1&limit=100 401 in 120ms (next.js: 107ms, application-code: 13ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 22ms (next.js: 3ms, application-code: 19ms)
+[frontend]  GET /api/v1/coach/parent-links?page=1&limit=100 401 in 33ms (next.js: 5ms, application-code: 29ms)
+[frontend]  GET /api/v1/coach/parent-accounts?page=1&limit=100 401 in 35ms (next.js: 13ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/parent-linkable-players?page=1&limit=100 401 in 38ms (next.js: 23ms, application-code: 15ms)
+[frontend]  GET /coach/birthdays 200 in 690ms (next.js: 652ms, proxy.ts: 6ms, application-code: 32ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 234ms (next.js: 193ms, application-code: 41ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 236ms (next.js: 201ms, application-code: 35ms)
+[frontend]  GET /api/v1/coaches/me/manage-branches 401 in 238ms (next.js: 209ms, application-code: 28ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 260ms (next.js: 219ms, application-code: 41ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 36ms (next.js: 6ms, application-code: 30ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 50ms (next.js: 8ms, application-code: 42ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 52ms (next.js: 18ms, application-code: 34ms)
+[frontend]  GET /api/v1/coaches/me/manage-branches 401 in 54ms (next.js: 26ms, application-code: 28ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 57ms (next.js: 38ms, application-code: 18ms)
+[frontend]  GET /coach/calendar 200 in 624ms (next.js: 591ms, proxy.ts: 4ms, application-code: 28ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 135ms (next.js: 117ms, application-code: 18ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 28ms (next.js: 4ms, application-code: 24ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 21ms (next.js: 5ms, application-code: 16ms)
+[frontend]  GET /coach/my-groups 200 in 637ms (next.js: 609ms, proxy.ts: 5ms, application-code: 23ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 89ms (next.js: 48ms, application-code: 41ms)
+[frontend]  GET /api/v1/coaches/me/groups 401 in 90ms (next.js: 58ms, application-code: 32ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 91ms (next.js: 68ms, application-code: 23ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 93ms (next.js: 76ms, application-code: 17ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 25ms (next.js: 4ms, application-code: 20ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 37ms (next.js: 6ms, application-code: 31ms)
+[frontend]  GET /api/v1/coaches/me/groups 401 in 38ms (next.js: 14ms, application-code: 24ms)
+[frontend]  GET /api/v1/coaches/me/birthdays 401 in 39ms (next.js: 22ms, application-code: 17ms)
+[frontend]  GET /api/v1/coach/players?page=1&limit=200 401 in 40ms (next.js: 28ms, application-code: 12ms)
+[frontend]  GET /coach/ranking-system 200 in 684ms (next.js: 646ms, proxy.ts: 5ms, application-code: 32ms)
+[frontend]  GET /api/v1/coach/ranking-system-inputs?page=1&limit=100 401 in 37ms (next.js: 16ms, application-code: 21ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 24ms (next.js: 4ms, application-code: 20ms)
+[frontend]  GET /api/v1/coach/ranking-system-inputs?page=1&limit=100 401 in 20ms (next.js: 4ms, application-code: 16ms)
+[frontend]  GET /coach/assignments 200 in 799ms (next.js: 761ms, proxy.ts: 6ms, application-code: 32ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 260ms (next.js: 213ms, application-code: 47ms)
+[frontend]  GET /api/v1/coaches/me/assignments?page=1&limit=100 401 in 262ms (next.js: 225ms, application-code: 37ms)
+[frontend]  GET /api/v1/coaches/me/player-assignments?page=1&limit=100 401 in 264ms (next.js: 237ms, application-code: 27ms)
+[frontend]  GET /api/v1/coaches/me/groups 401 in 269ms (next.js: 247ms, application-code: 22ms)
+[frontend]  GET /api/v1/coach/groups 401 in 37ms (next.js: 5ms, application-code: 32ms)
+[frontend]  GET /api/v1/coaches/me/daily-ai-inputs 401 in 39ms (next.js: 14ms, application-code: 25ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 45ms (next.js: 25ms, application-code: 21ms)
+[frontend]  GET /api/v1/coach/permissions 401 in 58ms (next.js: 5ms, application-code: 52ms)
+[frontend]  GET /api/v1/coaches/me/assignments?page=1&limit=100 401 in 59ms (next.js: 14ms, application-code: 45ms)
+[frontend]  GET /api/v1/coaches/me/player-assignments?page=1&limit=100 401 in 60ms (next.js: 22ms, application-code: 38ms)
+[frontend]  GET /api/v1/coaches/me/groups 401 in 62ms (next.js: 29ms, application-code: 33ms)
+[frontend]  GET /api/v1/coach/groups 401 in 73ms (next.js: 37ms, application-code: 36ms)
+[frontend]  GET /api/v1/coaches/me/daily-ai-inputs 401 in 75ms (next.js: 48ms, application-code: 27ms)
+[frontend]  GET /coach/training 200 in 706ms (next.js: 673ms, proxy.ts: 7ms, application-code: 26ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 32ms (next.js: 16ms, application-code: 16ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 50ms (next.js: 4ms, application-code: 46ms)
+[frontend]  GET /api/v1/coach/calendar-events?limit=100 401 in 14ms (next.js: 4ms, application-code: 11ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 30ms (next.js: 13ms, application-code: 17ms)
+[frontend]  POST /api/v1/auth/refresh 200 in 24ms (next.js: 3ms, application-code: 21ms)
+[frontend]  GET /api/v1/notifications/unread-count 401 in 16ms (next.js: 4ms, application-code: 13ms)
+[frontend]  GET / 200 in 317ms (next.js: 20ms, proxy.ts: 4ms, application-code: 293ms)
+[frontend]  GET / 200 in 117ms (next.js: 6ms, proxy.ts: 4ms, application-code: 107ms)
+[frontend]  GET /login 200 in 918ms (next.js: 50ms, proxy.ts: 6ms, application-code: 863ms)
+[frontend]  GET /admin-login 200 in 1109ms (next.js: 28ms, proxy.ts: 47ms, application-code: 1034ms)
+[frontend]  GET /admin-login 200 in 1009ms (next.js: 26ms, proxy.ts: 41ms, application-code: 942ms)
+[frontend]  GET /login 200 in 1036ms (next.js: 123ms, proxy.ts: 30ms, application-code: 883ms)
+[frontend]  GET /coach/home 200 in 965ms (next.js: 35ms, proxy.ts: 78ms, application-code: 852ms)
+[frontend]  GET /admin/dashboard 200 in 968ms (next.js: 110ms, proxy.ts: 79ms, application-code: 779ms)
+[frontend] ○ Compiling /parent/home ...
+[frontend]  GET /player/home 200 in 5.6s (next.js: 3.9s, proxy.ts: 83ms, application-code: 1607ms)
+[frontend]  GET /parent/home 200 in 5.6s (next.js: 4.1s, proxy.ts: 81ms, application-code: 1380ms)
+[frontend]  GET /admin/players 200 in 2.5s (next.js: 1382ms, proxy.ts: 155ms, application-code: 1010ms)
+[frontend]  GET /player/home 200 in 230ms (next.js: 32ms, proxy.ts: 41ms, application-code: 156ms)
+[frontend]  GET /admin/dashboard 200 in 77ms (next.js: 8ms, proxy.ts: 6ms, application-code: 64ms)
+[frontend]  GET /coach/home 200 in 149ms (next.js: 11ms, proxy.ts: 10ms, application-code: 128ms)
+[frontend]  GET /admin/players 200 in 71ms (next.js: 9ms, proxy.ts: 7ms, application-code: 55ms)
+[frontend] [browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior (file://C:/Users/abdua/OneDrive/سطح المكتب/Goalix/goalix/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+[frontend]  GET /parent/home 200 in 64ms (next.js: 6ms, proxy.ts: 5ms, application-code: 53ms)
+[frontend]  GET /admin/reports/attendance 200 in 641ms (next.js: 181ms, proxy.ts: 11ms, application-code: 448ms)
+[frontend] ⚠ Blocked cross-origin request to Next.js dev resource /_next/webpack-hmr from "127.0.0.1".
+[frontend] Cross-origin access to Next.js dev resources is blocked by default for safety.
+[frontend] To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+[frontend] // next.config.js
+[frontend] module.exports = {
+[frontend]   allowedDevOrigins: ['127.0.0.1'],
+[frontend] }
+[frontend] Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[frontend]  GET /admin/reports/coach 200 in 485ms (next.js: 125ms, proxy.ts: 5ms, application-code: 356ms)
+[frontend]  GET /admin/reports/player-progress 200 in 410ms (next.js: 118ms, proxy.ts: 4ms, application-code: 288ms)
+[frontend]  GET /admin/parents 200 in 458ms (next.js: 142ms, proxy.ts: 4ms, application-code: 312ms)
+[frontend]  GET /admin/calendar 200 in 446ms (next.js: 118ms, proxy.ts: 4ms, application-code: 323ms)
+[frontend]  GET /admin/players 200 in 115ms (next.js: 6ms, proxy.ts: 5ms, application-code: 104ms)
+[frontend]  GET /admin/reports/attendance 200 in 76ms (next.js: 6ms, proxy.ts: 7ms, application-code: 62ms)
+[frontend]  GET /admin/reports/coach 200 in 58ms (next.js: 5ms, proxy.ts: 5ms, application-code: 48ms)
+[frontend]  GET /admin/reports/player-progress 200 in 66ms (next.js: 5ms, proxy.ts: 5ms, application-code: 56ms)
+[frontend]  GET /admin/parents 200 in 75ms (next.js: 8ms, proxy.ts: 6ms, application-code: 61ms)
+[frontend]  GET /admin/calendar 200 in 66ms (next.js: 6ms, proxy.ts: 5ms, application-code: 56ms)
+[frontend]  GET /admin/players 200 in 63ms (next.js: 6ms, proxy.ts: 4ms, application-code: 52ms)
+[frontend]  GET /admin/reports/attendance 200 in 74ms (next.js: 7ms, proxy.ts: 5ms, application-code: 63ms)
+[frontend]  GET /admin/reports/attendance 200 in 65ms (next.js: 6ms, proxy.ts: 4ms, application-code: 55ms)
+[frontend]  GET /admin/reports/coach 200 in 60ms (next.js: 7ms, proxy.ts: 5ms, application-code: 49ms)
+[frontend]  GET /admin/reports/player-progress 200 in 72ms (next.js: 7ms, proxy.ts: 6ms, application-code: 59ms)
+[frontend]  GET /admin/parents 200 in 58ms (next.js: 7ms, proxy.ts: 4ms, application-code: 46ms)
+[frontend]  GET /admin/calendar 200 in 65ms (next.js: 5ms, proxy.ts: 4ms, application-code: 56ms)
+[frontend]  GET /admin/players 200 in 58ms (next.js: 7ms, proxy.ts: 6ms, application-code: 45ms)
+[frontend]  GET /admin-login 200 in 119ms (next.js: 6ms, proxy.ts: 5ms, application-code: 108ms)
