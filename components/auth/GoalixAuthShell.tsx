@@ -35,7 +35,7 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
-          <Link href="/" aria-label="Goalix home">
+          <Link href="/" aria-label="Goalix home" className="goalix-login-logo">
             <Image src="/Logo.png" alt="Goalix" width={1536} height={1024} priority style={{ width: "110px", height: "auto", objectFit: "contain" }} />
           </Link>
           <div className="goalix-login-nav-links" style={{ display: "flex", gap: 36 }}>
@@ -79,6 +79,15 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
               </div>
             ))}
           </div>
+        </div>
+        <div className="goalix-login-actions">
+          <Link href="/login" className="goalix-login-cta">
+            Log in
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <polyline points="12 5 19 12 12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
         </div>
         {/* Mobile menu action buttons */}
         <div className="goalix-login-mobile-actions">
@@ -177,12 +186,6 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <defs>
-            <filter id="waveShadow" x="-50%" y="0%" width="170%" height="100%">
-              <feDropShadow dx="-8" dy="0" stdDeviation="14" floodColor="#000000" floodOpacity="0.22" />
-              <feDropShadow dx="-2" dy="0" stdDeviation="4" floodColor="#000000" floodOpacity="0.10" />
-            </filter>
-          </defs>
           <path
             d="M 130 0
                C 130 75, 180 150, 180 225
@@ -191,7 +194,6 @@ export function GoalixAuthShell({ children }: GoalixAuthShellProps) {
                C 180 750, 130 825, 130 900
                L 200 900 L 200 0 Z"
             fill="#ffffff"
-            filter="url(#waveShadow)"
           />
         </svg>
         <div className="goalix-login-mobile-brand">

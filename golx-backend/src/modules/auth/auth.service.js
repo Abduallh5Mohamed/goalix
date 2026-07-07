@@ -41,6 +41,7 @@ const authUserCacheKey = (userId) => `goalix:auth:user:v1:${userId}`;
 const authPermissionsCacheKey = (user) =>
     `goalix:auth:permissions:v1:${user.userId}:${user.academyId || 'global'}`;
 const mfaChallengeKey = (challengeId) => `goalix:auth:mfa-challenge:${challengeId}`;
+const MFA_CHALLENGE_TTL_SECONDS = 5 * 60;
 const mfaEnforcedRoles = new Set(
     String(env.MFA_ENFORCED_ROLES || '')
         .split(',')
@@ -266,16 +267,8 @@ class AuthService {
                 { userId: user.id, purpose: '2fa', jti: challengeId },
                 { expiresIn: '5m' },
             );
-            try {
-                const stored = await this.redis.set(
-                    mfaChallengeKey(challengeId),
-                    user.id,
-                    'EX',
-                    5 * 60,
-                    'NX',
-                );
-                if (stored !== 'OK') throw new Error('MFA challenge was not stored');
-            } catch {
+            const stored = await this._storeMfaChallenge(challengeId, user.id);
+            if (!stored) {
                 throw new AppError(
                     'MFA verification is temporarily unavailable. Please try again.',
                     503,
@@ -324,9 +317,8 @@ class AuthService {
         }
 
         let challengeUserId;
-        try {
-            challengeUserId = await this.redis.getdel(mfaChallengeKey(decoded.jti));
-        } catch {
+        challengeUserId = await this._consumeMfaChallenge(decoded.jti);
+        if (challengeUserId === undefined) {
             throw new AppError(
                 'MFA verification is temporarily unavailable. Please try again.',
                 503,
@@ -659,6 +651,53 @@ class AuthService {
             ...user,
             full_name: profile?.full_name || user.full_name || null,
         };
+    }
+
+    async _storeMfaChallenge(challengeId, userId) {
+        try {
+            const stored = await this.redis.set(
+                mfaChallengeKey(challengeId),
+                userId,
+                'EX',
+                MFA_CHALLENGE_TTL_SECONDS,
+                'NX',
+            );
+            if (stored === 'OK') return true;
+        } catch { /* Fall back to PostgreSQL below. */ }
+
+        try {
+            await this.repo.db('auth_mfa_challenges')
+                .insert({
+                    id: challengeId,
+                    user_id: userId,
+                    expires_at: new Date(Date.now() + MFA_CHALLENGE_TTL_SECONDS * 1000),
+                });
+            return true;
+        } catch (err) {
+            logger.warn({ err, userId }, 'Failed to store MFA challenge');
+            return false;
+        }
+    }
+
+    async _consumeMfaChallenge(challengeId) {
+        try {
+            const userId = await this.redis.getdel(mfaChallengeKey(challengeId));
+            if (userId) return userId;
+        } catch { /* Fall back to PostgreSQL below. */ }
+
+        try {
+            const now = new Date();
+            const rows = await this.repo.db('auth_mfa_challenges')
+                .where({ id: challengeId })
+                .whereNull('consumed_at')
+                .where('expires_at', '>', now)
+                .update({ consumed_at: now })
+                .returning('user_id');
+            return rows[0]?.user_id || rows[0] || null;
+        } catch (err) {
+            logger.warn({ err }, 'Failed to consume MFA challenge');
+            return undefined;
+        }
     }
 
     _recordSuccessfulLogin(user, ip, userAgent, action, loggedInAt) {

@@ -5637,7 +5637,6 @@ html[data-goalix-dashboard-language="ar"] .goalix-native-select {
     width: 260px;
     height: 100%;
     color: #ffffff;
-    filter: drop-shadow(-14px 0 28px rgba(0, 0, 0, 0.12));
     pointer-events: none;
   }
 
@@ -5928,4 +5927,693 @@ html[data-goalix-dashboard-language="ar"] .goalix-native-select {
 .goalix-reference-frame[data-dashboard-theme="dark"] .goalix-formation-preview {
   background:
     radial-gradient(circle at 50% 35%, rgba(0, 23, 40, 0.68), rgba(2, 6, 23, 0.9) 58%, #020617 100%) !important;
+}
+
+/* Login responsive restoration: keep the approved visual hero before the form on small screens. */
+@media (max-width: 1080px) {
+  .goalix-login-system {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    min-height: 100dvh !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    background: #ffffff !important;
+  }
+
+  .goalix-login-story-header {
+    order: 0 !important;
+    position: relative !important;
+    z-index: 40 !important;
+    display: flex !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    padding: 0 clamp(20px, 5vw, 36px) !important;
+    background: #050a14 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .goalix-login-story-header > div:first-of-type {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: space-between !important;
+  }
+
+  .goalix-login-logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+  }
+
+  .goalix-login-logo img,
+  .goalix-login-story-header img {
+    width: 112px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .goalix-login-nav-links,
+  .goalix-login-top-actions {
+    display: none !important;
+  }
+
+  .goalix-login-mobile-actions,
+  .goalix-login-hamburger-btn {
+    display: inline-flex !important;
+  }
+
+  .goalix-login-hamburger-btn {
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px !important;
+    height: 44px !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    background: transparent !important;
+  }
+
+  .goalix-login-mobile-dropdown {
+    top: 72px !important;
+    right: clamp(14px, 4vw, 28px) !important;
+    left: auto !important;
+    width: min(300px, calc(100vw - 28px)) !important;
+  }
+
+  .goalix-login-story {
+    order: 1 !important;
+    display: block !important;
+    position: relative !important;
+    height: clamp(320px, 46dvh, 520px) !important;
+    min-height: 320px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #050a14 !important;
+  }
+
+  .goalix-login-story-bg {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    opacity: 1 !important;
+    background:
+      linear-gradient(90deg, rgba(5, 10, 20, 0.94) 0%, rgba(5, 10, 20, 0.58) 48%, rgba(5, 10, 20, 0.4) 100%),
+      url("/login_mob.png") center / cover no-repeat !important;
+  }
+
+  .goalix-login-grid-overlay {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background-image: radial-gradient(circle, rgba(0, 212, 255, 0.16) 1px, transparent 1px) !important;
+    background-size: 34px 34px !important;
+  }
+
+  .goalix-login-story-content {
+    position: absolute !important;
+    inset: auto auto clamp(64px, 9vh, 96px) clamp(22px, 6vw, 54px) !important;
+    z-index: 2 !important;
+    padding: 0 !important;
+  }
+
+  .goalix-login-copy {
+    display: block !important;
+    max-width: min(340px, 72vw) !important;
+  }
+
+  .goalix-login-copy h1 {
+    margin: 0 !important;
+    font-size: clamp(2rem, 7vw, 3.4rem) !important;
+    line-height: 0.96 !important;
+  }
+
+  .goalix-login-copy p {
+    max-width: 280px !important;
+    margin-top: 12px !important;
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .goalix-login-live-strip {
+    position: absolute !important;
+    left: clamp(18px, 5vw, 36px) !important;
+    right: clamp(18px, 5vw, 36px) !important;
+    bottom: 18px !important;
+    z-index: 3 !important;
+    width: auto !important;
+    max-width: 390px !important;
+    min-height: 58px !important;
+    padding: 12px 16px !important;
+    border-radius: 999px !important;
+  }
+
+  .goalix-login-panel-shell {
+    order: 2 !important;
+    position: relative !important;
+    z-index: 5 !important;
+    height: auto !important;
+    min-height: auto !important;
+    margin-top: -34px !important;
+    padding: clamp(42px, 8vw, 58px) clamp(22px, 6vw, 48px) 44px !important;
+    border-radius: 38px 38px 0 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    box-shadow: 0 -18px 44px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  .goalix-login-wave,
+  .goalix-login-mobile-brand {
+    display: none !important;
+  }
+
+  .goalix-login-card {
+    width: min(100%, 430px) !important;
+    margin-inline: auto !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .goalix-login-system {
+    background: #ffffff !important;
+  }
+
+  .goalix-login-story-content {
+    display: none !important;
+  }
+
+  .goalix-login-story {
+    height: clamp(230px, 36dvh, 310px) !important;
+    min-height: 230px !important;
+  }
+
+  .goalix-login-panel-shell {
+    min-height: calc(100dvh - 72px - 230px + 26px) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .goalix-login-story {
+    height: 226px !important;
+    min-height: 226px !important;
+  }
+
+  .goalix-login-live-strip {
+    display: none !important;
+  }
+
+  .goalix-login-panel-shell {
+    margin-top: -26px !important;
+    padding: 30px 24px 36px !important;
+    border-radius: 32px 32px 0 0 !important;
+  }
+
+  .goalix-login-card-head {
+    margin-bottom: 16px !important;
+  }
+
+  .goalix-login-card-icon,
+  .goalix-login-card-head > span {
+    display: none !important;
+  }
+
+  .goalix-login-card-head h1 {
+    font-size: 1.9rem !important;
+  }
+
+  .goalix-login-card-head p {
+    margin-top: 8px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .goalix-login-form {
+    gap: 10px !important;
+  }
+
+  .goalix-login-input-wrapper,
+  .goalix-login-password {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+
+  .goalix-login-field input,
+  .goalix-login-input-wrapper input,
+  .goalix-login-password input {
+    height: 46px !important;
+  }
+
+  .goalix-login-form-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  .goalix-login-form-row label,
+  .goalix-login-form-row a {
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (min-width: 1081px) {
+  .goalix-login-mobile-actions,
+  .goalix-login-hamburger-btn,
+  .goalix-login-mobile-dropdown {
+    display: none !important;
+  }
+
+  .goalix-login-logo {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+  }
+
+  .goalix-login-logo img {
+    display: block !important;
+    width: 120px !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+}
+
+/* Final login and landing polish: responsive tablet cleanup, live badge, and smooth section jumps. */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.goalix-login-live-strip {
+  align-items: center !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+  background:
+    linear-gradient(135deg, rgba(7, 17, 31, 0.86), rgba(5, 10, 20, 0.74)) !important;
+  border: 1px solid rgba(226, 247, 255, 0.14) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(16px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+}
+
+.goalix-login-live-strip > div {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.goalix-login-live-strip strong {
+  margin: 0 !important;
+  color: #ffffff !important;
+  line-height: 1.08 !important;
+  white-space: nowrap !important;
+}
+
+.goalix-login-live-strip p {
+  margin: 4px 0 0 !important;
+  color: rgba(237, 247, 255, 0.72) !important;
+  line-height: 1.18 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.goalix-login-live-icon {
+  flex: 0 0 auto !important;
+  width: 54px !important;
+  height: 54px !important;
+  border: 2px solid rgba(182, 255, 0, 0.72) !important;
+  background:
+    radial-gradient(circle at 50% 64%, rgba(182, 255, 0, 0.9) 0 16%, transparent 17%),
+    rgba(7, 17, 31, 0.42) !important;
+  box-shadow: 0 0 24px rgba(182, 255, 0, 0.28), inset 0 0 20px rgba(182, 255, 0, 0.06) !important;
+}
+
+.goalix-login-live-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.goalix-login-live-dot {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  margin-left: auto !important;
+  color: #22e16d !important;
+  font-size: 0 !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.goalix-login-live-dot::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #22e16d;
+  box-shadow: 0 0 12px rgba(34, 225, 109, 0.72);
+}
+
+.goalix-login-live-dot span {
+  font-size: 0.88rem !important;
+}
+
+.goalix-login-secure {
+  display: block !important;
+  max-width: 100% !important;
+  margin-inline: auto !important;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+.goalix-login-secure svg {
+  display: inline-block !important;
+  margin-right: 6px !important;
+  vertical-align: -2px !important;
+}
+
+.goalix-login-secure strong {
+  display: inline !important;
+  margin: 0 2px !important;
+  color: #0f8b48 !important;
+}
+
+@media (min-width: 1081px) {
+  .goalix-login-story-header {
+    padding: 0 clamp(32px, 4vw, 64px) !important;
+  }
+
+  .goalix-login-story-header > div:first-of-type {
+    gap: clamp(34px, 4.6vw, 72px) !important;
+  }
+
+  .goalix-login-nav-links {
+    gap: clamp(30px, 3.8vw, 68px) !important;
+  }
+
+  .goalix-login-nav-links a {
+    font-size: clamp(0.82rem, 0.94vw, 1.04rem) !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .goalix-login-nav-links > div:first-child a {
+    color: #b6ff00 !important;
+  }
+
+  .goalix-login-live-strip {
+    min-height: 76px !important;
+    width: min(520px, 42vw) !important;
+    padding: 14px 20px !important;
+    border-radius: 999px !important;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1240px) {
+  .goalix-login-story-header {
+    padding: 0 24px !important;
+  }
+
+  .goalix-login-story-header > div:first-of-type {
+    gap: 22px !important;
+  }
+
+  .goalix-login-nav-links {
+    gap: 20px !important;
+  }
+
+  .goalix-login-nav-links a {
+    font-size: 0.74rem !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  .goalix-login-story-content {
+    display: none !important;
+  }
+
+  .goalix-login-story {
+    height: clamp(300px, 43dvh, 500px) !important;
+    min-height: 300px !important;
+  }
+
+  .goalix-login-live-strip {
+    left: clamp(22px, 5vw, 44px) !important;
+    right: clamp(22px, 5vw, 44px) !important;
+    bottom: clamp(22px, 4vh, 34px) !important;
+    max-width: 560px !important;
+    min-height: 70px !important;
+    padding: 13px 18px !important;
+    border-radius: 999px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .goalix-login-story {
+    height: clamp(252px, 34dvh, 310px) !important;
+    min-height: 252px !important;
+  }
+
+  .goalix-login-panel-shell {
+    min-height: auto !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .goalix-login-story {
+    height: 260px !important;
+    min-height: 260px !important;
+  }
+
+  .goalix-login-live-strip {
+    display: flex !important;
+    left: 18px !important;
+    right: 18px !important;
+    bottom: 26px !important;
+    min-height: 58px !important;
+    padding: 10px 12px !important;
+  }
+
+  .goalix-login-live-icon {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .goalix-login-live-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .goalix-login-live-strip strong {
+    font-size: 0.9rem !important;
+  }
+
+  .goalix-login-live-strip p {
+    font-size: 0.72rem !important;
+  }
+
+  .goalix-login-live-dot span {
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (min-width: 721px) {
+  .gx-hero-links {
+    gap: clamp(28px, 4.4vw, 76px) !important;
+  }
+
+  .gx-hero-links a {
+    font-size: clamp(14px, 1.05vw, 18px) !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .gx-hero-copy {
+    margin-top: -82px !important;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1120px) {
+  .gx-hero-nav {
+    padding: 10px 26px !important;
+  }
+
+  .gx-hero-nav-left {
+    gap: 24px !important;
+  }
+
+  .gx-hero-links {
+    gap: 20px !important;
+  }
+
+  .gx-hero-links a {
+    font-size: 12px !important;
+  }
+
+  .gx-hero-actions button {
+    padding: 7px 14px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Restore the original landing navbar proportions and remove the login live badge. */
+.goalix-login-live-strip {
+  display: none !important;
+}
+
+@media (min-width: 721px) {
+  .gx-hero-nav {
+    padding: 10px 48px !important;
+  }
+
+  .gx-hero-nav-left {
+    gap: 40px !important;
+  }
+
+  .gx-hero-links {
+    gap: 36px !important;
+  }
+
+  .gx-hero-links a {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+  }
+
+  .gx-hero-links a[aria-current="location"] {
+    font-weight: 600 !important;
+  }
+
+  .gx-hero-copy {
+    margin-top: clamp(-132px, -7vw, -92px) !important;
+  }
+}
+
+/* Final login navbar alignment: match landing navbar with roomier link spacing. */
+.goalix-login-story-header {
+  grid-column: 1 / 3 !important;
+  grid-row: 1 / 2 !important;
+  position: relative !important;
+  z-index: 200 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 72px !important;
+  width: 100% !important;
+  padding: 10px clamp(40px, 4.8vw, 78px) !important;
+  background: #000510 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-family: var(--font-inter), Inter, sans-serif !important;
+}
+
+.goalix-login-story-header > div:first-of-type {
+  display: flex !important;
+  align-items: center !important;
+  gap: clamp(44px, 5vw, 82px) !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.goalix-login-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+}
+
+.goalix-login-logo img,
+.goalix-login-story-header img {
+  width: 110px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+.goalix-login-nav-links {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(48px, 5vw, 92px) !important;
+  min-width: 0 !important;
+}
+
+.goalix-login-nav-links > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 52px !important;
+}
+
+.goalix-login-nav-links a {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 0 !important;
+  color: #e2e8f0 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: color 220ms ease, opacity 220ms ease !important;
+}
+
+.goalix-login-nav-links > div:first-child a {
+  color: #cfff04 !important;
+  font-weight: 600 !important;
+}
+
+.goalix-login-nav-links svg path {
+  stroke: currentColor !important;
+}
+
+.goalix-login-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex: 0 0 auto !important;
+  margin-left: clamp(28px, 3vw, 52px) !important;
+}
+
+.goalix-login-cta {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  min-height: 44px !important;
+  padding: 0 24px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(90deg, #84cc16 0%, #22c55e 35%, #06b6d4 70%, #3b82f6 100%) !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  box-shadow: 0 14px 30px rgba(34, 197, 94, 0.22) !important;
+  white-space: nowrap !important;
+}
+
+@media (min-width: 1181px) and (max-width: 1380px) {
+  .goalix-login-story-header {
+    padding-inline: 34px !important;
+  }
+
+  .goalix-login-story-header > div:first-of-type {
+    gap: 34px !important;
+  }
+
+  .goalix-login-nav-links {
+    gap: clamp(34px, 3.4vw, 58px) !important;
+  }
+}
+
+@media (max-width: 1080px) {
+  .goalix-login-actions {
+    display: none !important;
+  }
 }

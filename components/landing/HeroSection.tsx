@@ -1,7 +1,7 @@
 "use client";
 
 import "@/app/landing.css";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -102,6 +102,28 @@ export default function HeroSection({
       : "";
   const [activeSection, setActiveSection] = useState(navLinks[0].id);
 
+  const scrollToSection = useCallback((sectionId: string) => {
+    const section = document.getElementById(sectionId);
+
+    if (!section) return;
+
+    setActiveSection(sectionId);
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${sectionId}`);
+  }, []);
+
+  useEffect(() => {
+    const sectionId = window.location.hash.slice(1);
+
+    if (!navLinks.some((link) => link.id === sectionId)) return;
+
+    const scrollTimer = window.setTimeout(() => {
+      scrollToSection(sectionId);
+    }, 80);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [scrollToSection]);
+
   useEffect(() => {
     const syncActiveSection = () => {
       const activationLine = window.scrollY + Math.min(140, window.innerHeight * 0.25);
@@ -180,6 +202,10 @@ export default function HeroSection({
                 <a
                   className="gx-section-nav-link"
                   href={`#${link.id}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    scrollToSection(link.id);
+                  }}
                   aria-current={isActive ? "location" : undefined}
                   style={{
                     fontSize: 14,
