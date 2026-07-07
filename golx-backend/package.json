@@ -12,6 +12,7 @@
         "migrate:make": "knex migrate:make",
         "seed": "knex seed:run",
         "seed:admin": "knex seed:run --specific=03_bootstrap_admin.js",
+        "bootstrap:admin": "node scripts/bootstrap-admin.js",
         "seed:make": "knex seed:make",
         "fixtures:e2e": "node scripts/create-e2e-fixtures.js",
         "test:e2e:roles": "node scripts/test-e2e-roles.js",
@@ -32,6 +33,7 @@
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
         "backup:db": "node scripts/backup-postgres.js",
+        "restore:db": "node scripts/restore-postgres.js",
         "dump:sanitize": "node scripts/sanitize-sql-dump.js"
     },
     "dependencies": {

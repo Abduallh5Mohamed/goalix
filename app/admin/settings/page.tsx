@@ -16,11 +16,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  useCreateDatabaseBackupMutation,
   useDisable2FAMutation,
   useGetAcademyQuery,
   useGetCurrentUserQuery,
+  useGetDatabaseBackupsQuery,
   useGetMfaDevicesQuery,
   useRegenerateMfaBackupCodesMutation,
+  useRestoreDatabaseBackupMutation,
   useRevokeMfaDeviceMutation,
   useSetup2FAMutation,
   useSetupMfaDeviceMutation,
@@ -33,11 +43,14 @@ import { useDashboardLanguage } from "@/lib/hooks/useDashboardLanguage";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { setMfaSetupRequired, updateUser } from "@/lib/store/slices/authSlice";
 import {
+  AlertTriangle,
   CheckCircle,
   Copy,
+  Database,
   KeyRound,
   Loader2,
   Plus,
+  RefreshCw,
   Save,
   ShieldCheck,
   ShieldOff,
@@ -93,6 +106,12 @@ const normalizeOptionalUrl = (value: string) => {
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+};
+
+const formatBackupSize = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+  const megabytes = bytes / 1024 / 1024;
+  return `${megabytes.toFixed(megabytes < 1 ? 2 : 1)} MB`;
 };
 
 function getApiErrorMessage(err: unknown, fallback: string) {
@@ -191,6 +210,31 @@ const settingsCopy = {
     removeDeviceError: "Could not remove MFA device.",
     backupCodesGenerated: "New backup codes generated. Save them now.",
     backupCodesError: "Could not generate backup codes.",
+    databaseBackups: "Database backups",
+    databaseBackupsDescription:
+      "Automatic PostgreSQL backups run from the worker. You can also create one now before risky work.",
+    automaticBackups: "Automatic",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    backupInterval: "Every",
+    backupRetention: "Retention",
+    latestBackup: "Latest backup",
+    noBackups: "No database backups found yet.",
+    createBackup: "Create backup now",
+    creatingBackup: "Creating backup...",
+    backupCreated: "Database backup created.",
+    backupCreateError: "Could not create database backup.",
+    restoreDatabase: "Restore database",
+    restoreDatabaseDescription:
+      "This replaces the current database with the selected backup. A safety backup is created first.",
+    chooseBackup: "Choose backup",
+    restoreConfirmationLabel: "Confirmation phrase",
+    restoreConfirmationHint: "Type the phrase exactly:",
+    restoreNow: "Restore selected backup",
+    restoring: "Restoring...",
+    restoreDisabled: "Restore is disabled on this server.",
+    restoreDone: "Database restore completed.",
+    restoreError: "Could not restore database backup.",
   },
   ar: {
     pageTitle: "ملف الأكاديمية",
@@ -268,6 +312,31 @@ const settingsCopy = {
     removeDeviceError: "تعذر إزالة جهاز MFA.",
     backupCodesGenerated: "تم إنشاء أكواد احتياطية جديدة. احفظها الآن.",
     backupCodesError: "تعذر إنشاء الأكواد الاحتياطية.",
+    databaseBackups: "\u0646\u0633\u062e \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a",
+    databaseBackupsDescription:
+      "\u0627\u0644\u0646\u0633\u062e \u0627\u0644\u062a\u0644\u0642\u0627\u0626\u064a \u0644\u0640 PostgreSQL \u064a\u0639\u0645\u0644 \u0645\u0646 \u0627\u0644\u0640 worker. \u064a\u0645\u0643\u0646\u0643 \u0623\u064a\u0636\u0627 \u0625\u0646\u0634\u0627\u0621 \u0646\u0633\u062e\u0629 \u0627\u0644\u0622\u0646 \u0642\u0628\u0644 \u0623\u064a \u0639\u0645\u0644 \u062d\u0633\u0627\u0633.",
+    automaticBackups: "\u062a\u0644\u0642\u0627\u0626\u064a",
+    enabled: "\u0645\u0641\u0639\u0644",
+    disabled: "\u063a\u064a\u0631 \u0645\u0641\u0639\u0644",
+    backupInterval: "\u0643\u0644",
+    backupRetention: "\u0645\u062f\u0629 \u0627\u0644\u0627\u062d\u062a\u0641\u0627\u0638",
+    latestBackup: "\u0622\u062e\u0631 \u0646\u0633\u062e\u0629",
+    noBackups: "\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u0633\u062e \u0644\u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u062d\u062a\u0649 \u0627\u0644\u0622\u0646.",
+    createBackup: "\u0625\u0646\u0634\u0627\u0621 \u0646\u0633\u062e\u0629 \u0627\u0644\u0622\u0646",
+    creatingBackup: "\u062c\u0627\u0631\u064a \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0646\u0633\u062e\u0629...",
+    backupCreated: "\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0646\u0633\u062e\u0629 \u0644\u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.",
+    backupCreateError: "\u062a\u0639\u0630\u0631 \u0625\u0646\u0634\u0627\u0621 \u0646\u0633\u062e\u0629 \u0644\u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.",
+    restoreDatabase: "\u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a",
+    restoreDatabaseDescription:
+      "\u0647\u0630\u0627 \u064a\u0633\u062a\u0628\u062f\u0644 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062d\u0627\u0644\u064a\u0629 \u0628\u0627\u0644\u0646\u0633\u062e\u0629 \u0627\u0644\u0645\u062d\u062f\u062f\u0629. \u064a\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0646\u0633\u062e\u0629 \u0623\u0645\u0627\u0646 \u0623\u0648\u0644\u0627.",
+    chooseBackup: "\u0627\u062e\u062a\u0631 \u0627\u0644\u0646\u0633\u062e\u0629",
+    restoreConfirmationLabel: "\u0639\u0628\u0627\u0631\u0629 \u0627\u0644\u062a\u0623\u0643\u064a\u062f",
+    restoreConfirmationHint: "\u0627\u0643\u062a\u0628 \u0627\u0644\u0639\u0628\u0627\u0631\u0629 \u0643\u0645\u0627 \u0647\u064a:",
+    restoreNow: "\u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0627\u0644\u0646\u0633\u062e\u0629 \u0627\u0644\u0645\u062d\u062f\u062f\u0629",
+    restoring: "\u062c\u0627\u0631\u064a \u0627\u0644\u0627\u0633\u062a\u0631\u062c\u0627\u0639...",
+    restoreDisabled: "\u0627\u0644\u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u063a\u064a\u0631 \u0645\u0641\u0639\u0644 \u0639\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u0633\u064a\u0631\u0641\u0631.",
+    restoreDone: "\u062a\u0645 \u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.",
+    restoreError: "\u062a\u0639\u0630\u0631 \u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0646\u0633\u062e\u0629 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a.",
   },
 } as const;
 
@@ -295,6 +364,12 @@ export default function AcademyProfilePage() {
     useRevokeMfaDeviceMutation();
   const [regenerateBackupCodes, { isLoading: regeneratingBackupCodes }] =
     useRegenerateMfaBackupCodesMutation();
+  const { data: databaseBackups, isLoading: loadingDatabaseBackups } =
+    useGetDatabaseBackupsQuery();
+  const [createDatabaseBackup, { isLoading: creatingDatabaseBackup }] =
+    useCreateDatabaseBackupMutation();
+  const [restoreDatabaseBackup, { isLoading: restoringDatabaseBackup }] =
+    useRestoreDatabaseBackupMutation();
 
   const [academyDraft, setAcademyDraft] = useState<AcademyDraft>({});
   const [saved, setSaved] = useState(false);
@@ -314,6 +389,11 @@ export default function AcademyProfilePage() {
   const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [securityMessage, setSecurityMessage] = useState("");
   const [securityError, setSecurityError] = useState("");
+  const [selectedBackupFileName, setSelectedBackupFileName] = useState("");
+  const [restorePassword, setRestorePassword] = useState("");
+  const [restoreConfirmation, setRestoreConfirmation] = useState("");
+  const [databaseBackupMessage, setDatabaseBackupMessage] = useState("");
+  const [databaseBackupError, setDatabaseBackupError] = useState("");
 
   const settings = (academy?.settings ?? {}) as Record<string, unknown>;
   const attendanceSettings =
@@ -378,6 +458,16 @@ export default function AcademyProfilePage() {
     currentUser?.username ||
     currentUser?.phone ||
     "admin";
+  const selectedRestoreBackup =
+    selectedBackupFileName || databaseBackups?.latestBackup?.fileName || "";
+  const restoreConfirmationPhrase =
+    databaseBackups?.restoreConfirmation || "RESTORE GOALIX";
+  const canRestoreDatabaseBackup =
+    Boolean(databaseBackups?.restoreEnabled) &&
+    Boolean(selectedRestoreBackup) &&
+    Boolean(restorePassword) &&
+    restoreConfirmation === restoreConfirmationPhrase &&
+    !restoringDatabaseBackup;
 
   const getAuthenticatorLabel = (issuer?: string) =>
     `${issuer ?? "Goalix Academy Admin"}:${mfaAccountLabel}`;
@@ -426,6 +516,45 @@ export default function AcademyProfilePage() {
       window.setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       setSaveError(getApiErrorMessage(err, t.saveError));
+    }
+  };
+
+  const handleCreateDatabaseBackup = async () => {
+    setDatabaseBackupError("");
+    setDatabaseBackupMessage("");
+
+    try {
+      const result = await createDatabaseBackup().unwrap();
+      setSelectedBackupFileName(result.fileName);
+      setDatabaseBackupMessage(`${t.backupCreated} ${result.fileName}`);
+    } catch (err) {
+      setDatabaseBackupError(getApiErrorMessage(err, t.backupCreateError));
+    }
+  };
+
+  const handleRestoreDatabaseBackup = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    setDatabaseBackupError("");
+    setDatabaseBackupMessage("");
+
+    if (!selectedRestoreBackup) {
+      setDatabaseBackupError(t.noBackups);
+      return;
+    }
+
+    try {
+      await restoreDatabaseBackup({
+        fileName: selectedRestoreBackup,
+        password: restorePassword,
+        confirmation: restoreConfirmation,
+      }).unwrap();
+      setRestorePassword("");
+      setRestoreConfirmation("");
+      setDatabaseBackupMessage(t.restoreDone);
+    } catch (err) {
+      setDatabaseBackupError(getApiErrorMessage(err, t.restoreError));
     }
   };
 
@@ -800,6 +929,188 @@ export default function AcademyProfilePage() {
                 )}
               </div>
               {saveError && <p className="text-sm text-red-400">{saveError}</p>}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Database className="h-4 w-4" />
+                  {t.databaseBackups}
+                </CardTitle>
+                <CardDescription>{t.databaseBackupsDescription}</CardDescription>
+              </div>
+              <Badge
+                variant={databaseBackups?.automaticEnabled ? "success" : "secondary"}
+              >
+                {t.automaticBackups}:{" "}
+                {databaseBackups?.automaticEnabled ? t.enabled : t.disabled}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t.backupInterval}
+                  </p>
+                  <p className="text-sm font-medium">
+                    {databaseBackups?.intervalMinutes ?? "-"} min
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t.backupRetention}
+                  </p>
+                  <p className="text-sm font-medium">
+                    {databaseBackups?.retentionDays ?? "-"} days
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t.latestBackup}
+                  </p>
+                  <p className="truncate text-sm font-medium">
+                    {databaseBackups?.latestBackup?.fileName ?? t.noBackups}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {(databaseBackups?.backups?.length ?? 0) > 0 ? (
+                  <div className="space-y-2">
+                    {databaseBackups?.backups.slice(0, 5).map((backup) => (
+                      <div
+                        key={backup.fileName}
+                        className="flex flex-col gap-1 rounded-lg border border-border/40 bg-background/40 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="break-all font-mono text-xs">
+                          {backup.fileName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(backup.createdAt).toLocaleString(dateLocale)}{" "}
+                          - {formatBackupSize(backup.sizeBytes)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-border/40 p-3 text-sm text-muted-foreground">
+                    {loadingDatabaseBackups ? t.checking : t.noBackups}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleCreateDatabaseBackup}
+                disabled={creatingDatabaseBackup}
+                className="gap-1.5"
+              >
+                {creatingDatabaseBackup ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                {creatingDatabaseBackup ? t.creatingBackup : t.createBackup}
+              </Button>
+
+              <form
+                onSubmit={handleRestoreDatabaseBackup}
+                className="space-y-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-red-300" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-100">
+                      {t.restoreDatabase}
+                    </p>
+                    <p className="text-xs text-red-100/80">
+                      {databaseBackups?.restoreEnabled
+                        ? t.restoreDatabaseDescription
+                        : t.restoreDisabled}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>{t.chooseBackup}</Label>
+                    <Select
+                      value={selectedRestoreBackup}
+                      onValueChange={setSelectedBackupFileName}
+                      disabled={!databaseBackups?.backups.length}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t.chooseBackup} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {databaseBackups?.backups.map((backup) => (
+                          <SelectItem
+                            key={backup.fileName}
+                            value={backup.fileName}
+                          >
+                            {backup.fileName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="restore-db-password">
+                      {t.adminPassword}
+                    </Label>
+                    <Input
+                      id="restore-db-password"
+                      type="password"
+                      value={restorePassword}
+                      onChange={(event) =>
+                        setRestorePassword(event.target.value)
+                      }
+                      autoComplete="current-password"
+                      disabled={!databaseBackups?.restoreEnabled}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="restore-db-confirmation">
+                    {t.restoreConfirmationLabel}
+                  </Label>
+                  <Input
+                    id="restore-db-confirmation"
+                    value={restoreConfirmation}
+                    onChange={(event) =>
+                      setRestoreConfirmation(event.target.value)
+                    }
+                    placeholder={`${t.restoreConfirmationHint} ${restoreConfirmationPhrase}`}
+                    disabled={!databaseBackups?.restoreEnabled}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={!canRestoreDatabaseBackup}
+                  className="gap-1.5"
+                >
+                  {restoringDatabaseBackup ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {restoringDatabaseBackup ? t.restoring : t.restoreNow}
+                </Button>
+              </form>
+
+              {databaseBackupMessage && (
+                <p className="text-sm text-emerald-400">
+                  {databaseBackupMessage}
+                </p>
+              )}
+              {databaseBackupError && (
+                <p className="text-sm text-red-400">{databaseBackupError}</p>
+              )}
             </CardContent>
           </Card>
 

@@ -11,7 +11,7 @@ ENV NODE_ENV=production \
     INJURY_RISK_MODEL_DIR=/models
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates \
+    && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY golx-backend/package.json golx-backend/package-lock.json* ./
@@ -24,7 +24,7 @@ RUN python3 -m venv /opt/goalix-model-venv \
 
 COPY --chown=node:node golx-backend/ ./
 
-RUN install -d -o node -g node ./uploads
+RUN install -d -o node -g node ./uploads ./backups
 
 EXPOSE 3000
 USER node

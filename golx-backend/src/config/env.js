@@ -121,6 +121,11 @@ const envSchema = z.object({
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     BACKUP_RPO_MINUTES: z.coerce.number().int().min(1).default(15),
     BACKUP_RTO_MINUTES: z.coerce.number().int().min(1).default(120),
+    BACKUP_DIR: z.string().min(1).default('backups'),
+    BACKUP_AUTOMATION_ENABLED: optionalBoolean,
+    BACKUP_INTERVAL_MINUTES: z.coerce.number().int().min(5).default(1440),
+    BACKUP_RETENTION_DAYS: z.coerce.number().int().min(1).default(14),
+    BACKUP_RESTORE_ENABLED: optionalBoolean,
 
     // HTTP server
     HTTP_LISTEN_BACKLOG: z.coerce.number().int().min(128).default(8192),

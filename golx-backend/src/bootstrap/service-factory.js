@@ -37,6 +37,7 @@ const CalendarService = require('../modules/calendar/calendar.service');
 const CustomDataService = require('../modules/custom-data/custom-data.service');
 const ChatService = require('../modules/chat/chat.service');
 const DataLifecycleService = require('../modules/data-lifecycle/data-lifecycle.service');
+const BackupService = require('../modules/backups/backup.service');
 
 const AuthController = require('../modules/auth/auth.controller');
 const AcademyController = require('../modules/academy/academy.controller');
@@ -107,6 +108,7 @@ function createApplicationServices({
     );
     services.chatService = new ChatService(repositories.chatRepo);
     services.dataLifecycleService = new DataLifecycleService(repositories.dataLifecycleRepo);
+    services.backupService = new BackupService(database);
     services.notificationsService.setDataLifecycleService?.(services.dataLifecycleService);
 
     const controllers = {
@@ -119,7 +121,7 @@ function createApplicationServices({
         paymentsController: new PaymentsController(services.paymentsService),
         notificationsController: new NotificationsController(services.notificationsService),
         aiController: new AiController(services.aiService),
-        adminController: new AdminController(services.adminService),
+        adminController: new AdminController(services.adminService, services.backupService),
         calendarController: new CalendarController(services.calendarService),
         customDataController: new CustomDataController(services.customDataService),
         chatController: new ChatController(services.chatService),

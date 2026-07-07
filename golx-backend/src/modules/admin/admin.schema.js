@@ -74,6 +74,12 @@ const reportsOverviewQuery = z.object({
     },
 );
 
+const restoreBackupSchema = z.object({
+    fileName: z.string().trim().min(1).max(255),
+    password: z.string().min(1).max(128),
+    confirmation: z.string().trim().min(1).max(80),
+});
+
 module.exports = {
     uuidParam,
     roleUserParam,
@@ -81,4 +87,5 @@ module.exports = {
     roleUpdateSchema,
     createAccessUserSchema,
     reportsOverviewQuery,
+    restoreBackupSchema,
 };
