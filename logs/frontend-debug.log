@@ -1,0 +1,12 @@
+
+> goalix@0.1.0 dev:frontend
+> next dev -H 0.0.0.0 -p 3001
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://0.0.0.0:3001
+✓ Ready in 903ms
+
+ GET /login 200 in 1113ms (next.js: 583ms, proxy.ts: 188ms, application-code: 341ms)
+ GET /admin-login 200 in 167ms (next.js: 43ms, proxy.ts: 7ms, application-code: 117ms)
+[?25h

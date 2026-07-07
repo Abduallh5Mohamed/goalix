@@ -1,0 +1,6 @@
+
+> goalix@0.1.0 dev
+> node scripts/dev.js
+
+Python model dependencies are ready.
+Docker is not available and Redis port 6379 is closed. Redis cache/queue features are disabled, but dev will continue.

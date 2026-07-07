@@ -1,0 +1,1 @@
+Docker is not available and Redis port 6379 is closed. Redis cache/queue features are disabled, but dev will continue.

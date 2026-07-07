@@ -1,0 +1,27 @@
+
+> goalix@0.1.0 dev
+> node scripts/dev.js
+
+Python model dependencies are ready.
+[backend] [33m[nodemon] 3.1.14[39m
+[backend] [33m[nodemon] to restart at any time, enter `rs`[39m
+[backend] [33m[nodemon] watching path(s): *.*[39m
+[backend] [33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[backend] [32m[nodemon] starting `node src/server.js`[39m
+[backend] [2026-07-07 17:51:21.717 +0300] [32mINFO[39m: [36mPostgreSQL connected[39m
+[backend]     service: "goalix-api"
+[backend] [2026-07-07 17:51:21.721 +0300] [33mWARN[39m: [36mRedis unavailable; caching, queues, and distributed locks are disabled[39m
+[backend]     service: "goalix-api"
+[backend]     message: ""
+[backend]     code: "ECONNREFUSED"
+[backend] [2026-07-07 17:51:21.722 +0300] [33mWARN[39m: [36mBullMQ workers not started - Redis unavailable[39m
+[backend]     service: "goalix-api"
+[backend] [2026-07-07 17:51:21.726 +0300] [33mWARN[39m: [36mSocket.IO Redis adapter disabled; realtime is local to this API instance[39m
+[backend]     service: "goalix-api"
+[backend] [2026-07-07 17:51:21.728 +0300] [32mINFO[39m: [36mGOALIX API running on 0.0.0.0:3000 [development][39m
+[backend]     service: "goalix-api"
+[frontend] ▲ Next.js 16.2.10 (Turbopack)
+[frontend] - Local:         http://localhost:3001
+[frontend] - Network:       http://0.0.0.0:3001
+[frontend] ✓ Ready in 1069ms
+[frontend]  GET /admin-login 200 in 1802ms (next.js: 373ms, proxy.ts: 379ms, application-code: 1051ms)

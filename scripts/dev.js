@@ -130,12 +130,17 @@ function frontendEnv() {
   };
 }
 
-function runFrontendOnly() {
+function keepDevProcessAlive() {
+  return new Promise(() => {});
+}
+
+async function runFrontendOnly() {
   const child = spawnLabeled(process.execPath, frontendArgs(), {
     label: "frontend",
     env: frontendEnv(),
   });
   child.on("exit", (code) => process.exit(code || 0));
+  await keepDevProcessAlive();
 }
 
 function waitForBackendHealth({ timeoutMs = 45000, intervalMs = 500 } = {}) {
@@ -244,6 +249,8 @@ async function runManagedDev() {
   frontend.on("exit", (code) => {
     if (!shuttingDown) shutdown(code || 0);
   });
+
+  await keepDevProcessAlive();
 }
 
 async function main() {
